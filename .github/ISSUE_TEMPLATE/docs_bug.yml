@@ -1,0 +1,26 @@
+name: Docs Bug
+description: Report incorrect, missing, or broken content on openrouter.ai/docs
+labels: ["docs"]
+body:
+  - type: input
+    id: page-url
+    attributes:
+      label: Page URL
+      description: Link to the docs page with the issue
+      placeholder: https://openrouter.ai/docs/...
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What's wrong?
+      description: Describe the issue -- what's incorrect, missing, or broken?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected content
+      description: What should the docs say instead? (if applicable)
+    validations:
+      required: false

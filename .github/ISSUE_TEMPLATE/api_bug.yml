@@ -1,0 +1,34 @@
+name: API Bug
+description: Report API behavior that doesn't match the documentation
+labels: ["api"]
+body:
+  - type: input
+    id: docs-url
+    attributes:
+      label: Docs page URL
+      description: Link to the docs page describing the expected behavior
+      placeholder: https://openrouter.ai/docs/...
+    validations:
+      required: true
+  - type: input
+    id: endpoint
+    attributes:
+      label: API endpoint
+      description: The endpoint affected (e.g. /api/v1/chat/completions)
+      placeholder: /api/v1/...
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: How does the API behavior differ from what the docs describe?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Request details, parameters, or a curl command that demonstrates the issue
+    validations:
+      required: false
