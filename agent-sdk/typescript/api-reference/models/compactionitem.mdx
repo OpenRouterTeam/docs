@@ -1,0 +1,48 @@
+---
+title: CompactionItem - TypeScript SDK
+sidebarTitle: CompactionItem
+description: CompactionItem type definition
+seoTitle: CompactionItem Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/api-reference/models/compactionitem'
+'og:site_name': OpenRouter Documentation
+'og:title': CompactionItem Type | OpenRouter TypeScript SDK
+'og:description': >-
+  CompactionItem type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CompactionItem%20-%20TypeScript%20SDK&description=CompactionItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+A context compaction marker with encrypted summary
+
+## Example Usage
+
+```typescript lines
+import { CompactionItem } from "@openrouter/sdk/models";
+
+let value: CompactionItem = {
+  encryptedContent: "enc_abc123...",
+  type: "compaction",
+};
+```
+
+## Fields
+
+| Field                                                        | Type                                                         | Required                                                     | Description                                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `encryptedContent`                                           | *string*                                                     | :heavy_check_mark:                                           | N/A                                                          |
+| `id`                                                         | *string*                                                     | :heavy_minus_sign:                                           | N/A                                                          |
+| `type`                                                       | [models.CompactionItemType](/agent-sdk/typescript/api-reference/models/compactionitemtype) | :heavy_check_mark:                                           | N/A                                                          |

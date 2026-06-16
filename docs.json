@@ -1,0 +1,593 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "OpenRouter | Documentation",
+  "theme": "mint",
+  "colors": {
+    "primary": "#6467f2",
+    "light": "#6467f2",
+    "dark": "#6467f2"
+  },
+  "favicon": "/assets/favicon.ico",
+  "logo": {
+    "light": "/assets/logo.svg",
+    "dark": "/assets/logo-white.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Models",
+        "href": "https://openrouter.ai/models"
+      },
+      {
+        "label": "Chat",
+        "href": "https://openrouter.ai/chat"
+      },
+      {
+        "label": "Rankings",
+        "href": "https://openrouter.ai/rankings"
+      },
+      {
+        "label": "Docs",
+        "href": "/docs/api-reference/overview"
+      }
+    ]
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity"
+    ]
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Docs",
+        "icon": "book",
+        "groups": [
+          {
+            "group": "Overview",
+            "icon": "compass",
+            "pages": [
+              "quickstart",
+              "guides/overview/principles",
+              "guides/overview/models",
+              {
+                "group": "Multimodal",
+                "icon": "layer-group",
+                "pages": [
+                  "guides/overview/multimodal/overview",
+                  "guides/overview/multimodal/image-understanding",
+                  "guides/overview/multimodal/image-generation",
+                  "guides/overview/multimodal/pdfs",
+                  "guides/overview/multimodal/audio",
+                  "guides/overview/multimodal/videos",
+                  "guides/overview/multimodal/video-generation",
+                  "guides/overview/multimodal/tts",
+                  "guides/overview/multimodal/stt"
+                ]
+              },
+              {
+                "group": "Authentication",
+                "icon": "shield-check",
+                "pages": [
+                  "guides/overview/auth/oauth",
+                  "guides/overview/auth/management-api-keys",
+                  "guides/overview/auth/byok"
+                ]
+              },
+              "guides/overview/stripe-projects",
+              "faq",
+              "guides/overview/report-feedback"
+            ]
+          },
+          {
+            "group": "Models & Routing",
+            "icon": "route",
+            "pages": [
+              "guides/routing/model-fallbacks",
+              "guides/routing/provider-selection",
+              "guides/routing/auto-exacto",
+              "guides/routing/private-models",
+              {
+                "group": "Model Variants",
+                "icon": "gem",
+                "pages": [
+                  "guides/routing/model-variants/free",
+                  "guides/routing/model-variants/extended",
+                  "guides/routing/model-variants/exacto",
+                  "guides/routing/model-variants/thinking",
+                  "guides/routing/model-variants/online",
+                  "guides/routing/model-variants/nitro"
+                ]
+              },
+              {
+                "group": "Routers",
+                "icon": "robot",
+                "pages": [
+                  "guides/routing/routers/auto-router",
+                  "guides/routing/routers/body-builder",
+                  "guides/routing/routers/free-router",
+                  "guides/routing/routers/latest-resolution",
+                  "guides/routing/routers/pareto-router",
+                  "guides/routing/routers/fusion-router"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Features",
+            "icon": "stars",
+            "pages": [
+              "guides/features/workspaces",
+              "guides/features/presets",
+              "guides/features/response-caching",
+              "guides/features/tool-calling",
+              {
+                "group": "Server Tools",
+                "icon": "server",
+                "pages": [
+                  "guides/features/server-tools",
+                  "guides/features/server-tools/web-search",
+                  "guides/features/server-tools/web-fetch",
+                  "guides/features/server-tools/datetime",
+                  "guides/features/server-tools/image-generation",
+                  "guides/features/server-tools/apply-patch",
+                  "guides/features/server-tools/fusion"
+                ]
+              },
+              {
+                "group": "Plugins",
+                "icon": "plug",
+                "pages": [
+                  "guides/features/plugins",
+                  "guides/features/plugins/web-search",
+                  "guides/features/plugins/response-healing",
+                  "guides/features/plugins/fusion"
+                ]
+              },
+              "guides/features/structured-outputs",
+              "guides/features/message-transforms",
+              "guides/features/zero-completion-insurance",
+              "guides/features/zdr",
+              "app-attribution",
+              {
+                "group": "Guardrails",
+                "icon": "shield-check",
+                "pages": [
+                  "guides/features/guardrails",
+                  "guides/features/guardrails/prompt-injection",
+                  "guides/features/guardrails/sensitive-info"
+                ]
+              },
+              "guides/features/service-tiers",
+              "guides/features/sovereign-ai",
+              "guides/features/router-metadata",
+              "guides/features/input-output-logging",
+              {
+                "group": "Broadcast",
+                "icon": "broadcast-tower",
+                "pages": [
+                  "guides/features/broadcast",
+                  "guides/features/broadcast/arize",
+                  "guides/features/broadcast/braintrust",
+                  "guides/features/broadcast/clickhouse",
+                  "guides/features/broadcast/opik",
+                  "guides/features/broadcast/datadog",
+                  "guides/features/broadcast/grafana",
+                  "guides/features/broadcast/langfuse",
+                  "guides/features/broadcast/langsmith",
+                  "guides/features/broadcast/newrelic",
+                  "guides/features/broadcast/otel-collector",
+                  "guides/features/broadcast/posthog",
+                  "guides/features/broadcast/ramp",
+                  "guides/features/broadcast/s3",
+                  "guides/features/broadcast/sentry",
+                  "guides/features/broadcast/snowflake",
+                  "guides/features/broadcast/weave",
+                  "guides/features/broadcast/webhook"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Privacy",
+            "icon": "shield",
+            "expanded": false,
+            "pages": [
+              "guides/privacy/data-collection",
+              "guides/privacy/provider-logging"
+            ]
+          },
+          {
+            "group": "Best Practices",
+            "icon": "lightbulb",
+            "expanded": false,
+            "pages": [
+              "guides/best-practices/latency-and-performance",
+              "guides/best-practices/prompt-caching",
+              "guides/best-practices/uptime-optimization",
+              "guides/best-practices/reasoning-tokens"
+            ]
+          },
+          {
+            "group": "Community",
+            "icon": "users",
+            "expanded": false,
+            "pages": [
+              "guides/community/for-providers",
+              "guides/community/frameworks-and-integrations-overview",
+              "guides/community/awesome-openrouter",
+              "guides/community/effect-ai-sdk",
+              "guides/community/arize",
+              "guides/community/langchain",
+              "guides/community/livekit",
+              "guides/community/langfuse",
+              "guides/community/mastra",
+              "guides/community/openai-sdk",
+              "guides/community/anthropic-agent-sdk",
+              "guides/community/pydantic-ai",
+              "guides/community/replit",
+              "guides/community/tanstack-ai",
+              "guides/community/vercel-ai-sdk",
+              "guides/community/xcode",
+              "guides/community/zapier",
+              "guides/community/infisical"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "icon": "code",
+        "groups": [
+          {
+            "group": "API Guides",
+            "icon": "code",
+            "pages": [
+              "api/reference/overview",
+              "api/reference/streaming",
+              "api/reference/embeddings",
+              "api/reference/limits",
+              "api/reference/authentication",
+              "api/reference/parameters",
+              "api/reference/errors-and-debugging",
+              {
+                "group": "Responses API",
+                "icon": "flask",
+                "pages": [
+                  "api/reference/responses/overview",
+                  "api/reference/responses/basic-usage",
+                  "api/reference/responses/reasoning",
+                  "api/reference/responses/tool-calling",
+                  "api/reference/responses/web-search",
+                  "api/reference/responses/error-handling"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "API Reference",
+            "icon": "code",
+            "openapi": {
+              "directory": "/api/api-reference",
+              "source": "/openapi/openapi.yaml"
+            }
+          }
+        ]
+      },
+      {
+        "tab": "Client SDKs",
+        "icon": "cube",
+        "pages": [
+          "client-sdks/overview",
+          "client-sdks/usage-for-agents",
+          {
+            "group": "TypeScript SDK",
+            "icon": "code",
+            "pages": [
+              "client-sdks/typescript/overview",
+              {
+                "group": "API Reference",
+                "icon": "code",
+                "pages": [
+                  "client-sdks/typescript/api-reference/analytics",
+                  "client-sdks/typescript/api-reference/apikeys",
+                  "client-sdks/typescript/api-reference/byok",
+                  "client-sdks/typescript/api-reference/chat",
+                  "client-sdks/typescript/api-reference/credits",
+                  "client-sdks/typescript/api-reference/datasets",
+                  "client-sdks/typescript/api-reference/embeddings",
+                  "client-sdks/typescript/api-reference/endpoints",
+                  "client-sdks/typescript/api-reference/generations",
+                  "client-sdks/typescript/api-reference/guardrails",
+                  {
+                    "group": "Models",
+                    "icon": "cube",
+                    "pages": [
+                      "client-sdks/typescript/api-reference/models"
+                    ]
+                  },
+                  "client-sdks/typescript/api-reference/oauth",
+                  "client-sdks/typescript/api-reference/observability",
+                  "client-sdks/typescript/api-reference/organization",
+                  "client-sdks/typescript/api-reference/presets",
+                  "client-sdks/typescript/api-reference/providers",
+                  "client-sdks/typescript/api-reference/rerank",
+                  "client-sdks/typescript/api-reference/responses",
+                  "client-sdks/typescript/api-reference/stt",
+                  "client-sdks/typescript/api-reference/tts",
+                  "client-sdks/typescript/api-reference/videogeneration",
+                  "client-sdks/typescript/api-reference/workspaces"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Python SDK",
+            "icon": "code",
+            "pages": [
+              "client-sdks/python/overview",
+              {
+                "group": "API Reference",
+                "icon": "code",
+                "pages": [
+                  "client-sdks/python/api-reference/analytics",
+                  "client-sdks/python/api-reference/apikeys",
+                  "client-sdks/python/api-reference/byok",
+                  "client-sdks/python/api-reference/chat",
+                  "client-sdks/python/api-reference/credits",
+                  "client-sdks/python/api-reference/datasets",
+                  "client-sdks/python/api-reference/embeddings",
+                  "client-sdks/python/api-reference/endpoints",
+                  "client-sdks/python/api-reference/generations",
+                  "client-sdks/python/api-reference/guardrails",
+                  {
+                    "group": "Models",
+                    "icon": "cube",
+                    "pages": [
+                      "client-sdks/python/api-reference/models"
+                    ]
+                  },
+                  "client-sdks/python/api-reference/oauth",
+                  "client-sdks/python/api-reference/observability",
+                  "client-sdks/python/api-reference/organization",
+                  "client-sdks/python/api-reference/presets",
+                  "client-sdks/python/api-reference/providers",
+                  "client-sdks/python/api-reference/rerank",
+                  "client-sdks/python/api-reference/responses",
+                  "client-sdks/python/api-reference/stt",
+                  "client-sdks/python/api-reference/tts",
+                  "client-sdks/python/api-reference/videogeneration",
+                  "client-sdks/python/api-reference/workspaces"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Go SDK",
+            "icon": "code",
+            "pages": [
+              {
+                "group": "API Reference",
+                "icon": "code",
+                "pages": [
+                  "client-sdks/go/api-reference/analytics",
+                  "client-sdks/go/api-reference/apikeys",
+                  "client-sdks/go/api-reference/byok",
+                  "client-sdks/go/api-reference/chat",
+                  "client-sdks/go/api-reference/credits",
+                  "client-sdks/go/api-reference/datasets",
+                  "client-sdks/go/api-reference/embeddings",
+                  "client-sdks/go/api-reference/endpoints",
+                  "client-sdks/go/api-reference/generations",
+                  "client-sdks/go/api-reference/guardrails",
+                  {
+                    "group": "Models",
+                    "icon": "cube",
+                    "pages": [
+                      "client-sdks/go/api-reference/models"
+                    ]
+                  },
+                  "client-sdks/go/api-reference/oauth",
+                  "client-sdks/go/api-reference/observability",
+                  "client-sdks/go/api-reference/organization",
+                  "client-sdks/go/api-reference/presets",
+                  "client-sdks/go/api-reference/providers",
+                  "client-sdks/go/api-reference/rerank",
+                  "client-sdks/go/api-reference/responses",
+                  "client-sdks/go/api-reference/stt",
+                  "client-sdks/go/api-reference/tts",
+                  "client-sdks/go/api-reference/videogeneration",
+                  "client-sdks/go/api-reference/workspaces"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "DevTools",
+            "icon": "stars",
+            "pages": [
+              "client-sdks/dev-tools/devtools"
+            ]
+          },
+          "client-sdks/agent-migration"
+        ]
+      },
+      {
+        "tab": "Agent SDK",
+        "icon": "cube",
+        "pages": [
+          "agent-sdk/overview",
+          "agent-sdk/usage-for-agents",
+          {
+            "group": "TypeScript SDK",
+            "icon": "code",
+            "pages": [
+              "agent-sdk/typescript/overview",
+              {
+                "group": "API Reference",
+                "icon": "code",
+                "pages": [
+                  "agent-sdk/typescript/api-reference/analytics",
+                  "agent-sdk/typescript/api-reference/apikeys",
+                  "agent-sdk/typescript/api-reference/chat",
+                  "agent-sdk/typescript/api-reference/credits",
+                  "agent-sdk/typescript/api-reference/embeddings",
+                  "agent-sdk/typescript/api-reference/endpoints",
+                  "agent-sdk/typescript/api-reference/generations",
+                  "agent-sdk/typescript/api-reference/guardrails",
+                  {
+                    "group": "Models",
+                    "icon": "cube",
+                    "pages": [
+                      "agent-sdk/typescript/api-reference/models"
+                    ]
+                  },
+                  "agent-sdk/typescript/api-reference/oauth",
+                  "agent-sdk/typescript/api-reference/organization",
+                  "agent-sdk/typescript/api-reference/providers",
+                  "agent-sdk/typescript/api-reference/rerank",
+                  "agent-sdk/typescript/api-reference/responses",
+                  "agent-sdk/typescript/api-reference/tts",
+                  "agent-sdk/typescript/api-reference/videogeneration",
+                  "agent-sdk/typescript/api-reference/workspaces"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Call Model",
+            "icon": "comment-nodes",
+            "pages": [
+              "agent-sdk/call-model/overview",
+              "agent-sdk/call-model/items",
+              "agent-sdk/call-model/api-reference",
+              "agent-sdk/call-model/dynamic-parameters",
+              "agent-sdk/call-model/next-turn-params",
+              "agent-sdk/call-model/stop-conditions",
+              "agent-sdk/call-model/streaming",
+              "agent-sdk/call-model/text-generation",
+              "agent-sdk/call-model/message-formats",
+              "agent-sdk/call-model/tools",
+              "agent-sdk/call-model/tool-approval-state",
+              {
+                "group": "Examples",
+                "icon": "code",
+                "pages": [
+                  "agent-sdk/call-model/examples/weather-tool",
+                  "agent-sdk/call-model/examples/skills-loader"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "DevTools",
+            "icon": "stars",
+            "pages": [
+              "agent-sdk/dev-tools/devtools"
+            ]
+          },
+          "agent-sdk/agent-migration"
+        ]
+      },
+      {
+        "tab": "Cookbook",
+        "icon": "book-open",
+        "groups": [
+          {
+            "group": "Get Started",
+            "icon": "rocket",
+            "pages": [
+              "cookbook/get-started/quickstart",
+              "cookbook/get-started/enterprise-quickstart",
+              "cookbook/get-started/free-models-router-playground"
+            ]
+          },
+          {
+            "group": "Working with Coding Agents",
+            "icon": "robot",
+            "pages": [
+              "cookbook/coding-agents/automatic-code-review",
+              "cookbook/coding-agents/claude-code-integration",
+              "cookbook/coding-agents/claude-desktop-integration",
+              "cookbook/coding-agents/codex-cli",
+              "cookbook/coding-agents/cursor-integration",
+              "cookbook/coding-agents/hermes-integration",
+              "cookbook/coding-agents/junie",
+              "cookbook/coding-agents/mcp-servers",
+              "cookbook/coding-agents/openclaw-integration",
+              "cookbook/coding-agents/opencode-integration"
+            ]
+          },
+          {
+            "group": "Building Agents",
+            "icon": "hammer",
+            "pages": [
+              "cookbook/building-agents/hitl-tools",
+              "cookbook/building-agents/long-horizon-agents",
+              "cookbook/building-agents/create-agent-harness-tui",
+              "cookbook/building-agents/create-headless-agent"
+            ]
+          },
+          {
+            "group": "Video Generation",
+            "icon": "film",
+            "pages": [
+              "cookbook/video-generation/choose-video-model",
+              "cookbook/video-generation/text-to-video",
+              "cookbook/video-generation/video-generation-webhooks",
+              "cookbook/video-generation/reference-to-video",
+              "cookbook/video-generation/image-to-video",
+              "cookbook/video-generation/provider-specific-video-options"
+            ]
+          },
+          {
+            "group": "Evaluate & Optimize",
+            "icon": "flask",
+            "pages": [
+              "cookbook/evaluate-and-optimize/distillation",
+              {
+                "group": "Model Migrations",
+                "icon": "arrow-right-arrow-left",
+                "pages": [
+                  "cookbook/evaluate-and-optimize/model-migrations/claude-4-7",
+                  "cookbook/evaluate-and-optimize/model-migrations/claude-4-6",
+                  "cookbook/evaluate-and-optimize/model-migrations/gpt-5-4"
+                ]
+              },
+              "cookbook/evaluate-and-optimize/rag",
+              "cookbook/evaluate-and-optimize/red-teaming"
+            ]
+          },
+          {
+            "group": "Administration",
+            "icon": "chart-line",
+            "pages": [
+              "cookbook/administration/activity-export",
+              "cookbook/administration/api-key-rotation",
+              "cookbook/administration/crypto-api",
+              "cookbook/administration/organization-management",
+              "cookbook/administration/usage-accounting",
+              "cookbook/administration/user-tracking"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Changelog",
+        "icon": "clock-rotate-left",
+        "groups": [
+          {
+            "group": "Changelog",
+            "pages": [
+              "changelog"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

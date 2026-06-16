@@ -1,0 +1,46 @@
+---
+title: ResponseInputVideo - TypeScript SDK
+description: ResponseInputVideo method reference
+seoTitle: ResponseInputVideo | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/models/responseinputvideo'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponseInputVideo | OpenRouter TypeScript SDK
+'og:description': >-
+  ResponseInputVideo method documentation for the OpenRouter TypeScript SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponseInputVideo%20-%20TypeScript%20SDK&description=ResponseInputVideo%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Video input content item
+
+## Example Usage
+
+```typescript lines
+import { ResponseInputVideo } from "@openrouter/sdk/models";
+
+let value: ResponseInputVideo = {
+  type: "input_video",
+  videoUrl: "https://example.com/video.mp4",
+};
+```
+
+## Fields
+
+| Field                                                         | Type                                                          | Required                                                      | Description                                                   |
+| ------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------- |
+| `type`                                                        | *"input_video"*                                               | :heavy_check_mark:                                            | N/A                                                           |
+| `videoUrl`                                                    | *string*                                                      | :heavy_check_mark:                                            | A base64 data URL or remote URL that resolves to a video file |

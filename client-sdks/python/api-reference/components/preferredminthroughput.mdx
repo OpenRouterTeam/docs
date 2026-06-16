@@ -1,0 +1,50 @@
+---
+title: PreferredMinThroughput - Python SDK
+sidebarTitle: PreferredMinThroughput
+description: PreferredMinThroughput method reference
+seoTitle: PreferredMinThroughput | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/preferredminthroughput
+'og:site_name': OpenRouter Documentation
+'og:title': PreferredMinThroughput | OpenRouter Python SDK
+'og:description': >-
+  PreferredMinThroughput method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=PreferredMinThroughput%20-%20Python%20SDK&description=PreferredMinThroughput%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Preferred minimum throughput (in tokens per second). Can be a number (applies to p50) or an object with percentile-specific cutoffs. Endpoints below the threshold(s) may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
+
+## Supported Types
+
+### `float`
+
+```python lines
+value: float = /* values here */
+```
+
+### `components.PercentileThroughputCutoffs`
+
+```python lines
+value: components.PercentileThroughputCutoffs = /* values here */
+```
+
+### `Any`
+
+```python lines
+value: Any = /* values here */
+```

@@ -1,0 +1,55 @@
+---
+title: ToolChoiceAllowed - TypeScript SDK
+sidebarTitle: ToolChoiceAllowed
+description: ToolChoiceAllowed type definition
+seoTitle: ToolChoiceAllowed Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/toolchoiceallowed
+'og:site_name': OpenRouter Documentation
+'og:title': ToolChoiceAllowed Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ToolChoiceAllowed type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ToolChoiceAllowed%20-%20TypeScript%20SDK&description=ToolChoiceAllowed%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Constrains the model to a pre-defined set of allowed tools
+
+## Example Usage
+
+```typescript lines
+import { ToolChoiceAllowed } from "@openrouter/sdk/models";
+
+let value: ToolChoiceAllowed = {
+  mode: "auto",
+  tools: [
+    {
+      "name": "get_weather",
+      "type": "function",
+    },
+  ],
+  type: "allowed_tools",
+};
+```
+
+## Fields
+
+| Field                                                              | Type                                                               | Required                                                           | Description                                                        |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `mode`                                                             | *models.Mode*                                                      | :heavy_check_mark:                                                 | N/A                                                                |
+| `tools`                                                            | `Record<string, *any*>`[]                                            | :heavy_check_mark:                                                 | N/A                                                                |
+| `type`                                                             | [models.ToolChoiceAllowedType](/agent-sdk/typescript/api-reference/models/toolchoiceallowedtype) | :heavy_check_mark:                                                 | N/A                                                                |

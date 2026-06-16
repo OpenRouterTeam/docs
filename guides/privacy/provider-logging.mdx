@@ -1,0 +1,134 @@
+---
+title: Provider Logging
+description: Provider logging and data retention policies
+seoTitle: 'Provider Logging | Provider Data Retention'
+canonicalUrl: https://openrouter.ai/docs/guides/privacy/provider-logging
+og:site_name: OpenRouter Documentation
+og:title: 'Provider Logging - Provider Data Retention Policies'
+og:description: "Understand how AI providers handle logging and data retention when you use OpenRouter."
+og:image: https://openrouter.ai/dynamic-og?title=Provider%20Logging&description=Provider%20data%20retention%20policies
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: file-lines
+---
+
+
+Each AI provider on OpenRouter has its own data handling policies for logging and retention. This page explains how to control which providers can access your data.
+
+## Provider Policies
+
+### Training on Prompts
+
+Each provider on OpenRouter has its own data handling policies. We reflect those policies in structured data on each AI endpoint that we offer.
+
+On your account settings page, you can set whether you would like to allow routing to providers that may train on your data (according to their own policies). There are separate settings for paid and free models.
+
+Wherever possible, OpenRouter works with providers to ensure that prompts will not be trained on, but there are exceptions. If you opt out of training in your account settings, OpenRouter will not route to providers that train. This setting has no bearing on OpenRouter's own policies and what we do with your prompts.
+
+<Tip>
+**Data Policy Filtering**
+
+  You can [restrict individual requests](/guides/routing/provider-selection#requiring-providers-to-comply-with-data-policies)
+  to only use providers with a certain data policy.
+
+  This is also available as an account-wide setting in [your privacy settings](https://openrouter.ai/settings/privacy).
+</Tip>
+
+### Data Retention & Logging
+
+Providers also have their own data retention policies, often for compliance reasons. OpenRouter does not have routing rules that change based on data retention policies of providers, but the retention policies as reflected in each provider's terms are shown below. Any user of OpenRouter can ignore providers that don't meet their own data retention requirements.
+
+The full terms of service for each provider are linked from the provider's page, and aggregated in the [documentation](/guides/routing/provider-selection#terms-of-service).
+
+{/* <ProviderDataRetentionTable /> */}
+| Provider | Data Retention | Train on Prompts |
+| --- | --- | --- |
+| AI21 | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| AionLabs | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
+| AkashML | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Alibaba Cloud Int. | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| Amazon Bedrock | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Ambient | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| Anthropic | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
+| Arcee AI | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| AtlasCloud | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Azure | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Baidu Qianfan | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| Baseten | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Black Forest Labs | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
+| Cerebras | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Chutes | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| Clarifai | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Cloudflare | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| Cohere | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
+| Crucible | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| DeepInfra | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| DeepSeek | Prompts are retained for unknown period | <span className="text-red-500">✕</span> May train |
+| DekaLLM | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| DigitalOcean | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Fireworks | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Friendli | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| GMICloud | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| Google AI Studio | Retained for 55 days | <span className="text-green-500">✓</span> Does not train |
+| Google Vertex | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Groq | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Inception | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Inceptron | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Infermatic | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Inflection | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
+| io.net | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Ionstream | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Liquid | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| Mancer | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| MARA | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| MiniMax | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| Mistral | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
+| ModelRun | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Moonshot AI | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Morph | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Nebius Token Factory | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| NextBit | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| NovitaAI | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| NVIDIA | Prompts are retained for unknown period | <span className="text-red-500">✕</span> May train |
+| OpenAI | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| OpenInference | Prompts are retained for unknown period | <span className="text-red-500">✕</span> May train |
+| Parasail | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Perceptron | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Perplexity | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Phala | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Poolside | Prompts are retained for unknown period | <span className="text-red-500">✕</span> May train |
+| Recraft | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| Reka AI | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Relace | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| SambaNova | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Seed | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| SiliconFlow | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Sourceful | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
+| Stealth | Prompts are retained for unknown period | <span className="text-red-500">✕</span> May train |
+| StepFun | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| StreamLake | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Switchpoint | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| Together | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Upstage | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Venice | Zero retention | <span className="text-green-500">✓</span> Does not train |
+| Weights & Biases | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
+| xAI | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
+| Xiaomi | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
+| Z.ai | Zero retention | <span className="text-green-500">✓</span> Does not train |
+
+
+## Enterprise EU in-region routing
+
+For enterprise customers, OpenRouter supports EU in-region routing. When enabled for your account, your prompts and completions are processed within the European Union and do not leave the EU. Use the base URL `https://eu.openrouter.ai` for API requests to keep traffic and data within Europe. This feature is only enabled for enterprise customers by request.
+
+<Info>
+**EU-only models list**
+
+  To see which models are available for EU in-region routing, call `/api/v1/models/user` through the EU domain. [Learn more](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails)
+</Info>
+
+If you're interested, please contact our enterprise team at https://openrouter.ai/enterprise/form.

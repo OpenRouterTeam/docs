@@ -1,0 +1,63 @@
+---
+title: CustomToolCallOutputItemOutputUnion1 - Go SDK
+sidebarTitle: CustomToolCallOutputItemOutputUnion1
+description: CustomToolCallOutputItemOutputUnion1 type definition
+seoTitle: CustomToolCallOutputItemOutputUnion1 Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/customtoolcalloutputitemoutputunion1
+'og:site_name': OpenRouter Documentation
+'og:title': CustomToolCallOutputItemOutputUnion1 Type | OpenRouter Go SDK
+'og:description': >-
+  CustomToolCallOutputItemOutputUnion1 type reference for the OpenRouter Go SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CustomToolCallOutputItemOutputUnion1%20-%20Go%20SDK&description=CustomToolCallOutputItemOutputUnion1%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### InputText
+
+```go lines
+customToolCallOutputItemOutputUnion1 := components.CreateCustomToolCallOutputItemOutputUnion1InputText(components.InputText{/* values here */})
+```
+
+### CustomToolCallOutputItemOutputInputImage
+
+```go lines
+customToolCallOutputItemOutputUnion1 := components.CreateCustomToolCallOutputItemOutputUnion1InputImage(components.CustomToolCallOutputItemOutputInputImage{/* values here */})
+```
+
+### InputFile
+
+```go lines
+customToolCallOutputItemOutputUnion1 := components.CreateCustomToolCallOutputItemOutputUnion1InputFile(components.InputFile{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch customToolCallOutputItemOutputUnion1.Type {
+	case components.CustomToolCallOutputItemOutputUnion1TypeInputText:
+		// customToolCallOutputItemOutputUnion1.InputText is populated
+	case components.CustomToolCallOutputItemOutputUnion1TypeInputImage:
+		// customToolCallOutputItemOutputUnion1.CustomToolCallOutputItemOutputInputImage is populated
+	case components.CustomToolCallOutputItemOutputUnion1TypeInputFile:
+		// customToolCallOutputItemOutputUnion1.InputFile is populated
+}
+```

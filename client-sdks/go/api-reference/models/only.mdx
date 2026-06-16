@@ -1,0 +1,54 @@
+---
+title: Only - Go SDK
+sidebarTitle: Only
+description: Only type definition
+seoTitle: Only Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/only'
+'og:site_name': OpenRouter Documentation
+'og:title': Only Type | OpenRouter Go SDK
+'og:description': >-
+  Only type reference for the OpenRouter Go SDK. Complete type definition and
+  usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Only%20-%20Go%20SDK&description=Only%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### ProviderName
+
+```go lines
+only := components.CreateOnlyProviderName(components.ProviderName{/* values here */})
+```
+
+### 
+
+```go lines
+only := components.CreateOnlyStr(string{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch only.Type {
+	case components.OnlyTypeProviderName:
+		// only.ProviderName is populated
+	case components.OnlyTypeStr:
+		// only.Str is populated
+}
+```

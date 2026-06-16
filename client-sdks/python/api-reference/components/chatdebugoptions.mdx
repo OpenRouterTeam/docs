@@ -1,0 +1,36 @@
+---
+title: ChatDebugOptions - Python SDK
+sidebarTitle: ChatDebugOptions
+description: ChatDebugOptions method reference
+seoTitle: ChatDebugOptions | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/chatdebugoptions
+'og:site_name': OpenRouter Documentation
+'og:title': ChatDebugOptions | OpenRouter Python SDK
+'og:description': >-
+  ChatDebugOptions method documentation for the OpenRouter Python SDK. Learn how
+  to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatDebugOptions%20-%20Python%20SDK&description=ChatDebugOptions%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Debug options for inspecting request transformations (streaming only)
+
+## Fields
+
+| Field                                                                                                                                | Type                                                                                                                                 | Required                                                                                                                             | Description                                                                                                                          | Example                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `echo_upstream_body`                                                                                                                 | *Optional[bool]*                                                                                                                     | :heavy_minus_sign:                                                                                                                   | If true, includes the transformed upstream request body in a debug chunk at the start of the stream. Only works with streaming mode. | true                                                                                                                                 |

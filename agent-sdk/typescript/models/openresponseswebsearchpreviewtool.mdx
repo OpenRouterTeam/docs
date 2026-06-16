@@ -1,0 +1,47 @@
+---
+title: OpenResponsesWebSearchPreviewTool - TypeScript SDK
+description: OpenResponsesWebSearchPreviewTool method reference
+seoTitle: OpenResponsesWebSearchPreviewTool | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/models/openresponseswebsearchpreviewtool
+'og:site_name': OpenRouter Documentation
+'og:title': OpenResponsesWebSearchPreviewTool | OpenRouter TypeScript SDK
+'og:description': >-
+  OpenResponsesWebSearchPreviewTool method documentation for the OpenRouter
+  TypeScript SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenResponsesWebSearchPreviewTool%20-%20TypeScript%20SDK&description=OpenResponsesWebSearchPreviewTool%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Web search preview tool configuration
+
+## Example Usage
+
+```typescript lines
+import { OpenResponsesWebSearchPreviewTool } from "@openrouter/sdk/models";
+
+let value: OpenResponsesWebSearchPreviewTool = {
+  type: "web_search_preview",
+};
+```
+
+## Fields
+
+| Field                                                                                    | Type                                                                                     | Required                                                                                 | Description                                                                              | Example                                                                                  |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `type`                                                                                   | *"web_search_preview"*                                                                   | :heavy_check_mark:                                                                       | N/A                                                                                      |                                                                                          |
+| `searchContextSize`                                                                      | [models.ResponsesSearchContextSize](/agent-sdk/typescript/models/responsessearchcontextsize)             | :heavy_minus_sign:                                                                       | Size of the search context for web search tools                                          | medium                                                                                   |
+| `userLocation`                                                                           | [models.WebSearchPreviewToolUserLocation](/agent-sdk/typescript/models/websearchpreviewtooluserlocation) | :heavy_minus_sign:                                                                       | N/A                                                                                      |                                                                                          |

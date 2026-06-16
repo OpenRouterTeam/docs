@@ -1,0 +1,37 @@
+---
+title: AnthropicCacheControlDirective - Python SDK
+sidebarTitle: AnthropicCacheControlDirective
+description: AnthropicCacheControlDirective method reference
+seoTitle: AnthropicCacheControlDirective | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/anthropiccachecontroldirective
+'og:site_name': OpenRouter Documentation
+'og:title': AnthropicCacheControlDirective | OpenRouter Python SDK
+'og:description': >-
+  AnthropicCacheControlDirective method documentation for the OpenRouter Python
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=AnthropicCacheControlDirective%20-%20Python%20SDK&description=AnthropicCacheControlDirective%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Enable automatic prompt caching. When set at the top level, the system automatically applies cache breakpoints to the last cacheable block in the request. Currently supported for Anthropic Claude models.
+
+## Fields
+
+| Field                                                                                                | Type                                                                                                 | Required                                                                                             | Description                                                                                          | Example                                                                                              |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `ttl`                                                                                                | [Optional[components.AnthropicCacheControlTTL]](../components/anthropiccachecontrolttl.md)           | :heavy_minus_sign:                                                                                   | N/A                                                                                                  | 5m                                                                                                   |
+| `type`                                                                                               | [components.AnthropicCacheControlDirectiveType](/client-sdks/python/api-reference/components/anthropiccachecontroldirectivetype) | :heavy_check_mark:                                                                                   | N/A                                                                                                  |                                                                                                      |

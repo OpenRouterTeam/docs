@@ -1,0 +1,84 @@
+---
+title: Model - TypeScript SDK
+description: Model method reference
+seoTitle: Model | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/model'
+'og:site_name': OpenRouter Documentation
+'og:title': Model | OpenRouter TypeScript SDK
+'og:description': >-
+  Model method documentation for the OpenRouter TypeScript SDK. Learn how to use
+  this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Model%20-%20TypeScript%20SDK&description=Model%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Information about an AI model available on OpenRouter
+
+## Example Usage
+
+```typescript expandable lines
+import { Model } from "@openrouter/sdk/models";
+
+let value: Model = {
+  id: "openai/gpt-4",
+  canonicalSlug: "openai/gpt-4",
+  name: "GPT-4",
+  created: 1692901234,
+  pricing: {
+    prompt: "0.00003",
+    completion: "0.00006",
+  },
+  contextLength: 8192,
+  architecture: {
+    modality: "text->text",
+    inputModalities: [
+      "text",
+    ],
+    outputModalities: [
+      "text",
+    ],
+  },
+  topProvider: {
+    isModerated: true,
+  },
+  perRequestLimits: null,
+  supportedParameters: [
+    "temperature",
+    "top_p",
+    "max_tokens",
+  ],
+  defaultParameters: null,
+};
+```
+
+## Fields
+
+| Field                                                                                                                                             | Type                                                                                                                                              | Required                                                                                                                                          | Description                                                                                                                                       | Example                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                                                                                                                                              | *string*                                                                                                                                          | :heavy_check_mark:                                                                                                                                | Unique identifier for the model                                                                                                                   | openai/gpt-4                                                                                                                                      |
+| `canonicalSlug`                                                                                                                                   | *string*                                                                                                                                          | :heavy_check_mark:                                                                                                                                | Canonical slug for the model                                                                                                                      | openai/gpt-4                                                                                                                                      |
+| `huggingFaceId`                                                                                                                                   | *string*                                                                                                                                          | :heavy_minus_sign:                                                                                                                                | Hugging Face model identifier, if applicable                                                                                                      | microsoft/DialoGPT-medium                                                                                                                         |
+| `name`                                                                                                                                            | *string*                                                                                                                                          | :heavy_check_mark:                                                                                                                                | Display name of the model                                                                                                                         | GPT-4                                                                                                                                             |
+| `created`                                                                                                                                         | *number*                                                                                                                                          | :heavy_check_mark:                                                                                                                                | Unix timestamp of when the model was created                                                                                                      | 1692901234                                                                                                                                        |
+| `description`                                                                                                                                     | *string*                                                                                                                                          | :heavy_minus_sign:                                                                                                                                | Description of the model                                                                                                                          | GPT-4 is a large multimodal model that can solve difficult problems with greater accuracy.                                                        |
+| `pricing`                                                                                                                                         | [models.PublicPricing](/agent-sdk/typescript/models/publicpricing)                                                                                                | :heavy_check_mark:                                                                                                                                | Pricing information for the model                                                                                                                 | `{"prompt": "0.00003","completion": "0.00006","request": "0","image": "0"}`                                                |
+| `contextLength`                                                                                                                                   | *number*                                                                                                                                          | :heavy_check_mark:                                                                                                                                | Maximum context length in tokens                                                                                                                  | 8192                                                                                                                                              |
+| `architecture`                                                                                                                                    | [models.ModelArchitecture](/agent-sdk/typescript/models/modelarchitecture)                                                                                        | :heavy_check_mark:                                                                                                                                | Model architecture information                                                                                                                    | `{"tokenizer": "GPT","instruct_type": "chatml","modality": "text-\u003etext","input_modalities": ["text"],"output_modalities": ["text"]}` |
+| `topProvider`                                                                                                                                     | [models.TopProviderInfo](/agent-sdk/typescript/models/topproviderinfo)                                                                                            | :heavy_check_mark:                                                                                                                                | Information about the top provider for this model                                                                                                 | `{"context_length": 8192,"max_completion_tokens": 4096,"is_moderated": true}`                                                   |
+| `perRequestLimits`                                                                                                                                | [models.PerRequestLimits](/agent-sdk/typescript/models/perrequestlimits)                                                                                          | :heavy_check_mark:                                                                                                                                | Per-request token limits                                                                                                                          | `{"prompt_tokens": 1000,"completion_tokens": 1000}`                                                                                  |
+| `supportedParameters`                                                                                                                             | [models.Parameter](/agent-sdk/typescript/models/parameter)[]                                                                                                      | :heavy_check_mark:                                                                                                                                | List of supported parameters for this model                                                                                                       |                                                                                                                                                   |
+| `defaultParameters`                                                                                                                               | [models.DefaultParameters](/agent-sdk/typescript/models/defaultparameters)                                                                                        | :heavy_check_mark:                                                                                                                                | Default parameters for this model                                                                                                                 | `{"temperature": 0.7,"top_p": 0.9,"frequency_penalty": 0}`                                                                      |
+| `expirationDate`                                                                                                                                  | *string*                                                                                                                                          | :heavy_minus_sign:                                                                                                                                | The date after which the model may be removed. ISO 8601 date string (YYYY-MM-DD) or null if no expiration.                                        | 2025-06-01                                                                                                                                        |

@@ -1,0 +1,40 @@
+---
+title: CreateRerankResponseBody - Go SDK
+sidebarTitle: CreateRerankResponseBody
+description: CreateRerankResponseBody type definition
+seoTitle: CreateRerankResponseBody Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/operations/creatererankresponsebody
+'og:site_name': OpenRouter Documentation
+'og:title': CreateRerankResponseBody Type | OpenRouter Go SDK
+'og:description': >-
+  CreateRerankResponseBody type reference for the OpenRouter Go SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateRerankResponseBody%20-%20Go%20SDK&description=CreateRerankResponseBody%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Rerank response containing ranked results
+
+## Fields
+
+| Field                                                                                                  | Type                                                                                                   | Required                                                                                               | Description                                                                                            | Example                                                                                                |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `ID`                                                                                                   | `*string`                                                                                              | :heavy_minus_sign:                                                                                     | Unique identifier for the rerank response (ORID format)                                                | gen-rerank-1234567890-abc                                                                              |
+| `Model`                                                                                                | `string`                                                                                               | :heavy_check_mark:                                                                                     | The model used for reranking                                                                           | cohere/rerank-v3.5                                                                                     |
+| `Provider`                                                                                             | `*string`                                                                                              | :heavy_minus_sign:                                                                                     | The provider that served the rerank request                                                            | Cohere                                                                                                 |
+| `Results`                                                                                              | [][operations.Result](/client-sdks/go/api-reference/operations/result)                                               | :heavy_check_mark:                                                                                     | List of rerank results sorted by relevance                                                             | [<br/>`{"document": {"text": "Paris is the capital of France."}`,<br/>"index": 0,<br/>"relevance_score": 0.98<br/>\}<br/>] |
+| `Usage`                                                                                                | [*operations.CreateRerankUsage](/client-sdks/go/api-reference/operations/creatererankusage)                          | :heavy_minus_sign:                                                                                     | Usage statistics                                                                                       | `{"search_units": 1,"total_tokens": 150}`                                                 |

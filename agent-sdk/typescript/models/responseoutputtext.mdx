@@ -1,0 +1,46 @@
+---
+title: ResponseOutputText - TypeScript SDK
+description: ResponseOutputText method reference
+seoTitle: ResponseOutputText | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/responseoutputtext'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponseOutputText | OpenRouter TypeScript SDK
+'og:description': >-
+  ResponseOutputText method documentation for the OpenRouter TypeScript SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponseOutputText%20-%20TypeScript%20SDK&description=ResponseOutputText%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ResponseOutputText } from "@openrouter/sdk/models";
+
+let value: ResponseOutputText = {
+  type: "output_text",
+  text: "The capital of France is Paris.",
+};
+```
+
+## Fields
+
+| Field                                    | Type                                     | Required                                 | Description                              |
+| ---------------------------------------- | ---------------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| `type`                                   | *"output_text"*                          | :heavy_check_mark:                       | N/A                                      |
+| `text`                                   | *string*                                 | :heavy_check_mark:                       | N/A                                      |
+| `annotations`                            | *models.OpenAIResponsesAnnotation*[]     | :heavy_minus_sign:                       | N/A                                      |
+| `logprobs`                               | [models.Logprob](/agent-sdk/typescript/models/logprob)[] | :heavy_minus_sign:                       | N/A                                      |

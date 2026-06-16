@@ -1,0 +1,58 @@
+---
+title: OpenResponsesReasoning - TypeScript SDK
+description: OpenResponsesReasoning method reference
+seoTitle: OpenResponsesReasoning | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/openresponsesreasoning'
+'og:site_name': OpenRouter Documentation
+'og:title': OpenResponsesReasoning | OpenRouter TypeScript SDK
+'og:description': >-
+  OpenResponsesReasoning method documentation for the OpenRouter TypeScript SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenResponsesReasoning%20-%20TypeScript%20SDK&description=OpenResponsesReasoning%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Reasoning output item with signature and format extensions
+
+## Example Usage
+
+```typescript lines
+import { OpenResponsesReasoning } from "@openrouter/sdk/models";
+
+let value: OpenResponsesReasoning = {
+  type: "reasoning",
+  id: "reasoning-abc123",
+  summary: [
+    {
+      type: "summary_text",
+      text: "Analyzed the problem using first principles",
+    },
+  ],
+};
+```
+
+## Fields
+
+| Field                                                                            | Type                                                                             | Required                                                                         | Description                                                                      |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `type`                                                                           | [models.OpenResponsesReasoningType](/agent-sdk/typescript/models/openresponsesreasoningtype)     | :heavy_check_mark:                                                               | N/A                                                                              |
+| `id`                                                                             | *string*                                                                         | :heavy_check_mark:                                                               | N/A                                                                              |
+| `content`                                                                        | [models.ReasoningTextContent](/agent-sdk/typescript/models/reasoningtextcontent)[]               | :heavy_minus_sign:                                                               | N/A                                                                              |
+| `summary`                                                                        | [models.ReasoningSummaryText](/agent-sdk/typescript/models/reasoningsummarytext)[]               | :heavy_check_mark:                                                               | N/A                                                                              |
+| `encryptedContent`                                                               | *string*                                                                         | :heavy_minus_sign:                                                               | N/A                                                                              |
+| `status`                                                                         | *models.OpenResponsesReasoningStatusUnion*                                       | :heavy_minus_sign:                                                               | N/A                                                                              |
+| `signature`                                                                      | *string*                                                                         | :heavy_minus_sign:                                                               | N/A                                                                              |
+| `format`                                                                         | [models.OpenResponsesReasoningFormat](/agent-sdk/typescript/models/openresponsesreasoningformat) | :heavy_minus_sign:                                                               | N/A                                                                              |

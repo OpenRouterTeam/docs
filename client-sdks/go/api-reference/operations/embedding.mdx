@@ -1,0 +1,56 @@
+---
+title: Embedding - Go SDK
+sidebarTitle: Embedding
+description: Embedding type definition
+seoTitle: Embedding Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/operations/embedding'
+'og:site_name': OpenRouter Documentation
+'og:title': Embedding Type | OpenRouter Go SDK
+'og:description': >-
+  Embedding type reference for the OpenRouter Go SDK. Complete type definition
+  and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Embedding%20-%20Go%20SDK&description=Embedding%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Embedding vector as an array of floats or a base64 string
+
+## Supported Types
+
+### 
+
+```go lines
+embedding := operations.CreateEmbeddingArrayOfNumber([]float64{/* values here */})
+```
+
+### 
+
+```go lines
+embedding := operations.CreateEmbeddingStr(string{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch embedding.Type {
+	case operations.EmbeddingTypeArrayOfNumber:
+		// embedding.ArrayOfNumber is populated
+	case operations.EmbeddingTypeStr:
+		// embedding.Str is populated
+}
+```

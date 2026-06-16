@@ -1,0 +1,38 @@
+---
+title: ChatStreamToolCall - Go SDK
+sidebarTitle: ChatStreamToolCall
+description: ChatStreamToolCall type definition
+seoTitle: ChatStreamToolCall Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/chatstreamtoolcall'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatStreamToolCall Type | OpenRouter Go SDK
+'og:description': >-
+  ChatStreamToolCall type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatStreamToolCall%20-%20Go%20SDK&description=ChatStreamToolCall%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Tool call delta for streaming responses
+
+## Fields
+
+| Field                                                                                           | Type                                                                                            | Required                                                                                        | Description                                                                                     | Example                                                                                         |
+| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `Function`                                                                                      | [*components.ChatStreamToolCallFunction](/client-sdks/go/api-reference/models/chatstreamtoolcallfunction) | :heavy_minus_sign:                                                                              | Function call details                                                                           |                                                                                                 |
+| `ID`                                                                                            | `*string`                                                                                       | :heavy_minus_sign:                                                                              | Tool call identifier                                                                            | call_abc123                                                                                     |
+| `Index`                                                                                         | `int64`                                                                                         | :heavy_check_mark:                                                                              | Tool call index in the array                                                                    | 0                                                                                               |
+| `Type`                                                                                          | [*components.ChatStreamToolCallType](/client-sdks/go/api-reference/models/chatstreamtoolcalltype)         | :heavy_minus_sign:                                                                              | Tool call type                                                                                  | function                                                                                        |

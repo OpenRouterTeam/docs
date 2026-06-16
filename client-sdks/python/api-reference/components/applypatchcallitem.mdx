@@ -1,0 +1,40 @@
+---
+title: ApplyPatchCallItem - Python SDK
+sidebarTitle: ApplyPatchCallItem
+description: ApplyPatchCallItem method reference
+seoTitle: ApplyPatchCallItem | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/applypatchcallitem
+'og:site_name': OpenRouter Documentation
+'og:title': ApplyPatchCallItem | OpenRouter Python SDK
+'og:description': >-
+  ApplyPatchCallItem method documentation for the OpenRouter Python SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ApplyPatchCallItem%20-%20Python%20SDK&description=ApplyPatchCallItem%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+A tool call emitted by the model requesting a V4A patch operation. The client applies the patch and echoes an `apply_patch_call_output` on the next turn.
+
+## Fields
+
+| Field                                                                                                                             | Type                                                                                                                              | Required                                                                                                                          | Description                                                                                                                       | Example                                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `call_id`                                                                                                                         | *str*                                                                                                                             | :heavy_check_mark:                                                                                                                | N/A                                                                                                                               |                                                                                                                                   |
+| `id`                                                                                                                              | *OptionalNullable[str]*                                                                                                           | :heavy_minus_sign:                                                                                                                | N/A                                                                                                                               |                                                                                                                                   |
+| `operation`                                                                                                                       | [components.ApplyPatchCallOperation](/client-sdks/python/api-reference/components/applypatchcalloperation)                                                    | :heavy_check_mark:                                                                                                                | The patch operation requested by an `apply_patch_call`. `create_file` and `update_file` carry a V4A diff; `delete_file` omits it. | `{"diff": "@@ function main() {\n+  console.log(\"hi\");\n }`",<br/>"path": "/src/main.ts",<br/>"type": "update_file"<br/>\}    |
+| `status`                                                                                                                          | [components.ApplyPatchCallStatus](/client-sdks/python/api-reference/components/applypatchcallstatus)                                                          | :heavy_check_mark:                                                                                                                | Lifecycle state of an `apply_patch_call` output item.                                                                             | completed                                                                                                                         |
+| `type`                                                                                                                            | [components.ApplyPatchCallItemType](/client-sdks/python/api-reference/components/applypatchcallitemtype)                                                      | :heavy_check_mark:                                                                                                                | N/A                                                                                                                               |                                                                                                                                   |

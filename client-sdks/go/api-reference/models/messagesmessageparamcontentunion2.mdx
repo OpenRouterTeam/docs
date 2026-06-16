@@ -1,0 +1,55 @@
+---
+title: MessagesMessageParamContentUnion2 - Go SDK
+sidebarTitle: MessagesMessageParamContentUnion2
+description: MessagesMessageParamContentUnion2 type definition
+seoTitle: MessagesMessageParamContentUnion2 Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/messagesmessageparamcontentunion2
+'og:site_name': OpenRouter Documentation
+'og:title': MessagesMessageParamContentUnion2 Type | OpenRouter Go SDK
+'og:description': >-
+  MessagesMessageParamContentUnion2 type reference for the OpenRouter Go SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=MessagesMessageParamContentUnion2%20-%20Go%20SDK&description=MessagesMessageParamContentUnion2%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### 
+
+```go lines
+messagesMessageParamContentUnion2 := components.CreateMessagesMessageParamContentUnion2Str(string{/* values here */})
+```
+
+### 
+
+```go lines
+messagesMessageParamContentUnion2 := components.CreateMessagesMessageParamContentUnion2ArrayOfMessagesMessageParamContentUnion1([]components.MessagesMessageParamContentUnion1{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch messagesMessageParamContentUnion2.Type {
+	case components.MessagesMessageParamContentUnion2TypeStr:
+		// messagesMessageParamContentUnion2.Str is populated
+	case components.MessagesMessageParamContentUnion2TypeArrayOfMessagesMessageParamContentUnion1:
+		// messagesMessageParamContentUnion2.ArrayOfMessagesMessageParamContentUnion1 is populated
+}
+```

@@ -1,0 +1,242 @@
+---
+title: OutputItems - Go SDK
+sidebarTitle: OutputItems
+description: OutputItems type definition
+seoTitle: OutputItems Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/outputitems'
+'og:site_name': OpenRouter Documentation
+'og:title': OutputItems Type | OpenRouter Go SDK
+'og:description': >-
+  OutputItems type reference for the OpenRouter Go SDK. Complete type definition
+  and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputItems%20-%20Go%20SDK&description=OutputItems%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+An output item from the response
+
+## Supported Types
+
+### OutputApplyPatchCallItem
+
+```go lines
+outputItems := components.CreateOutputItemsApplyPatchCall(components.OutputApplyPatchCallItem{/* values here */})
+```
+
+### OutputCodeInterpreterCallItem
+
+```go lines
+outputItems := components.CreateOutputItemsCodeInterpreterCall(components.OutputCodeInterpreterCallItem{/* values here */})
+```
+
+### OutputComputerCallItem
+
+```go lines
+outputItems := components.CreateOutputItemsComputerCall(components.OutputComputerCallItem{/* values here */})
+```
+
+### OutputCustomToolCallItem
+
+```go lines
+outputItems := components.CreateOutputItemsCustomToolCall(components.OutputCustomToolCallItem{/* values here */})
+```
+
+### OutputFileSearchCallItem
+
+```go lines
+outputItems := components.CreateOutputItemsFileSearchCall(components.OutputFileSearchCallItem{/* values here */})
+```
+
+### OutputFunctionCallItem
+
+```go lines
+outputItems := components.CreateOutputItemsFunctionCall(components.OutputFunctionCallItem{/* values here */})
+```
+
+### OutputImageGenerationCallItem
+
+```go lines
+outputItems := components.CreateOutputItemsImageGenerationCall(components.OutputImageGenerationCallItem{/* values here */})
+```
+
+### OutputMessageItem
+
+```go lines
+outputItems := components.CreateOutputItemsMessage(components.OutputMessageItem{/* values here */})
+```
+
+### OutputApplyPatchServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterApplyPatch(components.OutputApplyPatchServerToolItem{/* values here */})
+```
+
+### OutputBashServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterBash(components.OutputBashServerToolItem{/* values here */})
+```
+
+### OutputBrowserUseServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterBrowserUse(components.OutputBrowserUseServerToolItem{/* values here */})
+```
+
+### OutputCodeInterpreterServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterCodeInterpreter(components.OutputCodeInterpreterServerToolItem{/* values here */})
+```
+
+### OutputDatetimeItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterDatetime(components.OutputDatetimeItem{/* values here */})
+```
+
+### OutputSearchModelsServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterExperimentalSearchModels(components.OutputSearchModelsServerToolItem{/* values here */})
+```
+
+### OutputFileSearchServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterFileSearch(components.OutputFileSearchServerToolItem{/* values here */})
+```
+
+### OutputFusionServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterFusion(components.OutputFusionServerToolItem{/* values here */})
+```
+
+### OutputImageGenerationServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterImageGeneration(components.OutputImageGenerationServerToolItem{/* values here */})
+```
+
+### OutputMcpServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterMcp(components.OutputMcpServerToolItem{/* values here */})
+```
+
+### OutputMemoryServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterMemory(components.OutputMemoryServerToolItem{/* values here */})
+```
+
+### OutputTextEditorServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterTextEditor(components.OutputTextEditorServerToolItem{/* values here */})
+```
+
+### OutputToolSearchServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterToolSearch(components.OutputToolSearchServerToolItem{/* values here */})
+```
+
+### OutputWebFetchServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterWebFetch(components.OutputWebFetchServerToolItem{/* values here */})
+```
+
+### OutputWebSearchServerToolItem
+
+```go lines
+outputItems := components.CreateOutputItemsOpenrouterWebSearch(components.OutputWebSearchServerToolItem{/* values here */})
+```
+
+### OutputReasoningItem
+
+```go lines
+outputItems := components.CreateOutputItemsReasoning(components.OutputReasoningItem{/* values here */})
+```
+
+### OutputWebSearchCallItem
+
+```go lines
+outputItems := components.CreateOutputItemsWebSearchCall(components.OutputWebSearchCallItem{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go expandable lines
+switch outputItems.Type {
+	case components.OutputItemsTypeApplyPatchCall:
+		// outputItems.OutputApplyPatchCallItem is populated
+	case components.OutputItemsTypeCodeInterpreterCall:
+		// outputItems.OutputCodeInterpreterCallItem is populated
+	case components.OutputItemsTypeComputerCall:
+		// outputItems.OutputComputerCallItem is populated
+	case components.OutputItemsTypeCustomToolCall:
+		// outputItems.OutputCustomToolCallItem is populated
+	case components.OutputItemsTypeFileSearchCall:
+		// outputItems.OutputFileSearchCallItem is populated
+	case components.OutputItemsTypeFunctionCall:
+		// outputItems.OutputFunctionCallItem is populated
+	case components.OutputItemsTypeImageGenerationCall:
+		// outputItems.OutputImageGenerationCallItem is populated
+	case components.OutputItemsTypeMessage:
+		// outputItems.OutputMessageItem is populated
+	case components.OutputItemsTypeOpenrouterApplyPatch:
+		// outputItems.OutputApplyPatchServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterBash:
+		// outputItems.OutputBashServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterBrowserUse:
+		// outputItems.OutputBrowserUseServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterCodeInterpreter:
+		// outputItems.OutputCodeInterpreterServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterDatetime:
+		// outputItems.OutputDatetimeItem is populated
+	case components.OutputItemsTypeOpenrouterExperimentalSearchModels:
+		// outputItems.OutputSearchModelsServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterFileSearch:
+		// outputItems.OutputFileSearchServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterFusion:
+		// outputItems.OutputFusionServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterImageGeneration:
+		// outputItems.OutputImageGenerationServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterMcp:
+		// outputItems.OutputMcpServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterMemory:
+		// outputItems.OutputMemoryServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterTextEditor:
+		// outputItems.OutputTextEditorServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterToolSearch:
+		// outputItems.OutputToolSearchServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterWebFetch:
+		// outputItems.OutputWebFetchServerToolItem is populated
+	case components.OutputItemsTypeOpenrouterWebSearch:
+		// outputItems.OutputWebSearchServerToolItem is populated
+	case components.OutputItemsTypeReasoning:
+		// outputItems.OutputReasoningItem is populated
+	case components.OutputItemsTypeWebSearchCall:
+		// outputItems.OutputWebSearchCallItem is populated
+	default:
+		// Unknown type - use outputItems.GetUnknownRaw() for raw JSON
+}
+```

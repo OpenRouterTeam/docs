@@ -1,0 +1,77 @@
+---
+title: EasyInputMessageContentUnion1 - TypeScript SDK
+sidebarTitle: EasyInputMessageContentUnion1
+description: EasyInputMessageContentUnion1 type definition
+seoTitle: EasyInputMessageContentUnion1 Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/easyinputmessagecontentunion1
+'og:site_name': OpenRouter Documentation
+'og:title': EasyInputMessageContentUnion1 Type | OpenRouter TypeScript SDK
+'og:description': >-
+  EasyInputMessageContentUnion1 type reference for the OpenRouter TypeScript
+  SDK. Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=EasyInputMessageContentUnion1%20-%20TypeScript%20SDK&description=EasyInputMessageContentUnion1%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### `models.InputText`
+
+```typescript lines
+const value: models.InputText = {
+  text: "Hello, how can I help you?",
+  type: "input_text",
+};
+```
+
+### `models.EasyInputMessageContentInputImage`
+
+```typescript lines
+const value: models.EasyInputMessageContentInputImage = {
+  detail: "auto",
+  type: "input_image",
+};
+```
+
+### `models.InputFile`
+
+```typescript lines
+const value: models.InputFile = {
+  type: "input_file",
+};
+```
+
+### `models.InputAudio`
+
+```typescript lines
+const value: models.InputAudio = {
+  inputAudio: {
+    data: "SGVsbG8gV29ybGQ=",
+    format: "mp3",
+  },
+  type: "input_audio",
+};
+```
+
+### `models.InputVideo`
+
+```typescript lines
+const value: models.InputVideo = {
+  type: "input_video",
+  videoUrl: "https://example.com/video.mp4",
+};
+```

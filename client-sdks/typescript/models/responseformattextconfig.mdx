@@ -1,0 +1,59 @@
+---
+title: ResponseFormatTextConfig - TypeScript SDK
+description: ResponseFormatTextConfig method reference
+seoTitle: ResponseFormatTextConfig | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/models/responseformattextconfig'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponseFormatTextConfig | OpenRouter TypeScript SDK
+'og:description': >-
+  ResponseFormatTextConfig method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponseFormatTextConfig%20-%20TypeScript%20SDK&description=ResponseFormatTextConfig%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Text response format configuration
+
+## Supported Types
+
+### `models.ResponsesFormatText`
+
+```typescript lines
+const value: models.ResponsesFormatText = {
+  type: "text",
+};
+```
+
+### `models.ResponsesFormatJSONObject`
+
+```typescript lines
+const value: models.ResponsesFormatJSONObject = {
+  type: "json_object",
+};
+```
+
+### `models.ResponsesFormatTextJSONSchemaConfig`
+
+```typescript lines
+const value: models.ResponsesFormatTextJSONSchemaConfig = {
+  type: "json_schema",
+  name: "<value>",
+  schema: {
+    "key": "<value>",
+    "key1": "<value>",
+  },
+};
+```

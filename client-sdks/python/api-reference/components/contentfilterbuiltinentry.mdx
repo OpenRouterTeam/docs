@@ -1,0 +1,38 @@
+---
+title: ContentFilterBuiltinEntry - Python SDK
+sidebarTitle: ContentFilterBuiltinEntry
+description: ContentFilterBuiltinEntry method reference
+seoTitle: ContentFilterBuiltinEntry | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/contentfilterbuiltinentry
+'og:site_name': OpenRouter Documentation
+'og:title': ContentFilterBuiltinEntry | OpenRouter Python SDK
+'og:description': >-
+  ContentFilterBuiltinEntry method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ContentFilterBuiltinEntry%20-%20Python%20SDK&description=ContentFilterBuiltinEntry%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+A builtin content filter entry. Builtin filters include PII detectors and the regex-based prompt injection detector.
+
+## Fields
+
+| Field                                                                                                                           | Type                                                                                                                            | Required                                                                                                                        | Description                                                                                                                     | Example                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `action`                                                                                                                        | [components.ContentFilterBuiltinAction](/client-sdks/python/api-reference/components/contentfilterbuiltinaction)                                            | :heavy_check_mark:                                                                                                              | Action taken when the builtin filter triggers                                                                                   | block                                                                                                                           |
+| `label`                                                                                                                         | *Optional[str]*                                                                                                                 | :heavy_minus_sign:                                                                                                              | Read-only, system-assigned redaction placeholder derived from the slug (e.g. "[EMAIL]", "[PHONE]"). Not settable by the caller. | [EMAIL]                                                                                                                         |
+| `slug`                                                                                                                          | [components.ContentFilterBuiltinSlug](/client-sdks/python/api-reference/components/contentfilterbuiltinslug)                                                | :heavy_check_mark:                                                                                                              | The builtin filter identifier                                                                                                   | regex-prompt-injection                                                                                                          |

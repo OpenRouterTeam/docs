@@ -1,0 +1,43 @@
+---
+title: GetKeyRequest - TypeScript SDK
+description: GetKeyRequest method reference
+seoTitle: GetKeyRequest | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/operations/getkeyrequest'
+'og:site_name': OpenRouter Documentation
+'og:title': GetKeyRequest | OpenRouter TypeScript SDK
+'og:description': >-
+  GetKeyRequest method documentation for the OpenRouter TypeScript SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=GetKeyRequest%20-%20TypeScript%20SDK&description=GetKeyRequest%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { GetKeyRequest } from "@openrouter/sdk/models/operations";
+
+let value: GetKeyRequest = {
+  hash:
+    "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",
+};
+```
+
+## Fields
+
+| Field                                                                     | Type                                                                      | Required                                                                  | Description                                                               | Example                                                                   |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `hash`                                                                    | *string*                                                                  | :heavy_check_mark:                                                        | The hash identifier of the API key to retrieve                            | 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 |

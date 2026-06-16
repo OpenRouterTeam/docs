@@ -1,0 +1,69 @@
+---
+title: ListResponse - TypeScript SDK
+sidebarTitle: ListResponse
+description: ListResponse type definition
+seoTitle: ListResponse Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/listresponse
+'og:site_name': OpenRouter Documentation
+'og:title': ListResponse Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ListResponse type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ListResponse%20-%20TypeScript%20SDK&description=ListResponse%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+List of API keys
+
+## Example Usage
+
+```typescript expandable lines
+import { ListResponse } from "@openrouter/sdk/models/operations";
+
+let value: ListResponse = {
+  data: [
+    {
+      byokUsage: 17.38,
+      byokUsageDaily: 17.38,
+      byokUsageMonthly: 17.38,
+      byokUsageWeekly: 17.38,
+      createdAt: "2025-08-24T10:30:00Z",
+      creatorUserId: "user_2dHFtVWx2n56w6HkM0000000000",
+      disabled: false,
+      hash: "f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943",
+      includeByokInLimit: false,
+      label: "Production API Key",
+      limit: 100,
+      limitRemaining: 74.5,
+      limitReset: "monthly",
+      name: "My Production Key",
+      updatedAt: "2025-08-24T15:45:00Z",
+      usage: 25.5,
+      usageDaily: 25.5,
+      usageMonthly: 25.5,
+      usageWeekly: 25.5,
+      workspaceId: "0df9e665-d932-5740-b2c7-b52af166bc11",
+    },
+  ],
+};
+```
+
+## Fields
+
+| Field                                                        | Type                                                         | Required                                                     | Description                                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `data`                                                       | [operations.ListData](/client-sdks/typescript/api-reference/operations/listdata)[] | :heavy_check_mark:                                           | List of API keys                                             |

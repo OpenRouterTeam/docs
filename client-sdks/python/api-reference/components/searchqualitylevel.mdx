@@ -1,0 +1,38 @@
+---
+title: SearchQualityLevel - Python SDK
+sidebarTitle: SearchQualityLevel
+description: SearchQualityLevel method reference
+seoTitle: SearchQualityLevel | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/searchqualitylevel
+'og:site_name': OpenRouter Documentation
+'og:title': SearchQualityLevel | OpenRouter Python SDK
+'og:description': >-
+  SearchQualityLevel method documentation for the OpenRouter Python SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=SearchQualityLevel%20-%20Python%20SDK&description=SearchQualityLevel%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+How much context to retrieve per result. Applies to Exa and Parallel engines; ignored with native provider search and Firecrawl. For Exa, pins a fixed per-result character cap (low=5,000, medium=15,000, high=30,000); when omitted, Exa picks an adaptive size per query and document (typically ~2,000–4,000 characters per result). For Parallel, controls the total characters across all results; when omitted, Parallel uses its own default size.
+
+## Values
+
+| Name     | Value    |
+| -------- | -------- |
+| `LOW`    | low      |
+| `MEDIUM` | medium   |
+| `HIGH`   | high     |

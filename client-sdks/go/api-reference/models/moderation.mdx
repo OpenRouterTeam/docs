@@ -1,0 +1,47 @@
+---
+title: Moderation - Go SDK
+sidebarTitle: Moderation
+description: Moderation type definition
+seoTitle: Moderation Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/moderation'
+'og:site_name': OpenRouter Documentation
+'og:title': Moderation Type | OpenRouter Go SDK
+'og:description': >-
+  Moderation type reference for the OpenRouter Go SDK. Complete type definition
+  and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Moderation%20-%20Go%20SDK&description=Moderation%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```go lines
+import (
+	"github.com/OpenRouterTeam/go-sdk/models/components"
+)
+
+value := components.ModerationAuto
+
+// Open enum: custom values can be created with a direct type cast
+custom := components.Moderation("custom_value")
+```
+
+## Values
+
+| Name             | Value            |
+| ---------------- | ---------------- |
+| `ModerationAuto` | auto             |
+| `ModerationLow`  | low              |

@@ -1,0 +1,42 @@
+---
+title: Modality - TypeScript SDK
+description: Modality method reference
+seoTitle: Modality | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/models/modality'
+'og:site_name': OpenRouter Documentation
+'og:title': Modality | OpenRouter TypeScript SDK
+'og:description': >-
+  Modality method documentation for the OpenRouter TypeScript SDK. Learn how to
+  use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Modality%20-%20TypeScript%20SDK&description=Modality%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { Modality } from "@openrouter/sdk/models";
+
+let value: Modality = "image";
+```
+
+## Values
+
+This is an open enum. Unrecognized values will be captured as the `Unrecognized<string>` branded type.
+
+```typescript lines
+"text" | "image" | Unrecognized<string>
+```

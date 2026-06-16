@@ -1,0 +1,84 @@
+export const API_KEY_REF = '<OPENROUTER_API_KEY>';
+
+export const HTTPStatus = {
+  S200_OK: 200,
+  S400_Bad_Request: 400,
+  S401_Unauthorized: 401,
+  S402_Payment_Required: 402,
+  S403_Forbidden: 403,
+  S408_Request_Timeout: 408,
+  S429_Too_Many_Requests: 429,
+  S502_Bad_Gateway: 502,
+  S503_Service_Unavailable: 503,
+};
+
+export const sep = ':';
+
+export const Variant = {
+  Free: 'free',
+};
+
+export const Model = {
+  GPT_4_Omni: 'openai/gpt-4o',
+};
+
+export const PDFParserEngine = {
+  MistralOCR: 'mistral-ocr',
+  CloudflareAI: 'cloudflare-ai',
+  Native: 'native'
+};
+
+export const DEFAULT_PDF_ENGINE = 'mistral-ocr';
+
+export const MISTRAL_OCR_USER_COST_PER_1K_PAGE_DOLLARS = 2;
+
+export const FREE_MODEL_RATE_LIMIT_RPM = 20;
+
+export const FREE_MODEL_CREDITS_THRESHOLD = 10;
+
+export const FREE_MODEL_NO_CREDITS_RPD = 50;
+
+export const FREE_MODEL_HAS_CREDITS_RPD = 1000;
+
+export const ALIBABA_CACHE_READ_MULTIPLIER = '0.1';
+
+export const ALIBABA_CACHE_WRITE_MULTIPLIER = '1.25';
+
+export const ANTHROPIC_CACHE_READ_MULTIPLIER = '0.1';
+
+export const ANTHROPIC_CACHE_WRITE_MULTIPLIER = '1.25';
+
+export const DEEPSEEK_CACHE_READ_MULTIPLIER = '0.1';
+
+export const GOOGLE_CACHE_MIN_TOKENS_2_5_FLASH = '1024';
+
+export const GOOGLE_CACHE_MIN_TOKENS_2_5_PRO = '4096';
+
+export const GOOGLE_CACHE_READ_MULTIPLIER = '0.25';
+
+export const GROK_CACHE_READ_MULTIPLIER = '0.25';
+
+export const GROQ_CACHE_READ_MULTIPLIER = '0.5';
+
+export const MOONSHOT_CACHE_READ_MULTIPLIER = '0.25';
+
+export const BYOK_FEE_MONTHLY_REQUEST_THRESHOLD = '1M';
+
+export const openRouterBYOKFee = {
+  fraction: '5'
+}
+
+export const FREE_MODEL_CREDITS_THRESHOLD = '10';
+
+export const FREE_MODEL_NO_CREDITS_RPD = '50';
+
+export const getTotalFeeString = (type, value) => {
+  if (type === 'stripe') return "5.5% ($0.80 minimum)";
+  if (type === 'coinbase') return "5%";
+}
+
+export const anthropicMaxMessagesCount = 1000;
+
+export const MAX_CATEGORIES_PER_REQUEST = 2;
+
+export const MAX_CATEGORIES_PER_APP = 10;

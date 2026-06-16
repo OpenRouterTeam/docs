@@ -1,0 +1,47 @@
+---
+title: WebFetchPlugin - TypeScript SDK
+sidebarTitle: WebFetchPlugin
+description: WebFetchPlugin type definition
+seoTitle: WebFetchPlugin Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/api-reference/models/webfetchplugin'
+'og:site_name': OpenRouter Documentation
+'og:title': WebFetchPlugin Type | OpenRouter TypeScript SDK
+'og:description': >-
+  WebFetchPlugin type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=WebFetchPlugin%20-%20TypeScript%20SDK&description=WebFetchPlugin%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { WebFetchPlugin } from "@openrouter/sdk/models";
+
+let value: WebFetchPlugin = {
+  id: "web-fetch",
+};
+```
+
+## Fields
+
+| Field                                                                                    | Type                                                                                     | Required                                                                                 | Description                                                                              |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `allowedDomains`                                                                         | *string*[]                                                                               | :heavy_minus_sign:                                                                       | Only fetch from these domains.                                                           |
+| `blockedDomains`                                                                         | *string*[]                                                                               | :heavy_minus_sign:                                                                       | Never fetch from these domains.                                                          |
+| `id`                                                                                     | *"web-fetch"*                                                                            | :heavy_check_mark:                                                                       | N/A                                                                                      |
+| `maxContentTokens`                                                                       | *number*                                                                                 | :heavy_minus_sign:                                                                       | Maximum content length in approximate tokens. Content exceeding this limit is truncated. |
+| `maxUses`                                                                                | *number*                                                                                 | :heavy_minus_sign:                                                                       | Maximum number of web fetches per request. Once exceeded, the tool returns an error.     |

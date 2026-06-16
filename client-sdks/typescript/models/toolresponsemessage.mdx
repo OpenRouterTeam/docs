@@ -1,0 +1,46 @@
+---
+title: ToolResponseMessage - TypeScript SDK
+description: ToolResponseMessage method reference
+seoTitle: ToolResponseMessage | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/models/toolresponsemessage'
+'og:site_name': OpenRouter Documentation
+'og:title': ToolResponseMessage | OpenRouter TypeScript SDK
+'og:description': >-
+  ToolResponseMessage method documentation for the OpenRouter TypeScript SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ToolResponseMessage%20-%20TypeScript%20SDK&description=ToolResponseMessage%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ToolResponseMessage } from "@openrouter/sdk/models";
+
+let value: ToolResponseMessage = {
+  role: "tool",
+  content: [],
+  toolCallId: "<id>",
+};
+```
+
+## Fields
+
+| Field                               | Type                                | Required                            | Description                         |
+| ----------------------------------- | ----------------------------------- | ----------------------------------- | ----------------------------------- |
+| `role`                              | *"tool"*                            | :heavy_check_mark:                  | N/A                                 |
+| `content`                           | *models.ToolResponseMessageContent* | :heavy_check_mark:                  | N/A                                 |
+| `toolCallId`                        | *string*                            | :heavy_check_mark:                  | N/A                                 |

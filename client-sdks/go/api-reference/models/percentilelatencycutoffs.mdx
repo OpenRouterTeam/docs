@@ -1,0 +1,39 @@
+---
+title: PercentileLatencyCutoffs - Go SDK
+sidebarTitle: PercentileLatencyCutoffs
+description: PercentileLatencyCutoffs type definition
+seoTitle: PercentileLatencyCutoffs Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/percentilelatencycutoffs
+'og:site_name': OpenRouter Documentation
+'og:title': PercentileLatencyCutoffs Type | OpenRouter Go SDK
+'og:description': >-
+  PercentileLatencyCutoffs type reference for the OpenRouter Go SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=PercentileLatencyCutoffs%20-%20Go%20SDK&description=PercentileLatencyCutoffs%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Percentile-based latency cutoffs. All specified cutoffs must be met for an endpoint to be preferred.
+
+## Fields
+
+| Field                                        | Type                                         | Required                                     | Description                                  |
+| -------------------------------------------- | -------------------------------------------- | -------------------------------------------- | -------------------------------------------- |
+| `P50`                                        | optionalnullable.OptionalNullable[`float64`] | :heavy_minus_sign:                           | Maximum p50 latency (seconds)                |
+| `P75`                                        | optionalnullable.OptionalNullable[`float64`] | :heavy_minus_sign:                           | Maximum p75 latency (seconds)                |
+| `P90`                                        | optionalnullable.OptionalNullable[`float64`] | :heavy_minus_sign:                           | Maximum p90 latency (seconds)                |
+| `P99`                                        | optionalnullable.OptionalNullable[`float64`] | :heavy_minus_sign:                           | Maximum p99 latency (seconds)                |

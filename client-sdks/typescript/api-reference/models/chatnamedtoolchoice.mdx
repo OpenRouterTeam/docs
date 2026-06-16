@@ -1,0 +1,50 @@
+---
+title: ChatNamedToolChoice - TypeScript SDK
+sidebarTitle: ChatNamedToolChoice
+description: ChatNamedToolChoice type definition
+seoTitle: ChatNamedToolChoice Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/chatnamedtoolchoice
+'og:site_name': OpenRouter Documentation
+'og:title': ChatNamedToolChoice Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ChatNamedToolChoice type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatNamedToolChoice%20-%20TypeScript%20SDK&description=ChatNamedToolChoice%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Named tool choice for specific function
+
+## Example Usage
+
+```typescript lines
+import { ChatNamedToolChoice } from "@openrouter/sdk/models";
+
+let value: ChatNamedToolChoice = {
+  function: {
+    name: "get_weather",
+  },
+  type: "function",
+};
+```
+
+## Fields
+
+| Field                                                                          | Type                                                                           | Required                                                                       | Description                                                                    |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `function`                                                                     | [models.ChatNamedToolChoiceFunction](/client-sdks/typescript/api-reference/models/chatnamedtoolchoicefunction) | :heavy_check_mark:                                                             | N/A                                                                            |
+| `type`                                                                         | [models.ChatNamedToolChoiceType](/client-sdks/typescript/api-reference/models/chatnamedtoolchoicetype)         | :heavy_check_mark:                                                             | N/A                                                                            |

@@ -1,0 +1,37 @@
+---
+title: ChatUserMessage - Go SDK
+sidebarTitle: ChatUserMessage
+description: ChatUserMessage type definition
+seoTitle: ChatUserMessage Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/chatusermessage'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatUserMessage Type | OpenRouter Go SDK
+'og:description': >-
+  ChatUserMessage type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatUserMessage%20-%20Go%20SDK&description=ChatUserMessage%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+User message
+
+## Fields
+
+| Field                                                                                  | Type                                                                                   | Required                                                                               | Description                                                                            | Example                                                                                |
+| -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `Content`                                                                              | [components.ChatUserMessageContent](/client-sdks/go/api-reference/models/chatusermessagecontent) | :heavy_check_mark:                                                                     | User message content                                                                   | What is the capital of France?                                                         |
+| `Name`                                                                                 | `*string`                                                                              | :heavy_minus_sign:                                                                     | Optional name for the user                                                             | User                                                                                   |
+| `Role`                                                                                 | [components.ChatUserMessageRole](/client-sdks/go/api-reference/models/chatusermessagerole)       | :heavy_check_mark:                                                                     | N/A                                                                                    |                                                                                        |

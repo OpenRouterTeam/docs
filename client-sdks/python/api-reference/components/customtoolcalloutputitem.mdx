@@ -1,0 +1,39 @@
+---
+title: CustomToolCallOutputItem - Python SDK
+sidebarTitle: CustomToolCallOutputItem
+description: CustomToolCallOutputItem method reference
+seoTitle: CustomToolCallOutputItem | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/customtoolcalloutputitem
+'og:site_name': OpenRouter Documentation
+'og:title': CustomToolCallOutputItem | OpenRouter Python SDK
+'og:description': >-
+  CustomToolCallOutputItem method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CustomToolCallOutputItem%20-%20Python%20SDK&description=CustomToolCallOutputItem%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The output from a custom (freeform-grammar) tool call execution. Mirrors `function_call_output` but is matched to a `custom_tool_call` rather than a `function_call`.
+
+## Fields
+
+| Field                                                                                                                            | Type                                                                                                                             | Required                                                                                                                         | Description                                                                                                                      |
+| -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `call_id`                                                                                                                        | *str*                                                                                                                            | :heavy_check_mark:                                                                                                               | N/A                                                                                                                              |
+| `id`                                                                                                                             | *Optional[str]*                                                                                                                  | :heavy_minus_sign:                                                                                                               | N/A                                                                                                                              |
+| `output`                                                                                                                         | [components.CustomToolCallOutputItemOutputUnion2](/client-sdks/python/api-reference/components/customtoolcalloutputitemoutputunion2)                         | :heavy_check_mark:                                                                                                               | N/A                                                                                                                              |
+| `type`                                                                                                                           | [components.CustomToolCallOutputItemTypeCustomToolCallOutput](/client-sdks/python/api-reference/components/customtoolcalloutputitemtypecustomtoolcalloutput) | :heavy_check_mark:                                                                                                               | N/A                                                                                                                              |

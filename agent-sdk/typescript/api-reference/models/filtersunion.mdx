@@ -1,0 +1,60 @@
+---
+title: FiltersUnion - TypeScript SDK
+sidebarTitle: FiltersUnion
+description: FiltersUnion type definition
+seoTitle: FiltersUnion Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/api-reference/models/filtersunion'
+'og:site_name': OpenRouter Documentation
+'og:title': FiltersUnion Type | OpenRouter TypeScript SDK
+'og:description': >-
+  FiltersUnion type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=FiltersUnion%20-%20TypeScript%20SDK&description=FiltersUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### `models.Filters`
+
+```typescript lines
+const value: models.Filters = {
+  key: "<key>",
+  type: "eq",
+  value: [],
+};
+```
+
+### `models.CompoundFilter`
+
+```typescript lines
+const value: models.CompoundFilter = {
+  filters: [
+    {
+      "key": "author",
+      "type": "eq",
+      "value": "Alice",
+    },
+  ],
+  type: "and",
+};
+```
+
+### `any`
+
+```typescript lines
+const value: any = "<value>";
+```

@@ -1,0 +1,38 @@
+---
+title: ReasoningConfig - Go SDK
+sidebarTitle: ReasoningConfig
+description: ReasoningConfig type definition
+seoTitle: ReasoningConfig Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/reasoningconfig'
+'og:site_name': OpenRouter Documentation
+'og:title': ReasoningConfig Type | OpenRouter Go SDK
+'og:description': >-
+  ReasoningConfig type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ReasoningConfig%20-%20Go%20SDK&description=ReasoningConfig%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Configuration for reasoning mode in the response
+
+## Fields
+
+| Field                                                                                                                           | Type                                                                                                                            | Required                                                                                                                        | Description                                                                                                                     | Example                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `Effort`                                                                                                                        | optionalnullable.OptionalNullable[[components.ReasoningEffort](/client-sdks/go/api-reference/models/reasoningeffort)]                     | :heavy_minus_sign:                                                                                                              | N/A                                                                                                                             | medium                                                                                                                          |
+| `Summary`                                                                                                                       | optionalnullable.OptionalNullable[[components.ReasoningSummaryVerbosity](/client-sdks/go/api-reference/models/reasoningsummaryverbosity)] | :heavy_minus_sign:                                                                                                              | N/A                                                                                                                             | auto                                                                                                                            |
+| `Enabled`                                                                                                                       | optionalnullable.OptionalNullable[`bool`]                                                                                       | :heavy_minus_sign:                                                                                                              | N/A                                                                                                                             |                                                                                                                                 |
+| `MaxTokens`                                                                                                                     | optionalnullable.OptionalNullable[`int64`]                                                                                      | :heavy_minus_sign:                                                                                                              | N/A                                                                                                                             |                                                                                                                                 |

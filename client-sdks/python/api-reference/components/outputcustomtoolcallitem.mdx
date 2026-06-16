@@ -1,0 +1,41 @@
+---
+title: OutputCustomToolCallItem - Python SDK
+sidebarTitle: OutputCustomToolCallItem
+description: OutputCustomToolCallItem method reference
+seoTitle: OutputCustomToolCallItem | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/outputcustomtoolcallitem
+'og:site_name': OpenRouter Documentation
+'og:title': OutputCustomToolCallItem | OpenRouter Python SDK
+'og:description': >-
+  OutputCustomToolCallItem method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputCustomToolCallItem%20-%20Python%20SDK&description=OutputCustomToolCallItem%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+A call to a custom (freeform-grammar) tool created by the model — distinct from `function_call`. Used for tools like Codex CLI's `apply_patch` whose payload is opaque text rather than JSON arguments.
+
+## Fields
+
+| Field                                                                                           | Type                                                                                            | Required                                                                                        | Description                                                                                     |
+| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `call_id`                                                                                       | *str*                                                                                           | :heavy_check_mark:                                                                              | N/A                                                                                             |
+| `id`                                                                                            | *Optional[str]*                                                                                 | :heavy_minus_sign:                                                                              | N/A                                                                                             |
+| `input`                                                                                         | *str*                                                                                           | :heavy_check_mark:                                                                              | N/A                                                                                             |
+| `name`                                                                                          | *str*                                                                                           | :heavy_check_mark:                                                                              | N/A                                                                                             |
+| `namespace`                                                                                     | *Optional[str]*                                                                                 | :heavy_minus_sign:                                                                              | Namespace qualifier for tools registered as part of a namespace tool group (e.g. an MCP server) |
+| `type`                                                                                          | [components.OutputCustomToolCallItemType](/client-sdks/python/api-reference/components/outputcustomtoolcallitemtype)        | :heavy_check_mark:                                                                              | N/A                                                                                             |

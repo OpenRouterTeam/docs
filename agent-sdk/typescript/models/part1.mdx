@@ -1,0 +1,55 @@
+---
+title: Part1 - TypeScript SDK
+description: Part1 method reference
+seoTitle: Part1 | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/part1'
+'og:site_name': OpenRouter Documentation
+'og:title': Part1 | OpenRouter TypeScript SDK
+'og:description': >-
+  Part1 method documentation for the OpenRouter TypeScript SDK. Learn how to use
+  this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Part1%20-%20TypeScript%20SDK&description=Part1%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### `models.ResponseOutputText`
+
+```typescript lines
+const value: models.ResponseOutputText = {
+  type: "output_text",
+  text: "The capital of France is Paris.",
+};
+```
+
+### `models.ReasoningTextContent`
+
+```typescript lines
+const value: models.ReasoningTextContent = {
+  type: "reasoning_text",
+  text: "Let me think step by step about this problem...",
+};
+```
+
+### `models.OpenAIResponsesRefusalContent`
+
+```typescript lines
+const value: models.OpenAIResponsesRefusalContent = {
+  type: "refusal",
+  refusal: "I'm sorry, I cannot assist with that request",
+};
+```

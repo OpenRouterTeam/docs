@@ -1,0 +1,43 @@
+---
+title: OutputModality - TypeScript SDK
+sidebarTitle: OutputModality
+description: OutputModality type definition
+seoTitle: OutputModality Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/api-reference/models/outputmodality'
+'og:site_name': OpenRouter Documentation
+'og:title': OutputModality Type | OpenRouter TypeScript SDK
+'og:description': >-
+  OutputModality type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputModality%20-%20TypeScript%20SDK&description=OutputModality%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { OutputModality } from "@openrouter/sdk/models";
+
+let value: OutputModality = "text";
+
+// Open enum: unrecognized values are captured as Unrecognized<string>
+```
+
+## Values
+
+```typescript lines
+"text" | "image" | "embeddings" | "audio" | "video" | "rerank" | "speech" | "transcription" | Unrecognized<string>
+```

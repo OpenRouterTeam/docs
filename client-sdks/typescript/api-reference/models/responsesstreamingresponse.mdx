@@ -1,0 +1,57 @@
+---
+title: ResponsesStreamingResponse - TypeScript SDK
+sidebarTitle: ResponsesStreamingResponse
+description: ResponsesStreamingResponse type definition
+seoTitle: ResponsesStreamingResponse Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/responsesstreamingresponse
+'og:site_name': OpenRouter Documentation
+'og:title': ResponsesStreamingResponse Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ResponsesStreamingResponse type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponsesStreamingResponse%20-%20TypeScript%20SDK&description=ResponsesStreamingResponse%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ResponsesStreamingResponse } from "@openrouter/sdk/models";
+
+let value: ResponsesStreamingResponse = {
+  data: {
+    contentIndex: 844013,
+    delta: "Hello",
+    itemId: "<id>",
+    logprobs: [
+      {
+        logprob: -0.5,
+        token: "Hello",
+      },
+    ],
+    outputIndex: 868033,
+    sequenceNumber: 359136,
+    type: "response.output_text.delta",
+  },
+};
+```
+
+## Fields
+
+| Field                                                                                                                                                                                                                                                                                                                                                                                                                 | Type                                                                                                                                                                                                                                                                                                                                                                                                                  | Required                                                                                                                                                                                                                                                                                                                                                                                                              | Description                                                                                                                                                                                                                                                                                                                                                                                                           | Example                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data`                                                                                                                                                                                                                                                                                                                                                                                                                | *models.StreamEvents*                                                                                                                                                                                                                                                                                                                                                                                                 | :heavy_check_mark:                                                                                                                                                                                                                                                                                                                                                                                                    | Union of all possible event types emitted during response streaming                                                                                                                                                                                                                                                                                                                                                   | `{"response": {"created_at": 1704067200,"error": null,"id": "resp-abc123","incomplete_details": null,"instructions": null,"max_output_tokens": null,"metadata": null,"model": "gpt-4","object": "response","output": [],"parallel_tool_calls": true,"status": "in_progress","temperature": null,"tool_choice": "auto","tools": [],"top_p": null}`,<br/>"sequence_number": 0,<br/>"type": "response.created"<br/>\} |

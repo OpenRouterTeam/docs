@@ -1,0 +1,11 @@
+### Product changes
+
+- **Regex-based Prompt Injection Detection** -- The [guardrails](https://openrouter.ai/settings/guardrails) editor now allows adding a new Prompt Injection Detection guardrail with regex-based flag, redact, and block action modes. [Docs](/guides/features/guardrails/prompt-injection).
+- **Per-provider ZDR controls** -- [Privacy settings](https://openrouter.ai/settings/privacy) and the guardrail editor now expose separate Zero Data Retention toggles for non-frontier, Anthropic, OpenAI, and Google providers, with per-provider account-level lock support.
+- **Introducing the `pareto-code` router** -- [A new, experimental coding router](https://openrouter.ai/openrouter/pareto-code) that allows you to set `min_coding_score` in your request and route to the cheapest code-capable model that clears your bar.
+- **Playground server tool controls** -- The [chatroom](https://openrouter.ai/chat) Composer's Server Tools panel now exposes every supported parameter for Web Search, Web Fetch, Image Generation, and Datetime, matching the API surface for full parity between the playground and direct API calls.
+- **Logs time picker shorthand** -- The [logs](https://openrouter.ai/logs) page's time-range picker now accepts typed shorthand like `15min`, `1h`, `3d`, `8w`, `1mo`, or `2y` — type into the trigger and press Enter to jump straight to that relative window.
+
+### New models
+
+- [**inclusionAI: Ring-2.6-1T (free)**](https://openrouter.ai/inclusionai/ring-2.6-1t)

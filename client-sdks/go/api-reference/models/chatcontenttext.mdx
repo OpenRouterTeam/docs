@@ -1,0 +1,37 @@
+---
+title: ChatContentText - Go SDK
+sidebarTitle: ChatContentText
+description: ChatContentText type definition
+seoTitle: ChatContentText Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/chatcontenttext'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatContentText Type | OpenRouter Go SDK
+'og:description': >-
+  ChatContentText type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatContentText%20-%20Go%20SDK&description=ChatContentText%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Text content part
+
+## Fields
+
+| Field                                                                                     | Type                                                                                      | Required                                                                                  | Description                                                                               | Example                                                                                   |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `CacheControl`                                                                            | [*components.ChatContentCacheControl](/client-sdks/go/api-reference/models/chatcontentcachecontrol) | :heavy_minus_sign:                                                                        | Cache control for the content part                                                        | `{"ttl": "5m","type": "ephemeral"}`                                          |
+| `Text`                                                                                    | `string`                                                                                  | :heavy_check_mark:                                                                        | N/A                                                                                       |                                                                                           |
+| `Type`                                                                                    | [components.ChatContentTextType](/client-sdks/go/api-reference/models/chatcontenttexttype)          | :heavy_check_mark:                                                                        | N/A                                                                                       |                                                                                           |

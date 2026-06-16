@@ -1,0 +1,62 @@
+---
+title: CompletionCreateParams - TypeScript SDK
+description: CompletionCreateParams method reference
+seoTitle: CompletionCreateParams | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/completioncreateparams'
+'og:site_name': OpenRouter Documentation
+'og:title': CompletionCreateParams | OpenRouter TypeScript SDK
+'og:description': >-
+  CompletionCreateParams method documentation for the OpenRouter TypeScript SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CompletionCreateParams%20-%20TypeScript%20SDK&description=CompletionCreateParams%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { CompletionCreateParams } from "@openrouter/sdk/models";
+
+let value: CompletionCreateParams = {
+  prompt: [],
+};
+```
+
+## Fields
+
+| Field                                              | Type                                               | Required                                           | Description                                        |
+| -------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
+| `model`                                            | *string*                                           | :heavy_minus_sign:                                 | N/A                                                |
+| `models`                                           | *string*[]                                         | :heavy_minus_sign:                                 | N/A                                                |
+| `prompt`                                           | *models.Prompt*                                    | :heavy_check_mark:                                 | N/A                                                |
+| `bestOf`                                           | *number*                                           | :heavy_minus_sign:                                 | N/A                                                |
+| `echo`                                             | *boolean*                                          | :heavy_minus_sign:                                 | N/A                                                |
+| `frequencyPenalty`                                 | *number*                                           | :heavy_minus_sign:                                 | N/A                                                |
+| `logitBias`                                        | `Record<string, *number*>`                           | :heavy_minus_sign:                                 | N/A                                                |
+| `logprobs`                                         | *number*                                           | :heavy_minus_sign:                                 | N/A                                                |
+| `maxTokens`                                        | *number*                                           | :heavy_minus_sign:                                 | N/A                                                |
+| `n`                                                | *number*                                           | :heavy_minus_sign:                                 | N/A                                                |
+| `presencePenalty`                                  | *number*                                           | :heavy_minus_sign:                                 | N/A                                                |
+| `seed`                                             | *number*                                           | :heavy_minus_sign:                                 | N/A                                                |
+| `stop`                                             | *models.CompletionCreateParamsStop*                | :heavy_minus_sign:                                 | N/A                                                |
+| `stream`                                           | *boolean*                                          | :heavy_minus_sign:                                 | N/A                                                |
+| `streamOptions`                                    | [models.StreamOptions](/agent-sdk/typescript/models/streamoptions) | :heavy_minus_sign:                                 | N/A                                                |
+| `suffix`                                           | *string*                                           | :heavy_minus_sign:                                 | N/A                                                |
+| `temperature`                                      | *number*                                           | :heavy_minus_sign:                                 | N/A                                                |
+| `topP`                                             | *number*                                           | :heavy_minus_sign:                                 | N/A                                                |
+| `user`                                             | *string*                                           | :heavy_minus_sign:                                 | N/A                                                |
+| `metadata`                                         | `Record<string, *string*>`                           | :heavy_minus_sign:                                 | N/A                                                |
+| `responseFormat`                                   | *models.CompletionCreateParamsResponseFormatUnion* | :heavy_minus_sign:                                 | N/A                                                |

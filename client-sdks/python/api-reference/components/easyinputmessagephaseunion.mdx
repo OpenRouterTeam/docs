@@ -1,0 +1,50 @@
+---
+title: EasyInputMessagePhaseUnion - Python SDK
+sidebarTitle: EasyInputMessagePhaseUnion
+description: EasyInputMessagePhaseUnion method reference
+seoTitle: EasyInputMessagePhaseUnion | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/easyinputmessagephaseunion
+'og:site_name': OpenRouter Documentation
+'og:title': EasyInputMessagePhaseUnion | OpenRouter Python SDK
+'og:description': >-
+  EasyInputMessagePhaseUnion method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=EasyInputMessagePhaseUnion%20-%20Python%20SDK&description=EasyInputMessagePhaseUnion%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The phase of an assistant message. Use `commentary` for an intermediate assistant message and `final_answer` for the final assistant message. For follow-up requests with models like `gpt-5.3-codex` and later, preserve and resend phase on all assistant messages. Omitting it can degrade performance. Not used for user messages.
+
+## Supported Types
+
+### `components.EasyInputMessagePhaseCommentary`
+
+```python lines
+value: components.EasyInputMessagePhaseCommentary = /* values here */
+```
+
+### `components.EasyInputMessagePhaseFinalAnswer`
+
+```python lines
+value: components.EasyInputMessagePhaseFinalAnswer = /* values here */
+```
+
+### `Any`
+
+```python lines
+value: Any = /* values here */
+```

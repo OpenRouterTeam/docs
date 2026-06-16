@@ -1,0 +1,16 @@
+### Product changes
+
+- **More SDK examples on model pages** -- Model page API tabs now include OpenRouter Python/Go and Anthropic TS/Go SDK examples, grouped by SDK category.
+- **Activity explorer cache hit rate** -- Added `cache_hit_rate` metric to the Activity Explorer for monitoring cache performance across your requests.
+- **Video generation webhooks** -- Video generation webhook payloads now include `generation_id`, model, and usage data for richer event handling.
+- **Gemini caching guidance** -- Updated [caching docs](/guides/features/response-caching) with more explicit guidance on caching behavior.
+- **Stripe Projects integration guide** -- Published a guide for integrating OpenRouter via [Stripe Projects CLI](/guides/overview/stripe-projects).
+- **Spend display consistency** -- Spend values under $1K now consistently show 2 decimal places across all UI surfaces.
+- **Auto Router docs link fix** -- Fixed the broken "Learn more" link on the Auto Router configuration page.
+- **Mobile sidebar fix** -- Fixed mobile sidebar z-index so it correctly appears above page content.
+- **Anthropic `effort` xhigh** -- The `output_config.effort` parameter now supports the `xhigh` level for maximum reasoning effort on Claude models.
+- **Context management edits** -- Anthropic `context_management.applied_edits` are now passed through in responses, showing what context changes the model made.
+
+### New models
+
+- [**Anthropic: Claude Opus 4.7**](https://openrouter.ai/anthropic/claude-opus-4.7)

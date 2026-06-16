@@ -1,0 +1,43 @@
+---
+title: McpServerTool - Python SDK
+sidebarTitle: McpServerTool
+description: McpServerTool method reference
+seoTitle: McpServerTool | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/api-reference/components/mcpservertool'
+'og:site_name': OpenRouter Documentation
+'og:title': McpServerTool | OpenRouter Python SDK
+'og:description': >-
+  McpServerTool method documentation for the OpenRouter Python SDK. Learn how to
+  use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=McpServerTool%20-%20Python%20SDK&description=McpServerTool%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+MCP (Model Context Protocol) tool configuration
+
+## Fields
+
+| Field                                                                                      | Type                                                                                       | Required                                                                                   | Description                                                                                |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `allowed_tools`                                                                            | [OptionalNullable[components.AllowedToolsUnion]](../components/allowedtoolsunion.md)       | :heavy_minus_sign:                                                                         | N/A                                                                                        |
+| `authorization`                                                                            | *Optional[str]*                                                                            | :heavy_minus_sign:                                                                         | N/A                                                                                        |
+| `connector_id`                                                                             | [Optional[components.ConnectorID]](../components/connectorid.md)                           | :heavy_minus_sign:                                                                         | N/A                                                                                        |
+| `headers`                                                                                  | Dict[str, *str*]                                                                           | :heavy_minus_sign:                                                                         | N/A                                                                                        |
+| `require_approval`                                                                         | [OptionalNullable[components.RequireApprovalUnion]](../components/requireapprovalunion.md) | :heavy_minus_sign:                                                                         | N/A                                                                                        |
+| `server_description`                                                                       | *Optional[str]*                                                                            | :heavy_minus_sign:                                                                         | N/A                                                                                        |
+| `server_label`                                                                             | *str*                                                                                      | :heavy_check_mark:                                                                         | N/A                                                                                        |
+| `server_url`                                                                               | *Optional[str]*                                                                            | :heavy_minus_sign:                                                                         | N/A                                                                                        |
+| `type`                                                                                     | [components.McpServerToolType](/client-sdks/python/api-reference/components/mcpservertooltype)                         | :heavy_check_mark:                                                                         | N/A                                                                                        |

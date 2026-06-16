@@ -1,0 +1,46 @@
+---
+title: BadGatewayResponseError - TypeScript SDK
+sidebarTitle: BadGatewayResponseError
+description: BadGatewayResponseError type definition
+seoTitle: BadGatewayResponseError Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/errors/badgatewayresponseerror
+'og:site_name': OpenRouter Documentation
+'og:title': BadGatewayResponseError Type | OpenRouter TypeScript SDK
+'og:description': >-
+  BadGatewayResponseError type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=BadGatewayResponseError%20-%20TypeScript%20SDK&description=BadGatewayResponseError%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Bad Gateway - Provider/upstream API failure
+
+## Example Usage
+
+```typescript lines
+import { BadGatewayResponseError } from "@openrouter/sdk/models/errors";
+
+// No examples available for this model
+```
+
+## Fields
+
+| Field                                                                             | Type                                                                              | Required                                                                          | Description                                                                       | Example                                                                           |
+| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `error`                                                                           | [models.BadGatewayResponseErrorData](/agent-sdk/typescript/api-reference/models/badgatewayresponseerrordata) | :heavy_check_mark:                                                                | Error data for BadGatewayResponse                                                 | `{"code": 502,"message": "Provider returned error"}`                 |
+| `openrouterMetadata`                                                              | `Record<string, *any*>`                                                             | :heavy_minus_sign:                                                                | N/A                                                                               |                                                                                   |
+| `userId`                                                                          | *string*                                                                          | :heavy_minus_sign:                                                                | N/A                                                                               |                                                                                   |

@@ -1,0 +1,56 @@
+---
+title: ChatMessageTokenLogprob - TypeScript SDK
+description: ChatMessageTokenLogprob method reference
+seoTitle: ChatMessageTokenLogprob | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/chatmessagetokenlogprob'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatMessageTokenLogprob | OpenRouter TypeScript SDK
+'og:description': >-
+  ChatMessageTokenLogprob method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatMessageTokenLogprob%20-%20TypeScript%20SDK&description=ChatMessageTokenLogprob%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ChatMessageTokenLogprob } from "@openrouter/sdk/models";
+
+let value: ChatMessageTokenLogprob = {
+  token: "<value>",
+  logprob: 8717.76,
+  bytes: [],
+  topLogprobs: [
+    {
+      token: "<value>",
+      logprob: 9715.54,
+      bytes: [
+        7041.35,
+      ],
+    },
+  ],
+};
+```
+
+## Fields
+
+| Field                                                                                        | Type                                                                                         | Required                                                                                     | Description                                                                                  |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `token`                                                                                      | *string*                                                                                     | :heavy_check_mark:                                                                           | N/A                                                                                          |
+| `logprob`                                                                                    | *number*                                                                                     | :heavy_check_mark:                                                                           | N/A                                                                                          |
+| `bytes`                                                                                      | *number*[]                                                                                   | :heavy_check_mark:                                                                           | N/A                                                                                          |
+| `topLogprobs`                                                                                | [models.ChatMessageTokenLogprobTopLogprob](/agent-sdk/typescript/models/chatmessagetokenlogprobtoplogprob)[] | :heavy_check_mark:                                                                           | N/A                                                                                          |

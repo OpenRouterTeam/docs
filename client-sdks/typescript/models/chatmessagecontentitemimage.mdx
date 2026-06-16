@@ -1,0 +1,46 @@
+---
+title: ChatMessageContentItemImage - TypeScript SDK
+description: ChatMessageContentItemImage method reference
+seoTitle: ChatMessageContentItemImage | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/models/chatmessagecontentitemimage'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatMessageContentItemImage | OpenRouter TypeScript SDK
+'og:description': >-
+  ChatMessageContentItemImage method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatMessageContentItemImage%20-%20TypeScript%20SDK&description=ChatMessageContentItemImage%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ChatMessageContentItemImage } from "@openrouter/sdk/models";
+
+let value: ChatMessageContentItemImage = {
+  type: "image_url",
+  imageUrl: {
+    url: "https://pretty-reservation.org",
+  },
+};
+```
+
+## Fields
+
+| Field                                    | Type                                     | Required                                 | Description                              |
+| ---------------------------------------- | ---------------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| `type`                                   | *"image_url"*                            | :heavy_check_mark:                       | N/A                                      |
+| `imageUrl`                               | [models.ImageUrl](/client-sdks/typescript/models/imageurl) | :heavy_check_mark:                       | N/A                                      |

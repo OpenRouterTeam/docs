@@ -1,0 +1,38 @@
+---
+title: ResponsesOutputMessage - Python SDK
+description: ResponsesOutputMessage method reference
+seoTitle: ResponsesOutputMessage | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/components/responsesoutputmessage'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponsesOutputMessage | OpenRouter Python SDK
+'og:description': >-
+  ResponsesOutputMessage method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponsesOutputMessage%20-%20Python%20SDK&description=ResponsesOutputMessage%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+An output message item
+
+## Fields
+
+| Field                                                                                                        | Type                                                                                                         | Required                                                                                                     | Description                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `id`                                                                                                         | *str*                                                                                                        | :heavy_check_mark:                                                                                           | N/A                                                                                                          |
+| `role`                                                                                                       | [components.ResponsesOutputMessageRole](/client-sdks/python/components/responsesoutputmessagerole)                         | :heavy_check_mark:                                                                                           | N/A                                                                                                          |
+| `type`                                                                                                       | [components.ResponsesOutputMessageType](/client-sdks/python/components/responsesoutputmessagetype)                         | :heavy_check_mark:                                                                                           | N/A                                                                                                          |
+| `status`                                                                                                     | [Optional[components.ResponsesOutputMessageStatusUnion]](../components/responsesoutputmessagestatusunion.md) | :heavy_minus_sign:                                                                                           | N/A                                                                                                          |
+| `content`                                                                                                    | List[[components.ResponsesOutputMessageContent](/client-sdks/python/components/responsesoutputmessagecontent)]             | :heavy_check_mark:                                                                                           | N/A                                                                                                          |

@@ -1,0 +1,39 @@
+---
+title: StreamEventsResponseOutputItemAdded - Python SDK
+sidebarTitle: StreamEventsResponseOutputItemAdded
+description: StreamEventsResponseOutputItemAdded method reference
+seoTitle: StreamEventsResponseOutputItemAdded | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/streameventsresponseoutputitemadded
+'og:site_name': OpenRouter Documentation
+'og:title': StreamEventsResponseOutputItemAdded | OpenRouter Python SDK
+'og:description': >-
+  StreamEventsResponseOutputItemAdded method documentation for the OpenRouter
+  Python SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=StreamEventsResponseOutputItemAdded%20-%20Python%20SDK&description=StreamEventsResponseOutputItemAdded%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Event emitted when a new output item is added to the response
+
+## Fields
+
+| Field                                                                                                                                                                       | Type                                                                                                                                                                        | Required                                                                                                                                                                    | Description                                                                                                                                                                 | Example                                                                                                                                                                     |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `item`                                                                                                                                                                      | [components.OutputItems](/client-sdks/python/api-reference/components/outputitems)                                                                                                                      | :heavy_check_mark:                                                                                                                                                          | An output item from the response                                                                                                                                            | `{"content": [{"text": "Hello! How can I help you today?","type": "output_text"}`<br/>],<br/>"id": "msg-abc123",<br/>"role": "assistant",<br/>"status": "completed",<br/>"type": "message"<br/>\} |
+| `output_index`                                                                                                                                                              | *int*                                                                                                                                                                       | :heavy_check_mark:                                                                                                                                                          | N/A                                                                                                                                                                         |                                                                                                                                                                             |
+| `sequence_number`                                                                                                                                                           | *int*                                                                                                                                                                       | :heavy_check_mark:                                                                                                                                                          | N/A                                                                                                                                                                         |                                                                                                                                                                             |
+| `type`                                                                                                                                                                      | [components.StreamEventsResponseOutputItemAddedType](/client-sdks/python/api-reference/components/streameventsresponseoutputitemaddedtype)                                                              | :heavy_check_mark:                                                                                                                                                          | N/A                                                                                                                                                                         |                                                                                                                                                                             |

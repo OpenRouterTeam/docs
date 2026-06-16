@@ -1,0 +1,80 @@
+---
+title: InputUnion - Go SDK
+sidebarTitle: InputUnion
+description: InputUnion type definition
+seoTitle: InputUnion Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/operations/inputunion'
+'og:site_name': OpenRouter Documentation
+'og:title': InputUnion Type | OpenRouter Go SDK
+'og:description': >-
+  InputUnion type reference for the OpenRouter Go SDK. Complete type definition
+  and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=InputUnion%20-%20Go%20SDK&description=InputUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Text, token, or multimodal input(s) to embed
+
+## Supported Types
+
+### 
+
+```go lines
+inputUnion := operations.CreateInputUnionStr(string{/* values here */})
+```
+
+### 
+
+```go lines
+inputUnion := operations.CreateInputUnionArrayOfStr([]string{/* values here */})
+```
+
+### 
+
+```go lines
+inputUnion := operations.CreateInputUnionArrayOfNumber([]float64{/* values here */})
+```
+
+### 
+
+```go lines
+inputUnion := operations.CreateInputUnionArrayOfArrayOfNumber([][]float64{/* values here */})
+```
+
+### 
+
+```go lines
+inputUnion := operations.CreateInputUnionArrayOfInput([]operations.Input{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch inputUnion.Type {
+	case operations.InputUnionTypeStr:
+		// inputUnion.Str is populated
+	case operations.InputUnionTypeArrayOfStr:
+		// inputUnion.ArrayOfStr is populated
+	case operations.InputUnionTypeArrayOfNumber:
+		// inputUnion.ArrayOfNumber is populated
+	case operations.InputUnionTypeArrayOfArrayOfNumber:
+		// inputUnion.ArrayOfArrayOfNumber is populated
+	case operations.InputUnionTypeArrayOfInput:
+		// inputUnion.ArrayOfInput is populated
+}
+```

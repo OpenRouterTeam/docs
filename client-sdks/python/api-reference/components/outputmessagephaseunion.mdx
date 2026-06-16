@@ -1,0 +1,50 @@
+---
+title: OutputMessagePhaseUnion - Python SDK
+sidebarTitle: OutputMessagePhaseUnion
+description: OutputMessagePhaseUnion method reference
+seoTitle: OutputMessagePhaseUnion | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/outputmessagephaseunion
+'og:site_name': OpenRouter Documentation
+'og:title': OutputMessagePhaseUnion | OpenRouter Python SDK
+'og:description': >-
+  OutputMessagePhaseUnion method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputMessagePhaseUnion%20-%20Python%20SDK&description=OutputMessagePhaseUnion%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The phase of an assistant message. Use `commentary` for an intermediate assistant message and `final_answer` for the final assistant message. For follow-up requests with models like `gpt-5.3-codex` and later, preserve and resend phase on all assistant messages. Omitting it can degrade performance. Not used for user messages.
+
+## Supported Types
+
+### `components.OutputMessagePhaseCommentary`
+
+```python lines
+value: components.OutputMessagePhaseCommentary = /* values here */
+```
+
+### `components.OutputMessagePhaseFinalAnswer`
+
+```python lines
+value: components.OutputMessagePhaseFinalAnswer = /* values here */
+```
+
+### `Any`
+
+```python lines
+value: Any = /* values here */
+```

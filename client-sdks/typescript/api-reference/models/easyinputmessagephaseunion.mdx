@@ -1,0 +1,50 @@
+---
+title: EasyInputMessagePhaseUnion - TypeScript SDK
+sidebarTitle: EasyInputMessagePhaseUnion
+description: EasyInputMessagePhaseUnion type definition
+seoTitle: EasyInputMessagePhaseUnion Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/easyinputmessagephaseunion
+'og:site_name': OpenRouter Documentation
+'og:title': EasyInputMessagePhaseUnion Type | OpenRouter TypeScript SDK
+'og:description': >-
+  EasyInputMessagePhaseUnion type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=EasyInputMessagePhaseUnion%20-%20TypeScript%20SDK&description=EasyInputMessagePhaseUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The phase of an assistant message. Use `commentary` for an intermediate assistant message and `final_answer` for the final assistant message. For follow-up requests with models like `gpt-5.3-codex` and later, preserve and resend phase on all assistant messages. Omitting it can degrade performance. Not used for user messages.
+
+## Supported Types
+
+### `models.EasyInputMessagePhaseCommentary`
+
+```typescript lines
+const value: models.EasyInputMessagePhaseCommentary = "commentary";
+```
+
+### `models.EasyInputMessagePhaseFinalAnswer`
+
+```typescript lines
+const value: models.EasyInputMessagePhaseFinalAnswer = "final_answer";
+```
+
+### `any`
+
+```typescript lines
+const value: any = "final_answer";
+```

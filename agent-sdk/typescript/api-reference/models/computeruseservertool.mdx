@@ -1,0 +1,52 @@
+---
+title: ComputerUseServerTool - TypeScript SDK
+sidebarTitle: ComputerUseServerTool
+description: ComputerUseServerTool type definition
+seoTitle: ComputerUseServerTool Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/computeruseservertool
+'og:site_name': OpenRouter Documentation
+'og:title': ComputerUseServerTool Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ComputerUseServerTool type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ComputerUseServerTool%20-%20TypeScript%20SDK&description=ComputerUseServerTool%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Computer use preview tool configuration
+
+## Example Usage
+
+```typescript lines
+import { ComputerUseServerTool } from "@openrouter/sdk/models";
+
+let value: ComputerUseServerTool = {
+  displayHeight: 768,
+  displayWidth: 1024,
+  environment: "linux",
+  type: "computer_use_preview",
+};
+```
+
+## Fields
+
+| Field                                          | Type                                           | Required                                       | Description                                    |
+| ---------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
+| `displayHeight`                                | *number*                                       | :heavy_check_mark:                             | N/A                                            |
+| `displayWidth`                                 | *number*                                       | :heavy_check_mark:                             | N/A                                            |
+| `environment`                                  | [models.Environment](/agent-sdk/typescript/api-reference/models/environment) | :heavy_check_mark:                             | N/A                                            |
+| `type`                                         | *"computer_use_preview"*                       | :heavy_check_mark:                             | N/A                                            |

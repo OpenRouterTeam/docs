@@ -1,0 +1,39 @@
+---
+title: Analysis - Go SDK
+sidebarTitle: Analysis
+description: Analysis type definition
+seoTitle: Analysis Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/analysis'
+'og:site_name': OpenRouter Documentation
+'og:title': Analysis Type | OpenRouter Go SDK
+'og:description': >-
+  Analysis type reference for the OpenRouter Go SDK. Complete type definition
+  and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Analysis%20-%20Go%20SDK&description=Analysis%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Structured analysis produced by the fusion judge model.
+
+## Fields
+
+| Field                                                                      | Type                                                                       | Required                                                                   | Description                                                                |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `BlindSpots`                                                               | []`string`                                                                 | :heavy_check_mark:                                                         | N/A                                                                        |
+| `Consensus`                                                                | []`string`                                                                 | :heavy_check_mark:                                                         | N/A                                                                        |
+| `Contradictions`                                                           | [][components.Contradiction](/client-sdks/go/api-reference/models/contradiction)     | :heavy_check_mark:                                                         | N/A                                                                        |
+| `PartialCoverage`                                                          | [][components.PartialCoverage](/client-sdks/go/api-reference/models/partialcoverage) | :heavy_check_mark:                                                         | N/A                                                                        |
+| `UniqueInsights`                                                           | [][components.UniqueInsight](/client-sdks/go/api-reference/models/uniqueinsight)     | :heavy_check_mark:                                                         | N/A                                                                        |

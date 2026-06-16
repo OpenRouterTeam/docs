@@ -1,0 +1,11 @@
+### Product changes
+
+- **Human-in-the-loop SDK Tool** -- [SDK documentation](/agent-sdk/call-model/tools) for the new human-in-the-loop tool type, enabling tools that pause execution and wait for human input before returning results.
+- **Copy guardrails across workspaces** -- [Guardrail](/guides/features/guardrails) definitions can now be copied between [workspaces](/guides/features/workspaces) via the "Copy to..." menu. Workspaces without a default guardrail can also import settings from another workspace.
+- **Video generation cookbook** -- New [Cookbook](/snippets/changelog/overview) section with six video generation recipes covering model selection, text-to-video, image-to-video, reference-to-video, provider-specific options, and webhooks.
+- **Audio APIs blog post** -- [Blog post](https://openrouter.ai/announcements/2026-05-01-announcing-audio-apis) announcing the text-to-speech and speech-to-text API endpoints with usage examples and model comparisons.
+- **Responses API MCP tool routing** -- The `namespace` field on `function_call` output items is now preserved through the [Responses API](/api/reference/responses) pipeline. Previously, the field was silently stripped during parsing, which broke MCP tool routing for clients like Codex CLI that rely on `namespace` to dispatch calls to the correct MCP server.
+
+### New models
+
+- [Baidu Qianfan: CoBuddy (free)](https://openrouter.ai/baidu/cobuddy)

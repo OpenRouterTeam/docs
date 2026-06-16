@@ -1,0 +1,50 @@
+---
+title: URLCitation - TypeScript SDK
+description: URLCitation method reference
+seoTitle: URLCitation | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/models/urlcitation'
+'og:site_name': OpenRouter Documentation
+'og:title': URLCitation | OpenRouter TypeScript SDK
+'og:description': >-
+  URLCitation method documentation for the OpenRouter TypeScript SDK. Learn how
+  to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=URLCitation%20-%20TypeScript%20SDK&description=URLCitation%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { URLCitation } from "@openrouter/sdk/models";
+
+let value: URLCitation = {
+  type: "url_citation",
+  url: "https://openrouter.ai/docs",
+  title: "OpenRouter Documentation",
+  startIndex: 0,
+  endIndex: 42,
+};
+```
+
+## Fields
+
+| Field              | Type               | Required           | Description        |
+| ------------------ | ------------------ | ------------------ | ------------------ |
+| `type`             | *"url_citation"*   | :heavy_check_mark: | N/A                |
+| `url`              | *string*           | :heavy_check_mark: | N/A                |
+| `title`            | *string*           | :heavy_check_mark: | N/A                |
+| `startIndex`       | *number*           | :heavy_check_mark: | N/A                |
+| `endIndex`         | *number*           | :heavy_check_mark: | N/A                |

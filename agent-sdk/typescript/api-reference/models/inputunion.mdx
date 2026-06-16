@@ -1,0 +1,52 @@
+---
+title: InputUnion - TypeScript SDK
+sidebarTitle: InputUnion
+description: InputUnion type definition
+seoTitle: InputUnion Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/api-reference/models/inputunion'
+'og:site_name': OpenRouter Documentation
+'og:title': InputUnion Type | OpenRouter TypeScript SDK
+'og:description': >-
+  InputUnion type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=InputUnion%20-%20TypeScript%20SDK&description=InputUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The input to the generation — either a prompt string or an array of messages
+
+## Supported Types
+
+### `models.Input1`
+
+```typescript lines
+const value: models.Input1 = {
+  prompt: "What is the meaning of life?",
+};
+```
+
+### `models.Input2`
+
+```typescript lines
+const value: models.Input2 = {
+  messages: [
+    {
+      "content": "What is the meaning of life?",
+      "role": "user",
+    },
+  ],
+};
+```

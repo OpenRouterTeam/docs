@@ -1,0 +1,63 @@
+---
+title: OpenAIResponsesAnnotation - TypeScript SDK
+sidebarTitle: OpenAIResponsesAnnotation
+description: OpenAIResponsesAnnotation type definition
+seoTitle: OpenAIResponsesAnnotation Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/openairesponsesannotation
+'og:site_name': OpenRouter Documentation
+'og:title': OpenAIResponsesAnnotation Type | OpenRouter TypeScript SDK
+'og:description': >-
+  OpenAIResponsesAnnotation type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenAIResponsesAnnotation%20-%20TypeScript%20SDK&description=OpenAIResponsesAnnotation%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### `models.FileCitation`
+
+```typescript lines
+const value: models.FileCitation = {
+  fileId: "file-abc123",
+  filename: "research_paper.pdf",
+  index: 0,
+  type: "file_citation",
+};
+```
+
+### `models.URLCitation`
+
+```typescript lines
+const value: models.URLCitation = {
+  endIndex: 582752,
+  startIndex: 114325,
+  title: "<value>",
+  type: "url_citation",
+  url: "https://dim-jet.biz/",
+};
+```
+
+### `models.FilePath`
+
+```typescript lines
+const value: models.FilePath = {
+  fileId: "file-abc123",
+  index: 0,
+  type: "file_path",
+};
+```

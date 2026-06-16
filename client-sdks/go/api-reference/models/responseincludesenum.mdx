@@ -1,0 +1,50 @@
+---
+title: ResponseIncludesEnum - Go SDK
+sidebarTitle: ResponseIncludesEnum
+description: ResponseIncludesEnum type definition
+seoTitle: ResponseIncludesEnum Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/responseincludesenum'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponseIncludesEnum Type | OpenRouter Go SDK
+'og:description': >-
+  ResponseIncludesEnum type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponseIncludesEnum%20-%20Go%20SDK&description=ResponseIncludesEnum%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```go lines
+import (
+	"github.com/OpenRouterTeam/go-sdk/models/components"
+)
+
+value := components.ResponseIncludesEnumFileSearchCallResults
+
+// Open enum: custom values can be created with a direct type cast
+custom := components.ResponseIncludesEnum("custom_value")
+```
+
+## Values
+
+| Name                                                   | Value                                                  |
+| ------------------------------------------------------ | ------------------------------------------------------ |
+| `ResponseIncludesEnumFileSearchCallResults`            | file_search_call.results                               |
+| `ResponseIncludesEnumMessageInputImageImageURL`        | message.input_image.image_url                          |
+| `ResponseIncludesEnumComputerCallOutputOutputImageURL` | computer_call_output.output.image_url                  |
+| `ResponseIncludesEnumReasoningEncryptedContent`        | reasoning.encrypted_content                            |
+| `ResponseIncludesEnumCodeInterpreterCallOutputs`       | code_interpreter_call.outputs                          |

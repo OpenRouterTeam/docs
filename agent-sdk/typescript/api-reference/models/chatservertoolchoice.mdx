@@ -1,0 +1,46 @@
+---
+title: ChatServerToolChoice - TypeScript SDK
+sidebarTitle: ChatServerToolChoice
+description: ChatServerToolChoice type definition
+seoTitle: ChatServerToolChoice Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/chatservertoolchoice
+'og:site_name': OpenRouter Documentation
+'og:title': ChatServerToolChoice Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ChatServerToolChoice type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatServerToolChoice%20-%20TypeScript%20SDK&description=ChatServerToolChoice%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+OpenRouter extension: force a specific server tool by naming it directly in `tool_choice.type` instead of wrapping it in `{ type: "function", function: { name } }`.
+
+## Example Usage
+
+```typescript lines
+import { ChatServerToolChoice } from "@openrouter/sdk/models";
+
+let value: ChatServerToolChoice = {
+  type: "openrouter:web_search",
+};
+```
+
+## Fields
+
+| Field                                                                                                    | Type                                                                                                     | Required                                                                                                 | Description                                                                                              | Example                                                                                                  |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `type`                                                                                                   | *string*                                                                                                 | :heavy_check_mark:                                                                                       | OpenRouter server-tool type to force (e.g. `openrouter:web_search`, `web_search`, `web_search_preview`). | openrouter:web_search                                                                                    |

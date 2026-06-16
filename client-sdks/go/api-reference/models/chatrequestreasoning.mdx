@@ -1,0 +1,36 @@
+---
+title: ChatRequestReasoning - Go SDK
+sidebarTitle: ChatRequestReasoning
+description: ChatRequestReasoning type definition
+seoTitle: ChatRequestReasoning Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/chatrequestreasoning'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatRequestReasoning Type | OpenRouter Go SDK
+'og:description': >-
+  ChatRequestReasoning type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatRequestReasoning%20-%20Go%20SDK&description=ChatRequestReasoning%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Configuration options for reasoning models
+
+## Fields
+
+| Field                                                                                                                                           | Type                                                                                                                                            | Required                                                                                                                                        | Description                                                                                                                                     | Example                                                                                                                                         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Effort`                                                                                                                                        | optionalnullable.OptionalNullable[[components.ChatRequestEffort](/client-sdks/go/api-reference/models/chatrequesteffort)]                                 | :heavy_minus_sign:                                                                                                                              | Constrains effort on reasoning for reasoning models                                                                                             | medium                                                                                                                                          |
+| `Summary`                                                                                                                                       | optionalnullable.OptionalNullable[[components.ChatReasoningSummaryVerbosityEnum](/client-sdks/go/api-reference/models/chatreasoningsummaryverbosityenum)] | :heavy_minus_sign:                                                                                                                              | N/A                                                                                                                                             | concise                                                                                                                                         |

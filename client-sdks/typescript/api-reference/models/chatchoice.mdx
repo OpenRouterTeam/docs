@@ -1,0 +1,52 @@
+---
+title: ChatChoice - TypeScript SDK
+sidebarTitle: ChatChoice
+description: ChatChoice type definition
+seoTitle: ChatChoice Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/api-reference/models/chatchoice'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatChoice Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ChatChoice type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatChoice%20-%20TypeScript%20SDK&description=ChatChoice%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Chat completion choice
+
+## Example Usage
+
+```typescript lines
+import { ChatChoice } from "@openrouter/sdk/models";
+
+let value: ChatChoice = {
+  finishReason: "stop",
+  index: 0,
+  message: {
+    role: "assistant",
+  },
+};
+```
+
+## Fields
+
+| Field                                                                                                              | Type                                                                                                               | Required                                                                                                           | Description                                                                                                        | Example                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `finishReason`                                                                                                     | [models.ChatFinishReasonEnum](/client-sdks/typescript/api-reference/models/chatfinishreasonenum)                                                   | :heavy_check_mark:                                                                                                 | N/A                                                                                                                | stop                                                                                                               |
+| `index`                                                                                                            | *number*                                                                                                           | :heavy_check_mark:                                                                                                 | Choice index                                                                                                       | 0                                                                                                                  |
+| `logprobs`                                                                                                         | [models.ChatTokenLogprobs](/client-sdks/typescript/api-reference/models/chattokenlogprobs)                                                         | :heavy_minus_sign:                                                                                                 | Log probabilities for the completion                                                                               | `{"content": [{"bytes": null,"logprob": -0.612345,"token": " Hello","top_logprobs": []}`<br/>],<br/>"refusal": `null<br/>`\} |
+| `message`                                                                                                          | [models.ChatAssistantMessage](/client-sdks/typescript/api-reference/models/chatassistantmessage)                                                   | :heavy_check_mark:                                                                                                 | Assistant message for requests and responses                                                                       | `{"content": "What is the capital of France?","role": "user"}`                                        |

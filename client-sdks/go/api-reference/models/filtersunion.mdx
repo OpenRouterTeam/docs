@@ -1,0 +1,62 @@
+---
+title: FiltersUnion - Go SDK
+sidebarTitle: FiltersUnion
+description: FiltersUnion type definition
+seoTitle: FiltersUnion Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/filtersunion'
+'og:site_name': OpenRouter Documentation
+'og:title': FiltersUnion Type | OpenRouter Go SDK
+'og:description': >-
+  FiltersUnion type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=FiltersUnion%20-%20Go%20SDK&description=FiltersUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### Filters
+
+```go lines
+filtersUnion := components.CreateFiltersUnionFilters(components.Filters{/* values here */})
+```
+
+### CompoundFilter
+
+```go lines
+filtersUnion := components.CreateFiltersUnionCompoundFilter(components.CompoundFilter{/* values here */})
+```
+
+### 
+
+```go lines
+filtersUnion := components.CreateFiltersUnionAny(any{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch filtersUnion.Type {
+	case components.FiltersUnionTypeFilters:
+		// filtersUnion.Filters is populated
+	case components.FiltersUnionTypeCompoundFilter:
+		// filtersUnion.CompoundFilter is populated
+	case components.FiltersUnionTypeAny:
+		// filtersUnion.Any is populated
+}
+```

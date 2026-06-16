@@ -1,0 +1,37 @@
+---
+title: ContentWebSearchToolResult - Go SDK
+sidebarTitle: ContentWebSearchToolResult
+description: ContentWebSearchToolResult type definition
+seoTitle: ContentWebSearchToolResult Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/contentwebsearchtoolresult
+'og:site_name': OpenRouter Documentation
+'og:title': ContentWebSearchToolResult Type | OpenRouter Go SDK
+'og:description': >-
+  ContentWebSearchToolResult type reference for the OpenRouter Go SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ContentWebSearchToolResult%20-%20Go%20SDK&description=ContentWebSearchToolResult%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                                                                                                                                                       | Type                                                                                                                                                                                                        | Required                                                                                                                                                                                                    | Description                                                                                                                                                                                                 | Example                                                                                                                                                                                                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CacheControl`                                                                                                                                                                                              | [*components.AnthropicCacheControlDirective](/client-sdks/go/api-reference/models/anthropiccachecontroldirective)                                                                                                     | :heavy_minus_sign:                                                                                                                                                                                          | Enable automatic prompt caching. When set at the top level, the system automatically applies cache breakpoints to the last cacheable block in the request. Currently supported for Anthropic Claude models. | `{"type": "ephemeral"}`                                                                                                                                                                             |
+| `Content`                                                                                                                                                                                                   | [components.MessagesMessageParamContentUnion3](/client-sdks/go/api-reference/models/messagesmessageparamcontentunion3)                                                                                                | :heavy_check_mark:                                                                                                                                                                                          | N/A                                                                                                                                                                                                         |                                                                                                                                                                                                             |
+| `ToolUseID`                                                                                                                                                                                                 | `string`                                                                                                                                                                                                    | :heavy_check_mark:                                                                                                                                                                                          | N/A                                                                                                                                                                                                         |                                                                                                                                                                                                             |
+| `Type`                                                                                                                                                                                                      | [components.TypeWebSearchToolResult](/client-sdks/go/api-reference/models/typewebsearchtoolresult)                                                                                                                    | :heavy_check_mark:                                                                                                                                                                                          | N/A                                                                                                                                                                                                         |                                                                                                                                                                                                             |

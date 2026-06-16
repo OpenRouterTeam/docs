@@ -1,0 +1,40 @@
+---
+title: CustomToolCallInputDoneEvent - Go SDK
+sidebarTitle: CustomToolCallInputDoneEvent
+description: CustomToolCallInputDoneEvent type definition
+seoTitle: CustomToolCallInputDoneEvent Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/customtoolcallinputdoneevent
+'og:site_name': OpenRouter Documentation
+'og:title': CustomToolCallInputDoneEvent Type | OpenRouter Go SDK
+'og:description': >-
+  CustomToolCallInputDoneEvent type reference for the OpenRouter Go SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CustomToolCallInputDoneEvent%20-%20Go%20SDK&description=CustomToolCallInputDoneEvent%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Event emitted when a custom tool call's freeform input streaming is complete. Mirrors `response.function_call_arguments.done` but for `custom` tools.
+
+## Fields
+
+| Field                                                                                                      | Type                                                                                                       | Required                                                                                                   | Description                                                                                                |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `Input`                                                                                                    | `string`                                                                                                   | :heavy_check_mark:                                                                                         | N/A                                                                                                        |
+| `ItemID`                                                                                                   | `string`                                                                                                   | :heavy_check_mark:                                                                                         | N/A                                                                                                        |
+| `OutputIndex`                                                                                              | `int64`                                                                                                    | :heavy_check_mark:                                                                                         | N/A                                                                                                        |
+| `SequenceNumber`                                                                                           | `int64`                                                                                                    | :heavy_check_mark:                                                                                         | N/A                                                                                                        |
+| `Type`                                                                                                     | [components.CustomToolCallInputDoneEventType](/client-sdks/go/api-reference/models/customtoolcallinputdoneeventtype) | :heavy_check_mark:                                                                                         | N/A                                                                                                        |

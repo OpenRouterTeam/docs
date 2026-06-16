@@ -1,0 +1,42 @@
+---
+title: Usage - Python SDK
+sidebarTitle: Usage
+description: Usage method reference
+seoTitle: Usage | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/api-reference/components/usage'
+'og:site_name': OpenRouter Documentation
+'og:title': Usage | OpenRouter Python SDK
+'og:description': >-
+  Usage method documentation for the OpenRouter Python SDK. Learn how to use
+  this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Usage%20-%20Python%20SDK&description=Usage%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Token usage information for the response
+
+## Fields
+
+| Field                                                                      | Type                                                                       | Required                                                                   | Description                                                                |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `input_tokens`                                                             | *int*                                                                      | :heavy_check_mark:                                                         | N/A                                                                        |
+| `input_tokens_details`                                                     | [components.InputTokensDetails](/client-sdks/python/api-reference/components/inputtokensdetails)       | :heavy_check_mark:                                                         | N/A                                                                        |
+| `output_tokens`                                                            | *int*                                                                      | :heavy_check_mark:                                                         | N/A                                                                        |
+| `output_tokens_details`                                                    | [components.OutputTokensDetails](/client-sdks/python/api-reference/components/outputtokensdetails)     | :heavy_check_mark:                                                         | N/A                                                                        |
+| `total_tokens`                                                             | *int*                                                                      | :heavy_check_mark:                                                         | N/A                                                                        |
+| `cost`                                                                     | *OptionalNullable[float]*                                                  | :heavy_minus_sign:                                                         | Cost of the completion                                                     |
+| `cost_details`                                                             | [Optional[components.UsageCostDetails]](../components/usagecostdetails.md) | :heavy_minus_sign:                                                         | N/A                                                                        |
+| `is_byok`                                                                  | *Optional[bool]*                                                           | :heavy_minus_sign:                                                         | Whether a request was made using a Bring Your Own Key configuration        |

@@ -1,0 +1,64 @@
+---
+title: Sort - Go SDK
+sidebarTitle: Sort
+description: Sort type definition
+seoTitle: Sort Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/sort'
+'og:site_name': OpenRouter Documentation
+'og:title': Sort Type | OpenRouter Go SDK
+'og:description': >-
+  Sort type reference for the OpenRouter Go SDK. Complete type definition and
+  usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Sort%20-%20Go%20SDK&description=Sort%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The sorting strategy to use for this request, if "order" is not specified. When set, no load balancing is performed.
+
+## Supported Types
+
+### ProviderSort
+
+```go lines
+sort := components.CreateSortProviderSort(components.ProviderSort{/* values here */})
+```
+
+### ProviderSortConfig
+
+```go lines
+sort := components.CreateSortProviderSortConfig(components.ProviderSortConfig{/* values here */})
+```
+
+### 
+
+```go lines
+sort := components.CreateSortAny(any{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch sort.Type {
+	case components.SortTypeProviderSort:
+		// sort.ProviderSort is populated
+	case components.SortTypeProviderSortConfig:
+		// sort.ProviderSortConfig is populated
+	case components.SortTypeAny:
+		// sort.Any is populated
+}
+```

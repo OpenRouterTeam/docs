@@ -1,0 +1,51 @@
+---
+title: ResponsesOutputItemFunctionCall - TypeScript SDK
+description: ResponsesOutputItemFunctionCall method reference
+seoTitle: ResponsesOutputItemFunctionCall | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/models/responsesoutputitemfunctioncall
+'og:site_name': OpenRouter Documentation
+'og:title': ResponsesOutputItemFunctionCall | OpenRouter TypeScript SDK
+'og:description': >-
+  ResponsesOutputItemFunctionCall method documentation for the OpenRouter
+  TypeScript SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponsesOutputItemFunctionCall%20-%20TypeScript%20SDK&description=ResponsesOutputItemFunctionCall%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ResponsesOutputItemFunctionCall } from "@openrouter/sdk/models";
+
+let value: ResponsesOutputItemFunctionCall = {
+  type: "function_call",
+  name: "get_weather",
+  arguments: "{\"location\":\"San Francisco\",\"unit\":\"celsius\"}",
+  callId: "call-abc123",
+};
+```
+
+## Fields
+
+| Field                                                                                          | Type                                                                                           | Required                                                                                       | Description                                                                                    |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `type`                                                                                         | [models.ResponsesOutputItemFunctionCallType](/agent-sdk/typescript/models/responsesoutputitemfunctioncalltype) | :heavy_check_mark:                                                                             | N/A                                                                                            |
+| `id`                                                                                           | *string*                                                                                       | :heavy_minus_sign:                                                                             | N/A                                                                                            |
+| `name`                                                                                         | *string*                                                                                       | :heavy_check_mark:                                                                             | N/A                                                                                            |
+| `arguments`                                                                                    | *string*                                                                                       | :heavy_check_mark:                                                                             | N/A                                                                                            |
+| `callId`                                                                                       | *string*                                                                                       | :heavy_check_mark:                                                                             | N/A                                                                                            |
+| `status`                                                                                       | *models.ResponsesOutputItemFunctionCallStatusUnion*                                            | :heavy_minus_sign:                                                                             | N/A                                                                                            |

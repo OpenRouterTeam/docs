@@ -1,0 +1,52 @@
+---
+title: ~~LegacyChatContentVideo~~ - TypeScript SDK
+sidebarTitle: ~~LegacyChatContentVideo~~
+description: ~~LegacyChatContentVideo~~ type definition
+seoTitle: ~~LegacyChatContentVideo~~ Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/legacychatcontentvideo
+'og:site_name': OpenRouter Documentation
+'og:title': ~~LegacyChatContentVideo~~ Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ~~LegacyChatContentVideo~~ type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=~~LegacyChatContentVideo~~%20-%20TypeScript%20SDK&description=~~LegacyChatContentVideo~~%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Video input content part (legacy format - deprecated)
+
+> :warning: **DEPRECATED**: This will be removed in a future release, please migrate away from it as soon as possible.
+
+## Example Usage
+
+```typescript lines
+import { LegacyChatContentVideo } from "@openrouter/sdk/models";
+
+let value: LegacyChatContentVideo = {
+  type: "input_video",
+  videoUrl: {
+    url: "https://example.com/video.mp4",
+  },
+};
+```
+
+## Fields
+
+| Field                                                              | Type                                                               | Required                                                           | Description                                                        | Example                                                            |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `type`                                                             | *"input_video"*                                                    | :heavy_check_mark:                                                 | N/A                                                                |                                                                    |
+| `videoUrl`                                                         | [models.ChatContentVideoInput](/agent-sdk/typescript/api-reference/models/chatcontentvideoinput) | :heavy_check_mark:                                                 | Video input object                                                 | `{"url": "https://example.com/video.mp4"}`                 |

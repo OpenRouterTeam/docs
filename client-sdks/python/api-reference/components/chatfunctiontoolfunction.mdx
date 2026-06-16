@@ -1,0 +1,36 @@
+---
+title: ChatFunctionToolFunction - Python SDK
+sidebarTitle: ChatFunctionToolFunction
+description: ChatFunctionToolFunction method reference
+seoTitle: ChatFunctionToolFunction | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/chatfunctiontoolfunction
+'og:site_name': OpenRouter Documentation
+'og:title': ChatFunctionToolFunction | OpenRouter Python SDK
+'og:description': >-
+  ChatFunctionToolFunction method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatFunctionToolFunction%20-%20Python%20SDK&description=ChatFunctionToolFunction%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                                                                                                                                                                              | Type                                                                                                                                                                                                                               | Required                                                                                                                                                                                                                           | Description                                                                                                                                                                                                                        | Example                                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cache_control`                                                                                                                                                                                                                    | [Optional[components.ChatContentCacheControl]](../components/chatcontentcachecontrol.md)                                                                                                                                           | :heavy_minus_sign:                                                                                                                                                                                                                 | Cache control for the content part                                                                                                                                                                                                 | `{"type": "ephemeral"}`                                                                                                                                                                                                    |
+| `function`                                                                                                                                                                                                                         | [components.ChatFunctionToolFunctionFunction](/client-sdks/python/api-reference/components/chatfunctiontoolfunctionfunction)                                                                                                                                   | :heavy_check_mark:                                                                                                                                                                                                                 | Function definition for tool calling                                                                                                                                                                                               | `{"description": "Get the current weather for a location","name": "get_weather","parameters": {"properties": {"location": {"description": "City name","type": "string"}`<br/>\},<br/>"required": [<br/>"location"<br/>],<br/>"type": "object"<br/>\}<br/>\} |
+| `type`                                                                                                                                                                                                                             | [components.ChatFunctionToolType](/client-sdks/python/api-reference/components/chatfunctiontooltype)                                                                                                                                                           | :heavy_check_mark:                                                                                                                                                                                                                 | N/A                                                                                                                                                                                                                                |                                                                                                                                                                                                                                    |

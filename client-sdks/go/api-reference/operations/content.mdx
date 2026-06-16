@@ -1,0 +1,78 @@
+---
+title: Content - Go SDK
+sidebarTitle: Content
+description: Content type definition
+seoTitle: Content Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/operations/content'
+'og:site_name': OpenRouter Documentation
+'og:title': Content Type | OpenRouter Go SDK
+'og:description': >-
+  Content type reference for the OpenRouter Go SDK. Complete type definition and
+  usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Content%20-%20Go%20SDK&description=Content%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### ContentText
+
+```go lines
+content := operations.CreateContentText(operations.ContentText{/* values here */})
+```
+
+### ContentImageURL
+
+```go lines
+content := operations.CreateContentImageURL(operations.ContentImageURL{/* values here */})
+```
+
+### ContentPartInputAudio
+
+```go lines
+content := operations.CreateContentInputAudio(components.ContentPartInputAudio{/* values here */})
+```
+
+### ContentPartInputVideo
+
+```go lines
+content := operations.CreateContentInputVideo(components.ContentPartInputVideo{/* values here */})
+```
+
+### ContentPartInputFile
+
+```go lines
+content := operations.CreateContentInputFile(components.ContentPartInputFile{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch content.Type {
+	case operations.ContentTypeText:
+		// content.ContentText is populated
+	case operations.ContentTypeImageURL:
+		// content.ContentImageURL is populated
+	case operations.ContentTypeInputAudio:
+		// content.ContentPartInputAudio is populated
+	case operations.ContentTypeInputVideo:
+		// content.ContentPartInputVideo is populated
+	case operations.ContentTypeInputFile:
+		// content.ContentPartInputFile is populated
+}
+```

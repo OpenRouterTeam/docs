@@ -1,0 +1,40 @@
+---
+title: PromptTokensDetails - Python SDK
+sidebarTitle: PromptTokensDetails
+description: PromptTokensDetails method reference
+seoTitle: PromptTokensDetails | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/operations/prompttokensdetails
+'og:site_name': OpenRouter Documentation
+'og:title': PromptTokensDetails | OpenRouter Python SDK
+'og:description': >-
+  PromptTokensDetails method documentation for the OpenRouter Python SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=PromptTokensDetails%20-%20Python%20SDK&description=PromptTokensDetails%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Per-modality token breakdown. Only present when the input contains 2+ modalities (e.g. text + image) and the upstream provider returns modality-level usage data. Only non-zero modality counts are included.
+
+## Fields
+
+| Field                                       | Type                                        | Required                                    | Description                                 | Example                                     |
+| ------------------------------------------- | ------------------------------------------- | ------------------------------------------- | ------------------------------------------- | ------------------------------------------- |
+| `audio_tokens`                              | *Optional[int]*                             | :heavy_minus_sign:                          | Number of audio tokens in the input         |                                             |
+| `file_tokens`                               | *Optional[int]*                             | :heavy_minus_sign:                          | Number of file/document tokens in the input |                                             |
+| `image_tokens`                              | *Optional[int]*                             | :heavy_minus_sign:                          | Number of image tokens in the input         | 258                                         |
+| `text_tokens`                               | *Optional[int]*                             | :heavy_minus_sign:                          | Number of text tokens in the input          | 8                                           |
+| `video_tokens`                              | *Optional[int]*                             | :heavy_minus_sign:                          | Number of video tokens in the input         |                                             |

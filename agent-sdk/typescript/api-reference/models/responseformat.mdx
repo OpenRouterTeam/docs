@@ -1,0 +1,75 @@
+---
+title: ResponseFormat - TypeScript SDK
+sidebarTitle: ResponseFormat
+description: ResponseFormat type definition
+seoTitle: ResponseFormat Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/api-reference/models/responseformat'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponseFormat Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ResponseFormat type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponseFormat%20-%20TypeScript%20SDK&description=ResponseFormat%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Response format configuration
+
+## Supported Types
+
+### `models.ChatFormatGrammarConfig`
+
+```typescript lines
+const value: models.ChatFormatGrammarConfig = {
+  grammar: "root ::= \"yes\" | \"no\"",
+  type: "grammar",
+};
+```
+
+### `models.FormatJsonObjectConfig`
+
+```typescript lines
+const value: models.FormatJsonObjectConfig = {
+  type: "json_object",
+};
+```
+
+### `models.ChatFormatJsonSchemaConfig`
+
+```typescript lines
+const value: models.ChatFormatJsonSchemaConfig = {
+  jsonSchema: {
+    name: "math_response",
+  },
+  type: "json_schema",
+};
+```
+
+### `models.ChatFormatPythonConfig`
+
+```typescript lines
+const value: models.ChatFormatPythonConfig = {
+  type: "python",
+};
+```
+
+### `models.ChatFormatTextConfig`
+
+```typescript lines
+const value: models.ChatFormatTextConfig = {
+  type: "text",
+};
+```

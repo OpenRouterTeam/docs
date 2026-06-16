@@ -1,0 +1,39 @@
+---
+title: MaxPrice - Python SDK
+sidebarTitle: MaxPrice
+description: MaxPrice method reference
+seoTitle: MaxPrice | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/api-reference/components/maxprice'
+'og:site_name': OpenRouter Documentation
+'og:title': MaxPrice | OpenRouter Python SDK
+'og:description': >-
+  MaxPrice method documentation for the OpenRouter Python SDK. Learn how to use
+  this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=MaxPrice%20-%20Python%20SDK&description=MaxPrice%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The object specifying the maximum price you want to pay for this request. USD price per million tokens, for prompt and completion.
+
+## Fields
+
+| Field                           | Type                            | Required                        | Description                     | Example                         |
+| ------------------------------- | ------------------------------- | ------------------------------- | ------------------------------- | ------------------------------- |
+| `audio`                         | *Optional[str]*                 | :heavy_minus_sign:              | N/A                             | 1000                            |
+| `completion`                    | *Optional[str]*                 | :heavy_minus_sign:              | N/A                             | 1000                            |
+| `image`                         | *Optional[str]*                 | :heavy_minus_sign:              | N/A                             | 1000                            |
+| `prompt`                        | *Optional[str]*                 | :heavy_minus_sign:              | Price per million prompt tokens | 1000                            |
+| `request`                       | *Optional[str]*                 | :heavy_minus_sign:              | N/A                             | 1000                            |

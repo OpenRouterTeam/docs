@@ -1,0 +1,51 @@
+---
+title: BulkUnassignMembersFromGuardrailRequest - TypeScript SDK
+description: BulkUnassignMembersFromGuardrailRequest method reference
+seoTitle: BulkUnassignMembersFromGuardrailRequest | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/operations/bulkunassignmembersfromguardrailrequest
+'og:site_name': OpenRouter Documentation
+'og:title': BulkUnassignMembersFromGuardrailRequest | OpenRouter TypeScript SDK
+'og:description': >-
+  BulkUnassignMembersFromGuardrailRequest method documentation for the
+  OpenRouter TypeScript SDK. Learn how to use this API endpoint with code
+  examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=BulkUnassignMembersFromGuardrailRequest%20-%20TypeScript%20SDK&description=BulkUnassignMembersFromGuardrailRequest%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { BulkUnassignMembersFromGuardrailRequest } from "@openrouter/sdk/models/operations";
+
+let value: BulkUnassignMembersFromGuardrailRequest = {
+  id: "550e8400-e29b-41d4-a716-446655440000",
+  requestBody: {
+    memberUserIds: [
+      "user_abc123",
+      "user_def456",
+    ],
+  },
+};
+```
+
+## Fields
+
+| Field                                                                                                                            | Type                                                                                                                             | Required                                                                                                                         | Description                                                                                                                      | Example                                                                                                                          |
+| -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                                                                                                                             | *string*                                                                                                                         | :heavy_check_mark:                                                                                                               | The unique identifier of the guardrail                                                                                           | 550e8400-e29b-41d4-a716-446655440000                                                                                             |
+| `requestBody`                                                                                                                    | [operations.BulkUnassignMembersFromGuardrailRequestBody](/agent-sdk/typescript/operations/bulkunassignmembersfromguardrailrequestbody) | :heavy_check_mark:                                                                                                               | N/A                                                                                                                              |                                                                                                                                  |

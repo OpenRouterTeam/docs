@@ -1,0 +1,40 @@
+---
+title: ContentPartAddedEvent - Go SDK
+sidebarTitle: ContentPartAddedEvent
+description: ContentPartAddedEvent type definition
+seoTitle: ContentPartAddedEvent Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/contentpartaddedevent'
+'og:site_name': OpenRouter Documentation
+'og:title': ContentPartAddedEvent Type | OpenRouter Go SDK
+'og:description': >-
+  ContentPartAddedEvent type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ContentPartAddedEvent%20-%20Go%20SDK&description=ContentPartAddedEvent%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Event emitted when a new content part is added to an output item
+
+## Fields
+
+| Field                                                                                        | Type                                                                                         | Required                                                                                     | Description                                                                                  |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `ContentIndex`                                                                               | `int64`                                                                                      | :heavy_check_mark:                                                                           | N/A                                                                                          |
+| `ItemID`                                                                                     | `string`                                                                                     | :heavy_check_mark:                                                                           | N/A                                                                                          |
+| `OutputIndex`                                                                                | `int64`                                                                                      | :heavy_check_mark:                                                                           | N/A                                                                                          |
+| `Part`                                                                                       | [components.ContentPartAddedEventPart](/client-sdks/go/api-reference/models/contentpartaddedeventpart) | :heavy_check_mark:                                                                           | N/A                                                                                          |
+| `SequenceNumber`                                                                             | `int64`                                                                                      | :heavy_check_mark:                                                                           | N/A                                                                                          |
+| `Type`                                                                                       | [components.ContentPartAddedEventType](/client-sdks/go/api-reference/models/contentpartaddedeventtype) | :heavy_check_mark:                                                                           | N/A                                                                                          |

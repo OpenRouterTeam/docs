@@ -1,0 +1,48 @@
+---
+title: StopServerToolsWhenStepCountIs - TypeScript SDK
+sidebarTitle: StopServerToolsWhenStepCountIs
+description: StopServerToolsWhenStepCountIs type definition
+seoTitle: StopServerToolsWhenStepCountIs Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/stopservertoolswhenstepcountis
+'og:site_name': OpenRouter Documentation
+'og:title': StopServerToolsWhenStepCountIs Type | OpenRouter TypeScript SDK
+'og:description': >-
+  StopServerToolsWhenStepCountIs type reference for the OpenRouter TypeScript
+  SDK. Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=StopServerToolsWhenStepCountIs%20-%20TypeScript%20SDK&description=StopServerToolsWhenStepCountIs%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Stop after the agent loop has executed this many steps.
+
+## Example Usage
+
+```typescript lines
+import { StopServerToolsWhenStepCountIs } from "@openrouter/sdk/models";
+
+let value: StopServerToolsWhenStepCountIs = {
+  stepCount: 5,
+  type: "step_count_is",
+};
+```
+
+## Fields
+
+| Field              | Type               | Required           | Description        |
+| ------------------ | ------------------ | ------------------ | ------------------ |
+| `stepCount`        | *number*           | :heavy_check_mark: | N/A                |
+| `type`             | *"step_count_is"*  | :heavy_check_mark: | N/A                |

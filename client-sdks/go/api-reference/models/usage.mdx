@@ -1,0 +1,42 @@
+---
+title: Usage - Go SDK
+sidebarTitle: Usage
+description: Usage type definition
+seoTitle: Usage Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/usage'
+'og:site_name': OpenRouter Documentation
+'og:title': Usage Type | OpenRouter Go SDK
+'og:description': >-
+  Usage type reference for the OpenRouter Go SDK. Complete type definition and
+  usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Usage%20-%20Go%20SDK&description=Usage%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Token usage information for the response
+
+## Fields
+
+| Field                                                                            | Type                                                                             | Required                                                                         | Description                                                                      |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `InputTokens`                                                                    | `int64`                                                                          | :heavy_check_mark:                                                               | N/A                                                                              |
+| `InputTokensDetails`                                                             | [components.InputTokensDetails](/client-sdks/go/api-reference/models/inputtokensdetails)   | :heavy_check_mark:                                                               | N/A                                                                              |
+| `OutputTokens`                                                                   | `int64`                                                                          | :heavy_check_mark:                                                               | N/A                                                                              |
+| `OutputTokensDetails`                                                            | [components.OutputTokensDetails](/client-sdks/go/api-reference/models/outputtokensdetails) | :heavy_check_mark:                                                               | N/A                                                                              |
+| `TotalTokens`                                                                    | `int64`                                                                          | :heavy_check_mark:                                                               | N/A                                                                              |
+| `Cost`                                                                           | optionalnullable.OptionalNullable[`float64`]                                     | :heavy_minus_sign:                                                               | Cost of the completion                                                           |
+| `CostDetails`                                                                    | [*components.UsageCostDetails](/client-sdks/go/api-reference/models/usagecostdetails)      | :heavy_minus_sign:                                                               | N/A                                                                              |
+| `IsByok`                                                                         | `*bool`                                                                          | :heavy_minus_sign:                                                               | Whether a request was made using a Bring Your Own Key configuration              |

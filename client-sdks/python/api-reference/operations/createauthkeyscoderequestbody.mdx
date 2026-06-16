@@ -1,0 +1,40 @@
+---
+title: CreateAuthKeysCodeRequestBody - Python SDK
+sidebarTitle: CreateAuthKeysCodeRequestBody
+description: CreateAuthKeysCodeRequestBody method reference
+seoTitle: CreateAuthKeysCodeRequestBody | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/operations/createauthkeyscoderequestbody
+'og:site_name': OpenRouter Documentation
+'og:title': CreateAuthKeysCodeRequestBody | OpenRouter Python SDK
+'og:description': >-
+  CreateAuthKeysCodeRequestBody method documentation for the OpenRouter Python
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateAuthKeysCodeRequestBody%20-%20Python%20SDK&description=CreateAuthKeysCodeRequestBody%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                                                                | Type                                                                                                                 | Required                                                                                                             | Description                                                                                                          | Example                                                                                                              |
+| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `callback_url`                                                                                                       | *str*                                                                                                                | :heavy_check_mark:                                                                                                   | The callback URL to redirect to after authorization. Note, only https URLs on ports 443 and 3000 are allowed.        | https://myapp.com/auth/callback                                                                                      |
+| `code_challenge`                                                                                                     | *Optional[str]*                                                                                                      | :heavy_minus_sign:                                                                                                   | PKCE code challenge for enhanced security                                                                            | E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM                                                                          |
+| `code_challenge_method`                                                                                              | [Optional[operations.CreateAuthKeysCodeCodeChallengeMethod]](../operations/createauthkeyscodecodechallengemethod.md) | :heavy_minus_sign:                                                                                                   | The method used to generate the code challenge                                                                       | S256                                                                                                                 |
+| `expires_at`                                                                                                         | [date](https://docs.python.org/3/library/datetime.html#date-objects)                                                 | :heavy_minus_sign:                                                                                                   | Optional expiration time for the API key to be created                                                               | 2027-12-31T23:59:59Z                                                                                                 |
+| `key_label`                                                                                                          | *Optional[str]*                                                                                                      | :heavy_minus_sign:                                                                                                   | Optional custom label for the API key. Defaults to the app name if not provided.                                     | My Custom Key                                                                                                        |
+| `limit`                                                                                                              | *Optional[float]*                                                                                                    | :heavy_minus_sign:                                                                                                   | Credit limit for the API key to be created                                                                           | 100                                                                                                                  |
+| `usage_limit_type`                                                                                                   | [Optional[operations.UsageLimitType]](../operations/usagelimittype.md)                                               | :heavy_minus_sign:                                                                                                   | Optional credit limit reset interval. When set, the credit limit resets on this interval.                            | monthly                                                                                                              |

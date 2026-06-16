@@ -1,0 +1,58 @@
+---
+title: Crypto API
+description: Coinbase Commerce API deprecation
+seoTitle: 'Crypto API | Deprecated Coinbase Commerce Endpoint'
+canonicalUrl: https://openrouter.ai/docs/cookbook/administration/crypto-api
+og:site_name: OpenRouter Documentation
+og:title: 'Crypto API - Deprecated Coinbase Commerce Endpoint'
+og:description: 'Coinbase deprecated the APIs used by the legacy Coinbase Commerce crypto credits endpoint, which now returns 410 Gone.'
+og:image: https://openrouter.ai/dynamic-og?title=Crypto%20API&description=Deprecated%20Coinbase%20Commerce%20Endpoint
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: bitcoin
+---
+
+<Warning>
+Coinbase deprecated the APIs used by this flow, so `POST /api/v1/credits/coinbase` has been
+removed and now returns `410 Gone`.
+</Warning>
+
+## Status
+
+The old programmatic Coinbase Commerce charge flow is no longer supported because Coinbase
+deprecated the underlying APIs it relied on. This includes the legacy flow that returned on-chain
+calldata for direct settlement.
+
+## What To Use Instead
+
+Use the web credits purchase flow on your
+[credits page](https://openrouter.ai/settings/credits). OpenRouter now uses Coinbase Business
+Checkouts for active Coinbase credit purchases.
+
+## Affected Endpoint
+
+```text lines
+POST /api/v1/credits/coinbase
+```
+
+Current behavior:
+
+```json lines
+{
+  "error": {
+    "code": 410,
+    "message": "The Coinbase APIs used by this endpoint have been deprecated, so the Coinbase Commerce credits API has been removed. Use the web credits purchase flow instead."
+  }
+}
+```
+
+## Notes
+
+- Existing SDK surfaces may still contain the deprecated `createCoinbaseCharge` method until the
+  next SDK regeneration.
+- New Coinbase webhook handling is for Coinbase Business Checkouts only.
+- Legacy Coinbase Commerce environment variables are no longer used.

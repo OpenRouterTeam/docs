@@ -1,0 +1,56 @@
+---
+title: ListGuardrailMemberAssignmentsResponse - TypeScript SDK
+description: ListGuardrailMemberAssignmentsResponse method reference
+seoTitle: ListGuardrailMemberAssignmentsResponse | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/operations/listguardrailmemberassignmentsresponse
+'og:site_name': OpenRouter Documentation
+'og:title': ListGuardrailMemberAssignmentsResponse | OpenRouter TypeScript SDK
+'og:description': >-
+  ListGuardrailMemberAssignmentsResponse method documentation for the OpenRouter
+  TypeScript SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ListGuardrailMemberAssignmentsResponse%20-%20TypeScript%20SDK&description=ListGuardrailMemberAssignmentsResponse%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+List of member assignments
+
+## Example Usage
+
+```typescript lines
+import { ListGuardrailMemberAssignmentsResponse } from "@openrouter/sdk/models/operations";
+
+let value: ListGuardrailMemberAssignmentsResponse = {
+  data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      userId: "user_abc123",
+      organizationId: "org_xyz789",
+      guardrailId: "550e8400-e29b-41d4-a716-446655440001",
+      assignedBy: "user_abc123",
+      createdAt: "2025-08-24T10:30:00Z",
+    },
+  ],
+  totalCount: 10,
+};
+```
+
+## Fields
+
+| Field                                                                                                            | Type                                                                                                             | Required                                                                                                         | Description                                                                                                      | Example                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `data`                                                                                                           | [operations.ListGuardrailMemberAssignmentsData](/client-sdks/typescript/operations/listguardrailmemberassignmentsdata)[] | :heavy_check_mark:                                                                                               | List of member assignments                                                                                       |                                                                                                                  |
+| `totalCount`                                                                                                     | *number*                                                                                                         | :heavy_check_mark:                                                                                               | Total number of member assignments                                                                               | 10                                                                                                               |

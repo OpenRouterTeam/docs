@@ -1,0 +1,49 @@
+---
+title: UpdateKeysRequest - TypeScript SDK
+sidebarTitle: UpdateKeysRequest
+description: UpdateKeysRequest type definition
+seoTitle: UpdateKeysRequest Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/updatekeysrequest
+'og:site_name': OpenRouter Documentation
+'og:title': UpdateKeysRequest Type | OpenRouter TypeScript SDK
+'og:description': >-
+  UpdateKeysRequest type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=UpdateKeysRequest%20-%20TypeScript%20SDK&description=UpdateKeysRequest%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { UpdateKeysRequest } from "@openrouter/sdk/models/operations";
+
+let value: UpdateKeysRequest = {
+  hash: "f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943",
+  requestBody: {},
+};
+```
+
+## Fields
+
+| Field                                                                                                                                             | Type                                                                                                                                              | Required                                                                                                                                          | Description                                                                                                                                       | Example                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `httpReferer`                                                                                                                                     | *string*                                                                                                                                          | :heavy_minus_sign:                                                                                                                                | The app identifier should be your app's URL and is used as the primary identifier for rankings.<br/>This is used to track API usage per application.<br/> |                                                                                                                                                   |
+| `appTitle`                                                                                                                                        | *string*                                                                                                                                          | :heavy_minus_sign:                                                                                                                                | The app display name allows you to customize how your app appears in OpenRouter's dashboard.<br/>                                                 |                                                                                                                                                   |
+| `appCategories`                                                                                                                                   | *string*                                                                                                                                          | :heavy_minus_sign:                                                                                                                                | Comma-separated list of app categories (e.g. "cli-agent,cloud-agent"). Used for marketplace rankings.<br/>                                        |                                                                                                                                                   |
+| `hash`                                                                                                                                            | *string*                                                                                                                                          | :heavy_check_mark:                                                                                                                                | The hash identifier of the API key to update                                                                                                      | f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943                                                                                  |
+| `requestBody`                                                                                                                                     | [operations.UpdateKeysRequestBody](/client-sdks/typescript/api-reference/operations/updatekeysrequestbody)                                                              | :heavy_check_mark:                                                                                                                                | N/A                                                                                                                                               | `{"disabled": false,"include_byok_in_limit": true,"limit": 75,"limit_reset": "daily","name": "Updated API Key Name"}` |

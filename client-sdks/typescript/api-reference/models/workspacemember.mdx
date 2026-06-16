@@ -1,0 +1,52 @@
+---
+title: WorkspaceMember - TypeScript SDK
+sidebarTitle: WorkspaceMember
+description: WorkspaceMember type definition
+seoTitle: WorkspaceMember Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/workspacemember
+'og:site_name': OpenRouter Documentation
+'og:title': WorkspaceMember Type | OpenRouter TypeScript SDK
+'og:description': >-
+  WorkspaceMember type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=WorkspaceMember%20-%20TypeScript%20SDK&description=WorkspaceMember%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { WorkspaceMember } from "@openrouter/sdk/models";
+
+let value: WorkspaceMember = {
+  createdAt: "2025-08-24T10:30:00Z",
+  id: "660e8400-e29b-41d4-a716-446655440000",
+  role: "member",
+  userId: "user_abc123",
+  workspaceId: "550e8400-e29b-41d4-a716-446655440000",
+};
+```
+
+## Fields
+
+| Field                                                          | Type                                                           | Required                                                       | Description                                                    | Example                                                        |
+| -------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------- |
+| `createdAt`                                                    | *string*                                                       | :heavy_check_mark:                                             | ISO 8601 timestamp of when the membership was created          | 2025-08-24T10:30:00Z                                           |
+| `id`                                                           | *string*                                                       | :heavy_check_mark:                                             | Unique identifier for the workspace membership                 | 660e8400-e29b-41d4-a716-446655440000                           |
+| `role`                                                         | [models.WorkspaceMemberRole](/client-sdks/typescript/api-reference/models/workspacememberrole) | :heavy_check_mark:                                             | Role of the member in the workspace                            | member                                                         |
+| `userId`                                                       | *string*                                                       | :heavy_check_mark:                                             | Clerk user ID of the member                                    | user_abc123                                                    |
+| `workspaceId`                                                  | *string*                                                       | :heavy_check_mark:                                             | ID of the workspace                                            | 550e8400-e29b-41d4-a716-446655440000                           |

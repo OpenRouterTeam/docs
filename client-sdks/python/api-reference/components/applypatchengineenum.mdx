@@ -1,0 +1,38 @@
+---
+title: ApplyPatchEngineEnum - Python SDK
+sidebarTitle: ApplyPatchEngineEnum
+description: ApplyPatchEngineEnum method reference
+seoTitle: ApplyPatchEngineEnum | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/applypatchengineenum
+'og:site_name': OpenRouter Documentation
+'og:title': ApplyPatchEngineEnum | OpenRouter Python SDK
+'og:description': >-
+  ApplyPatchEngineEnum method documentation for the OpenRouter Python SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ApplyPatchEngineEnum%20-%20Python%20SDK&description=ApplyPatchEngineEnum%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Which apply_patch engine to use. "auto" (default) uses native passthrough when the endpoint advertises native apply_patch support, otherwise falls back to OpenRouter's HITL validator. "native" forces native passthrough — when the endpoint does not support native, the request falls back to HITL. "openrouter" always runs the HITL validator. Native passthrough streams the diff incrementally via `apply_patch_call_operation_diff.delta` events; HITL buffers the diff for atomic delivery as a single delta.
+
+## Values
+
+| Name         | Value        |
+| ------------ | ------------ |
+| `AUTO`       | auto         |
+| `NATIVE`     | native       |
+| `OPENROUTER` | openrouter   |

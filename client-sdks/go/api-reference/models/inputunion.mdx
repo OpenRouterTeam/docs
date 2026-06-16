@@ -1,0 +1,56 @@
+---
+title: InputUnion - Go SDK
+sidebarTitle: InputUnion
+description: InputUnion type definition
+seoTitle: InputUnion Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/inputunion'
+'og:site_name': OpenRouter Documentation
+'og:title': InputUnion Type | OpenRouter Go SDK
+'og:description': >-
+  InputUnion type reference for the OpenRouter Go SDK. Complete type definition
+  and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=InputUnion%20-%20Go%20SDK&description=InputUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The input to the generation — either a prompt string or an array of messages
+
+## Supported Types
+
+### Input1
+
+```go lines
+inputUnion := components.CreateInputUnionInput1(components.Input1{/* values here */})
+```
+
+### Input2
+
+```go lines
+inputUnion := components.CreateInputUnionInput2(components.Input2{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch inputUnion.Type {
+	case components.InputUnionTypeInput1:
+		// inputUnion.Input1 is populated
+	case components.InputUnionTypeInput2:
+		// inputUnion.Input2 is populated
+}
+```

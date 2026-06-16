@@ -1,0 +1,62 @@
+---
+title: AllowedToolsUnion - Go SDK
+sidebarTitle: AllowedToolsUnion
+description: AllowedToolsUnion type definition
+seoTitle: AllowedToolsUnion Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/allowedtoolsunion'
+'og:site_name': OpenRouter Documentation
+'og:title': AllowedToolsUnion Type | OpenRouter Go SDK
+'og:description': >-
+  AllowedToolsUnion type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=AllowedToolsUnion%20-%20Go%20SDK&description=AllowedToolsUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### 
+
+```go lines
+allowedToolsUnion := components.CreateAllowedToolsUnionArrayOfStr([]string{/* values here */})
+```
+
+### AllowedTools
+
+```go lines
+allowedToolsUnion := components.CreateAllowedToolsUnionAllowedTools(components.AllowedTools{/* values here */})
+```
+
+### 
+
+```go lines
+allowedToolsUnion := components.CreateAllowedToolsUnionAny(any{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch allowedToolsUnion.Type {
+	case components.AllowedToolsUnionTypeArrayOfStr:
+		// allowedToolsUnion.ArrayOfStr is populated
+	case components.AllowedToolsUnionTypeAllowedTools:
+		// allowedToolsUnion.AllowedTools is populated
+	case components.AllowedToolsUnionTypeAny:
+		// allowedToolsUnion.Any is populated
+}
+```

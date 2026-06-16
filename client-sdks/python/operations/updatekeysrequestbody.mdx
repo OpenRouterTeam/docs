@@ -1,0 +1,36 @@
+---
+title: UpdateKeysRequestBody - Python SDK
+description: UpdateKeysRequestBody method reference
+seoTitle: UpdateKeysRequestBody | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/operations/updatekeysrequestbody'
+'og:site_name': OpenRouter Documentation
+'og:title': UpdateKeysRequestBody | OpenRouter Python SDK
+'og:description': >-
+  UpdateKeysRequestBody method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=UpdateKeysRequestBody%20-%20Python%20SDK&description=UpdateKeysRequestBody%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                                                                                                                  | Type                                                                                                                                                                   | Required                                                                                                                                                               | Description                                                                                                                                                            | Example                                                                                                                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                                                                                                                                                                 | *Optional[str]*                                                                                                                                                        | :heavy_minus_sign:                                                                                                                                                     | New name for the API key                                                                                                                                               | Updated API Key Name                                                                                                                                                   |
+| `disabled`                                                                                                                                                             | *Optional[bool]*                                                                                                                                                       | :heavy_minus_sign:                                                                                                                                                     | Whether to disable the API key                                                                                                                                         | false                                                                                                                                                                  |
+| `limit`                                                                                                                                                                | *OptionalNullable[float]*                                                                                                                                              | :heavy_minus_sign:                                                                                                                                                     | New spending limit for the API key in USD                                                                                                                              | 75                                                                                                                                                                     |
+| `limit_reset`                                                                                                                                                          | [OptionalNullable[operations.UpdateKeysLimitReset]](../operations/updatekeyslimitreset.md)                                                                             | :heavy_minus_sign:                                                                                                                                                     | New limit reset type for the API key (daily, weekly, monthly, or null for no reset). Resets happen automatically at midnight UTC, and weeks are Monday through Sunday. | daily                                                                                                                                                                  |
+| `include_byok_in_limit`                                                                                                                                                | *Optional[bool]*                                                                                                                                                       | :heavy_minus_sign:                                                                                                                                                     | Whether to include BYOK usage in the limit                                                                                                                             | true                                                                                                                                                                   |

@@ -1,0 +1,38 @@
+---
+title: PercentileStats - Go SDK
+sidebarTitle: PercentileStats
+description: PercentileStats type definition
+seoTitle: PercentileStats Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/percentilestats'
+'og:site_name': OpenRouter Documentation
+'og:title': PercentileStats Type | OpenRouter Go SDK
+'og:description': >-
+  PercentileStats type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=PercentileStats%20-%20Go%20SDK&description=PercentileStats%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Latency percentiles in milliseconds over the last 30 minutes. Latency measures time to first token. Only visible when authenticated with an API key or cookie; returns null for unauthenticated requests.
+
+## Fields
+
+| Field                    | Type                     | Required                 | Description              | Example                  |
+| ------------------------ | ------------------------ | ------------------------ | ------------------------ | ------------------------ |
+| `P50`                    | `float64`                | :heavy_check_mark:       | Median (50th percentile) | 25.5                     |
+| `P75`                    | `float64`                | :heavy_check_mark:       | 75th percentile          | 35.2                     |
+| `P90`                    | `float64`                | :heavy_check_mark:       | 90th percentile          | 48.7                     |
+| `P99`                    | `float64`                | :heavy_check_mark:       | 99th percentile          | 85.3                     |

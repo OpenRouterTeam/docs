@@ -1,0 +1,52 @@
+---
+title: ListProvidersResponse - TypeScript SDK
+sidebarTitle: ListProvidersResponse
+description: ListProvidersResponse type definition
+seoTitle: ListProvidersResponse Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/listprovidersresponse
+'og:site_name': OpenRouter Documentation
+'og:title': ListProvidersResponse Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ListProvidersResponse type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ListProvidersResponse%20-%20TypeScript%20SDK&description=ListProvidersResponse%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Returns a list of providers
+
+## Example Usage
+
+```typescript lines
+import { ListProvidersResponse } from "@openrouter/sdk/models/operations";
+
+let value: ListProvidersResponse = {
+  data: [
+    {
+      name: "OpenAI",
+      privacyPolicyUrl: "https://openai.com/privacy",
+      slug: "openai",
+    },
+  ],
+};
+```
+
+## Fields
+
+| Field                                                                          | Type                                                                           | Required                                                                       | Description                                                                    |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `data`                                                                         | [operations.ListProvidersData](/client-sdks/typescript/api-reference/operations/listprovidersdata)[] | :heavy_check_mark:                                                             | N/A                                                                            |

@@ -1,0 +1,53 @@
+---
+title: CompletionResponse - TypeScript SDK
+description: CompletionResponse method reference
+seoTitle: CompletionResponse | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/completionresponse'
+'og:site_name': OpenRouter Documentation
+'og:title': CompletionResponse | OpenRouter TypeScript SDK
+'og:description': >-
+  CompletionResponse method documentation for the OpenRouter TypeScript SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CompletionResponse%20-%20TypeScript%20SDK&description=CompletionResponse%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { CompletionResponse } from "@openrouter/sdk/models";
+
+let value: CompletionResponse = {
+  id: "<id>",
+  object: "text_completion",
+  created: 7985.17,
+  model: "Taurus",
+  choices: [],
+};
+```
+
+## Fields
+
+| Field                                                      | Type                                                       | Required                                                   | Description                                                |
+| ---------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- |
+| `id`                                                       | *string*                                                   | :heavy_check_mark:                                         | N/A                                                        |
+| `object`                                                   | *"text_completion"*                                        | :heavy_check_mark:                                         | N/A                                                        |
+| `created`                                                  | *number*                                                   | :heavy_check_mark:                                         | N/A                                                        |
+| `model`                                                    | *string*                                                   | :heavy_check_mark:                                         | N/A                                                        |
+| `provider`                                                 | *string*                                                   | :heavy_minus_sign:                                         | N/A                                                        |
+| `systemFingerprint`                                        | *string*                                                   | :heavy_minus_sign:                                         | N/A                                                        |
+| `choices`                                                  | [models.CompletionChoice](/agent-sdk/typescript/models/completionchoice)[] | :heavy_check_mark:                                         | N/A                                                        |
+| `usage`                                                    | [models.CompletionUsage](/agent-sdk/typescript/models/completionusage)     | :heavy_minus_sign:                                         | N/A                                                        |

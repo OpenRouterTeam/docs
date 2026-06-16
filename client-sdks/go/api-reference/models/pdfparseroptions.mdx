@@ -1,0 +1,35 @@
+---
+title: PDFParserOptions - Go SDK
+sidebarTitle: PDFParserOptions
+description: PDFParserOptions type definition
+seoTitle: PDFParserOptions Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/pdfparseroptions'
+'og:site_name': OpenRouter Documentation
+'og:title': PDFParserOptions Type | OpenRouter Go SDK
+'og:description': >-
+  PDFParserOptions type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=PDFParserOptions%20-%20Go%20SDK&description=PDFParserOptions%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Options for PDF parsing.
+
+## Fields
+
+| Field                                                                                                              | Type                                                                                                               | Required                                                                                                           | Description                                                                                                        | Example                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `Engine`                                                                                                           | [*components.PDFParserEngine](/client-sdks/go/api-reference/models/pdfparserengine)                                          | :heavy_minus_sign:                                                                                                 | The engine to use for parsing PDF files. "pdf-text" is deprecated and automatically redirected to "cloudflare-ai". | cloudflare-ai                                                                                                      |

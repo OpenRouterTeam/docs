@@ -1,0 +1,46 @@
+---
+title: RequestTimeoutResponseError - TypeScript SDK
+sidebarTitle: RequestTimeoutResponseError
+description: RequestTimeoutResponseError type definition
+seoTitle: RequestTimeoutResponseError Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/errors/requesttimeoutresponseerror
+'og:site_name': OpenRouter Documentation
+'og:title': RequestTimeoutResponseError Type | OpenRouter TypeScript SDK
+'og:description': >-
+  RequestTimeoutResponseError type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=RequestTimeoutResponseError%20-%20TypeScript%20SDK&description=RequestTimeoutResponseError%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Request Timeout - Operation exceeded time limit
+
+## Example Usage
+
+```typescript lines
+import { RequestTimeoutResponseError } from "@openrouter/sdk/models/errors";
+
+// No examples available for this model
+```
+
+## Fields
+
+| Field                                                                                     | Type                                                                                      | Required                                                                                  | Description                                                                               | Example                                                                                   |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `error`                                                                                   | [models.RequestTimeoutResponseErrorData](/agent-sdk/typescript/api-reference/models/requesttimeoutresponseerrordata) | :heavy_check_mark:                                                                        | Error data for RequestTimeoutResponse                                                     | `{"code": 408,"message": "Operation timed out. Please try again later."}`    |
+| `openrouterMetadata`                                                                      | `Record<string, *any*>`                                                                     | :heavy_minus_sign:                                                                        | N/A                                                                                       |                                                                                           |
+| `userId`                                                                                  | *string*                                                                                  | :heavy_minus_sign:                                                                        | N/A                                                                                       |                                                                                           |

@@ -1,0 +1,46 @@
+---
+title: ChatContentAudioInputAudio - TypeScript SDK
+sidebarTitle: ChatContentAudioInputAudio
+description: ChatContentAudioInputAudio type definition
+seoTitle: ChatContentAudioInputAudio Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/chatcontentaudioinputaudio
+'og:site_name': OpenRouter Documentation
+'og:title': ChatContentAudioInputAudio Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ChatContentAudioInputAudio type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatContentAudioInputAudio%20-%20TypeScript%20SDK&description=ChatContentAudioInputAudio%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ChatContentAudioInputAudio } from "@openrouter/sdk/models";
+
+let value: ChatContentAudioInputAudio = {
+  data: "<value>",
+  format: "<value>",
+};
+```
+
+## Fields
+
+| Field                                                                                                       | Type                                                                                                        | Required                                                                                                    | Description                                                                                                 |
+| ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `data`                                                                                                      | *string*                                                                                                    | :heavy_check_mark:                                                                                          | Base64 encoded audio data                                                                                   |
+| `format`                                                                                                    | *string*                                                                                                    | :heavy_check_mark:                                                                                          | Audio format (e.g., wav, mp3, flac, m4a, ogg, aiff, aac, pcm16, pcm24). Supported formats vary by provider. |

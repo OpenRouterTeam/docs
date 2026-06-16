@@ -1,0 +1,122 @@
+---
+title: Prompt Injection Detection
+description: Regex-based prompt injection guardrail patterns
+seoTitle: 'Prompt Injection Detection | OpenRouter Guardrails'
+canonicalUrl: https://openrouter.ai/docs/guides/features/guardrails/prompt-injection
+og:site_name: OpenRouter Documentation
+og:title: 'Prompt Injection Detection - Guardrail Regex Patterns'
+og:description: 'Reference documentation for the regex-based prompt injection detection patterns used by OpenRouter guardrails, inspired by the OWASP LLM Prompt Injection Prevention Cheat Sheet.'
+og:image: https://openrouter.ai/dynamic-og?title=Prompt%20Injection%20Detection&description=Guardrail%20regex%20patterns
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+icon: syringe
+---
+
+OpenRouter's regex-based prompt injection detection scans incoming requests for common injection techniques using pattern matching. This feature is **free** and adds **minimal latency** to requests since the patterns are evaluated locally before the request is forwarded to the model provider.
+
+<Note>
+To enable prompt injection detection, navigate to your [workspace guardrails](https://openrouter.ai/workspaces), open or create a guardrail, and configure the **Security** section.
+</Note>
+
+## How It Works
+
+When regex-based detection is enabled on a guardrail, every incoming message is scanned against a set of patterns derived from the [OWASP LLM Prompt Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html), among other resources. If a match is found, the configured action is taken:
+
+- **Flag** — The request passes through unmodified; the detection is recorded for observability (metrics + analytics events) but no enforcement is applied. Useful for measuring true-positive rates on your own traffic before switching to `redact` or `blocked`.
+- **Redact** — Matched spans are replaced with `[PROMPT_INJECTION]` and the sanitized request is forwarded to the model.
+- **Block** — The entire request is rejected with a `403` before it reaches the model.
+
+<Note>
+When multiple guardrails apply to the same request (for example, a workspace default plus an API key–scoped guardrail), the most restrictive action wins. Priority is `block` > `redact` > `flag`.
+</Note>
+
+## Detection Patterns
+
+The following regex patterns are checked against all user-supplied message content. Patterns are case-insensitive unless noted otherwise.
+
+### Direct Instruction Override
+
+Attempts to make the model ignore, override, or invalidate its original instructions.
+
+{/* <PromptInjectionPatternsTables /> */}
+<table><thead><tr><th>Pattern Name</th><th>Regex</th><th>Description</th></tr></thead><tbody><tr><td><code>ignore_previous_instructions</code></td><td><code class="regex-cell">/ignore\s+(all\s+)?(previous|prior)\s+((?:safety|security|system|operational|internal|core|original|initial|existing|given|stated|provided|defined|specified|established)\s+)?(instructions?|rules?|guidelines?|constraints?|directives?)/i</code></td><td>Attempts to discard prior instructions, optionally scoped to safety/system/etc.</td></tr><tr><td><code>disregard_instructions</code></td><td><code class="regex-cell">/disregard\s+(all\s+)?(previous|prior|above)\s+(instructions?|rules?|guidelines?|constraints?|directives?)/i</code></td><td>Variants of "disregard your instructions/rules/guidelines/constraints/directives".</td></tr><tr><td><code>forget_instructions</code></td><td><code class="regex-cell">/forget\s+(all\s+)?(previous|prior|above)\s+(instructions?|rules?|guidelines?|constraints?|directives?)/i</code></td><td>Attempts to erase prior instructions/rules/guidelines/constraints/directives.</td></tr><tr><td><code>new_instructions</code></td><td><code class="regex-cell">/new\s+instructions?:/i</code></td><td>Injection marker introducing replacement instructions.</td></tr><tr><td><code>do_not_follow</code></td><td><code class="regex-cell">/do\s+not\s+follow\s+(the\s+)?(system|developer|previous|original)/i</code></td><td>Telling the model to disobey its system prompt.</td></tr><tr><td><code>supersede_instructions</code></td><td><code class="regex-cell">/supersedes?\s+(all\s+)?(prior|previous)\s+(instructions?|rules?|guidelines?|constraints?|directives?)/i</code></td><td>"Supersedes prior instructions" override.</td></tr><tr><td><code>void_instructions</code></td><td><code class="regex-cell">/(all\s+)?(previous|prior)\s+instructions?\s+(are|is)\s+(void|invalid|null|obsolete|cancelled|revoked)/i</code></td><td>Claims prior instructions are void/invalid/revoked/cancelled.</td></tr></tbody></table>
+
+### Developer / Admin Mode Activation
+Attempts to switch the model into a privileged operating mode.
+
+<table><thead><tr><th>Pattern Name</th><th>Regex</th><th>Description</th></tr></thead><tbody><tr><td><code>developer_mode</code></td><td><code class="regex-cell">/you\s+are\s+now\s+(in\s+)?developer\s+mode/i</code></td><td>Claims the model is in developer mode.</td></tr><tr><td><code>enter_special_mode</code></td><td><code class="regex-cell">/enter\s+(developer|admin|debug|maintenance)\s+mode/i</code></td><td>Requests to enter a special (developer/admin/debug/maintenance) mode.</td></tr><tr><td><code>activate_special_mode</code></td><td><code class="regex-cell">/activate\s+(developer|admin|debug|jailbreak)\s+mode/i</code></td><td>Requests to activate a special (developer/admin/debug/jailbreak) mode.</td></tr></tbody></table>
+
+### System Override
+Attempts to override the model's core instructions.
+
+<table><thead><tr><th>Pattern Name</th><th>Regex</th><th>Description</th></tr></thead><tbody><tr><td><code>system_override</code></td><td><code class="regex-cell">/\bsystem\s+override\b/i</code></td><td>Direct system-override keyword.</td></tr><tr><td><code>override_instructions</code></td><td><code class="regex-cell">/override\s+(your\s+)?(instructions?|rules?|guidelines?|constraints?|directives?)/i</code></td><td>Attempts to override instructions/rules/guidelines/constraints/directives.</td></tr></tbody></table>
+
+### Prompt Extraction
+Attempts to reveal the model's system prompt or internal instructions.
+
+<table><thead><tr><th>Pattern Name</th><th>Regex</th><th>Description</th></tr></thead><tbody><tr><td><code>reveal_prompt</code></td><td><code class="regex-cell">/reveal\s+((?:your?|yoru|yuor|the|my|its|his|her|our|their)\s+)?((?:(?:full|hidden|complete|internal|secret|original|entire|exact|actual|real)\s+){0,2})((?:system|systme|sysetm|systemp?)\s+)?prompt\b/i</code></td><td>Asks the model to reveal its (full/hidden/internal/secret/original/…) prompt.</td></tr><tr><td><code>show_prompt</code></td><td><code class="regex-cell">/show\s+(me\s+)?((?:your?|yoru|yuor|the|my|its|his|her|our|their)\s+)((?:system|systme|sysetm|systemp?)\s+)?prompt\b/i</code></td><td>Asks the model to show its prompt.</td></tr><tr><td><code>what_instructions</code></td><td><code class="regex-cell">/what\s+(are|were)\s+(your\s+)?(exact\s+)?instructions/i</code></td><td>Asks what the model's instructions are.</td></tr><tr><td><code>repeat_instructions</code></td><td><code class="regex-cell">/repeat\s+(the\s+)?(text|instructions?)\s+(above|before)/i</code></td><td>Asks the model to repeat earlier text.</td></tr><tr><td><code>output_prompt</code></td><td><code class="regex-cell">/output\s+(your\s+)?(initial|original|system)\s+(prompt|instructions?)/i</code></td><td>Asks for the original system prompt.</td></tr></tbody></table>
+
+### Role Manipulation
+Attempts to change the model's identity or remove its restrictions.
+
+<table><thead><tr><th>Pattern Name</th><th>Regex</th><th>Description</th></tr></thead><tbody><tr><td><code>remove_restrictions</code></td><td><code class="regex-cell">/you\s+are\s+no\s+longer\s+(bound|restricted|limited)/i</code></td><td>Claims the model is no longer restricted.</td></tr><tr><td><code>act_unbound</code></td><td><code class="regex-cell">/act\s+as\s+if\s+(you('re|\s+are)\s+)?not\s+bound/i</code></td><td>Asks the model to pretend it has no restrictions.</td></tr><tr><td><code>pretend_different</code></td><td><code class="regex-cell">/pretend\s+(you('re|\s+are)\s+)?(a\s+)?different\s+(ai|assistant|model)/i</code></td><td>Asks the model to impersonate a different AI.</td></tr><tr><td><code>identity_hijack</code></td><td><code class="regex-cell">/you\s+are\s+now\s+(?:(?:a|an)\s+)?\w+.{0,40}(without\s+(any\s+)?restrict|ignor\w*\s+(all|any|every|prev)|bypass|unrestrict|unlimit|obey\s+only|no\s+(rules|limits|restrict|boundari))/i</code></td><td>Identity hijacking with explicitly malicious modifiers.</td></tr></tbody></table>
+
+### DAN-Style Jailbreaks
+"Do Anything Now" (DAN) and related jailbreak prompts.
+
+<table><thead><tr><th>Pattern Name</th><th>Regex</th><th>Description</th></tr></thead><tbody><tr><td><code>dan_jailbreak</code></td><td><code class="regex-cell">\bDAN\b.*\bdo\s+anything\s+now\b</code></td><td>The classic DAN jailbreak (case-sensitive for "DAN").</td></tr><tr><td><code>jailbreak_mode</code></td><td><code class="regex-cell">/jailbreak(ed)?\s+(mode|prompt)/i</code></td><td>References to jailbreak modes or prompts.</td></tr></tbody></table>
+
+### Safety Bypass
+Attempts to disable or circumvent the model's safety measures.
+
+<table><thead><tr><th>Pattern Name</th><th>Regex</th><th>Description</th></tr></thead><tbody><tr><td><code>bypass_safety</code></td><td><code class="regex-cell">/bypass\s+(your\s+)?(safety|security|content|ethical)\s+(filters?|measures?|guidelines?|restrictions?)/i</code></td><td>Attempts to bypass safety/security/content/ethical filters.</td></tr><tr><td><code>disable_safety</code></td><td><code class="regex-cell">/disable\s+(your\s+)?(safety|security|content)\s+(filters?|measures?)/i</code></td><td>Attempts to disable safety/security/content measures.</td></tr><tr><td><code>ignore_safety</code></td><td><code class="regex-cell">/(ignore|disregard)\s+(all\s+)?(your\s+)?(safety|security|ethical|content)\s+(guidelines?|rules?|restrictions?|measures?|filters?|polic(?:y|ies)|protocols?)/i</code></td><td>Attempts to ignore or disregard safety/security/ethical/content guidelines, rules, or restrictions.</td></tr></tbody></table>
+
+### Tag Injection & Role Spoofing
+Attempts to inject fake system/assistant/user tags or delimiters to confuse the model's understanding of the conversation structure.
+
+<table><thead><tr><th>Pattern Name</th><th>Regex</th><th>Description</th></tr></thead><tbody><tr><td><code>system_tag_injection</code></td><td><code class="regex-cell">/&lt;\s*\/?\s*system\s*\/?&gt;/i</code></td><td>Injecting `&lt;system&gt;`, `&lt;/system&gt;`, or `&lt;system/&gt;` tags.</td></tr><tr><td><code>role_tag_injection</code></td><td><code class="regex-cell">/&lt;\s*\/?\s*(assistant|developer|tool|function)\s*\/?&gt;/i</code></td><td>Injecting role-related XML tags (including self-closing).</td></tr><tr><td><code>role_delimiter_injection</code></td><td><code class="regex-cell">/\]\s*\n\s*\[?(system|assistant|user)\]?:/i</code></td><td>Injecting role delimiters like `[system]:`.</td></tr><tr><td><code>bracketed_role_spoofing</code></td><td><code class="regex-cell">/\[\s*(System\s*Message|System|Assistant|Internal)\s*\]/i</code></td><td>Fake bracketed role labels (e.g. `[System]`, `[Assistant]`).</td></tr><tr><td><code>system_prefix_spoofing</code></td><td><code class="regex-cell">/^\s*System:\s+/im</code></td><td>Lines starting with `System:` to impersonate system messages (multiline).</td></tr></tbody></table>
+
+### Control Token Injection
+Attempts to inject model-internal control tokens that can confuse tokenization or chat-template parsing.
+
+<table><thead><tr><th>Pattern Name</th><th>Regex</th><th>Description</th></tr></thead><tbody><tr><td><code>control_token_injection</code></td><td><code class="regex-cell">&lt;\|(?:im_start|im_end|eot_id|start_header_id|end_header_id|endoftext)\|&gt;</code></td><td>ChatML / Llama 3 / generic pipe-delimited control tokens.</td></tr><tr><td><code>deepseek_control_token_injection</code></td><td><code class="regex-cell">&lt;\uff5c(?:end\u2581of\u2581sentence|begin\u2581of\u2581sentence)\uff5c&gt;</code></td><td>DeepSeek fullwidth-pipe (`｜`) control tokens.</td></tr></tbody></table>
+
+## Evasion Detection
+
+In addition to the regex patterns above, the detection system includes techniques to catch common evasion strategies.
+
+### Typoglycemia Detection
+
+Attackers may scramble the middle letters of keywords while keeping the first and last letters intact (e.g., "ignroe" instead of "ignore"). The system checks for typoglycemia variants of these target words:
+
+{/* <PromptInjectionFuzzyTargets /> */}
+
+`ignore`, `bypass`, `override`, `reveal`, `delete`, `system`, `prompt`, `instructions`
+
+### Encoding-Based Evasion
+
+The system decodes Base64 and hex-encoded content (including space-separated hex pairs like `69 67 6e 6f 72 65`), then checks the decoded text for injection keywords:
+
+{/* <PromptInjectionEvasionKeywords /> */}
+`ignore`, `bypass`, `override`, `reveal`, `system`, `prompt`
+
+This catches attempts to hide malicious instructions behind encoding layers. Two encoding detectors run: `base64_encoded_injection`, `hex_encoded_injection`.
+{/* <PromptInjectionEncodingDetectors />. */}
+
+### Character-Spaced Evasion
+
+Text with character spacing (e.g., `i g n o r e  p r e v i o u s`) is normalized by collapsing spaces, then re-scanned against all patterns. This prevents simple spacing-based evasion.
+
+## Limitations
+
+- **Regex-based detection is not exhaustive.** Sophisticated or novel injection techniques may not be caught.
+- **Flag mode does not enforce.** A flagged request is forwarded to the model exactly as submitted — the detection is recorded for dashboards and analytics only. Use `flag` to measure match rates on real traffic; switch to `redact` or `block` once you're confident the false-positive rate is acceptable.
+- **False positives** are possible. Some legitimate prompts may contain phrases that match these patterns (e.g., a prompt about security testing). Test your guardrail configuration with representative traffic — ideally in `flag` mode first — before enforcing broadly.
+
+## Further Reading
+
+- [OWASP LLM Prompt Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html)
+- [Guardrails documentation](/guides/features/guardrails)
+- [Guardrails API reference](/api/api-reference/guardrails/list-guardrails)

@@ -1,0 +1,69 @@
+---
+title: ChatMessageTokenLogprobs - TypeScript SDK
+description: ChatMessageTokenLogprobs method reference
+seoTitle: ChatMessageTokenLogprobs | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/chatmessagetokenlogprobs'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatMessageTokenLogprobs | OpenRouter TypeScript SDK
+'og:description': >-
+  ChatMessageTokenLogprobs method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatMessageTokenLogprobs%20-%20TypeScript%20SDK&description=ChatMessageTokenLogprobs%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript expandable lines
+import { ChatMessageTokenLogprobs } from "@openrouter/sdk/models";
+
+let value: ChatMessageTokenLogprobs = {
+  content: [
+    {
+      token: "<value>",
+      logprob: 2764.68,
+      bytes: [
+        1199.17,
+        6426.57,
+      ],
+      topLogprobs: [
+        {
+          token: "<value>",
+          logprob: 9715.54,
+          bytes: [
+            7041.35,
+          ],
+        },
+      ],
+    },
+  ],
+  refusal: [
+    {
+      token: "<value>",
+      logprob: 9280.35,
+      bytes: [],
+      topLogprobs: [],
+    },
+  ],
+};
+```
+
+## Fields
+
+| Field                                                                    | Type                                                                     | Required                                                                 | Description                                                              |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `content`                                                                | [models.ChatMessageTokenLogprob](/agent-sdk/typescript/models/chatmessagetokenlogprob)[] | :heavy_check_mark:                                                       | N/A                                                                      |
+| `refusal`                                                                | [models.ChatMessageTokenLogprob](/agent-sdk/typescript/models/chatmessagetokenlogprob)[] | :heavy_check_mark:                                                       | N/A                                                                      |

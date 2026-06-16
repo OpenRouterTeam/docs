@@ -1,0 +1,38 @@
+---
+title: WorkspaceMember - Python SDK
+sidebarTitle: WorkspaceMember
+description: WorkspaceMember method reference
+seoTitle: WorkspaceMember | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/workspacemember
+'og:site_name': OpenRouter Documentation
+'og:title': WorkspaceMember | OpenRouter Python SDK
+'og:description': >-
+  WorkspaceMember method documentation for the OpenRouter Python SDK. Learn how
+  to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=WorkspaceMember%20-%20Python%20SDK&description=WorkspaceMember%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                  | Type                                                                   | Required                                                               | Description                                                            | Example                                                                |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `created_at`                                                           | *str*                                                                  | :heavy_check_mark:                                                     | ISO 8601 timestamp of when the membership was created                  | 2025-08-24T10:30:00Z                                                   |
+| `id`                                                                   | *str*                                                                  | :heavy_check_mark:                                                     | Unique identifier for the workspace membership                         | 660e8400-e29b-41d4-a716-446655440000                                   |
+| `role`                                                                 | [components.WorkspaceMemberRole](/client-sdks/python/api-reference/components/workspacememberrole) | :heavy_check_mark:                                                     | Role of the member in the workspace                                    | member                                                                 |
+| `user_id`                                                              | *str*                                                                  | :heavy_check_mark:                                                     | Clerk user ID of the member                                            | user_abc123                                                            |
+| `workspace_id`                                                         | *str*                                                                  | :heavy_check_mark:                                                     | ID of the workspace                                                    | 550e8400-e29b-41d4-a716-446655440000                                   |

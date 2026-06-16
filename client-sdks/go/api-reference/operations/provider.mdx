@@ -1,0 +1,129 @@
+---
+title: Provider - Go SDK
+sidebarTitle: Provider
+description: Provider type definition
+seoTitle: Provider Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/operations/provider'
+'og:site_name': OpenRouter Documentation
+'og:title': Provider Type | OpenRouter Go SDK
+'og:description': >-
+  Provider type reference for the OpenRouter Go SDK. Complete type definition
+  and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Provider%20-%20Go%20SDK&description=Provider%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Optional provider slug to filter by (e.g. `openai`, `anthropic`, `amazon-bedrock`).
+
+## Example Usage
+
+```go lines
+import (
+	"github.com/OpenRouterTeam/go-sdk/models/operations"
+)
+
+value := operations.ProviderAi21
+
+// Open enum: custom values can be created with a direct type cast
+custom := operations.Provider("custom_value")
+```
+
+## Values
+
+| Name                      | Value                     |
+| ------------------------- | ------------------------- |
+| `ProviderAi21`            | ai21                      |
+| `ProviderAionLabs`        | aion-labs                 |
+| `ProviderAkashml`         | akashml                   |
+| `ProviderAlibaba`         | alibaba                   |
+| `ProviderAmazonBedrock`   | amazon-bedrock            |
+| `ProviderAmazonNova`      | amazon-nova               |
+| `ProviderAmbient`         | ambient                   |
+| `ProviderAnthropic`       | anthropic                 |
+| `ProviderArceeAi`         | arcee-ai                  |
+| `ProviderAtlasCloud`      | atlas-cloud               |
+| `ProviderAvian`           | avian                     |
+| `ProviderAzure`           | azure                     |
+| `ProviderBaidu`           | baidu                     |
+| `ProviderBaseten`         | baseten                   |
+| `ProviderBlackForestLabs` | black-forest-labs         |
+| `ProviderByteplus`        | byteplus                  |
+| `ProviderCerebras`        | cerebras                  |
+| `ProviderChutes`          | chutes                    |
+| `ProviderCirrascale`      | cirrascale                |
+| `ProviderClarifai`        | clarifai                  |
+| `ProviderCloudflare`      | cloudflare                |
+| `ProviderCohere`          | cohere                    |
+| `ProviderCrusoe`          | crusoe                    |
+| `ProviderDarkbloom`       | darkbloom                 |
+| `ProviderDeepinfra`       | deepinfra                 |
+| `ProviderDeepseek`        | deepseek                  |
+| `ProviderDekallm`         | dekallm                   |
+| `ProviderDigitalocean`    | digitalocean              |
+| `ProviderFeatherless`     | featherless               |
+| `ProviderFireworks`       | fireworks                 |
+| `ProviderFriendli`        | friendli                  |
+| `ProviderGmicloud`        | gmicloud                  |
+| `ProviderGoogleAiStudio`  | google-ai-studio          |
+| `ProviderGoogleVertex`    | google-vertex             |
+| `ProviderGroq`            | groq                      |
+| `ProviderHyperbolic`      | hyperbolic                |
+| `ProviderInception`       | inception                 |
+| `ProviderInceptron`       | inceptron                 |
+| `ProviderInferenceNet`    | inference-net             |
+| `ProviderInfermatic`      | infermatic                |
+| `ProviderInflection`      | inflection                |
+| `ProviderIoNet`           | io-net                    |
+| `ProviderIonstream`       | ionstream                 |
+| `ProviderLiquid`          | liquid                    |
+| `ProviderMancer`          | mancer                    |
+| `ProviderMara`            | mara                      |
+| `ProviderMinimax`         | minimax                   |
+| `ProviderMistral`         | mistral                   |
+| `ProviderModelrun`        | modelrun                  |
+| `ProviderModular`         | modular                   |
+| `ProviderMoonshotai`      | moonshotai                |
+| `ProviderMorph`           | morph                     |
+| `ProviderNcompass`        | ncompass                  |
+| `ProviderNebius`          | nebius                    |
+| `ProviderNexAgi`          | nex-agi                   |
+| `ProviderNextbit`         | nextbit                   |
+| `ProviderNovita`          | novita                    |
+| `ProviderNvidia`          | nvidia                    |
+| `ProviderOpenInference`   | open-inference            |
+| `ProviderOpenai`          | openai                    |
+| `ProviderParasail`        | parasail                  |
+| `ProviderPerceptron`      | perceptron                |
+| `ProviderPerplexity`      | perplexity                |
+| `ProviderPhala`           | phala                     |
+| `ProviderPoolside`        | poolside                  |
+| `ProviderRecraft`         | recraft                   |
+| `ProviderReka`            | reka                      |
+| `ProviderRelace`          | relace                    |
+| `ProviderSambanova`       | sambanova                 |
+| `ProviderSeed`            | seed                      |
+| `ProviderSiliconflow`     | siliconflow               |
+| `ProviderSourceful`       | sourceful                 |
+| `ProviderStepfun`         | stepfun                   |
+| `ProviderStreamlake`      | streamlake                |
+| `ProviderSwitchpoint`     | switchpoint               |
+| `ProviderTogether`        | together                  |
+| `ProviderUpstage`         | upstage                   |
+| `ProviderVenice`          | venice                    |
+| `ProviderWandb`           | wandb                     |
+| `ProviderXai`             | xai                       |
+| `ProviderXiaomi`          | xiaomi                    |
+| `ProviderZAi`             | z-ai                      |

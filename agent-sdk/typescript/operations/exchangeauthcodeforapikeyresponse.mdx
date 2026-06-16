@@ -1,0 +1,48 @@
+---
+title: ExchangeAuthCodeForAPIKeyResponse - TypeScript SDK
+description: ExchangeAuthCodeForAPIKeyResponse method reference
+seoTitle: ExchangeAuthCodeForAPIKeyResponse | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/operations/exchangeauthcodeforapikeyresponse
+'og:site_name': OpenRouter Documentation
+'og:title': ExchangeAuthCodeForAPIKeyResponse | OpenRouter TypeScript SDK
+'og:description': >-
+  ExchangeAuthCodeForAPIKeyResponse method documentation for the OpenRouter
+  TypeScript SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ExchangeAuthCodeForAPIKeyResponse%20-%20TypeScript%20SDK&description=ExchangeAuthCodeForAPIKeyResponse%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Successfully exchanged code for an API key
+
+## Example Usage
+
+```typescript lines
+import { ExchangeAuthCodeForAPIKeyResponse } from "@openrouter/sdk/models/operations";
+
+let value: ExchangeAuthCodeForAPIKeyResponse = {
+  key:
+    "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",
+  userId: "user_2yOPcMpKoQhcd4bVgSMlELRaIah",
+};
+```
+
+## Fields
+
+| Field                                                                     | Type                                                                      | Required                                                                  | Description                                                               | Example                                                                   |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `key`                                                                     | *string*                                                                  | :heavy_check_mark:                                                        | The API key to use for OpenRouter requests                                | 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 |
+| `userId`                                                                  | *string*                                                                  | :heavy_check_mark:                                                        | User ID associated with the API key                                       | user_2yOPcMpKoQhcd4bVgSMlELRaIah                                          |

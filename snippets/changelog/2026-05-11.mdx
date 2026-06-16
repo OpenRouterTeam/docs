@@ -1,0 +1,15 @@
+### Product changes
+
+- **Personal profile pages** -- [Profiles](https://openrouter.ai/profile) have a brand new design with a refreshed activity-chart layout.
+- **Deep Linking to Workspaces** -- Workspace URLs now resolve via an immutable workspace id, so links keep working after a slug rename. [Docs](/guides/features/workspaces).
+- **Redesigned model page header** -- The header section on every [model](https://openrouter.ai/models) page has been rebuilt to be faster to scan and easier to navigate between providers and tabs.
+- **Tier-aware pricing pills on provider cards** -- Provider cards on the [model](https://openrouter.ai/models) page now surface `flex` and `priority` pricing as compact pills so you can see how each service tier changes cost at a glance. [Docs](/guides/features/service-tiers).
+- **Redesigned BYOK provider detail page** -- The [Bring-Your-Own-Key provider detail page](https://openrouter.ai/workspaces/default/byok) has been refreshed with a cleaner provider summary and clearer connection status. [Docs](/guides/overview/auth/byok).
+- **Docs button on app pages** -- App pages on [/apps](https://openrouter.ai/apps) now include a Docs button that links directly to relevant cookbook guides and integration docs for that framework.
+- **Logs table renders entities as pills** -- The [logs](https://openrouter.ai/logs) table now displays model, provider, app, and other entity columns as compact pills, and the Supporting Models column is consolidated into a count with a click-through popup instead of an overflowing list.
+- **Guardrails search and status filter** -- The [guardrails](https://openrouter.ai/settings/guardrails) list now supports searching by name and filtering by status. [Docs](/guides/features/guardrails).
+- **Session-id-based provider stickiness** -- Requests that share the same session id now route to the same provider when possible, improving cache hit rates for multi-turn agentic workflows. [Docs](/guides/routing/provider-selection).
+- **Hermes Agent cookbook** -- Added a [Hermes Agent](/cookbook/coding-agents/hermes-integration) cookbook page covering how to use Nous Research's Hermes Agent with OpenRouter.
+- **Human-in-the-loop tools announcement** -- Published a [blog post](https://openrouter.ai/blog/human-in-the-loop-tools) announcing human-in-the-loop tool calling support across the API and SDKs.
+- **Fixed: Jupyter notebook attachments in chat** -- Attaching `.ipynb` files in the [chatroom](https://openrouter.ai/chat) no longer balloons the prompt with embedded cell outputs.
+- **Fixed: server-tool cost aggregation** -- The `cost_details` field returned to clients now aggregates costs correctly when a server tool runs multiple inner turns inside one user-facing request.

@@ -1,0 +1,39 @@
+---
+title: ErrorEvent - Python SDK
+sidebarTitle: ErrorEvent
+description: ErrorEvent method reference
+seoTitle: ErrorEvent | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/api-reference/components/errorevent'
+'og:site_name': OpenRouter Documentation
+'og:title': ErrorEvent | OpenRouter Python SDK
+'og:description': >-
+  ErrorEvent method documentation for the OpenRouter Python SDK. Learn how to
+  use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ErrorEvent%20-%20Python%20SDK&description=ErrorEvent%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Event emitted when an error occurs during streaming
+
+## Fields
+
+| Field                                                        | Type                                                         | Required                                                     | Description                                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `code`                                                       | *Nullable[str]*                                              | :heavy_check_mark:                                           | N/A                                                          |
+| `message`                                                    | *str*                                                        | :heavy_check_mark:                                           | N/A                                                          |
+| `param`                                                      | *Nullable[str]*                                              | :heavy_check_mark:                                           | N/A                                                          |
+| `sequence_number`                                            | *int*                                                        | :heavy_check_mark:                                           | N/A                                                          |
+| `type`                                                       | [components.ErrorEventType](/client-sdks/python/api-reference/components/erroreventtype) | :heavy_check_mark:                                           | N/A                                                          |

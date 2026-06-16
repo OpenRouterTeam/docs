@@ -1,0 +1,47 @@
+---
+title: BulkAddWorkspaceMembersRequest - TypeScript SDK
+sidebarTitle: BulkAddWorkspaceMembersRequest
+description: BulkAddWorkspaceMembersRequest type definition
+seoTitle: BulkAddWorkspaceMembersRequest Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/bulkaddworkspacemembersrequest
+'og:site_name': OpenRouter Documentation
+'og:title': BulkAddWorkspaceMembersRequest Type | OpenRouter TypeScript SDK
+'og:description': >-
+  BulkAddWorkspaceMembersRequest type reference for the OpenRouter TypeScript
+  SDK. Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=BulkAddWorkspaceMembersRequest%20-%20TypeScript%20SDK&description=BulkAddWorkspaceMembersRequest%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { BulkAddWorkspaceMembersRequest } from "@openrouter/sdk/models";
+
+let value: BulkAddWorkspaceMembersRequest = {
+  userIds: [
+    "user_abc123",
+    "user_def456",
+  ],
+};
+```
+
+## Fields
+
+| Field                                                                                                       | Type                                                                                                        | Required                                                                                                    | Description                                                                                                 | Example                                                                                                     |
+| ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `userIds`                                                                                                   | *string*[]                                                                                                  | :heavy_check_mark:                                                                                          | List of user IDs to add to the workspace. Members are assigned the same role they hold in the organization. | [<br/>"user_abc123",<br/>"user_def456"<br/>]                                                                |

@@ -1,0 +1,48 @@
+---
+title: AnthropicBase64ImageSource - TypeScript SDK
+sidebarTitle: AnthropicBase64ImageSource
+description: AnthropicBase64ImageSource type definition
+seoTitle: AnthropicBase64ImageSource Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/anthropicbase64imagesource
+'og:site_name': OpenRouter Documentation
+'og:title': AnthropicBase64ImageSource Type | OpenRouter TypeScript SDK
+'og:description': >-
+  AnthropicBase64ImageSource type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=AnthropicBase64ImageSource%20-%20TypeScript%20SDK&description=AnthropicBase64ImageSource%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { AnthropicBase64ImageSource } from "@openrouter/sdk/models";
+
+let value: AnthropicBase64ImageSource = {
+  data: "/9j/4AAQ...",
+  mediaType: "image/jpeg",
+  type: "base64",
+};
+```
+
+## Fields
+
+| Field                                                                | Type                                                                 | Required                                                             | Description                                                          | Example                                                              |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `data`                                                               | *string*                                                             | :heavy_check_mark:                                                   | N/A                                                                  |                                                                      |
+| `mediaType`                                                          | [models.AnthropicImageMimeType](/client-sdks/typescript/api-reference/models/anthropicimagemimetype) | :heavy_check_mark:                                                   | N/A                                                                  | image/jpeg                                                           |
+| `type`                                                               | *"base64"*                                                           | :heavy_check_mark:                                                   | N/A                                                                  |                                                                      |

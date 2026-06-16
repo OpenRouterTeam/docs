@@ -1,0 +1,49 @@
+---
+title: GetCreditsResponse - TypeScript SDK
+sidebarTitle: GetCreditsResponse
+description: GetCreditsResponse type definition
+seoTitle: GetCreditsResponse Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/getcreditsresponse
+'og:site_name': OpenRouter Documentation
+'og:title': GetCreditsResponse Type | OpenRouter TypeScript SDK
+'og:description': >-
+  GetCreditsResponse type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=GetCreditsResponse%20-%20TypeScript%20SDK&description=GetCreditsResponse%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Total credits purchased and used
+
+## Example Usage
+
+```typescript lines
+import { GetCreditsResponse } from "@openrouter/sdk/models/operations";
+
+let value: GetCreditsResponse = {
+  data: {
+    totalCredits: 100.5,
+    totalUsage: 25.75,
+  },
+};
+```
+
+## Fields
+
+| Field                                                                  | Type                                                                   | Required                                                               | Description                                                            | Example                                                                |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `data`                                                                 | [operations.GetCreditsData](/client-sdks/typescript/api-reference/operations/getcreditsdata) | :heavy_check_mark:                                                     | N/A                                                                    | `{"total_credits": 100.5,"total_usage": 25.75}`           |

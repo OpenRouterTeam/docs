@@ -1,0 +1,51 @@
+---
+title: WebSearchEngine - Go SDK
+sidebarTitle: WebSearchEngine
+description: WebSearchEngine type definition
+seoTitle: WebSearchEngine Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/websearchengine'
+'og:site_name': OpenRouter Documentation
+'og:title': WebSearchEngine Type | OpenRouter Go SDK
+'og:description': >-
+  WebSearchEngine type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=WebSearchEngine%20-%20Go%20SDK&description=WebSearchEngine%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The search engine to use for web search.
+
+## Example Usage
+
+```go lines
+import (
+	"github.com/OpenRouterTeam/go-sdk/models/components"
+)
+
+value := components.WebSearchEngineNative
+
+// Open enum: custom values can be created with a direct type cast
+custom := components.WebSearchEngine("custom_value")
+```
+
+## Values
+
+| Name                       | Value                      |
+| -------------------------- | -------------------------- |
+| `WebSearchEngineNative`    | native                     |
+| `WebSearchEngineExa`       | exa                        |
+| `WebSearchEngineFirecrawl` | firecrawl                  |
+| `WebSearchEngineParallel`  | parallel                   |

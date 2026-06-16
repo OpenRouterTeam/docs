@@ -1,0 +1,63 @@
+---
+title: LocalShellCallItem - TypeScript SDK
+sidebarTitle: LocalShellCallItem
+description: LocalShellCallItem type definition
+seoTitle: LocalShellCallItem Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/localshellcallitem
+'og:site_name': OpenRouter Documentation
+'og:title': LocalShellCallItem Type | OpenRouter TypeScript SDK
+'og:description': >-
+  LocalShellCallItem type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=LocalShellCallItem%20-%20TypeScript%20SDK&description=LocalShellCallItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+A local shell command execution call
+
+## Example Usage
+
+```typescript lines
+import { LocalShellCallItem } from "@openrouter/sdk/models";
+
+let value: LocalShellCallItem = {
+  action: {
+    command: [
+      "ls",
+      "-la",
+    ],
+    env: {
+      "PATH": "/usr/bin",
+    },
+    type: "exec",
+  },
+  callId: "call-abc123",
+  id: "shell-abc123",
+  status: "completed",
+  type: "local_shell_call",
+};
+```
+
+## Fields
+
+| Field                                                                    | Type                                                                     | Required                                                                 | Description                                                              | Example                                                                  |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `action`                                                                 | [models.LocalShellCallItemAction](/agent-sdk/typescript/api-reference/models/localshellcallitemaction) | :heavy_check_mark:                                                       | N/A                                                                      |                                                                          |
+| `callId`                                                                 | *string*                                                                 | :heavy_check_mark:                                                       | N/A                                                                      |                                                                          |
+| `id`                                                                     | *string*                                                                 | :heavy_check_mark:                                                       | N/A                                                                      |                                                                          |
+| `status`                                                                 | [models.ToolCallStatus](/agent-sdk/typescript/api-reference/models/toolcallstatus)                     | :heavy_check_mark:                                                       | N/A                                                                      | completed                                                                |
+| `type`                                                                   | [models.TypeLocalShellCall](/agent-sdk/typescript/api-reference/models/typelocalshellcall)             | :heavy_check_mark:                                                       | N/A                                                                      |                                                                          |

@@ -1,0 +1,38 @@
+---
+title: CreateEmbeddingsRequest - Python SDK
+description: CreateEmbeddingsRequest method reference
+seoTitle: CreateEmbeddingsRequest | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/operations/createembeddingsrequest'
+'og:site_name': OpenRouter Documentation
+'og:title': CreateEmbeddingsRequest | OpenRouter Python SDK
+'og:description': >-
+  CreateEmbeddingsRequest method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateEmbeddingsRequest%20-%20Python%20SDK&description=CreateEmbeddingsRequest%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                            | Type                                                                             | Required                                                                         | Description                                                                      |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `input`                                                                          | [operations.InputUnion](/client-sdks/python/api-reference/operations/inputunion)                             | :heavy_check_mark:                                                               | N/A                                                                              |
+| `model`                                                                          | *str*                                                                            | :heavy_check_mark:                                                               | N/A                                                                              |
+| `encoding_format`                                                                | [Optional[operations.EncodingFormat]](../operations/encodingformat.md)           | :heavy_minus_sign:                                                               | N/A                                                                              |
+| `dimensions`                                                                     | *Optional[int]*                                                                  | :heavy_minus_sign:                                                               | N/A                                                                              |
+| `user`                                                                           | *Optional[str]*                                                                  | :heavy_minus_sign:                                                               | N/A                                                                              |
+| `provider`                                                                       | [Optional[components.ProviderPreferences]](../components/providerpreferences.md) | :heavy_minus_sign:                                                               | Provider routing preferences for the request.                                    |
+| `input_type`                                                                     | *Optional[str]*                                                                  | :heavy_minus_sign:                                                               | N/A                                                                              |

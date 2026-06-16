@@ -1,0 +1,38 @@
+---
+title: CreateAuthKeysCodeData - Python SDK
+sidebarTitle: CreateAuthKeysCodeData
+description: CreateAuthKeysCodeData method reference
+seoTitle: CreateAuthKeysCodeData | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/operations/createauthkeyscodedata
+'og:site_name': OpenRouter Documentation
+'og:title': CreateAuthKeysCodeData | OpenRouter Python SDK
+'og:description': >-
+  CreateAuthKeysCodeData method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateAuthKeysCodeData%20-%20Python%20SDK&description=CreateAuthKeysCodeData%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Auth code data
+
+## Fields
+
+| Field                                                    | Type                                                     | Required                                                 | Description                                              | Example                                                  |
+| -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| `app_id`                                                 | *int*                                                    | :heavy_check_mark:                                       | The application ID associated with this auth code        | 12345                                                    |
+| `created_at`                                             | *str*                                                    | :heavy_check_mark:                                       | ISO 8601 timestamp of when the auth code was created     | 2025-08-24T10:30:00Z                                     |
+| `id`                                                     | *str*                                                    | :heavy_check_mark:                                       | The authorization code ID to use in the exchange request | auth_code_xyz789                                         |

@@ -1,0 +1,68 @@
+---
+title: CreateCoinbaseChargeData - TypeScript SDK
+description: CreateCoinbaseChargeData method reference
+seoTitle: CreateCoinbaseChargeData | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/operations/createcoinbasechargedata'
+'og:site_name': OpenRouter Documentation
+'og:title': CreateCoinbaseChargeData | OpenRouter TypeScript SDK
+'og:description': >-
+  CreateCoinbaseChargeData method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateCoinbaseChargeData%20-%20TypeScript%20SDK&description=CreateCoinbaseChargeData%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript expandable lines
+import { CreateCoinbaseChargeData } from "@openrouter/sdk/models/operations";
+
+let value: CreateCoinbaseChargeData = {
+  id: "<id>",
+  createdAt: "1730810681036",
+  expiresAt: "1742058293127",
+  web3Data: {
+    transferIntent: {
+      callData: {
+        deadline: "<value>",
+        feeAmount: "<value>",
+        id: "<id>",
+        operator: "<value>",
+        prefix: "<value>",
+        recipient: "<value>",
+        recipientAmount: "<value>",
+        recipientCurrency: "<value>",
+        refundDestination: "<value>",
+        signature: "<value>",
+      },
+      metadata: {
+        chainId: 7497.17,
+        contractAddress: "<value>",
+        sender: "<value>",
+      },
+    },
+  },
+};
+```
+
+## Fields
+
+| Field                                                      | Type                                                       | Required                                                   | Description                                                |
+| ---------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- |
+| `id`                                                       | *string*                                                   | :heavy_check_mark:                                         | N/A                                                        |
+| `createdAt`                                                | *string*                                                   | :heavy_check_mark:                                         | N/A                                                        |
+| `expiresAt`                                                | *string*                                                   | :heavy_check_mark:                                         | N/A                                                        |
+| `web3Data`                                                 | [operations.Web3Data](/agent-sdk/typescript/operations/web3data) | :heavy_check_mark:                                         | N/A                                                        |

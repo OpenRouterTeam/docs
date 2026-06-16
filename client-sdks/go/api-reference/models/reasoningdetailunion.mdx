@@ -1,0 +1,66 @@
+---
+title: ReasoningDetailUnion - Go SDK
+sidebarTitle: ReasoningDetailUnion
+description: ReasoningDetailUnion type definition
+seoTitle: ReasoningDetailUnion Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/reasoningdetailunion'
+'og:site_name': OpenRouter Documentation
+'og:title': ReasoningDetailUnion Type | OpenRouter Go SDK
+'og:description': >-
+  ReasoningDetailUnion type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ReasoningDetailUnion%20-%20Go%20SDK&description=ReasoningDetailUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Reasoning detail union schema
+
+## Supported Types
+
+### ReasoningDetailEncrypted
+
+```go lines
+reasoningDetailUnion := components.CreateReasoningDetailUnionReasoningEncrypted(components.ReasoningDetailEncrypted{/* values here */})
+```
+
+### ReasoningDetailSummary
+
+```go lines
+reasoningDetailUnion := components.CreateReasoningDetailUnionReasoningSummary(components.ReasoningDetailSummary{/* values here */})
+```
+
+### ReasoningDetailText
+
+```go lines
+reasoningDetailUnion := components.CreateReasoningDetailUnionReasoningText(components.ReasoningDetailText{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch reasoningDetailUnion.Type {
+	case components.ReasoningDetailUnionTypeReasoningEncrypted:
+		// reasoningDetailUnion.ReasoningDetailEncrypted is populated
+	case components.ReasoningDetailUnionTypeReasoningSummary:
+		// reasoningDetailUnion.ReasoningDetailSummary is populated
+	case components.ReasoningDetailUnionTypeReasoningText:
+		// reasoningDetailUnion.ReasoningDetailText is populated
+	default:
+		// Unknown type - use reasoningDetailUnion.GetUnknownRaw() for raw JSON
+}
+```

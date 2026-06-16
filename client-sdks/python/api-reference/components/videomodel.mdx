@@ -1,0 +1,47 @@
+---
+title: VideoModel - Python SDK
+sidebarTitle: VideoModel
+description: VideoModel method reference
+seoTitle: VideoModel | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/api-reference/components/videomodel'
+'og:site_name': OpenRouter Documentation
+'og:title': VideoModel | OpenRouter Python SDK
+'og:description': >-
+  VideoModel method documentation for the OpenRouter Python SDK. Learn how to
+  use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=VideoModel%20-%20Python%20SDK&description=VideoModel%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                                      | Type                                                                                       | Required                                                                                   | Description                                                                                | Example                                                                                    |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `allowed_passthrough_parameters`                                                           | List[*str*]                                                                                | :heavy_check_mark:                                                                         | List of parameters that are allowed to be passed through to the provider                   |                                                                                            |
+| `canonical_slug`                                                                           | *str*                                                                                      | :heavy_check_mark:                                                                         | Canonical slug for the model                                                               | openai/gpt-4                                                                               |
+| `created`                                                                                  | *int*                                                                                      | :heavy_check_mark:                                                                         | Unix timestamp of when the model was created                                               | 1692901234                                                                                 |
+| `description`                                                                              | *Optional[str]*                                                                            | :heavy_minus_sign:                                                                         | Description of the model                                                                   | GPT-4 is a large multimodal model that can solve difficult problems with greater accuracy. |
+| `generate_audio`                                                                           | *Nullable[bool]*                                                                           | :heavy_check_mark:                                                                         | Whether the model supports generating audio alongside video                                |                                                                                            |
+| `hugging_face_id`                                                                          | *OptionalNullable[str]*                                                                    | :heavy_minus_sign:                                                                         | Hugging Face model identifier, if applicable                                               | microsoft/DialoGPT-medium                                                                  |
+| `id`                                                                                       | *str*                                                                                      | :heavy_check_mark:                                                                         | Unique identifier for the model                                                            | openai/gpt-4                                                                               |
+| `name`                                                                                     | *str*                                                                                      | :heavy_check_mark:                                                                         | Display name of the model                                                                  | GPT-4                                                                                      |
+| `pricing_skus`                                                                             | Dict[str, *str*]                                                                           | :heavy_minus_sign:                                                                         | Pricing SKUs with provider prefix stripped, values as strings                              |                                                                                            |
+| `seed`                                                                                     | *Nullable[bool]*                                                                           | :heavy_check_mark:                                                                         | Whether the model supports deterministic generation via seed parameter                     |                                                                                            |
+| `supported_aspect_ratios`                                                                  | List[[components.SupportedAspectRatio](/client-sdks/python/api-reference/components/supportedaspectratio)]             | :heavy_check_mark:                                                                         | Supported output aspect ratios                                                             |                                                                                            |
+| `supported_durations`                                                                      | List[*int*]                                                                                | :heavy_check_mark:                                                                         | Supported video durations in seconds                                                       |                                                                                            |
+| `supported_frame_images`                                                                   | List[[components.SupportedFrameImage](/client-sdks/python/api-reference/components/supportedframeimage)]               | :heavy_check_mark:                                                                         | Supported frame image types (e.g. first_frame, last_frame)                                 |                                                                                            |
+| `supported_resolutions`                                                                    | List[[components.SupportedResolution](/client-sdks/python/api-reference/components/supportedresolution)]               | :heavy_check_mark:                                                                         | Supported output resolutions                                                               |                                                                                            |
+| `supported_sizes`                                                                          | List[[components.SupportedSize](/client-sdks/python/api-reference/components/supportedsize)]                           | :heavy_check_mark:                                                                         | Supported output sizes (width x height)                                                    |                                                                                            |

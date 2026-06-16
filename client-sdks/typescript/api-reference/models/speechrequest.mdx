@@ -1,0 +1,52 @@
+---
+title: SpeechRequest - TypeScript SDK
+sidebarTitle: SpeechRequest
+description: SpeechRequest type definition
+seoTitle: SpeechRequest Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/api-reference/models/speechrequest'
+'og:site_name': OpenRouter Documentation
+'og:title': SpeechRequest Type | OpenRouter TypeScript SDK
+'og:description': >-
+  SpeechRequest type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=SpeechRequest%20-%20TypeScript%20SDK&description=SpeechRequest%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Text-to-speech request input
+
+## Example Usage
+
+```typescript lines
+import { SpeechRequest } from "@openrouter/sdk/models";
+
+let value: SpeechRequest = {
+  input: "Hello world",
+  model: "elevenlabs/eleven-turbo-v2",
+  voice: "alloy",
+};
+```
+
+## Fields
+
+| Field                                                                                                         | Type                                                                                                          | Required                                                                                                      | Description                                                                                                   | Example                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `input`                                                                                                       | *string*                                                                                                      | :heavy_check_mark:                                                                                            | Text to synthesize                                                                                            | Hello world                                                                                                   |
+| `model`                                                                                                       | *string*                                                                                                      | :heavy_check_mark:                                                                                            | TTS model identifier                                                                                          | elevenlabs/eleven-turbo-v2                                                                                    |
+| `provider`                                                                                                    | [models.SpeechRequestProvider](/client-sdks/typescript/api-reference/models/speechrequestprovider)                                            | :heavy_minus_sign:                                                                                            | Provider-specific passthrough configuration                                                                   |                                                                                                               |
+| `responseFormat`                                                                                              | [models.ResponseFormatEnum](/client-sdks/typescript/api-reference/models/responseformatenum)                                                  | :heavy_minus_sign:                                                                                            | Audio output format                                                                                           | pcm                                                                                                           |
+| `speed`                                                                                                       | *number*                                                                                                      | :heavy_minus_sign:                                                                                            | Playback speed multiplier. Only used by models that support it (e.g. OpenAI TTS). Ignored by other providers. | 1                                                                                                             |
+| `voice`                                                                                                       | *string*                                                                                                      | :heavy_check_mark:                                                                                            | Voice identifier (provider-specific).                                                                         | alloy                                                                                                         |

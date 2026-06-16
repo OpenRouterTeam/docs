@@ -1,0 +1,78 @@
+---
+title: ListEndpointsZdrResponse - TypeScript SDK
+description: ListEndpointsZdrResponse method reference
+seoTitle: ListEndpointsZdrResponse | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/operations/listendpointszdrresponse'
+'og:site_name': OpenRouter Documentation
+'og:title': ListEndpointsZdrResponse | OpenRouter TypeScript SDK
+'og:description': >-
+  ListEndpointsZdrResponse method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ListEndpointsZdrResponse%20-%20TypeScript%20SDK&description=ListEndpointsZdrResponse%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Returns a list of endpoints
+
+## Example Usage
+
+```typescript expandable lines
+import { ListEndpointsZdrResponse } from "@openrouter/sdk/models/operations";
+
+let value: ListEndpointsZdrResponse = {
+  data: [
+    {
+      name: "OpenAI: GPT-4",
+      modelName: "GPT-4",
+      contextLength: 8192,
+      pricing: {
+        prompt: "0.00003",
+        completion: "0.00006",
+      },
+      providerName: "OpenAI",
+      tag: "openai",
+      quantization: "fp16",
+      maxCompletionTokens: 4096,
+      maxPromptTokens: 8192,
+      supportedParameters: [
+        "temperature",
+        "top_p",
+        "max_tokens",
+      ],
+      uptimeLast30m: 99.5,
+      supportsImplicitCaching: true,
+      latencyLast30m: {
+        p50: 0.25,
+        p75: 0.35,
+        p90: 0.48,
+        p99: 0.85,
+      },
+      throughputLast30m: {
+        p50: 45.2,
+        p75: 38.5,
+        p90: 28.3,
+        p99: 15.1,
+      },
+    },
+  ],
+};
+```
+
+## Fields
+
+| Field                                                     | Type                                                      | Required                                                  | Description                                               |
+| --------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------- |
+| `data`                                                    | [models.PublicEndpoint](/client-sdks/typescript/models/publicendpoint)[] | :heavy_check_mark:                                        | N/A                                                       |

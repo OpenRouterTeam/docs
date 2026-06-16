@@ -1,0 +1,53 @@
+---
+title: OutputModality - Go SDK
+sidebarTitle: OutputModality
+description: OutputModality type definition
+seoTitle: OutputModality Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/outputmodality'
+'og:site_name': OpenRouter Documentation
+'og:title': OutputModality Type | OpenRouter Go SDK
+'og:description': >-
+  OutputModality type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputModality%20-%20Go%20SDK&description=OutputModality%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```go lines
+import (
+	"github.com/OpenRouterTeam/go-sdk/models/components"
+)
+
+value := components.OutputModalityText
+
+// Open enum: custom values can be created with a direct type cast
+custom := components.OutputModality("custom_value")
+```
+
+## Values
+
+| Name                          | Value                         |
+| ----------------------------- | ----------------------------- |
+| `OutputModalityText`          | text                          |
+| `OutputModalityImage`         | image                         |
+| `OutputModalityEmbeddings`    | embeddings                    |
+| `OutputModalityAudio`         | audio                         |
+| `OutputModalityVideo`         | video                         |
+| `OutputModalityRerank`        | rerank                        |
+| `OutputModalitySpeech`        | speech                        |
+| `OutputModalityTranscription` | transcription                 |

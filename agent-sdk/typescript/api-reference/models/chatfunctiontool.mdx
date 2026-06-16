@@ -1,0 +1,91 @@
+---
+title: ChatFunctionTool - TypeScript SDK
+sidebarTitle: ChatFunctionTool
+description: ChatFunctionTool type definition
+seoTitle: ChatFunctionTool Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/chatfunctiontool
+'og:site_name': OpenRouter Documentation
+'og:title': ChatFunctionTool Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ChatFunctionTool type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatFunctionTool%20-%20TypeScript%20SDK&description=ChatFunctionTool%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Tool definition for function calling (regular function or OpenRouter built-in server tool)
+
+## Supported Types
+
+### `models.ChatFunctionToolFunction`
+
+```typescript lines
+const value: models.ChatFunctionToolFunction = {
+  function: {
+    name: "get_weather",
+  },
+  type: "function",
+};
+```
+
+### `models.DatetimeServerTool`
+
+```typescript lines
+const value: models.DatetimeServerTool = {
+  type: "openrouter:datetime",
+};
+```
+
+### `models.ImageGenerationServerToolOpenRouter`
+
+```typescript lines
+const value: models.ImageGenerationServerToolOpenRouter = {
+  type: "openrouter:image_generation",
+};
+```
+
+### `models.ChatSearchModelsServerTool`
+
+```typescript lines
+const value: models.ChatSearchModelsServerTool = {
+  type: "openrouter:experimental__search_models",
+};
+```
+
+### `models.WebFetchServerTool`
+
+```typescript lines
+const value: models.WebFetchServerTool = {
+  type: "openrouter:web_fetch",
+};
+```
+
+### `models.OpenRouterWebSearchServerTool`
+
+```typescript lines
+const value: models.OpenRouterWebSearchServerTool = {
+  type: "openrouter:web_search",
+};
+```
+
+### `models.ChatWebSearchShorthand`
+
+```typescript lines
+const value: models.ChatWebSearchShorthand = {
+  type: "web_search",
+};
+```

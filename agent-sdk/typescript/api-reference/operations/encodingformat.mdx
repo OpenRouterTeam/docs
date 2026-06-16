@@ -1,0 +1,46 @@
+---
+title: EncodingFormat - TypeScript SDK
+sidebarTitle: EncodingFormat
+description: EncodingFormat type definition
+seoTitle: EncodingFormat Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/encodingformat
+'og:site_name': OpenRouter Documentation
+'og:title': EncodingFormat Type | OpenRouter TypeScript SDK
+'og:description': >-
+  EncodingFormat type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=EncodingFormat%20-%20TypeScript%20SDK&description=EncodingFormat%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The format of the output embeddings
+
+## Example Usage
+
+```typescript lines
+import { EncodingFormat } from "@openrouter/sdk/models/operations";
+
+let value: EncodingFormat = "float";
+
+// Open enum: unrecognized values are captured as Unrecognized<string>
+```
+
+## Values
+
+```typescript lines
+"float" | "base64" | Unrecognized<string>
+```

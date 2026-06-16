@@ -1,0 +1,49 @@
+---
+title: ChatUserMessageContent - TypeScript SDK
+sidebarTitle: ChatUserMessageContent
+description: ChatUserMessageContent type definition
+seoTitle: ChatUserMessageContent Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/chatusermessagecontent
+'og:site_name': OpenRouter Documentation
+'og:title': ChatUserMessageContent Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ChatUserMessageContent type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatUserMessageContent%20-%20TypeScript%20SDK&description=ChatUserMessageContent%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+User message content
+
+## Supported Types
+
+### `string`
+
+```typescript lines
+const value: string = "What is the capital of France?";
+```
+
+### `models.ChatContentItems[]`
+
+```typescript lines
+const value: models.ChatContentItems[] = [
+  {
+    text: "Hello, world!",
+    type: "text",
+  },
+];
+```

@@ -1,0 +1,51 @@
+---
+title: CreateAudioSpeechRequest - TypeScript SDK
+sidebarTitle: CreateAudioSpeechRequest
+description: CreateAudioSpeechRequest type definition
+seoTitle: CreateAudioSpeechRequest Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/createaudiospeechrequest
+'og:site_name': OpenRouter Documentation
+'og:title': CreateAudioSpeechRequest Type | OpenRouter TypeScript SDK
+'og:description': >-
+  CreateAudioSpeechRequest type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateAudioSpeechRequest%20-%20TypeScript%20SDK&description=CreateAudioSpeechRequest%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { CreateAudioSpeechRequest } from "@openrouter/sdk/models/operations";
+
+let value: CreateAudioSpeechRequest = {
+  speechRequest: {
+    input: "Hello world",
+    model: "elevenlabs/eleven-turbo-v2",
+    voice: "alloy",
+  },
+};
+```
+
+## Fields
+
+| Field                                                                                                                                             | Type                                                                                                                                              | Required                                                                                                                                          | Description                                                                                                                                       | Example                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `httpReferer`                                                                                                                                     | *string*                                                                                                                                          | :heavy_minus_sign:                                                                                                                                | The app identifier should be your app's URL and is used as the primary identifier for rankings.<br/>This is used to track API usage per application.<br/> |                                                                                                                                                   |
+| `appTitle`                                                                                                                                        | *string*                                                                                                                                          | :heavy_minus_sign:                                                                                                                                | The app display name allows you to customize how your app appears in OpenRouter's dashboard.<br/>                                                 |                                                                                                                                                   |
+| `appCategories`                                                                                                                                   | *string*                                                                                                                                          | :heavy_minus_sign:                                                                                                                                | Comma-separated list of app categories (e.g. "cli-agent,cloud-agent"). Used for marketplace rankings.<br/>                                        |                                                                                                                                                   |
+| `speechRequest`                                                                                                                                   | [models.SpeechRequest](/client-sdks/typescript/api-reference/models/speechrequest)                                                                                             | :heavy_check_mark:                                                                                                                                | N/A                                                                                                                                               | `{"input": "Hello world","model": "elevenlabs/eleven-turbo-v2","response_format": "pcm","speed": 1,"voice": "alloy"}` |

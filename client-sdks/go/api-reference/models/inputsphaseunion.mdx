@@ -1,0 +1,64 @@
+---
+title: InputsPhaseUnion - Go SDK
+sidebarTitle: InputsPhaseUnion
+description: InputsPhaseUnion type definition
+seoTitle: InputsPhaseUnion Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/inputsphaseunion'
+'og:site_name': OpenRouter Documentation
+'og:title': InputsPhaseUnion Type | OpenRouter Go SDK
+'og:description': >-
+  InputsPhaseUnion type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=InputsPhaseUnion%20-%20Go%20SDK&description=InputsPhaseUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The phase of an assistant message. Use `commentary` for an intermediate assistant message and `final_answer` for the final assistant message. For follow-up requests with models like `gpt-5.3-codex` and later, preserve and resend phase on all assistant messages. Omitting it can degrade performance. Not used for user messages.
+
+## Supported Types
+
+### InputsPhaseCommentary
+
+```go lines
+inputsPhaseUnion := components.CreateInputsPhaseUnionInputsPhaseCommentary(components.InputsPhaseCommentary{/* values here */})
+```
+
+### InputsPhaseFinalAnswer
+
+```go lines
+inputsPhaseUnion := components.CreateInputsPhaseUnionInputsPhaseFinalAnswer(components.InputsPhaseFinalAnswer{/* values here */})
+```
+
+### 
+
+```go lines
+inputsPhaseUnion := components.CreateInputsPhaseUnionAny(any{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch inputsPhaseUnion.Type {
+	case components.InputsPhaseUnionTypeInputsPhaseCommentary:
+		// inputsPhaseUnion.InputsPhaseCommentary is populated
+	case components.InputsPhaseUnionTypeInputsPhaseFinalAnswer:
+		// inputsPhaseUnion.InputsPhaseFinalAnswer is populated
+	case components.InputsPhaseUnionTypeAny:
+		// inputsPhaseUnion.Any is populated
+}
+```

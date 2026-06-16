@@ -1,0 +1,77 @@
+---
+title: OpenResponsesInputMessageItemContentUnion - TypeScript SDK
+description: OpenResponsesInputMessageItemContentUnion method reference
+seoTitle: OpenResponsesInputMessageItemContentUnion | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/models/openresponsesinputmessageitemcontentunion
+'og:site_name': OpenRouter Documentation
+'og:title': OpenResponsesInputMessageItemContentUnion | OpenRouter TypeScript SDK
+'og:description': >-
+  OpenResponsesInputMessageItemContentUnion method documentation for the
+  OpenRouter TypeScript SDK. Learn how to use this API endpoint with code
+  examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenResponsesInputMessageItemContentUnion%20-%20TypeScript%20SDK&description=OpenResponsesInputMessageItemContentUnion%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### `models.ResponseInputText`
+
+```typescript lines
+const value: models.ResponseInputText = {
+  type: "input_text",
+  text: "Hello, how can I help you?",
+};
+```
+
+### `models.OpenResponsesInputMessageItemContentInputImage`
+
+```typescript lines
+const value: models.OpenResponsesInputMessageItemContentInputImage = {
+  type: "input_image",
+  detail: "auto",
+};
+```
+
+### `models.ResponseInputFile`
+
+```typescript lines
+const value: models.ResponseInputFile = {
+  type: "input_file",
+};
+```
+
+### `models.ResponseInputAudio`
+
+```typescript lines
+const value: models.ResponseInputAudio = {
+  type: "input_audio",
+  inputAudio: {
+    data: "SGVsbG8gV29ybGQ=",
+    format: "mp3",
+  },
+};
+```
+
+### `models.ResponseInputVideo`
+
+```typescript lines
+const value: models.ResponseInputVideo = {
+  type: "input_video",
+  videoUrl: "https://example.com/video.mp4",
+};
+```

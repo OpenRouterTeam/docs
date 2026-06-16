@@ -1,0 +1,60 @@
+---
+title: OutputReasoningItem - TypeScript SDK
+sidebarTitle: OutputReasoningItem
+description: OutputReasoningItem type definition
+seoTitle: OutputReasoningItem Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/outputreasoningitem
+'og:site_name': OpenRouter Documentation
+'og:title': OutputReasoningItem Type | OpenRouter TypeScript SDK
+'og:description': >-
+  OutputReasoningItem type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputReasoningItem%20-%20TypeScript%20SDK&description=OutputReasoningItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+An output item containing reasoning
+
+## Example Usage
+
+```typescript lines
+import { OutputReasoningItem } from "@openrouter/sdk/models";
+
+let value: OutputReasoningItem = {
+  id: "msg-abc123",
+  summary: [
+    {
+      text: "Analyzed the problem using first principles",
+      type: "summary_text",
+    },
+  ],
+  type: "reasoning",
+};
+```
+
+## Fields
+
+| Field                                                              | Type                                                               | Required                                                           | Description                                                        | Example                                                            |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `content`                                                          | [models.ReasoningTextContent](/client-sdks/typescript/api-reference/models/reasoningtextcontent)[] | :heavy_minus_sign:                                                 | N/A                                                                |                                                                    |
+| `encryptedContent`                                                 | *string*                                                           | :heavy_minus_sign:                                                 | N/A                                                                |                                                                    |
+| `id`                                                               | *string*                                                           | :heavy_check_mark:                                                 | N/A                                                                |                                                                    |
+| `status`                                                           | *models.OutputReasoningItemStatusUnion*                            | :heavy_minus_sign:                                                 | N/A                                                                |                                                                    |
+| `summary`                                                          | [models.ReasoningSummaryText](/client-sdks/typescript/api-reference/models/reasoningsummarytext)[] | :heavy_check_mark:                                                 | N/A                                                                |                                                                    |
+| `type`                                                             | *"reasoning"*                                                      | :heavy_check_mark:                                                 | N/A                                                                |                                                                    |
+| `format`                                                           | [models.ReasoningFormat](/client-sdks/typescript/api-reference/models/reasoningformat)             | :heavy_minus_sign:                                                 | N/A                                                                | unknown                                                            |
+| `signature`                                                        | *string*                                                           | :heavy_minus_sign:                                                 | A signature for the reasoning content, used for verification       | EvcBCkgIChABGAIqQKkSDbRuVEQUk9qN1odC098l9SEj...                    |

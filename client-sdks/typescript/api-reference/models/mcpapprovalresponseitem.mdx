@@ -1,0 +1,52 @@
+---
+title: McpApprovalResponseItem - TypeScript SDK
+sidebarTitle: McpApprovalResponseItem
+description: McpApprovalResponseItem type definition
+seoTitle: McpApprovalResponseItem Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/mcpapprovalresponseitem
+'og:site_name': OpenRouter Documentation
+'og:title': McpApprovalResponseItem Type | OpenRouter TypeScript SDK
+'og:description': >-
+  McpApprovalResponseItem type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=McpApprovalResponseItem%20-%20TypeScript%20SDK&description=McpApprovalResponseItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+User response to an MCP tool approval request
+
+## Example Usage
+
+```typescript lines
+import { McpApprovalResponseItem } from "@openrouter/sdk/models";
+
+let value: McpApprovalResponseItem = {
+  approvalRequestId: "approval-abc123",
+  approve: true,
+  type: "mcp_approval_response",
+};
+```
+
+## Fields
+
+| Field                                                                          | Type                                                                           | Required                                                                       | Description                                                                    |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `approvalRequestId`                                                            | *string*                                                                       | :heavy_check_mark:                                                             | N/A                                                                            |
+| `approve`                                                                      | *boolean*                                                                      | :heavy_check_mark:                                                             | N/A                                                                            |
+| `id`                                                                           | *string*                                                                       | :heavy_minus_sign:                                                             | N/A                                                                            |
+| `reason`                                                                       | *string*                                                                       | :heavy_minus_sign:                                                             | N/A                                                                            |
+| `type`                                                                         | [models.McpApprovalResponseItemType](/client-sdks/typescript/api-reference/models/mcpapprovalresponseitemtype) | :heavy_check_mark:                                                             | N/A                                                                            |

@@ -1,0 +1,39 @@
+---
+title: PromptTokensDetails - Python SDK
+sidebarTitle: PromptTokensDetails
+description: PromptTokensDetails method reference
+seoTitle: PromptTokensDetails | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/prompttokensdetails
+'og:site_name': OpenRouter Documentation
+'og:title': PromptTokensDetails | OpenRouter Python SDK
+'og:description': >-
+  PromptTokensDetails method documentation for the OpenRouter Python SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=PromptTokensDetails%20-%20Python%20SDK&description=PromptTokensDetails%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Detailed prompt token usage
+
+## Fields
+
+| Field                                                                                            | Type                                                                                             | Required                                                                                         | Description                                                                                      |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `audio_tokens`                                                                                   | *Optional[int]*                                                                                  | :heavy_minus_sign:                                                                               | Audio input tokens                                                                               |
+| `cache_write_tokens`                                                                             | *Optional[int]*                                                                                  | :heavy_minus_sign:                                                                               | Tokens written to cache. Only returned for models with explicit caching and cache write pricing. |
+| `cached_tokens`                                                                                  | *Optional[int]*                                                                                  | :heavy_minus_sign:                                                                               | Cached prompt tokens                                                                             |
+| `video_tokens`                                                                                   | *Optional[int]*                                                                                  | :heavy_minus_sign:                                                                               | Video input tokens                                                                               |

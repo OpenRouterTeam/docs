@@ -1,0 +1,38 @@
+---
+title: RequestTimeoutResponseError - Python SDK
+sidebarTitle: RequestTimeoutResponseError
+description: RequestTimeoutResponseError error handling
+seoTitle: RequestTimeoutResponseError Error | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/errors/requesttimeoutresponseerror
+'og:site_name': OpenRouter Documentation
+'og:title': RequestTimeoutResponseError Error | OpenRouter Python SDK
+'og:description': >-
+  RequestTimeoutResponseError error documentation for the OpenRouter Python SDK.
+  Learn how to handle this error type.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=RequestTimeoutResponseError%20-%20Python%20SDK&description=RequestTimeoutResponseError%20error%20handling
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Request Timeout - Operation exceeded time limit
+
+## Fields
+
+| Field                                                                                          | Type                                                                                           | Required                                                                                       | Description                                                                                    | Example                                                                                        |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `error`                                                                                        | [components.RequestTimeoutResponseErrorData](/client-sdks/python/api-reference/components/requesttimeoutresponseerrordata) | :heavy_check_mark:                                                                             | Error data for RequestTimeoutResponse                                                          | `{"code": 408,"message": "Operation timed out. Please try again later."}`         |
+| `openrouter_metadata`                                                                          | Dict[str, *Nullable[Any]*]                                                                     | :heavy_minus_sign:                                                                             | N/A                                                                                            |                                                                                                |
+| `user_id`                                                                                      | *OptionalNullable[str]*                                                                        | :heavy_minus_sign:                                                                             | N/A                                                                                            |                                                                                                |

@@ -1,0 +1,39 @@
+---
+title: ChatFunctionToolFunctionFunction - Python SDK
+sidebarTitle: ChatFunctionToolFunctionFunction
+description: ChatFunctionToolFunctionFunction method reference
+seoTitle: ChatFunctionToolFunctionFunction | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/chatfunctiontoolfunctionfunction
+'og:site_name': OpenRouter Documentation
+'og:title': ChatFunctionToolFunctionFunction | OpenRouter Python SDK
+'og:description': >-
+  ChatFunctionToolFunctionFunction method documentation for the OpenRouter
+  Python SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatFunctionToolFunctionFunction%20-%20Python%20SDK&description=ChatFunctionToolFunctionFunction%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Function definition for tool calling
+
+## Fields
+
+| Field                                                                                                                            | Type                                                                                                                             | Required                                                                                                                         | Description                                                                                                                      | Example                                                                                                                          |
+| -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `description`                                                                                                                    | *Optional[str]*                                                                                                                  | :heavy_minus_sign:                                                                                                               | Function description for the model                                                                                               | Get the current weather for a location                                                                                           |
+| `name`                                                                                                                           | *str*                                                                                                                            | :heavy_check_mark:                                                                                                               | Function name (a-z, A-Z, 0-9, underscores, dashes, max 64 chars)                                                                 | get_weather                                                                                                                      |
+| `parameters`                                                                                                                     | Dict[str, *Nullable[Any]*]                                                                                                       | :heavy_minus_sign:                                                                                                               | Function parameters as JSON Schema object                                                                                        | `{"properties": {"location": {"description": "City name","type": "string"}`<br/>\},<br/>"required": [<br/>"location"<br/>],<br/>"type": "object"<br/>\} |
+| `strict`                                                                                                                         | *OptionalNullable[bool]*                                                                                                         | :heavy_minus_sign:                                                                                                               | Enable strict schema adherence                                                                                                   | false                                                                                                                            |

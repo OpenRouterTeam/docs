@@ -1,0 +1,45 @@
+---
+title: AspectRatio - TypeScript SDK
+sidebarTitle: AspectRatio
+description: AspectRatio type definition
+seoTitle: AspectRatio Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/api-reference/models/aspectratio'
+'og:site_name': OpenRouter Documentation
+'og:title': AspectRatio Type | OpenRouter TypeScript SDK
+'og:description': >-
+  AspectRatio type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=AspectRatio%20-%20TypeScript%20SDK&description=AspectRatio%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Aspect ratio of the generated video
+
+## Example Usage
+
+```typescript lines
+import { AspectRatio } from "@openrouter/sdk/models";
+
+let value: AspectRatio = "16:9";
+
+// Open enum: unrecognized values are captured as Unrecognized<string>
+```
+
+## Values
+
+```typescript lines
+"16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "3:2" | "2:3" | "21:9" | "9:21" | Unrecognized<string>
+```

@@ -1,0 +1,50 @@
+---
+title: PydanticAI
+description: Using OpenRouter with PydanticAI
+seoTitle: 'PydanticAI Integration | OpenRouter SDK Support'
+canonicalUrl: https://openrouter.ai/docs/guides/community/pydantic-ai
+og:site_name: OpenRouter Documentation
+og:title: 'PydanticAI Integration - OpenRouter SDK Support'
+og:description: 'Integrate OpenRouter using PydanticAI framework. Complete guide for PydanticAI integration with OpenRouter for Python applications.'
+og:image: https://openrouter.ai/dynamic-og?title=PydanticAI&description=PydanticAI%20Integration
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: puzzle-piece
+---
+
+{/* <llms-ignore> */}
+## Using PydanticAI
+
+[PydanticAI](https://github.com/pydantic/pydantic-ai) provides a high-level interface for working with various LLM providers, including OpenRouter.
+
+### Installation
+
+```bash lines
+pip install 'pydantic-ai-slim[openai]'
+```
+
+### Configuration
+
+You can use OpenRouter with PydanticAI through its OpenAI-compatible interface:
+
+```python lines
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIModel
+
+model = OpenAIModel(
+    "anthropic/claude-sonnet-4.6",  # or any other OpenRouter model
+    base_url="https://openrouter.ai/api/v1",
+    api_key="sk-or-...",
+)
+
+agent = Agent(model)
+result = await agent.run("What is the meaning of life?")
+print(result)
+```
+
+For more details about using PydanticAI with OpenRouter, see the [PydanticAI documentation](https://ai.pydantic.dev/models/#api_key-argument).
+{/* </llms-ignore> */}

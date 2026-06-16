@@ -1,0 +1,68 @@
+---
+title: CreateResponsesResponseBody - TypeScript SDK
+description: CreateResponsesResponseBody method reference
+seoTitle: CreateResponsesResponseBody | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/operations/createresponsesresponsebody
+'og:site_name': OpenRouter Documentation
+'og:title': CreateResponsesResponseBody | OpenRouter TypeScript SDK
+'og:description': >-
+  CreateResponsesResponseBody method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateResponsesResponseBody%20-%20TypeScript%20SDK&description=CreateResponsesResponseBody%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Successful response
+
+## Example Usage
+
+```typescript expandable lines
+import { CreateResponsesResponseBody } from "@openrouter/sdk/models/operations";
+
+let value: CreateResponsesResponseBody = {
+  data: {
+    type: "response.created",
+    response: {
+      id: "resp-abc123",
+      object: "response",
+      createdAt: 1704067200,
+      model: "gpt-4",
+      status: "in_progress",
+      completedAt: 8101.12,
+      output: [],
+      error: null,
+      incompleteDetails: null,
+      temperature: null,
+      topP: null,
+      presencePenalty: 8087.26,
+      frequencyPenalty: 4886.88,
+      instructions: null,
+      metadata: null,
+      tools: [],
+      toolChoice: "auto",
+      parallelToolCalls: true,
+    },
+    sequenceNumber: 0,
+  },
+};
+```
+
+## Fields
+
+| Field                                                                                                                                                                                                                                                                                                                                                                                                                 | Type                                                                                                                                                                                                                                                                                                                                                                                                                  | Required                                                                                                                                                                                                                                                                                                                                                                                                              | Description                                                                                                                                                                                                                                                                                                                                                                                                           | Example                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data`                                                                                                                                                                                                                                                                                                                                                                                                                | *models.OpenResponsesStreamEvent*                                                                                                                                                                                                                                                                                                                                                                                     | :heavy_check_mark:                                                                                                                                                                                                                                                                                                                                                                                                    | Union of all possible event types emitted during response streaming                                                                                                                                                                                                                                                                                                                                                   | `{"type": "response.created","response": {"id": "resp-abc123","object": "response","created_at": 1704067200,"model": "gpt-4","status": "in_progress","output": [],"tools": [],"tool_choice": "auto","parallel_tool_calls": true,"error": null,"incomplete_details": null,"metadata": null,"instructions": null,"temperature": null,"top_p": null,"max_output_tokens": null}`,<br/>"sequence_number": `0<br/>`} |

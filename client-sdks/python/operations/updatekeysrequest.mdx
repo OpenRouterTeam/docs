@@ -1,0 +1,33 @@
+---
+title: UpdateKeysRequest - Python SDK
+description: UpdateKeysRequest method reference
+seoTitle: UpdateKeysRequest | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/operations/updatekeysrequest'
+'og:site_name': OpenRouter Documentation
+'og:title': UpdateKeysRequest | OpenRouter Python SDK
+'og:description': >-
+  UpdateKeysRequest method documentation for the OpenRouter Python SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=UpdateKeysRequest%20-%20Python%20SDK&description=UpdateKeysRequest%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                                                                     | Type                                                                                                                      | Required                                                                                                                  | Description                                                                                                               | Example                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `hash`                                                                                                                    | *str*                                                                                                                     | :heavy_check_mark:                                                                                                        | The hash identifier of the API key to update                                                                              | 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                                                 |
+| `request_body`                                                                                                            | [operations.UpdateKeysRequestBody](/client-sdks/python/api-reference/operations/updatekeysrequestbody)                                                | :heavy_check_mark:                                                                                                        | N/A                                                                                                                       | `{"name": "Updated API Key Name","disabled": false,"limit": 75,"limit_reset": "daily","include_byok_in_limit": true}` |

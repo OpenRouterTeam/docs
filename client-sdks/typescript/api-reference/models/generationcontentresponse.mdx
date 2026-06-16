@@ -1,0 +1,59 @@
+---
+title: GenerationContentResponse - TypeScript SDK
+sidebarTitle: GenerationContentResponse
+description: GenerationContentResponse type definition
+seoTitle: GenerationContentResponse Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/generationcontentresponse
+'og:site_name': OpenRouter Documentation
+'og:title': GenerationContentResponse Type | OpenRouter TypeScript SDK
+'og:description': >-
+  GenerationContentResponse type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=GenerationContentResponse%20-%20TypeScript%20SDK&description=GenerationContentResponse%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Stored prompt and completion content for a generation
+
+## Example Usage
+
+```typescript lines
+import { GenerationContentResponse } from "@openrouter/sdk/models";
+
+let value: GenerationContentResponse = {
+  data: {
+    input: {
+      messages: [
+        {
+          "content": "What is the meaning of life?",
+          "role": "user",
+        },
+      ],
+    },
+    output: {
+      completion: "The meaning of life is a philosophical question...",
+      reasoning: null,
+    },
+  },
+};
+```
+
+## Fields
+
+| Field                                                                                                                                                                                               | Type                                                                                                                                                                                                | Required                                                                                                                                                                                            | Description                                                                                                                                                                                         | Example                                                                                                                                                                                             |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data`                                                                                                                                                                                              | [models.GenerationContentData](/client-sdks/typescript/api-reference/models/generationcontentdata)                                                                                                                                  | :heavy_check_mark:                                                                                                                                                                                  | Stored prompt and completion content                                                                                                                                                                | `{"input": {"messages": [{"content": "What is the meaning of life?","role": "user"}`<br/>]<br/>\},<br/>"output": `{"completion": "The meaning of life is a philosophical question...","reasoning": null}`<br/>\} |

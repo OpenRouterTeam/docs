@@ -1,0 +1,110 @@
+---
+title: MessagesRequestPlugin - Go SDK
+sidebarTitle: MessagesRequestPlugin
+description: MessagesRequestPlugin type definition
+seoTitle: MessagesRequestPlugin Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/messagesrequestplugin'
+'og:site_name': OpenRouter Documentation
+'og:title': MessagesRequestPlugin Type | OpenRouter Go SDK
+'og:description': >-
+  MessagesRequestPlugin type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=MessagesRequestPlugin%20-%20Go%20SDK&description=MessagesRequestPlugin%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### AutoRouterPlugin
+
+```go lines
+messagesRequestPlugin := components.CreateMessagesRequestPluginAutoRouter(components.AutoRouterPlugin{/* values here */})
+```
+
+### ContextCompressionPlugin
+
+```go lines
+messagesRequestPlugin := components.CreateMessagesRequestPluginContextCompression(components.ContextCompressionPlugin{/* values here */})
+```
+
+### FileParserPlugin
+
+```go lines
+messagesRequestPlugin := components.CreateMessagesRequestPluginFileParser(components.FileParserPlugin{/* values here */})
+```
+
+### FusionPlugin
+
+```go lines
+messagesRequestPlugin := components.CreateMessagesRequestPluginFusion(components.FusionPlugin{/* values here */})
+```
+
+### ModerationPlugin
+
+```go lines
+messagesRequestPlugin := components.CreateMessagesRequestPluginModeration(components.ModerationPlugin{/* values here */})
+```
+
+### ParetoRouterPlugin
+
+```go lines
+messagesRequestPlugin := components.CreateMessagesRequestPluginParetoRouter(components.ParetoRouterPlugin{/* values here */})
+```
+
+### ResponseHealingPlugin
+
+```go lines
+messagesRequestPlugin := components.CreateMessagesRequestPluginResponseHealing(components.ResponseHealingPlugin{/* values here */})
+```
+
+### WebSearchPlugin
+
+```go lines
+messagesRequestPlugin := components.CreateMessagesRequestPluginWeb(components.WebSearchPlugin{/* values here */})
+```
+
+### WebFetchPlugin
+
+```go lines
+messagesRequestPlugin := components.CreateMessagesRequestPluginWebFetch(components.WebFetchPlugin{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch messagesRequestPlugin.Type {
+	case components.MessagesRequestPluginTypeAutoRouter:
+		// messagesRequestPlugin.AutoRouterPlugin is populated
+	case components.MessagesRequestPluginTypeContextCompression:
+		// messagesRequestPlugin.ContextCompressionPlugin is populated
+	case components.MessagesRequestPluginTypeFileParser:
+		// messagesRequestPlugin.FileParserPlugin is populated
+	case components.MessagesRequestPluginTypeFusion:
+		// messagesRequestPlugin.FusionPlugin is populated
+	case components.MessagesRequestPluginTypeModeration:
+		// messagesRequestPlugin.ModerationPlugin is populated
+	case components.MessagesRequestPluginTypeParetoRouter:
+		// messagesRequestPlugin.ParetoRouterPlugin is populated
+	case components.MessagesRequestPluginTypeResponseHealing:
+		// messagesRequestPlugin.ResponseHealingPlugin is populated
+	case components.MessagesRequestPluginTypeWeb:
+		// messagesRequestPlugin.WebSearchPlugin is populated
+	case components.MessagesRequestPluginTypeWebFetch:
+		// messagesRequestPlugin.WebFetchPlugin is populated
+}
+```

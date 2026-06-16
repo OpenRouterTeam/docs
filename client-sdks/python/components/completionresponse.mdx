@@ -1,0 +1,39 @@
+---
+title: CompletionResponse - Python SDK
+description: CompletionResponse method reference
+seoTitle: CompletionResponse | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/components/completionresponse'
+'og:site_name': OpenRouter Documentation
+'og:title': CompletionResponse | OpenRouter Python SDK
+'og:description': >-
+  CompletionResponse method documentation for the OpenRouter Python SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CompletionResponse%20-%20Python%20SDK&description=CompletionResponse%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                    | Type                                                                     | Required                                                                 | Description                                                              |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `id`                                                                     | *str*                                                                    | :heavy_check_mark:                                                       | N/A                                                                      |
+| `object`                                                                 | *Literal["text_completion"]*                                             | :heavy_check_mark:                                                       | N/A                                                                      |
+| `created`                                                                | *float*                                                                  | :heavy_check_mark:                                                       | N/A                                                                      |
+| `model`                                                                  | *str*                                                                    | :heavy_check_mark:                                                       | N/A                                                                      |
+| `provider`                                                               | *Optional[str]*                                                          | :heavy_minus_sign:                                                       | N/A                                                                      |
+| `system_fingerprint`                                                     | *Optional[str]*                                                          | :heavy_minus_sign:                                                       | N/A                                                                      |
+| `choices`                                                                | List[[components.CompletionChoice](/client-sdks/python/components/completionchoice)]   | :heavy_check_mark:                                                       | N/A                                                                      |
+| `usage`                                                                  | [Optional[components.CompletionUsage]](../components/completionusage.md) | :heavy_minus_sign:                                                       | N/A                                                                      |

@@ -1,0 +1,41 @@
+---
+title: ReasoningSummaryPartDoneEvent - Go SDK
+sidebarTitle: ReasoningSummaryPartDoneEvent
+description: ReasoningSummaryPartDoneEvent type definition
+seoTitle: ReasoningSummaryPartDoneEvent Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/reasoningsummarypartdoneevent
+'og:site_name': OpenRouter Documentation
+'og:title': ReasoningSummaryPartDoneEvent Type | OpenRouter Go SDK
+'og:description': >-
+  ReasoningSummaryPartDoneEvent type reference for the OpenRouter Go SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ReasoningSummaryPartDoneEvent%20-%20Go%20SDK&description=ReasoningSummaryPartDoneEvent%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Event emitted when a reasoning summary part is complete
+
+## Fields
+
+| Field                                                                                                        | Type                                                                                                         | Required                                                                                                     | Description                                                                                                  | Example                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `ItemID`                                                                                                     | `string`                                                                                                     | :heavy_check_mark:                                                                                           | N/A                                                                                                          |                                                                                                              |
+| `OutputIndex`                                                                                                | `int64`                                                                                                      | :heavy_check_mark:                                                                                           | N/A                                                                                                          |                                                                                                              |
+| `Part`                                                                                                       | [components.ReasoningSummaryText](/client-sdks/go/api-reference/models/reasoningsummarytext)                           | :heavy_check_mark:                                                                                           | N/A                                                                                                          | `{"text": "Analyzed the problem using first principles","type": "summary_text"}`                |
+| `SequenceNumber`                                                                                             | `int64`                                                                                                      | :heavy_check_mark:                                                                                           | N/A                                                                                                          |                                                                                                              |
+| `SummaryIndex`                                                                                               | `int64`                                                                                                      | :heavy_check_mark:                                                                                           | N/A                                                                                                          |                                                                                                              |
+| `Type`                                                                                                       | [components.ReasoningSummaryPartDoneEventType](/client-sdks/go/api-reference/models/reasoningsummarypartdoneeventtype) | :heavy_check_mark:                                                                                           | N/A                                                                                                          |                                                                                                              |

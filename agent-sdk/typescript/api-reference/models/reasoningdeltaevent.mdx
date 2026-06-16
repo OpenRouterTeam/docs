@@ -1,0 +1,56 @@
+---
+title: ReasoningDeltaEvent - TypeScript SDK
+sidebarTitle: ReasoningDeltaEvent
+description: ReasoningDeltaEvent type definition
+seoTitle: ReasoningDeltaEvent Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/reasoningdeltaevent
+'og:site_name': OpenRouter Documentation
+'og:title': ReasoningDeltaEvent Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ReasoningDeltaEvent type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ReasoningDeltaEvent%20-%20TypeScript%20SDK&description=ReasoningDeltaEvent%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Event emitted when reasoning text delta is streamed
+
+## Example Usage
+
+```typescript lines
+import { ReasoningDeltaEvent } from "@openrouter/sdk/models";
+
+let value: ReasoningDeltaEvent = {
+  contentIndex: 744455,
+  delta: "<value>",
+  itemId: "<id>",
+  outputIndex: 904446,
+  sequenceNumber: 0,
+  type: "response.reasoning_text.delta",
+};
+```
+
+## Fields
+
+| Field                             | Type                              | Required                          | Description                       |
+| --------------------------------- | --------------------------------- | --------------------------------- | --------------------------------- |
+| `contentIndex`                    | *number*                          | :heavy_check_mark:                | N/A                               |
+| `delta`                           | *string*                          | :heavy_check_mark:                | N/A                               |
+| `itemId`                          | *string*                          | :heavy_check_mark:                | N/A                               |
+| `outputIndex`                     | *number*                          | :heavy_check_mark:                | N/A                               |
+| `sequenceNumber`                  | *number*                          | :heavy_check_mark:                | N/A                               |
+| `type`                            | *"response.reasoning_text.delta"* | :heavy_check_mark:                | N/A                               |

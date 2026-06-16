@@ -1,0 +1,50 @@
+---
+title: RankingsDailyMeta - TypeScript SDK
+sidebarTitle: RankingsDailyMeta
+description: RankingsDailyMeta type definition
+seoTitle: RankingsDailyMeta Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/rankingsdailymeta
+'og:site_name': OpenRouter Documentation
+'og:title': RankingsDailyMeta Type | OpenRouter TypeScript SDK
+'og:description': >-
+  RankingsDailyMeta type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=RankingsDailyMeta%20-%20TypeScript%20SDK&description=RankingsDailyMeta%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { RankingsDailyMeta } from "@openrouter/sdk/models";
+
+let value: RankingsDailyMeta = {
+  asOf: "2026-05-12T02:00:00Z",
+  endDate: "2026-05-11",
+  startDate: "2026-04-12",
+  version: "v1",
+};
+```
+
+## Fields
+
+| Field                                                                                                                                                         | Type                                                                                                                                                          | Required                                                                                                                                                      | Description                                                                                                                                                   | Example                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `asOf`                                                                                                                                                        | *string*                                                                                                                                                      | :heavy_check_mark:                                                                                                                                            | ISO-8601 timestamp of when the response was generated. Reflects data-freshness because the underlying materialized view continuously ingests upstream events. | 2026-05-12T02:00:00Z                                                                                                                                          |
+| `endDate`                                                                                                                                                     | *string*                                                                                                                                                      | :heavy_check_mark:                                                                                                                                            | Resolved end of the date window (UTC, inclusive).                                                                                                             | 2026-05-11                                                                                                                                                    |
+| `startDate`                                                                                                                                                   | *string*                                                                                                                                                      | :heavy_check_mark:                                                                                                                                            | Resolved start of the date window (UTC, inclusive).                                                                                                           | 2026-04-12                                                                                                                                                    |
+| `version`                                                                                                                                                     | [models.Version](/agent-sdk/typescript/api-reference/models/version)                                                                                                                        | :heavy_check_mark:                                                                                                                                            | Dataset version. Field names and grain are stable for the life of `v1`.                                                                                       |                                                                                                                                                               |

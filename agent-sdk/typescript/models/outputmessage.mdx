@@ -1,0 +1,54 @@
+---
+title: OutputMessage - TypeScript SDK
+description: OutputMessage method reference
+seoTitle: OutputMessage | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/outputmessage'
+'og:site_name': OpenRouter Documentation
+'og:title': OutputMessage | OpenRouter TypeScript SDK
+'og:description': >-
+  OutputMessage method documentation for the OpenRouter TypeScript SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputMessage%20-%20TypeScript%20SDK&description=OutputMessage%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { OutputMessage } from "@openrouter/sdk/models";
+
+let value: OutputMessage = {
+  id: "msg-abc123",
+  role: "assistant",
+  type: "message",
+  content: [
+    {
+      type: "output_text",
+      text: "Hello! How can I help you today?",
+    },
+  ],
+};
+```
+
+## Fields
+
+| Field                                                      | Type                                                       | Required                                                   | Description                                                |
+| ---------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- |
+| `id`                                                       | *string*                                                   | :heavy_check_mark:                                         | N/A                                                        |
+| `role`                                                     | [models.OutputMessageRole](/agent-sdk/typescript/models/outputmessagerole) | :heavy_check_mark:                                         | N/A                                                        |
+| `type`                                                     | [models.OutputMessageType](/agent-sdk/typescript/models/outputmessagetype) | :heavy_check_mark:                                         | N/A                                                        |
+| `status`                                                   | *models.OutputMessageStatusUnion*                          | :heavy_minus_sign:                                         | N/A                                                        |
+| `content`                                                  | *models.OutputMessageContent*[]                            | :heavy_check_mark:                                         | N/A                                                        |

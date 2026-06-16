@@ -1,0 +1,42 @@
+---
+title: Schema4 - TypeScript SDK
+description: Schema4 method reference
+seoTitle: Schema4 | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/schema4'
+'og:site_name': OpenRouter Documentation
+'og:title': Schema4 | OpenRouter TypeScript SDK
+'og:description': >-
+  Schema4 method documentation for the OpenRouter TypeScript SDK. Learn how to
+  use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Schema4%20-%20TypeScript%20SDK&description=Schema4%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { Schema4 } from "@openrouter/sdk/models";
+
+let value: Schema4 = "openai-responses-v1";
+```
+
+## Values
+
+This is an open enum. Unrecognized values will be captured as the `Unrecognized<string>` branded type.
+
+```typescript lines
+"unknown" | "openai-responses-v1" | "azure-openai-responses-v1" | "xai-responses-v1" | "anthropic-claude-v1" | "google-gemini-v1" | Unrecognized<string>
+```

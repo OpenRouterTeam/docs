@@ -1,0 +1,37 @@
+---
+title: ForbiddenResponseError - Go SDK
+sidebarTitle: ForbiddenResponseError
+description: ForbiddenResponseError type definition
+seoTitle: ForbiddenResponseError Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/forbiddenresponseerror'
+'og:site_name': OpenRouter Documentation
+'og:title': ForbiddenResponseError Type | OpenRouter Go SDK
+'og:description': >-
+  ForbiddenResponseError type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ForbiddenResponseError%20-%20Go%20SDK&description=ForbiddenResponseError%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Forbidden - Authentication successful but insufficient permissions
+
+## Fields
+
+| Field                                                                                          | Type                                                                                           | Required                                                                                       | Description                                                                                    | Example                                                                                        |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `Error`                                                                                        | [components.ForbiddenResponseErrorData](/client-sdks/go/api-reference/models/forbiddenresponseerrordata) | :heavy_check_mark:                                                                             | Error data for ForbiddenResponse                                                               | `{"code": 403,"message": "Only management keys can perform this operation"}`      |
+| `OpenrouterMetadata`                                                                           | map[string]`any`                                                                               | :heavy_minus_sign:                                                                             | N/A                                                                                            |                                                                                                |
+| `UserID`                                                                                       | `*string`                                                                                      | :heavy_minus_sign:                                                                             | N/A                                                                                            |                                                                                                |

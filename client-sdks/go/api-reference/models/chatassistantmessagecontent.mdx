@@ -1,0 +1,65 @@
+---
+title: ChatAssistantMessageContent - Go SDK
+sidebarTitle: ChatAssistantMessageContent
+description: ChatAssistantMessageContent type definition
+seoTitle: ChatAssistantMessageContent Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/chatassistantmessagecontent
+'og:site_name': OpenRouter Documentation
+'og:title': ChatAssistantMessageContent Type | OpenRouter Go SDK
+'og:description': >-
+  ChatAssistantMessageContent type reference for the OpenRouter Go SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatAssistantMessageContent%20-%20Go%20SDK&description=ChatAssistantMessageContent%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Assistant message content
+
+## Supported Types
+
+### 
+
+```go lines
+chatAssistantMessageContent := components.CreateChatAssistantMessageContentStr(string{/* values here */})
+```
+
+### 
+
+```go lines
+chatAssistantMessageContent := components.CreateChatAssistantMessageContentArrayOfChatContentItems([]components.ChatContentItems{/* values here */})
+```
+
+### 
+
+```go lines
+chatAssistantMessageContent := components.CreateChatAssistantMessageContentAny(any{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch chatAssistantMessageContent.Type {
+	case components.ChatAssistantMessageContentTypeStr:
+		// chatAssistantMessageContent.Str is populated
+	case components.ChatAssistantMessageContentTypeArrayOfChatContentItems:
+		// chatAssistantMessageContent.ArrayOfChatContentItems is populated
+	case components.ChatAssistantMessageContentTypeAny:
+		// chatAssistantMessageContent.Any is populated
+}
+```

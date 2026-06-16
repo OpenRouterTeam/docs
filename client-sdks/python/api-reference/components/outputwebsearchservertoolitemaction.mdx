@@ -1,0 +1,38 @@
+---
+title: OutputWebSearchServerToolItemAction - Python SDK
+sidebarTitle: OutputWebSearchServerToolItemAction
+description: OutputWebSearchServerToolItemAction method reference
+seoTitle: OutputWebSearchServerToolItemAction | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/outputwebsearchservertoolitemaction
+'og:site_name': OpenRouter Documentation
+'og:title': OutputWebSearchServerToolItemAction | OpenRouter Python SDK
+'og:description': >-
+  OutputWebSearchServerToolItemAction method documentation for the OpenRouter
+  Python SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputWebSearchServerToolItemAction%20-%20Python%20SDK&description=OutputWebSearchServerToolItemAction%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The search action performed, matching OpenAI web_search_call.action shape. Includes the query the model issued and optional source URLs returned by the search provider.
+
+## Fields
+
+| Field                                                                                                          | Type                                                                                                           | Required                                                                                                       | Description                                                                                                    |
+| -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `query`                                                                                                        | *str*                                                                                                          | :heavy_check_mark:                                                                                             | N/A                                                                                                            |
+| `sources`                                                                                                      | List[[components.OutputWebSearchServerToolItemSource](/client-sdks/python/api-reference/components/outputwebsearchservertoolitemsource)]   | :heavy_minus_sign:                                                                                             | N/A                                                                                                            |
+| `type`                                                                                                         | [components.OutputWebSearchServerToolItemTypeSearch](/client-sdks/python/api-reference/components/outputwebsearchservertoolitemtypesearch) | :heavy_check_mark:                                                                                             | N/A                                                                                                            |

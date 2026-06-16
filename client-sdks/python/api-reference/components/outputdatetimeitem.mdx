@@ -1,0 +1,40 @@
+---
+title: OutputDatetimeItem - Python SDK
+sidebarTitle: OutputDatetimeItem
+description: OutputDatetimeItem method reference
+seoTitle: OutputDatetimeItem | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/outputdatetimeitem
+'og:site_name': OpenRouter Documentation
+'og:title': OutputDatetimeItem | OpenRouter Python SDK
+'og:description': >-
+  OutputDatetimeItem method documentation for the OpenRouter Python SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputDatetimeItem%20-%20Python%20SDK&description=OutputDatetimeItem%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+An openrouter:datetime server tool output item
+
+## Fields
+
+| Field                                                                        | Type                                                                         | Required                                                                     | Description                                                                  | Example                                                                      |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `datetime`                                                                   | *str*                                                                        | :heavy_check_mark:                                                           | ISO 8601 datetime string                                                     |                                                                              |
+| `id`                                                                         | *Optional[str]*                                                              | :heavy_minus_sign:                                                           | N/A                                                                          |                                                                              |
+| `status`                                                                     | [components.ToolCallStatus](/client-sdks/python/api-reference/components/toolcallstatus)                 | :heavy_check_mark:                                                           | N/A                                                                          | completed                                                                    |
+| `timezone`                                                                   | *str*                                                                        | :heavy_check_mark:                                                           | IANA timezone name                                                           |                                                                              |
+| `type`                                                                       | [components.OutputDatetimeItemType](/client-sdks/python/api-reference/components/outputdatetimeitemtype) | :heavy_check_mark:                                                           | N/A                                                                          |                                                                              |

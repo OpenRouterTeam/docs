@@ -1,0 +1,50 @@
+---
+title: ApplyPatchUpdateFileOperation - TypeScript SDK
+sidebarTitle: ApplyPatchUpdateFileOperation
+description: ApplyPatchUpdateFileOperation type definition
+seoTitle: ApplyPatchUpdateFileOperation Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/applypatchupdatefileoperation
+'og:site_name': OpenRouter Documentation
+'og:title': ApplyPatchUpdateFileOperation Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ApplyPatchUpdateFileOperation type reference for the OpenRouter TypeScript
+  SDK. Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ApplyPatchUpdateFileOperation%20-%20TypeScript%20SDK&description=ApplyPatchUpdateFileOperation%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The `update_file` variant of an `apply_patch_call.operation`. Carries a V4A diff describing edits to an existing file.
+
+## Example Usage
+
+```typescript lines
+import { ApplyPatchUpdateFileOperation } from "@openrouter/sdk/models";
+
+let value: ApplyPatchUpdateFileOperation = {
+  diff: "@@ function main() {\n+  console.log(\"hi\");\n }",
+  path: "/src/main.ts",
+  type: "update_file",
+};
+```
+
+## Fields
+
+| Field              | Type               | Required           | Description        |
+| ------------------ | ------------------ | ------------------ | ------------------ |
+| `diff`             | *string*           | :heavy_check_mark: | N/A                |
+| `path`             | *string*           | :heavy_check_mark: | N/A                |
+| `type`             | *"update_file"*    | :heavy_check_mark: | N/A                |

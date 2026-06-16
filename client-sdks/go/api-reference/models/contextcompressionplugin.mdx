@@ -1,0 +1,36 @@
+---
+title: ContextCompressionPlugin - Go SDK
+sidebarTitle: ContextCompressionPlugin
+description: ContextCompressionPlugin type definition
+seoTitle: ContextCompressionPlugin Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/contextcompressionplugin
+'og:site_name': OpenRouter Documentation
+'og:title': ContextCompressionPlugin Type | OpenRouter Go SDK
+'og:description': >-
+  ContextCompressionPlugin type reference for the OpenRouter Go SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ContextCompressionPlugin%20-%20Go%20SDK&description=ContextCompressionPlugin%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                                          | Type                                                                                           | Required                                                                                       | Description                                                                                    | Example                                                                                        |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `Enabled`                                                                                      | `*bool`                                                                                        | :heavy_minus_sign:                                                                             | Set to false to disable the context-compression plugin for this request. Defaults to true.     |                                                                                                |
+| `Engine`                                                                                       | [*components.ContextCompressionEngine](/client-sdks/go/api-reference/models/contextcompressionengine)    | :heavy_minus_sign:                                                                             | The compression engine to use. Defaults to "middle-out".                                       | middle-out                                                                                     |
+| `ID`                                                                                           | [components.ContextCompressionPluginID](/client-sdks/go/api-reference/models/contextcompressionpluginid) | :heavy_check_mark:                                                                             | N/A                                                                                            |                                                                                                |

@@ -1,0 +1,59 @@
+---
+title: CreateRerankResponseBody - TypeScript SDK
+sidebarTitle: CreateRerankResponseBody
+description: CreateRerankResponseBody type definition
+seoTitle: CreateRerankResponseBody Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/creatererankresponsebody
+'og:site_name': OpenRouter Documentation
+'og:title': CreateRerankResponseBody Type | OpenRouter TypeScript SDK
+'og:description': >-
+  CreateRerankResponseBody type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateRerankResponseBody%20-%20TypeScript%20SDK&description=CreateRerankResponseBody%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Rerank response containing ranked results
+
+## Example Usage
+
+```typescript lines
+import { CreateRerankResponseBody } from "@openrouter/sdk/models/operations";
+
+let value: CreateRerankResponseBody = {
+  model: "cohere/rerank-v3.5",
+  results: [
+    {
+      document: {
+        text: "Paris is the capital of France.",
+      },
+      index: 0,
+      relevanceScore: 0.98,
+    },
+  ],
+};
+```
+
+## Fields
+
+| Field                                                                                                  | Type                                                                                                   | Required                                                                                               | Description                                                                                            | Example                                                                                                |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `id`                                                                                                   | *string*                                                                                               | :heavy_minus_sign:                                                                                     | Unique identifier for the rerank response (ORID format)                                                | gen-rerank-1234567890-abc                                                                              |
+| `model`                                                                                                | *string*                                                                                               | :heavy_check_mark:                                                                                     | The model used for reranking                                                                           | cohere/rerank-v3.5                                                                                     |
+| `provider`                                                                                             | *string*                                                                                               | :heavy_minus_sign:                                                                                     | The provider that served the rerank request                                                            | Cohere                                                                                                 |
+| `results`                                                                                              | [operations.Result](/agent-sdk/typescript/api-reference/operations/result)[]                                               | :heavy_check_mark:                                                                                     | List of rerank results sorted by relevance                                                             | [<br/>`{"document": {"text": "Paris is the capital of France."}`,<br/>"index": 0,<br/>"relevance_score": 0.98<br/>\}<br/>] |
+| `usage`                                                                                                | [operations.CreateRerankUsage](/agent-sdk/typescript/api-reference/operations/creatererankusage)                           | :heavy_minus_sign:                                                                                     | Usage statistics                                                                                       | `{"search_units": 1,"total_tokens": 150}`                                                 |

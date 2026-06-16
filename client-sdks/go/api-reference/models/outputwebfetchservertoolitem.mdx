@@ -1,0 +1,43 @@
+---
+title: OutputWebFetchServerToolItem - Go SDK
+sidebarTitle: OutputWebFetchServerToolItem
+description: OutputWebFetchServerToolItem type definition
+seoTitle: OutputWebFetchServerToolItem Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/outputwebfetchservertoolitem
+'og:site_name': OpenRouter Documentation
+'og:title': OutputWebFetchServerToolItem Type | OpenRouter Go SDK
+'og:description': >-
+  OutputWebFetchServerToolItem type reference for the OpenRouter Go SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputWebFetchServerToolItem%20-%20Go%20SDK&description=OutputWebFetchServerToolItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+An openrouter:web_fetch server tool output item
+
+## Fields
+
+| Field                                                                                                      | Type                                                                                                       | Required                                                                                                   | Description                                                                                                | Example                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `Content`                                                                                                  | `*string`                                                                                                  | :heavy_minus_sign:                                                                                         | N/A                                                                                                        |                                                                                                            |
+| `Error`                                                                                                    | `*string`                                                                                                  | :heavy_minus_sign:                                                                                         | The error message if the fetch failed.                                                                     |                                                                                                            |
+| `HTTPStatus`                                                                                               | `*int64`                                                                                                   | :heavy_minus_sign:                                                                                         | The HTTP status code returned by the upstream URL fetch.                                                   |                                                                                                            |
+| `ID`                                                                                                       | `*string`                                                                                                  | :heavy_minus_sign:                                                                                         | N/A                                                                                                        |                                                                                                            |
+| `Status`                                                                                                   | [components.ToolCallStatus](/client-sdks/go/api-reference/models/toolcallstatus)                                     | :heavy_check_mark:                                                                                         | N/A                                                                                                        | completed                                                                                                  |
+| `Title`                                                                                                    | `*string`                                                                                                  | :heavy_minus_sign:                                                                                         | N/A                                                                                                        |                                                                                                            |
+| `Type`                                                                                                     | [components.OutputWebFetchServerToolItemType](/client-sdks/go/api-reference/models/outputwebfetchservertoolitemtype) | :heavy_check_mark:                                                                                         | N/A                                                                                                        |                                                                                                            |
+| `URL`                                                                                                      | `*string`                                                                                                  | :heavy_minus_sign:                                                                                         | N/A                                                                                                        |                                                                                                            |

@@ -1,0 +1,52 @@
+---
+title: VideoGenerationResponse - TypeScript SDK
+sidebarTitle: VideoGenerationResponse
+description: VideoGenerationResponse type definition
+seoTitle: VideoGenerationResponse Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/videogenerationresponse
+'og:site_name': OpenRouter Documentation
+'og:title': VideoGenerationResponse Type | OpenRouter TypeScript SDK
+'og:description': >-
+  VideoGenerationResponse type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=VideoGenerationResponse%20-%20TypeScript%20SDK&description=VideoGenerationResponse%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { VideoGenerationResponse } from "@openrouter/sdk/models";
+
+let value: VideoGenerationResponse = {
+  id: "job-abc123",
+  pollingUrl: "/api/v1/videos/job-abc123",
+  status: "pending",
+};
+```
+
+## Fields
+
+| Field                                                                                                   | Type                                                                                                    | Required                                                                                                | Description                                                                                             | Example                                                                                                 |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `error`                                                                                                 | *string*                                                                                                | :heavy_minus_sign:                                                                                      | N/A                                                                                                     |                                                                                                         |
+| `generationId`                                                                                          | *string*                                                                                                | :heavy_minus_sign:                                                                                      | The generation ID associated with this video generation job. Available once the job has been processed. |                                                                                                         |
+| `id`                                                                                                    | *string*                                                                                                | :heavy_check_mark:                                                                                      | N/A                                                                                                     |                                                                                                         |
+| `pollingUrl`                                                                                            | *string*                                                                                                | :heavy_check_mark:                                                                                      | N/A                                                                                                     |                                                                                                         |
+| `status`                                                                                                | [models.VideoGenerationResponseStatus](/agent-sdk/typescript/api-reference/models/videogenerationresponsestatus)                      | :heavy_check_mark:                                                                                      | N/A                                                                                                     |                                                                                                         |
+| `unsignedUrls`                                                                                          | *string*[]                                                                                              | :heavy_minus_sign:                                                                                      | N/A                                                                                                     |                                                                                                         |
+| `usage`                                                                                                 | [models.VideoGenerationUsage](/agent-sdk/typescript/api-reference/models/videogenerationusage)                                        | :heavy_minus_sign:                                                                                      | Usage and cost information for the video generation. Available once the job has completed.              | `{"cost": 0.5,"is_byok": false}`                                                           |

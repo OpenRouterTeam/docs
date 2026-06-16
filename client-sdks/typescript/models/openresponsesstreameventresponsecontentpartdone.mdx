@@ -1,0 +1,59 @@
+---
+title: OpenResponsesStreamEventResponseContentPartDone - TypeScript SDK
+description: OpenResponsesStreamEventResponseContentPartDone method reference
+seoTitle: OpenResponsesStreamEventResponseContentPartDone | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/models/openresponsesstreameventresponsecontentpartdone
+'og:site_name': OpenRouter Documentation
+'og:title': OpenResponsesStreamEventResponseContentPartDone | OpenRouter TypeScript SDK
+'og:description': >-
+  OpenResponsesStreamEventResponseContentPartDone method documentation for the
+  OpenRouter TypeScript SDK. Learn how to use this API endpoint with code
+  examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenResponsesStreamEventResponseContentPartDone%20-%20TypeScript%20SDK&description=OpenResponsesStreamEventResponseContentPartDone%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Event emitted when a content part is complete
+
+## Example Usage
+
+```typescript lines
+import { OpenResponsesStreamEventResponseContentPartDone } from "@openrouter/sdk/models";
+
+let value: OpenResponsesStreamEventResponseContentPartDone = {
+  type: "response.content_part.done",
+  outputIndex: 0,
+  itemId: "item-1",
+  contentIndex: 0,
+  part: {
+    type: "output_text",
+    text: "Hello! How can I help you?",
+  },
+  sequenceNumber: 7,
+};
+```
+
+## Fields
+
+| Field                          | Type                           | Required                       | Description                    |
+| ------------------------------ | ------------------------------ | ------------------------------ | ------------------------------ |
+| `type`                         | *"response.content_part.done"* | :heavy_check_mark:             | N/A                            |
+| `outputIndex`                  | *number*                       | :heavy_check_mark:             | N/A                            |
+| `itemId`                       | *string*                       | :heavy_check_mark:             | N/A                            |
+| `contentIndex`                 | *number*                       | :heavy_check_mark:             | N/A                            |
+| `part`                         | *models.Part2*                 | :heavy_check_mark:             | N/A                            |
+| `sequenceNumber`               | *number*                       | :heavy_check_mark:             | N/A                            |

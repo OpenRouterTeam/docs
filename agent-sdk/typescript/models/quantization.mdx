@@ -1,0 +1,42 @@
+---
+title: Quantization - TypeScript SDK
+description: Quantization method reference
+seoTitle: Quantization | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/quantization'
+'og:site_name': OpenRouter Documentation
+'og:title': Quantization | OpenRouter TypeScript SDK
+'og:description': >-
+  Quantization method documentation for the OpenRouter TypeScript SDK. Learn how
+  to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Quantization%20-%20TypeScript%20SDK&description=Quantization%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { Quantization } from "@openrouter/sdk/models";
+
+let value: Quantization = "fp16";
+```
+
+## Values
+
+This is an open enum. Unrecognized values will be captured as the `Unrecognized<string>` branded type.
+
+```typescript lines
+"int4" | "int8" | "fp4" | "fp6" | "fp8" | "fp16" | "bf16" | "fp32" | "unknown" | Unrecognized<string>
+```

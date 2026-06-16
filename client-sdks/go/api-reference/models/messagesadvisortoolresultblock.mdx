@@ -1,0 +1,38 @@
+---
+title: MessagesAdvisorToolResultBlock - Go SDK
+sidebarTitle: MessagesAdvisorToolResultBlock
+description: MessagesAdvisorToolResultBlock type definition
+seoTitle: MessagesAdvisorToolResultBlock Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/messagesadvisortoolresultblock
+'og:site_name': OpenRouter Documentation
+'og:title': MessagesAdvisorToolResultBlock Type | OpenRouter Go SDK
+'og:description': >-
+  MessagesAdvisorToolResultBlock type reference for the OpenRouter Go SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=MessagesAdvisorToolResultBlock%20-%20Go%20SDK&description=MessagesAdvisorToolResultBlock%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Advisor tool result from a prior assistant turn, replayed back to the model on the next turn. Mirrors the block Anthropic returns in assistant content when the `advisor_20260301` tool runs.
+
+## Fields
+
+| Field                                                                                                          | Type                                                                                                           | Required                                                                                                       | Description                                                                                                    |
+| -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `Content`                                                                                                      | map[string]`any`                                                                                               | :heavy_check_mark:                                                                                             | N/A                                                                                                            |
+| `ToolUseID`                                                                                                    | `string`                                                                                                       | :heavy_check_mark:                                                                                             | N/A                                                                                                            |
+| `Type`                                                                                                         | [components.MessagesAdvisorToolResultBlockType](/client-sdks/go/api-reference/models/messagesadvisortoolresultblocktype) | :heavy_check_mark:                                                                                             | N/A                                                                                                            |

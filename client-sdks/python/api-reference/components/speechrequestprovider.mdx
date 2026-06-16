@@ -1,0 +1,36 @@
+---
+title: SpeechRequestProvider - Python SDK
+sidebarTitle: SpeechRequestProvider
+description: SpeechRequestProvider method reference
+seoTitle: SpeechRequestProvider | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/speechrequestprovider
+'og:site_name': OpenRouter Documentation
+'og:title': SpeechRequestProvider | OpenRouter Python SDK
+'og:description': >-
+  SpeechRequestProvider method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=SpeechRequestProvider%20-%20Python%20SDK&description=SpeechRequestProvider%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Provider-specific passthrough configuration
+
+## Fields
+
+| Field                                                                                                                             | Type                                                                                                                              | Required                                                                                                                          | Description                                                                                                                       | Example                                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `options`                                                                                                                         | [Optional[components.ProviderOptions]](../components/provideroptions.md)                                                          | :heavy_minus_sign:                                                                                                                | Provider-specific options keyed by provider slug. The options for the matched provider are spread into the upstream request body. | `{"openai": {"max_tokens": 1000}`<br/>\}                                                                              |

@@ -1,0 +1,57 @@
+---
+title: CreatePresetsMessagesRequest - TypeScript SDK
+sidebarTitle: CreatePresetsMessagesRequest
+description: CreatePresetsMessagesRequest type definition
+seoTitle: CreatePresetsMessagesRequest Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/createpresetsmessagesrequest
+'og:site_name': OpenRouter Documentation
+'og:title': CreatePresetsMessagesRequest Type | OpenRouter TypeScript SDK
+'og:description': >-
+  CreatePresetsMessagesRequest type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreatePresetsMessagesRequest%20-%20TypeScript%20SDK&description=CreatePresetsMessagesRequest%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { CreatePresetsMessagesRequest } from "@openrouter/sdk/models/operations";
+
+let value: CreatePresetsMessagesRequest = {
+  slug: "my-preset",
+  messagesRequest: {
+    messages: [
+      {
+        content: "Hello, how are you?",
+        role: "user",
+      },
+    ],
+    model: "anthropic/claude-4.5-sonnet-20250929",
+  },
+};
+```
+
+## Fields
+
+| Field                                                                                                                                                             | Type                                                                                                                                                              | Required                                                                                                                                                          | Description                                                                                                                                                       | Example                                                                                                                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `httpReferer`                                                                                                                                                     | *string*                                                                                                                                                          | :heavy_minus_sign:                                                                                                                                                | The app identifier should be your app's URL and is used as the primary identifier for rankings.<br/>This is used to track API usage per application.<br/>         |                                                                                                                                                                   |
+| `appTitle`                                                                                                                                                        | *string*                                                                                                                                                          | :heavy_minus_sign:                                                                                                                                                | The app display name allows you to customize how your app appears in OpenRouter's dashboard.<br/>                                                                 |                                                                                                                                                                   |
+| `appCategories`                                                                                                                                                   | *string*                                                                                                                                                          | :heavy_minus_sign:                                                                                                                                                | Comma-separated list of app categories (e.g. "cli-agent,cloud-agent"). Used for marketplace rankings.<br/>                                                        |                                                                                                                                                                   |
+| `slug`                                                                                                                                                            | *string*                                                                                                                                                          | :heavy_check_mark:                                                                                                                                                | URL-safe slug identifying the preset. Created if it does not exist.                                                                                               | my-preset                                                                                                                                                         |
+| `messagesRequest`                                                                                                                                                 | [models.MessagesRequest](/client-sdks/typescript/api-reference/models/messagesrequest)                                                                                                         | :heavy_check_mark:                                                                                                                                                | N/A                                                                                                                                                               | `{"max_tokens": 1024,"messages": [{"content": "Hello, how are you?","role": "user"}`<br/>],<br/>"model": "anthropic/claude-4.5-sonnet-20250929",<br/>"temperature": 0.7<br/>\} |

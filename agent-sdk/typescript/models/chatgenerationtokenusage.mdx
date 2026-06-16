@@ -1,0 +1,48 @@
+---
+title: ChatGenerationTokenUsage - TypeScript SDK
+description: ChatGenerationTokenUsage method reference
+seoTitle: ChatGenerationTokenUsage | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/chatgenerationtokenusage'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatGenerationTokenUsage | OpenRouter TypeScript SDK
+'og:description': >-
+  ChatGenerationTokenUsage method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatGenerationTokenUsage%20-%20TypeScript%20SDK&description=ChatGenerationTokenUsage%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ChatGenerationTokenUsage } from "@openrouter/sdk/models";
+
+let value: ChatGenerationTokenUsage = {
+  completionTokens: 9399.77,
+  promptTokens: 9559.6,
+  totalTokens: 7060.03,
+};
+```
+
+## Fields
+
+| Field                                                                  | Type                                                                   | Required                                                               | Description                                                            |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `completionTokens`                                                     | *number*                                                               | :heavy_check_mark:                                                     | N/A                                                                    |
+| `promptTokens`                                                         | *number*                                                               | :heavy_check_mark:                                                     | N/A                                                                    |
+| `totalTokens`                                                          | *number*                                                               | :heavy_check_mark:                                                     | N/A                                                                    |
+| `completionTokensDetails`                                              | [models.CompletionTokensDetails](/agent-sdk/typescript/models/completiontokensdetails) | :heavy_minus_sign:                                                     | N/A                                                                    |
+| `promptTokensDetails`                                                  | [models.PromptTokensDetails](/agent-sdk/typescript/models/prompttokensdetails)         | :heavy_minus_sign:                                                     | N/A                                                                    |

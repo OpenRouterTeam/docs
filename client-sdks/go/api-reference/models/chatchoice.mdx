@@ -1,0 +1,38 @@
+---
+title: ChatChoice - Go SDK
+sidebarTitle: ChatChoice
+description: ChatChoice type definition
+seoTitle: ChatChoice Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/chatchoice'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatChoice Type | OpenRouter Go SDK
+'og:description': >-
+  ChatChoice type reference for the OpenRouter Go SDK. Complete type definition
+  and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatChoice%20-%20Go%20SDK&description=ChatChoice%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Chat completion choice
+
+## Fields
+
+| Field                                                                                                              | Type                                                                                                               | Required                                                                                                           | Description                                                                                                        | Example                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `FinishReason`                                                                                                     | [*components.ChatFinishReasonEnum](/client-sdks/go/api-reference/models/chatfinishreasonenum)                                | :heavy_check_mark:                                                                                                 | N/A                                                                                                                | stop                                                                                                               |
+| `Index`                                                                                                            | `int64`                                                                                                            | :heavy_check_mark:                                                                                                 | Choice index                                                                                                       | 0                                                                                                                  |
+| `Logprobs`                                                                                                         | optionalnullable.OptionalNullable[[components.ChatTokenLogprobs](/client-sdks/go/api-reference/models/chattokenlogprobs)]    | :heavy_minus_sign:                                                                                                 | Log probabilities for the completion                                                                               | `{"content": [{"bytes": null,"logprob": -0.612345,"token": " Hello","top_logprobs": []}`<br/>],<br/>"refusal": `null<br/>`\} |
+| `Message`                                                                                                          | [components.ChatAssistantMessage](/client-sdks/go/api-reference/models/chatassistantmessage)                                 | :heavy_check_mark:                                                                                                 | Assistant message for requests and responses                                                                       | `{"content": "What is the capital of France?","role": "user"}`                                        |

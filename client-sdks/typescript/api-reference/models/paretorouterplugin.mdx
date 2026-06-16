@@ -1,0 +1,46 @@
+---
+title: ParetoRouterPlugin - TypeScript SDK
+sidebarTitle: ParetoRouterPlugin
+description: ParetoRouterPlugin type definition
+seoTitle: ParetoRouterPlugin Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/paretorouterplugin
+'og:site_name': OpenRouter Documentation
+'og:title': ParetoRouterPlugin Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ParetoRouterPlugin type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ParetoRouterPlugin%20-%20TypeScript%20SDK&description=ParetoRouterPlugin%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ParetoRouterPlugin } from "@openrouter/sdk/models";
+
+let value: ParetoRouterPlugin = {
+  id: "pareto-router",
+};
+```
+
+## Fields
+
+| Field                                                                                                                                                                                                                                                                  | Type                                                                                                                                                                                                                                                                   | Required                                                                                                                                                                                                                                                               | Description                                                                                                                                                                                                                                                            | Example                                                                                                                                                                                                                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`                                                                                                                                                                                                                                                              | *boolean*                                                                                                                                                                                                                                                              | :heavy_minus_sign:                                                                                                                                                                                                                                                     | Set to false to disable the pareto-router plugin for this request. Defaults to true.                                                                                                                                                                                   |                                                                                                                                                                                                                                                                        |
+| `id`                                                                                                                                                                                                                                                                   | *"pareto-router"*                                                                                                                                                                                                                                                      | :heavy_check_mark:                                                                                                                                                                                                                                                     | N/A                                                                                                                                                                                                                                                                    |                                                                                                                                                                                                                                                                        |
+| `minCodingScore`                                                                                                                                                                                                                                                       | *number*                                                                                                                                                                                                                                                               | :heavy_minus_sign:                                                                                                                                                                                                                                                     | Minimum desired coding score between 0 and 1, where 1 is best. Higher values select from stronger coding models (sourced from Artificial Analysis coding percentiles). Maps internally to one of three tiers (low, medium, high). Omit to use the router default tier. | 0.8                                                                                                                                                                                                                                                                    |

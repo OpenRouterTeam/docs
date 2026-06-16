@@ -1,0 +1,41 @@
+---
+title: OpenResponsesReasoning - Python SDK
+description: OpenResponsesReasoning method reference
+seoTitle: OpenResponsesReasoning | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/components/openresponsesreasoning'
+'og:site_name': OpenRouter Documentation
+'og:title': OpenResponsesReasoning | OpenRouter Python SDK
+'og:description': >-
+  OpenResponsesReasoning method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenResponsesReasoning%20-%20Python%20SDK&description=OpenResponsesReasoning%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Reasoning output item with signature and format extensions
+
+## Fields
+
+| Field                                                                                                        | Type                                                                                                         | Required                                                                                                     | Description                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `type`                                                                                                       | [components.OpenResponsesReasoningType](/client-sdks/python/components/openresponsesreasoningtype)                         | :heavy_check_mark:                                                                                           | N/A                                                                                                          |
+| `id`                                                                                                         | *str*                                                                                                        | :heavy_check_mark:                                                                                           | N/A                                                                                                          |
+| `content`                                                                                                    | List[[components.ReasoningTextContent](/client-sdks/python/api-reference/components/reasoningtextcontent)]                               | :heavy_minus_sign:                                                                                           | N/A                                                                                                          |
+| `summary`                                                                                                    | List[[components.ReasoningSummaryText](/client-sdks/python/api-reference/components/reasoningsummarytext)]                               | :heavy_check_mark:                                                                                           | N/A                                                                                                          |
+| `encrypted_content`                                                                                          | *OptionalNullable[str]*                                                                                      | :heavy_minus_sign:                                                                                           | N/A                                                                                                          |
+| `status`                                                                                                     | [Optional[components.OpenResponsesReasoningStatusUnion]](../components/openresponsesreasoningstatusunion.md) | :heavy_minus_sign:                                                                                           | N/A                                                                                                          |
+| `signature`                                                                                                  | *OptionalNullable[str]*                                                                                      | :heavy_minus_sign:                                                                                           | N/A                                                                                                          |
+| `format_`                                                                                                    | [OptionalNullable[components.OpenResponsesReasoningFormat]](../components/openresponsesreasoningformat.md)   | :heavy_minus_sign:                                                                                           | N/A                                                                                                          |

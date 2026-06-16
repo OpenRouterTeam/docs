@@ -1,0 +1,64 @@
+---
+title: Stop - Go SDK
+sidebarTitle: Stop
+description: Stop type definition
+seoTitle: Stop Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/stop'
+'og:site_name': OpenRouter Documentation
+'og:title': Stop Type | OpenRouter Go SDK
+'og:description': >-
+  Stop type reference for the OpenRouter Go SDK. Complete type definition and
+  usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Stop%20-%20Go%20SDK&description=Stop%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Stop sequences (up to 4)
+
+## Supported Types
+
+### 
+
+```go lines
+stop := components.CreateStopStr(string{/* values here */})
+```
+
+### 
+
+```go lines
+stop := components.CreateStopArrayOfStr([]string{/* values here */})
+```
+
+### 
+
+```go lines
+stop := components.CreateStopAny(any{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch stop.Type {
+	case components.StopTypeStr:
+		// stop.Str is populated
+	case components.StopTypeArrayOfStr:
+		// stop.ArrayOfStr is populated
+	case components.StopTypeAny:
+		// stop.Any is populated
+}
+```

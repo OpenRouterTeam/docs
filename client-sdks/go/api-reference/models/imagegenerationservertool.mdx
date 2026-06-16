@@ -1,0 +1,46 @@
+---
+title: ImageGenerationServerTool - Go SDK
+sidebarTitle: ImageGenerationServerTool
+description: ImageGenerationServerTool type definition
+seoTitle: ImageGenerationServerTool Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/imagegenerationservertool
+'og:site_name': OpenRouter Documentation
+'og:title': ImageGenerationServerTool Type | OpenRouter Go SDK
+'og:description': >-
+  ImageGenerationServerTool type reference for the OpenRouter Go SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ImageGenerationServerTool%20-%20Go%20SDK&description=ImageGenerationServerTool%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Image generation tool configuration
+
+## Fields
+
+| Field                                                                                                   | Type                                                                                                    | Required                                                                                                | Description                                                                                             |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `Background`                                                                                            | [*components.Background](/client-sdks/go/api-reference/models/background)                                         | :heavy_minus_sign:                                                                                      | N/A                                                                                                     |
+| `InputFidelity`                                                                                         | optionalnullable.OptionalNullable[[components.InputFidelity](/client-sdks/go/api-reference/models/inputfidelity)] | :heavy_minus_sign:                                                                                      | N/A                                                                                                     |
+| `InputImageMask`                                                                                        | [*components.InputImageMask](/client-sdks/go/api-reference/models/inputimagemask)                                 | :heavy_minus_sign:                                                                                      | N/A                                                                                                     |
+| `Model`                                                                                                 | [*components.ModelEnum](/client-sdks/go/api-reference/models/modelenum)                                           | :heavy_minus_sign:                                                                                      | N/A                                                                                                     |
+| `Moderation`                                                                                            | [*components.Moderation](/client-sdks/go/api-reference/models/moderation)                                         | :heavy_minus_sign:                                                                                      | N/A                                                                                                     |
+| `OutputCompression`                                                                                     | `*int64`                                                                                                | :heavy_minus_sign:                                                                                      | N/A                                                                                                     |
+| `OutputFormat`                                                                                          | [*components.OutputFormat](/client-sdks/go/api-reference/models/outputformat)                                     | :heavy_minus_sign:                                                                                      | N/A                                                                                                     |
+| `PartialImages`                                                                                         | `*int64`                                                                                                | :heavy_minus_sign:                                                                                      | N/A                                                                                                     |
+| `Quality`                                                                                               | [*components.Quality](/client-sdks/go/api-reference/models/quality)                                               | :heavy_minus_sign:                                                                                      | N/A                                                                                                     |
+| `Size`                                                                                                  | [*components.Size](/client-sdks/go/api-reference/models/size)                                                     | :heavy_minus_sign:                                                                                      | N/A                                                                                                     |
+| `Type`                                                                                                  | [components.ImageGenerationServerToolType](/client-sdks/go/api-reference/models/imagegenerationservertooltype)    | :heavy_check_mark:                                                                                      | N/A                                                                                                     |

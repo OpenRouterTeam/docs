@@ -1,0 +1,41 @@
+---
+title: ResponsesOutputItemReasoning - Python SDK
+description: ResponsesOutputItemReasoning method reference
+seoTitle: ResponsesOutputItemReasoning | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/components/responsesoutputitemreasoning'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponsesOutputItemReasoning | OpenRouter Python SDK
+'og:description': >-
+  ResponsesOutputItemReasoning method documentation for the OpenRouter Python
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponsesOutputItemReasoning%20-%20Python%20SDK&description=ResponsesOutputItemReasoning%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+An output item containing reasoning
+
+## Fields
+
+| Field                                                                                                                    | Type                                                                                                                     | Required                                                                                                                 | Description                                                                                                              | Example                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `type`                                                                                                                   | [components.ResponsesOutputItemReasoningType](/client-sdks/python/components/responsesoutputitemreasoningtype)                         | :heavy_check_mark:                                                                                                       | N/A                                                                                                                      |                                                                                                                          |
+| `id`                                                                                                                     | *str*                                                                                                                    | :heavy_check_mark:                                                                                                       | N/A                                                                                                                      |                                                                                                                          |
+| `content`                                                                                                                | List[[components.ReasoningTextContent](/client-sdks/python/api-reference/components/reasoningtextcontent)]                                           | :heavy_minus_sign:                                                                                                       | N/A                                                                                                                      |                                                                                                                          |
+| `summary`                                                                                                                | List[[components.ReasoningSummaryText](/client-sdks/python/api-reference/components/reasoningsummarytext)]                                           | :heavy_check_mark:                                                                                                       | N/A                                                                                                                      |                                                                                                                          |
+| `encrypted_content`                                                                                                      | *OptionalNullable[str]*                                                                                                  | :heavy_minus_sign:                                                                                                       | N/A                                                                                                                      |                                                                                                                          |
+| `status`                                                                                                                 | [Optional[components.ResponsesOutputItemReasoningStatusUnion]](../components/responsesoutputitemreasoningstatusunion.md) | :heavy_minus_sign:                                                                                                       | N/A                                                                                                                      |                                                                                                                          |
+| `signature`                                                                                                              | *OptionalNullable[str]*                                                                                                  | :heavy_minus_sign:                                                                                                       | A signature for the reasoning content, used for verification                                                             | EvcBCkgIChABGAIqQKkSDbRuVEQUk9qN1odC098l9SEj...                                                                          |
+| `format_`                                                                                                                | [OptionalNullable[components.ResponsesOutputItemReasoningFormat]](../components/responsesoutputitemreasoningformat.md)   | :heavy_minus_sign:                                                                                                       | The format of the reasoning content                                                                                      | anthropic-claude-v1                                                                                                      |

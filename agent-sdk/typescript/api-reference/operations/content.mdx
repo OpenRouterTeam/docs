@@ -1,0 +1,82 @@
+---
+title: Content - TypeScript SDK
+sidebarTitle: Content
+description: Content type definition
+seoTitle: Content Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/api-reference/operations/content'
+'og:site_name': OpenRouter Documentation
+'og:title': Content Type | OpenRouter TypeScript SDK
+'og:description': >-
+  Content type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Content%20-%20TypeScript%20SDK&description=Content%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### `operations.ContentText`
+
+```typescript lines
+const value: operations.ContentText = {
+  text: "<value>",
+  type: "text",
+};
+```
+
+### `operations.ContentImageURL`
+
+```typescript lines
+const value: operations.ContentImageURL = {
+  imageUrl: {
+    url: "https://zealous-march.biz/",
+  },
+  type: "image_url",
+};
+```
+
+### `models.ContentPartInputAudio`
+
+```typescript lines
+const value: models.ContentPartInputAudio = {
+  inputAudio: {
+    data: "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAA...",
+  },
+  type: "input_audio",
+};
+```
+
+### `models.ContentPartInputVideo`
+
+```typescript lines
+const value: models.ContentPartInputVideo = {
+  inputVideo: {
+    data: "data:video/mp4;base64,AAAAGGZ0eXBtcDQyAAAAAGlzb21tcDQy...",
+  },
+  type: "input_video",
+};
+```
+
+### `models.ContentPartInputFile`
+
+```typescript lines
+const value: models.ContentPartInputFile = {
+  inputFile: {
+    data: "data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMyAw...",
+  },
+  type: "input_file",
+};
+```

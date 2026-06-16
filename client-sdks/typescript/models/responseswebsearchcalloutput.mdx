@@ -1,0 +1,46 @@
+---
+title: ResponsesWebSearchCallOutput - TypeScript SDK
+description: ResponsesWebSearchCallOutput method reference
+seoTitle: ResponsesWebSearchCallOutput | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/models/responseswebsearchcalloutput'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponsesWebSearchCallOutput | OpenRouter TypeScript SDK
+'og:description': >-
+  ResponsesWebSearchCallOutput method documentation for the OpenRouter
+  TypeScript SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponsesWebSearchCallOutput%20-%20TypeScript%20SDK&description=ResponsesWebSearchCallOutput%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ResponsesWebSearchCallOutput } from "@openrouter/sdk/models";
+
+let value: ResponsesWebSearchCallOutput = {
+  type: "web_search_call",
+  id: "search-abc123",
+  status: "completed",
+};
+```
+
+## Fields
+
+| Field                                                                                    | Type                                                                                     | Required                                                                                 | Description                                                                              | Example                                                                                  |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `type`                                                                                   | [models.ResponsesWebSearchCallOutputType](/client-sdks/typescript/models/responseswebsearchcalloutputtype) | :heavy_check_mark:                                                                       | N/A                                                                                      |                                                                                          |
+| `id`                                                                                     | *string*                                                                                 | :heavy_check_mark:                                                                       | N/A                                                                                      |                                                                                          |
+| `status`                                                                                 | [models.WebSearchStatus](/client-sdks/typescript/models/websearchstatus)                                   | :heavy_check_mark:                                                                       | N/A                                                                                      | completed                                                                                |

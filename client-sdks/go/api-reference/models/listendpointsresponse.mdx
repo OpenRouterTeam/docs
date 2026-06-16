@@ -1,0 +1,40 @@
+---
+title: ListEndpointsResponse - Go SDK
+sidebarTitle: ListEndpointsResponse
+description: ListEndpointsResponse type definition
+seoTitle: ListEndpointsResponse Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/listendpointsresponse'
+'og:site_name': OpenRouter Documentation
+'og:title': ListEndpointsResponse Type | OpenRouter Go SDK
+'og:description': >-
+  ListEndpointsResponse type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ListEndpointsResponse%20-%20Go%20SDK&description=ListEndpointsResponse%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+List of available endpoints for a model
+
+## Fields
+
+| Field                                                                                      | Type                                                                                       | Required                                                                                   | Description                                                                                | Example                                                                                    |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `Architecture`                                                                             | [components.Architecture](/client-sdks/go/api-reference/models/architecture)                         | :heavy_check_mark:                                                                         | N/A                                                                                        | `{"instruct_type": "chatml","modality": "text","tokenizer": "GPT"}`      |
+| `Created`                                                                                  | `int64`                                                                                    | :heavy_check_mark:                                                                         | Unix timestamp of when the model was created                                               | 1692901234                                                                                 |
+| `Description`                                                                              | `string`                                                                                   | :heavy_check_mark:                                                                         | Description of the model                                                                   | GPT-4 is a large multimodal model that can solve difficult problems with greater accuracy. |
+| `Endpoints`                                                                                | [][components.PublicEndpoint](/client-sdks/go/api-reference/models/publicendpoint)                   | :heavy_check_mark:                                                                         | List of available endpoints for this model                                                 |                                                                                            |
+| `ID`                                                                                       | `string`                                                                                   | :heavy_check_mark:                                                                         | Unique identifier for the model                                                            | openai/gpt-4                                                                               |
+| `Name`                                                                                     | `string`                                                                                   | :heavy_check_mark:                                                                         | Display name of the model                                                                  | GPT-4                                                                                      |

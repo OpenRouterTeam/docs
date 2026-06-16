@@ -1,0 +1,53 @@
+---
+title: CreateEmbeddingsRequestBody - TypeScript SDK
+sidebarTitle: CreateEmbeddingsRequestBody
+description: CreateEmbeddingsRequestBody type definition
+seoTitle: CreateEmbeddingsRequestBody Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/createembeddingsrequestbody
+'og:site_name': OpenRouter Documentation
+'og:title': CreateEmbeddingsRequestBody Type | OpenRouter TypeScript SDK
+'og:description': >-
+  CreateEmbeddingsRequestBody type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateEmbeddingsRequestBody%20-%20TypeScript%20SDK&description=CreateEmbeddingsRequestBody%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Embeddings request input
+
+## Example Usage
+
+```typescript lines
+import { CreateEmbeddingsRequestBody } from "@openrouter/sdk/models/operations";
+
+let value: CreateEmbeddingsRequestBody = {
+  input: "The quick brown fox jumps over the lazy dog",
+  model: "openai/text-embedding-3-small",
+};
+```
+
+## Fields
+
+| Field                                                                  | Type                                                                   | Required                                                               | Description                                                            | Example                                                                |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `dimensions`                                                           | *number*                                                               | :heavy_minus_sign:                                                     | The number of dimensions for the output embeddings                     | 1536                                                                   |
+| `encodingFormat`                                                       | [operations.EncodingFormat](/client-sdks/typescript/api-reference/operations/encodingformat) | :heavy_minus_sign:                                                     | The format of the output embeddings                                    | float                                                                  |
+| `input`                                                                | *operations.InputUnion*                                                | :heavy_check_mark:                                                     | Text, token, or multimodal input(s) to embed                           | The quick brown fox jumps over the lazy dog                            |
+| `inputType`                                                            | *string*                                                               | :heavy_minus_sign:                                                     | The type of input (e.g. search_query, search_document)                 | search_query                                                           |
+| `model`                                                                | *string*                                                               | :heavy_check_mark:                                                     | The model to use for embeddings                                        | openai/text-embedding-3-small                                          |
+| `provider`                                                             | [models.ProviderPreferences](/client-sdks/typescript/api-reference/models/providerpreferences)      | :heavy_minus_sign:                                                     | N/A                                                                    | `{"allow_fallbacks": true}`                                    |
+| `user`                                                                 | *string*                                                               | :heavy_minus_sign:                                                     | A unique identifier for the end-user                                   | user-1234                                                              |

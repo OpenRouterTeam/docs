@@ -1,0 +1,51 @@
+---
+title: LocalShellCallOutputItem - TypeScript SDK
+sidebarTitle: LocalShellCallOutputItem
+description: LocalShellCallOutputItem type definition
+seoTitle: LocalShellCallOutputItem Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/localshellcalloutputitem
+'og:site_name': OpenRouter Documentation
+'og:title': LocalShellCallOutputItem Type | OpenRouter TypeScript SDK
+'og:description': >-
+  LocalShellCallOutputItem type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=LocalShellCallOutputItem%20-%20TypeScript%20SDK&description=LocalShellCallOutputItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Output from a local shell command execution
+
+## Example Usage
+
+```typescript lines
+import { LocalShellCallOutputItem } from "@openrouter/sdk/models";
+
+let value: LocalShellCallOutputItem = {
+  id: "output-abc123",
+  output: "total 24\ndrwxr-xr-x  5 user  staff  160 Jan  1 12:00 .",
+  type: "local_shell_call_output",
+};
+```
+
+## Fields
+
+| Field                                                                                | Type                                                                                 | Required                                                                             | Description                                                                          | Example                                                                              |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `id`                                                                                 | *string*                                                                             | :heavy_check_mark:                                                                   | N/A                                                                                  |                                                                                      |
+| `output`                                                                             | *string*                                                                             | :heavy_check_mark:                                                                   | N/A                                                                                  |                                                                                      |
+| `status`                                                                             | [models.LocalShellCallOutputItemStatus](/client-sdks/typescript/api-reference/models/localshellcalloutputitemstatus) | :heavy_minus_sign:                                                                   | N/A                                                                                  | completed                                                                            |
+| `type`                                                                               | [models.LocalShellCallOutputItemType](/client-sdks/typescript/api-reference/models/localshellcalloutputitemtype)     | :heavy_check_mark:                                                                   | N/A                                                                                  |                                                                                      |

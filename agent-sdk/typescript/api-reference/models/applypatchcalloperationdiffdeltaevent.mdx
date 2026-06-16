@@ -1,0 +1,54 @@
+---
+title: ApplyPatchCallOperationDiffDeltaEvent - TypeScript SDK
+sidebarTitle: ApplyPatchCallOperationDiffDeltaEvent
+description: ApplyPatchCallOperationDiffDeltaEvent type definition
+seoTitle: ApplyPatchCallOperationDiffDeltaEvent Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/applypatchcalloperationdiffdeltaevent
+'og:site_name': OpenRouter Documentation
+'og:title': ApplyPatchCallOperationDiffDeltaEvent Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ApplyPatchCallOperationDiffDeltaEvent type reference for the OpenRouter
+  TypeScript SDK. Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ApplyPatchCallOperationDiffDeltaEvent%20-%20TypeScript%20SDK&description=ApplyPatchCallOperationDiffDeltaEvent%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Incremental chunk of `operation.diff` for an `apply_patch_call`. Matches OpenAI's streaming shape.
+
+## Example Usage
+
+```typescript lines
+import { ApplyPatchCallOperationDiffDeltaEvent } from "@openrouter/sdk/models";
+
+let value: ApplyPatchCallOperationDiffDeltaEvent = {
+  delta: "<value>",
+  itemId: "<id>",
+  outputIndex: 790412,
+  sequenceNumber: 0,
+  type: "response.apply_patch_call_operation_diff.delta",
+};
+```
+
+## Fields
+
+| Field                                              | Type                                               | Required                                           | Description                                        |
+| -------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
+| `delta`                                            | *string*                                           | :heavy_check_mark:                                 | N/A                                                |
+| `itemId`                                           | *string*                                           | :heavy_check_mark:                                 | N/A                                                |
+| `outputIndex`                                      | *number*                                           | :heavy_check_mark:                                 | N/A                                                |
+| `sequenceNumber`                                   | *number*                                           | :heavy_check_mark:                                 | N/A                                                |
+| `type`                                             | *"response.apply_patch_call_operation_diff.delta"* | :heavy_check_mark:                                 | N/A                                                |

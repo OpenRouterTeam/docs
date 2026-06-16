@@ -1,0 +1,47 @@
+---
+title: ToolBash20250124 - TypeScript SDK
+sidebarTitle: ToolBash20250124
+description: ToolBash20250124 type definition
+seoTitle: ToolBash20250124 Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/toolbash20250124
+'og:site_name': OpenRouter Documentation
+'og:title': ToolBash20250124 Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ToolBash20250124 type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ToolBash20250124%20-%20TypeScript%20SDK&description=ToolBash20250124%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ToolBash20250124 } from "@openrouter/sdk/models";
+
+let value: ToolBash20250124 = {
+  name: "bash",
+  type: "bash_20250124",
+};
+```
+
+## Fields
+
+| Field                                                                                                                                                                                                       | Type                                                                                                                                                                                                        | Required                                                                                                                                                                                                    | Description                                                                                                                                                                                                 | Example                                                                                                                                                                                                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cacheControl`                                                                                                                                                                                              | [models.AnthropicCacheControlDirective](/agent-sdk/typescript/api-reference/models/anthropiccachecontroldirective)                                                                                                                        | :heavy_minus_sign:                                                                                                                                                                                          | Enable automatic prompt caching. When set at the top level, the system automatically applies cache breakpoints to the last cacheable block in the request. Currently supported for Anthropic Claude models. | `{"type": "ephemeral"}`                                                                                                                                                                             |
+| `name`                                                                                                                                                                                                      | [models.NameBash](/agent-sdk/typescript/api-reference/models/namebash)                                                                                                                                                                    | :heavy_check_mark:                                                                                                                                                                                          | N/A                                                                                                                                                                                                         |                                                                                                                                                                                                             |
+| `type`                                                                                                                                                                                                      | [models.TypeBash20250124](/agent-sdk/typescript/api-reference/models/typebash20250124)                                                                                                                                                    | :heavy_check_mark:                                                                                                                                                                                          | N/A                                                                                                                                                                                                         |                                                                                                                                                                                                             |

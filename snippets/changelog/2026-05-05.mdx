@@ -1,0 +1,10 @@
+### Product changes
+
+- **Guardrails enforcement drill-down** -- Rows in the [Guardrails](/guides/features/guardrails) enforcement chart now link directly to the matching generations on the [Logs](https://openrouter.ai/logs) page.
+- **Entity hover cards** -- Models, providers, and apps across the dashboard now show hover cards with a preview and a link to the entity's page.
+- **Responses API tool call handling** -- Conversation history containing tool calls with missing optional fields (e.g. no `arguments` or `id`) no longer causes 400 errors from providers. The router now defaults missing `arguments` to `"{}"` and generates a stable `id` when absent.
+- **File upload OCR handling** -- Files processed with OCR no longer fail when routed to text-only models. Previously, OCR-extracted images could be sent to models that don't support vision input, causing errors.
+
+### New models
+
+- [OpenAI: GPT Chat Latest](https://openrouter.ai/openai/gpt-chat-latest)

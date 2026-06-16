@@ -1,0 +1,39 @@
+---
+title: FunctionCallOutputItem - Go SDK
+sidebarTitle: FunctionCallOutputItem
+description: FunctionCallOutputItem type definition
+seoTitle: FunctionCallOutputItem Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/functioncalloutputitem'
+'og:site_name': OpenRouter Documentation
+'og:title': FunctionCallOutputItem Type | OpenRouter Go SDK
+'og:description': >-
+  FunctionCallOutputItem type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=FunctionCallOutputItem%20-%20Go%20SDK&description=FunctionCallOutputItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The output from a function call execution
+
+## Fields
+
+| Field                                                                                                                                 | Type                                                                                                                                  | Required                                                                                                                              | Description                                                                                                                           | Example                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `CallID`                                                                                                                              | `string`                                                                                                                              | :heavy_check_mark:                                                                                                                    | N/A                                                                                                                                   |                                                                                                                                       |
+| `ID`                                                                                                                                  | optionalnullable.OptionalNullable[`string`]                                                                                           | :heavy_minus_sign:                                                                                                                    | N/A                                                                                                                                   |                                                                                                                                       |
+| `Output`                                                                                                                              | [components.FunctionCallOutputItemOutputUnion2](/client-sdks/go/api-reference/models/functioncalloutputitemoutputunion2)                        | :heavy_check_mark:                                                                                                                    | N/A                                                                                                                                   |                                                                                                                                       |
+| `Status`                                                                                                                              | optionalnullable.OptionalNullable[[components.FunctionCallOutputItemStatus](/client-sdks/go/api-reference/models/functioncalloutputitemstatus)] | :heavy_minus_sign:                                                                                                                    | N/A                                                                                                                                   | completed                                                                                                                             |
+| `Type`                                                                                                                                | [components.FunctionCallOutputItemTypeFunctionCallOutput](/client-sdks/go/api-reference/models/functioncalloutputitemtypefunctioncalloutput)    | :heavy_check_mark:                                                                                                                    | N/A                                                                                                                                   |                                                                                                                                       |

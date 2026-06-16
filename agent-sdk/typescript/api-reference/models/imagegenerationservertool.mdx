@@ -1,0 +1,56 @@
+---
+title: ImageGenerationServerTool - TypeScript SDK
+sidebarTitle: ImageGenerationServerTool
+description: ImageGenerationServerTool type definition
+seoTitle: ImageGenerationServerTool Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/imagegenerationservertool
+'og:site_name': OpenRouter Documentation
+'og:title': ImageGenerationServerTool Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ImageGenerationServerTool type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ImageGenerationServerTool%20-%20TypeScript%20SDK&description=ImageGenerationServerTool%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Image generation tool configuration
+
+## Example Usage
+
+```typescript lines
+import { ImageGenerationServerTool } from "@openrouter/sdk/models";
+
+let value: ImageGenerationServerTool = {
+  type: "image_generation",
+};
+```
+
+## Fields
+
+| Field                                                | Type                                                 | Required                                             | Description                                          |
+| ---------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------- |
+| `background`                                         | [models.Background](/agent-sdk/typescript/api-reference/models/background)         | :heavy_minus_sign:                                   | N/A                                                  |
+| `inputFidelity`                                      | [models.InputFidelity](/agent-sdk/typescript/api-reference/models/inputfidelity)   | :heavy_minus_sign:                                   | N/A                                                  |
+| `inputImageMask`                                     | [models.InputImageMask](/agent-sdk/typescript/api-reference/models/inputimagemask) | :heavy_minus_sign:                                   | N/A                                                  |
+| `model`                                              | [models.ModelEnum](/agent-sdk/typescript/api-reference/models/modelenum)           | :heavy_minus_sign:                                   | N/A                                                  |
+| `moderation`                                         | [models.Moderation](/agent-sdk/typescript/api-reference/models/moderation)         | :heavy_minus_sign:                                   | N/A                                                  |
+| `outputCompression`                                  | *number*                                             | :heavy_minus_sign:                                   | N/A                                                  |
+| `outputFormat`                                       | [models.OutputFormat](/agent-sdk/typescript/api-reference/models/outputformat)     | :heavy_minus_sign:                                   | N/A                                                  |
+| `partialImages`                                      | *number*                                             | :heavy_minus_sign:                                   | N/A                                                  |
+| `quality`                                            | [models.Quality](/agent-sdk/typescript/api-reference/models/quality)               | :heavy_minus_sign:                                   | N/A                                                  |
+| `size`                                               | [models.Size](/agent-sdk/typescript/api-reference/models/size)                     | :heavy_minus_sign:                                   | N/A                                                  |
+| `type`                                               | *"image_generation"*                                 | :heavy_check_mark:                                   | N/A                                                  |

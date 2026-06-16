@@ -1,0 +1,36 @@
+---
+title: STTResponse - Go SDK
+sidebarTitle: STTResponse
+description: STTResponse type definition
+seoTitle: STTResponse Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/sttresponse'
+'og:site_name': OpenRouter Documentation
+'og:title': STTResponse Type | OpenRouter Go SDK
+'og:description': >-
+  STTResponse type reference for the OpenRouter Go SDK. Complete type definition
+  and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=STTResponse%20-%20Go%20SDK&description=STTResponse%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+STT response containing transcribed text and optional usage statistics
+
+## Fields
+
+| Field                                                                                                                              | Type                                                                                                                               | Required                                                                                                                           | Description                                                                                                                        | Example                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `Text`                                                                                                                             | `string`                                                                                                                           | :heavy_check_mark:                                                                                                                 | The transcribed text                                                                                                               | Hello, this is a test of OpenAI speech-to-text transcription. The weather is sunny today and the temperature is around 72 degrees. |
+| `Usage`                                                                                                                            | [*components.STTUsage](/client-sdks/go/api-reference/models/sttusage)                                                                        | :heavy_minus_sign:                                                                                                                 | Aggregated usage statistics for the request                                                                                        | `{"cost": 0.000508,"input_tokens": 83,"output_tokens": 30,"seconds": 9.2,"total_tokens": 113}`         |

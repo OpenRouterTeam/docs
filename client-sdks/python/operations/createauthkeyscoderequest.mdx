@@ -1,0 +1,36 @@
+---
+title: CreateAuthKeysCodeRequest - Python SDK
+description: CreateAuthKeysCodeRequest method reference
+seoTitle: CreateAuthKeysCodeRequest | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/operations/createauthkeyscoderequest'
+'og:site_name': OpenRouter Documentation
+'og:title': CreateAuthKeysCodeRequest | OpenRouter Python SDK
+'og:description': >-
+  CreateAuthKeysCodeRequest method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateAuthKeysCodeRequest%20-%20Python%20SDK&description=CreateAuthKeysCodeRequest%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                                                                | Type                                                                                                                 | Required                                                                                                             | Description                                                                                                          | Example                                                                                                              |
+| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `callback_url`                                                                                                       | *str*                                                                                                                | :heavy_check_mark:                                                                                                   | The callback URL to redirect to after authorization. Note, only https URLs on ports 443 and 3000 are allowed.        | https://myapp.com/auth/callback                                                                                      |
+| `code_challenge`                                                                                                     | *Optional[str]*                                                                                                      | :heavy_minus_sign:                                                                                                   | PKCE code challenge for enhanced security                                                                            | E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM                                                                          |
+| `code_challenge_method`                                                                                              | [Optional[operations.CreateAuthKeysCodeCodeChallengeMethod]](../operations/createauthkeyscodecodechallengemethod.md) | :heavy_minus_sign:                                                                                                   | The method used to generate the code challenge                                                                       | S256                                                                                                                 |
+| `limit`                                                                                                              | *Optional[float]*                                                                                                    | :heavy_minus_sign:                                                                                                   | Credit limit for the API key to be created                                                                           | 100                                                                                                                  |
+| `expires_at`                                                                                                         | [date](https://docs.python.org/3/library/datetime.html#date-objects)                                                 | :heavy_minus_sign:                                                                                                   | Optional expiration time for the API key to be created                                                               |                                                                                                                      |

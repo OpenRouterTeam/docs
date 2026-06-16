@@ -1,0 +1,42 @@
+---
+title: AnnotationAddedEvent - Python SDK
+sidebarTitle: AnnotationAddedEvent
+description: AnnotationAddedEvent method reference
+seoTitle: AnnotationAddedEvent | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/annotationaddedevent
+'og:site_name': OpenRouter Documentation
+'og:title': AnnotationAddedEvent | OpenRouter Python SDK
+'og:description': >-
+  AnnotationAddedEvent method documentation for the OpenRouter Python SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=AnnotationAddedEvent%20-%20Python%20SDK&description=AnnotationAddedEvent%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Event emitted when a text annotation is added to output
+
+## Fields
+
+| Field                                                                                               | Type                                                                                                | Required                                                                                            | Description                                                                                         | Example                                                                                             |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `annotation`                                                                                        | [components.OpenAIResponsesAnnotation](/client-sdks/python/api-reference/components/openairesponsesannotation)                  | :heavy_check_mark:                                                                                  | N/A                                                                                                 | `{"file_id": "file-abc123","filename": "research_paper.pdf","index": 0,"type": "file_citation"}` |
+| `annotation_index`                                                                                  | *int*                                                                                               | :heavy_check_mark:                                                                                  | N/A                                                                                                 |                                                                                                     |
+| `content_index`                                                                                     | *int*                                                                                               | :heavy_check_mark:                                                                                  | N/A                                                                                                 |                                                                                                     |
+| `item_id`                                                                                           | *str*                                                                                               | :heavy_check_mark:                                                                                  | N/A                                                                                                 |                                                                                                     |
+| `output_index`                                                                                      | *int*                                                                                               | :heavy_check_mark:                                                                                  | N/A                                                                                                 |                                                                                                     |
+| `sequence_number`                                                                                   | *int*                                                                                               | :heavy_check_mark:                                                                                  | N/A                                                                                                 |                                                                                                     |
+| `type`                                                                                              | [components.AnnotationAddedEventType](/client-sdks/python/api-reference/components/annotationaddedeventtype)                    | :heavy_check_mark:                                                                                  | N/A                                                                                                 |                                                                                                     |

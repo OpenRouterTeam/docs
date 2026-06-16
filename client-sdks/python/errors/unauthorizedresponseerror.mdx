@@ -1,0 +1,35 @@
+---
+title: UnauthorizedResponseError - Python SDK
+description: UnauthorizedResponseError method reference
+seoTitle: UnauthorizedResponseError | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/errors/unauthorizedresponseerror'
+'og:site_name': OpenRouter Documentation
+'og:title': UnauthorizedResponseError | OpenRouter Python SDK
+'og:description': >-
+  UnauthorizedResponseError method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=UnauthorizedResponseError%20-%20Python%20SDK&description=UnauthorizedResponseError%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Unauthorized - Authentication required or invalid credentials
+
+## Fields
+
+| Field                                                                                      | Type                                                                                       | Required                                                                                   | Description                                                                                | Example                                                                                    |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `error`                                                                                    | [components.UnauthorizedResponseErrorData](/client-sdks/python/api-reference/components/unauthorizedresponseerrordata) | :heavy_check_mark:                                                                         | Error data for UnauthorizedResponse                                                        | `{"code": 401,"message": "Missing Authentication header"}`                    |
+| `user_id`                                                                                  | *OptionalNullable[str]*                                                                    | :heavy_minus_sign:                                                                         | N/A                                                                                        |                                                                                            |

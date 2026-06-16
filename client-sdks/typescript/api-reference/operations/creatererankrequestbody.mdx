@@ -1,0 +1,55 @@
+---
+title: CreateRerankRequestBody - TypeScript SDK
+sidebarTitle: CreateRerankRequestBody
+description: CreateRerankRequestBody type definition
+seoTitle: CreateRerankRequestBody Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/creatererankrequestbody
+'og:site_name': OpenRouter Documentation
+'og:title': CreateRerankRequestBody Type | OpenRouter TypeScript SDK
+'og:description': >-
+  CreateRerankRequestBody type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateRerankRequestBody%20-%20TypeScript%20SDK&description=CreateRerankRequestBody%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Rerank request input
+
+## Example Usage
+
+```typescript lines
+import { CreateRerankRequestBody } from "@openrouter/sdk/models/operations";
+
+let value: CreateRerankRequestBody = {
+  documents: [
+    "Paris is the capital of France.",
+    "Berlin is the capital of Germany.",
+  ],
+  model: "cohere/rerank-v3.5",
+  query: "What is the capital of France?",
+};
+```
+
+## Fields
+
+| Field                                                                      | Type                                                                       | Required                                                                   | Description                                                                | Example                                                                    |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `documents`                                                                | *string*[]                                                                 | :heavy_check_mark:                                                         | The list of documents to rerank                                            | [<br/>"Paris is the capital of France.",<br/>"Berlin is the capital of Germany."<br/>] |
+| `model`                                                                    | *string*                                                                   | :heavy_check_mark:                                                         | The rerank model to use                                                    | cohere/rerank-v3.5                                                         |
+| `provider`                                                                 | [models.ProviderPreferences](/client-sdks/typescript/api-reference/models/providerpreferences)          | :heavy_minus_sign:                                                         | N/A                                                                        | `{"allow_fallbacks": true}`                                        |
+| `query`                                                                    | *string*                                                                   | :heavy_check_mark:                                                         | The search query to rerank documents against                               | What is the capital of France?                                             |
+| `topN`                                                                     | *number*                                                                   | :heavy_minus_sign:                                                         | Number of most relevant documents to return                                | 3                                                                          |

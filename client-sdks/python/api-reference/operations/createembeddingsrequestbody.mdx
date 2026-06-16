@@ -1,0 +1,42 @@
+---
+title: CreateEmbeddingsRequestBody - Python SDK
+sidebarTitle: CreateEmbeddingsRequestBody
+description: CreateEmbeddingsRequestBody method reference
+seoTitle: CreateEmbeddingsRequestBody | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/operations/createembeddingsrequestbody
+'og:site_name': OpenRouter Documentation
+'og:title': CreateEmbeddingsRequestBody | OpenRouter Python SDK
+'og:description': >-
+  CreateEmbeddingsRequestBody method documentation for the OpenRouter Python
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateEmbeddingsRequestBody%20-%20Python%20SDK&description=CreateEmbeddingsRequestBody%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Embeddings request input
+
+## Fields
+
+| Field                                                                                    | Type                                                                                     | Required                                                                                 | Description                                                                              | Example                                                                                  |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `dimensions`                                                                             | *Optional[int]*                                                                          | :heavy_minus_sign:                                                                       | The number of dimensions for the output embeddings                                       | 1536                                                                                     |
+| `encoding_format`                                                                        | [Optional[operations.EncodingFormat]](../operations/encodingformat.md)                   | :heavy_minus_sign:                                                                       | The format of the output embeddings                                                      | float                                                                                    |
+| `input`                                                                                  | [operations.InputUnion](/client-sdks/python/api-reference/operations/inputunion)                                     | :heavy_check_mark:                                                                       | Text, token, or multimodal input(s) to embed                                             | The quick brown fox jumps over the lazy dog                                              |
+| `input_type`                                                                             | *Optional[str]*                                                                          | :heavy_minus_sign:                                                                       | The type of input (e.g. search_query, search_document)                                   | search_query                                                                             |
+| `model`                                                                                  | *str*                                                                                    | :heavy_check_mark:                                                                       | The model to use for embeddings                                                          | openai/text-embedding-3-small                                                            |
+| `provider`                                                                               | [OptionalNullable[components.ProviderPreferences]](../components/providerpreferences.md) | :heavy_minus_sign:                                                                       | N/A                                                                                      | `{"allow_fallbacks": true}`                                                      |
+| `user`                                                                                   | *Optional[str]*                                                                          | :heavy_minus_sign:                                                                       | A unique identifier for the end-user                                                     | user-1234                                                                                |

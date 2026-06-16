@@ -1,0 +1,110 @@
+---
+title: ResponsesRequestPlugin - Go SDK
+sidebarTitle: ResponsesRequestPlugin
+description: ResponsesRequestPlugin type definition
+seoTitle: ResponsesRequestPlugin Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/responsesrequestplugin'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponsesRequestPlugin Type | OpenRouter Go SDK
+'og:description': >-
+  ResponsesRequestPlugin type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponsesRequestPlugin%20-%20Go%20SDK&description=ResponsesRequestPlugin%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### AutoRouterPlugin
+
+```go lines
+responsesRequestPlugin := components.CreateResponsesRequestPluginAutoRouter(components.AutoRouterPlugin{/* values here */})
+```
+
+### ContextCompressionPlugin
+
+```go lines
+responsesRequestPlugin := components.CreateResponsesRequestPluginContextCompression(components.ContextCompressionPlugin{/* values here */})
+```
+
+### FileParserPlugin
+
+```go lines
+responsesRequestPlugin := components.CreateResponsesRequestPluginFileParser(components.FileParserPlugin{/* values here */})
+```
+
+### FusionPlugin
+
+```go lines
+responsesRequestPlugin := components.CreateResponsesRequestPluginFusion(components.FusionPlugin{/* values here */})
+```
+
+### ModerationPlugin
+
+```go lines
+responsesRequestPlugin := components.CreateResponsesRequestPluginModeration(components.ModerationPlugin{/* values here */})
+```
+
+### ParetoRouterPlugin
+
+```go lines
+responsesRequestPlugin := components.CreateResponsesRequestPluginParetoRouter(components.ParetoRouterPlugin{/* values here */})
+```
+
+### ResponseHealingPlugin
+
+```go lines
+responsesRequestPlugin := components.CreateResponsesRequestPluginResponseHealing(components.ResponseHealingPlugin{/* values here */})
+```
+
+### WebSearchPlugin
+
+```go lines
+responsesRequestPlugin := components.CreateResponsesRequestPluginWeb(components.WebSearchPlugin{/* values here */})
+```
+
+### WebFetchPlugin
+
+```go lines
+responsesRequestPlugin := components.CreateResponsesRequestPluginWebFetch(components.WebFetchPlugin{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch responsesRequestPlugin.Type {
+	case components.ResponsesRequestPluginTypeAutoRouter:
+		// responsesRequestPlugin.AutoRouterPlugin is populated
+	case components.ResponsesRequestPluginTypeContextCompression:
+		// responsesRequestPlugin.ContextCompressionPlugin is populated
+	case components.ResponsesRequestPluginTypeFileParser:
+		// responsesRequestPlugin.FileParserPlugin is populated
+	case components.ResponsesRequestPluginTypeFusion:
+		// responsesRequestPlugin.FusionPlugin is populated
+	case components.ResponsesRequestPluginTypeModeration:
+		// responsesRequestPlugin.ModerationPlugin is populated
+	case components.ResponsesRequestPluginTypeParetoRouter:
+		// responsesRequestPlugin.ParetoRouterPlugin is populated
+	case components.ResponsesRequestPluginTypeResponseHealing:
+		// responsesRequestPlugin.ResponseHealingPlugin is populated
+	case components.ResponsesRequestPluginTypeWeb:
+		// responsesRequestPlugin.WebSearchPlugin is populated
+	case components.ResponsesRequestPluginTypeWebFetch:
+		// responsesRequestPlugin.WebFetchPlugin is populated
+}
+```

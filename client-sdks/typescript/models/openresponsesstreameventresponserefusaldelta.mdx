@@ -1,0 +1,56 @@
+---
+title: OpenResponsesStreamEventResponseRefusalDelta - TypeScript SDK
+description: OpenResponsesStreamEventResponseRefusalDelta method reference
+seoTitle: OpenResponsesStreamEventResponseRefusalDelta | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/models/openresponsesstreameventresponserefusaldelta
+'og:site_name': OpenRouter Documentation
+'og:title': OpenResponsesStreamEventResponseRefusalDelta | OpenRouter TypeScript SDK
+'og:description': >-
+  OpenResponsesStreamEventResponseRefusalDelta method documentation for the
+  OpenRouter TypeScript SDK. Learn how to use this API endpoint with code
+  examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenResponsesStreamEventResponseRefusalDelta%20-%20TypeScript%20SDK&description=OpenResponsesStreamEventResponseRefusalDelta%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Event emitted when a refusal delta is streamed
+
+## Example Usage
+
+```typescript lines
+import { OpenResponsesStreamEventResponseRefusalDelta } from "@openrouter/sdk/models";
+
+let value: OpenResponsesStreamEventResponseRefusalDelta = {
+  type: "response.refusal.delta",
+  outputIndex: 0,
+  itemId: "item-1",
+  contentIndex: 0,
+  delta: "I'm sorry",
+  sequenceNumber: 4,
+};
+```
+
+## Fields
+
+| Field                      | Type                       | Required                   | Description                |
+| -------------------------- | -------------------------- | -------------------------- | -------------------------- |
+| `type`                     | *"response.refusal.delta"* | :heavy_check_mark:         | N/A                        |
+| `outputIndex`              | *number*                   | :heavy_check_mark:         | N/A                        |
+| `itemId`                   | *string*                   | :heavy_check_mark:         | N/A                        |
+| `contentIndex`             | *number*                   | :heavy_check_mark:         | N/A                        |
+| `delta`                    | *string*                   | :heavy_check_mark:         | N/A                        |
+| `sequenceNumber`           | *number*                   | :heavy_check_mark:         | N/A                        |

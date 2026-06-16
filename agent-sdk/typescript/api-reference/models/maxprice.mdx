@@ -1,0 +1,47 @@
+---
+title: MaxPrice - TypeScript SDK
+sidebarTitle: MaxPrice
+description: MaxPrice type definition
+seoTitle: MaxPrice Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/api-reference/models/maxprice'
+'og:site_name': OpenRouter Documentation
+'og:title': MaxPrice Type | OpenRouter TypeScript SDK
+'og:description': >-
+  MaxPrice type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=MaxPrice%20-%20TypeScript%20SDK&description=MaxPrice%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The object specifying the maximum price you want to pay for this request. USD price per million tokens, for prompt and completion.
+
+## Example Usage
+
+```typescript lines
+import { MaxPrice } from "@openrouter/sdk/models";
+
+let value: MaxPrice = {};
+```
+
+## Fields
+
+| Field                           | Type                            | Required                        | Description                     | Example                         |
+| ------------------------------- | ------------------------------- | ------------------------------- | ------------------------------- | ------------------------------- |
+| `audio`                         | *string*                        | :heavy_minus_sign:              | N/A                             | 1000                            |
+| `completion`                    | *string*                        | :heavy_minus_sign:              | N/A                             | 1000                            |
+| `image`                         | *string*                        | :heavy_minus_sign:              | N/A                             | 1000                            |
+| `prompt`                        | *string*                        | :heavy_minus_sign:              | Price per million prompt tokens | 1000                            |
+| `request`                       | *string*                        | :heavy_minus_sign:              | N/A                             | 1000                            |

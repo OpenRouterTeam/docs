@@ -1,0 +1,37 @@
+---
+title: WorkspaceMember - Go SDK
+sidebarTitle: WorkspaceMember
+description: WorkspaceMember type definition
+seoTitle: WorkspaceMember Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/workspacemember'
+'og:site_name': OpenRouter Documentation
+'og:title': WorkspaceMember Type | OpenRouter Go SDK
+'og:description': >-
+  WorkspaceMember type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=WorkspaceMember%20-%20Go%20SDK&description=WorkspaceMember%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                            | Type                                                                             | Required                                                                         | Description                                                                      | Example                                                                          |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `CreatedAt`                                                                      | `string`                                                                         | :heavy_check_mark:                                                               | ISO 8601 timestamp of when the membership was created                            | 2025-08-24T10:30:00Z                                                             |
+| `ID`                                                                             | `string`                                                                         | :heavy_check_mark:                                                               | Unique identifier for the workspace membership                                   | 660e8400-e29b-41d4-a716-446655440000                                             |
+| `Role`                                                                           | [components.WorkspaceMemberRole](/client-sdks/go/api-reference/models/workspacememberrole) | :heavy_check_mark:                                                               | Role of the member in the workspace                                              | member                                                                           |
+| `UserID`                                                                         | `string`                                                                         | :heavy_check_mark:                                                               | Clerk user ID of the member                                                      | user_abc123                                                                      |
+| `WorkspaceID`                                                                    | `string`                                                                         | :heavy_check_mark:                                                               | ID of the workspace                                                              | 550e8400-e29b-41d4-a716-446655440000                                             |

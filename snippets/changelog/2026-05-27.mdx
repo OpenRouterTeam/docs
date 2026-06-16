@@ -1,0 +1,8 @@
+### Product changes
+
+- **Series B announcement** -- Published the [$113M Series B announcement](https://openrouter.ai/announcements/series-b).
+- **API tab redesign on model pages** -- Each model's API tab now shows the `/responses` and `/messages` endpoint references alongside `/chat/completions`, making it easier to discover alternative request formats. [Docs](/api/reference/responses/overview)
+- **Presets: Anthropic Messages API support** -- Created presets from inference now support `POST /api/v1/presets/:slug/messages`, the Anthropic Messages counterpart to the existing chat/completions preset route. [Docs](/guides/features/presets)
+- **Stream inactivity timeout** -- Streaming requests that produce no chunks for 30 seconds are now aborted immediately instead of waiting up to 5 minutes, catching dead connections and empty streams faster.
+- **Guardrails API documentation** -- Added a guide for updating your workspace default guardrail programmatically via the API. [Docs](/guides/features/guardrails)
+- **Fixed: EU routing for non-Google models on Vertex** -- Non-Google models (Claude, Llama, DeepSeek, etc.) routed through `eu.openrouter.ai` now use the correct endpoint path, fixing 400 errors caused by a hostname/path mismatch.

@@ -1,0 +1,50 @@
+---
+title: SearchQualityLevel - Go SDK
+sidebarTitle: SearchQualityLevel
+description: SearchQualityLevel type definition
+seoTitle: SearchQualityLevel Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/searchqualitylevel'
+'og:site_name': OpenRouter Documentation
+'og:title': SearchQualityLevel Type | OpenRouter Go SDK
+'og:description': >-
+  SearchQualityLevel type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=SearchQualityLevel%20-%20Go%20SDK&description=SearchQualityLevel%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+How much context to retrieve per result. Applies to Exa and Parallel engines; ignored with native provider search and Firecrawl. For Exa, pins a fixed per-result character cap (low=5,000, medium=15,000, high=30,000); when omitted, Exa picks an adaptive size per query and document (typically ~2,000–4,000 characters per result). For Parallel, controls the total characters across all results; when omitted, Parallel uses its own default size.
+
+## Example Usage
+
+```go lines
+import (
+	"github.com/OpenRouterTeam/go-sdk/models/components"
+)
+
+value := components.SearchQualityLevelLow
+
+// Open enum: custom values can be created with a direct type cast
+custom := components.SearchQualityLevel("custom_value")
+```
+
+## Values
+
+| Name                       | Value                      |
+| -------------------------- | -------------------------- |
+| `SearchQualityLevelLow`    | low                        |
+| `SearchQualityLevelMedium` | medium                     |
+| `SearchQualityLevelHigh`   | high                       |

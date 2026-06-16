@@ -1,0 +1,46 @@
+---
+title: ProviderPreferencesMaxPrice - TypeScript SDK
+description: ProviderPreferencesMaxPrice method reference
+seoTitle: ProviderPreferencesMaxPrice | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/providerpreferencesmaxprice'
+'og:site_name': OpenRouter Documentation
+'og:title': ProviderPreferencesMaxPrice | OpenRouter TypeScript SDK
+'og:description': >-
+  ProviderPreferencesMaxPrice method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ProviderPreferencesMaxPrice%20-%20TypeScript%20SDK&description=ProviderPreferencesMaxPrice%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The object specifying the maximum price you want to pay for this request. USD price per million tokens, for prompt and completion.
+
+## Example Usage
+
+```typescript lines
+import { ProviderPreferencesMaxPrice } from "@openrouter/sdk/models";
+
+let value: ProviderPreferencesMaxPrice = {};
+```
+
+## Fields
+
+| Field                                           | Type                                            | Required                                        | Description                                     | Example                                         |
+| ----------------------------------------------- | ----------------------------------------------- | ----------------------------------------------- | ----------------------------------------------- | ----------------------------------------------- |
+| `prompt`                                        | *string*                                        | :heavy_minus_sign:                              | A value in string format that is a large number | 1000                                            |
+| `completion`                                    | *string*                                        | :heavy_minus_sign:                              | A value in string format that is a large number | 1000                                            |
+| `image`                                         | *string*                                        | :heavy_minus_sign:                              | A value in string format that is a large number | 1000                                            |
+| `audio`                                         | *string*                                        | :heavy_minus_sign:                              | A value in string format that is a large number | 1000                                            |
+| `request`                                       | *string*                                        | :heavy_minus_sign:                              | A value in string format that is a large number | 1000                                            |

@@ -1,0 +1,77 @@
+---
+title: ModelsListResponse - TypeScript SDK
+description: ModelsListResponse method reference
+seoTitle: ModelsListResponse | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/modelslistresponse'
+'og:site_name': OpenRouter Documentation
+'og:title': ModelsListResponse | OpenRouter TypeScript SDK
+'og:description': >-
+  ModelsListResponse method documentation for the OpenRouter TypeScript SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ModelsListResponse%20-%20TypeScript%20SDK&description=ModelsListResponse%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+List of available models
+
+## Example Usage
+
+```typescript expandable lines
+import { ModelsListResponse } from "@openrouter/sdk/models";
+
+let value: ModelsListResponse = {
+  data: [
+    {
+      id: "openai/gpt-4",
+      canonicalSlug: "openai/gpt-4",
+      name: "GPT-4",
+      created: 1692901234,
+      pricing: {
+        prompt: "0.00003",
+        completion: "0.00006",
+      },
+      contextLength: 8192,
+      architecture: {
+        modality: "text->text",
+        inputModalities: [
+          "text",
+        ],
+        outputModalities: [
+          "text",
+        ],
+      },
+      topProvider: {
+        isModerated: true,
+      },
+      perRequestLimits: null,
+      supportedParameters: [
+        "temperature",
+        "top_p",
+        "max_tokens",
+        "frequency_penalty",
+        "presence_penalty",
+      ],
+      defaultParameters: null,
+    },
+  ],
+};
+```
+
+## Fields
+
+| Field                                | Type                                 | Required                             | Description                          |
+| ------------------------------------ | ------------------------------------ | ------------------------------------ | ------------------------------------ |
+| `data`                               | [models.Model](/agent-sdk/typescript/models/model)[] | :heavy_check_mark:                   | List of available models             |

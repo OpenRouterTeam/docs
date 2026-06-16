@@ -1,0 +1,61 @@
+---
+title: CreateEmbeddingsResponseBody - TypeScript SDK
+sidebarTitle: CreateEmbeddingsResponseBody
+description: CreateEmbeddingsResponseBody type definition
+seoTitle: CreateEmbeddingsResponseBody Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/createembeddingsresponsebody
+'og:site_name': OpenRouter Documentation
+'og:title': CreateEmbeddingsResponseBody Type | OpenRouter TypeScript SDK
+'og:description': >-
+  CreateEmbeddingsResponseBody type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateEmbeddingsResponseBody%20-%20TypeScript%20SDK&description=CreateEmbeddingsResponseBody%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Embeddings response containing embedding vectors
+
+## Example Usage
+
+```typescript lines
+import { CreateEmbeddingsResponseBody } from "@openrouter/sdk/models/operations";
+
+let value: CreateEmbeddingsResponseBody = {
+  data: [
+    {
+      embedding: [
+        0.0023064255,
+        -0.009327292,
+        0.015797347,
+      ],
+      object: "embedding",
+    },
+  ],
+  model: "openai/text-embedding-3-small",
+  object: "list",
+};
+```
+
+## Fields
+
+| Field                                                                                               | Type                                                                                                | Required                                                                                            | Description                                                                                         | Example                                                                                             |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `data`                                                                                              | [operations.CreateEmbeddingsData](/agent-sdk/typescript/api-reference/operations/createembeddingsdata)[]                | :heavy_check_mark:                                                                                  | List of embedding objects                                                                           | [<br/>`{"embedding": [0.0023064255,-0.009327292,0.015797347],"index": 0,"object": "embedding"}`<br/>] |
+| `id`                                                                                                | *string*                                                                                            | :heavy_minus_sign:                                                                                  | Unique identifier for the embeddings response                                                       | embd-1234567890                                                                                     |
+| `model`                                                                                             | *string*                                                                                            | :heavy_check_mark:                                                                                  | The model used for embeddings                                                                       | openai/text-embedding-3-small                                                                       |
+| `object`                                                                                            | [operations.ObjectT](/agent-sdk/typescript/api-reference/operations/objectt)                                            | :heavy_check_mark:                                                                                  | N/A                                                                                                 |                                                                                                     |
+| `usage`                                                                                             | [operations.CreateEmbeddingsUsage](/agent-sdk/typescript/api-reference/operations/createembeddingsusage)                | :heavy_minus_sign:                                                                                  | Token usage statistics                                                                              | `{"prompt_tokens": 8,"total_tokens": 8}`                                               |

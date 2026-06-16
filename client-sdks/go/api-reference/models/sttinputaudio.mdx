@@ -1,0 +1,36 @@
+---
+title: STTInputAudio - Go SDK
+sidebarTitle: STTInputAudio
+description: STTInputAudio type definition
+seoTitle: STTInputAudio Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/sttinputaudio'
+'og:site_name': OpenRouter Documentation
+'og:title': STTInputAudio Type | OpenRouter Go SDK
+'og:description': >-
+  STTInputAudio type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=STTInputAudio%20-%20Go%20SDK&description=STTInputAudio%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Base64-encoded audio to transcribe
+
+## Fields
+
+| Field                                                                                         | Type                                                                                          | Required                                                                                      | Description                                                                                   |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `Data`                                                                                        | `string`                                                                                      | :heavy_check_mark:                                                                            | Base64-encoded audio data (raw bytes, not a data URI)                                         |
+| `Format`                                                                                      | `string`                                                                                      | :heavy_check_mark:                                                                            | Audio format (e.g., wav, mp3, flac, m4a, ogg, webm, aac). Supported formats vary by provider. |

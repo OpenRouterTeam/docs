@@ -1,0 +1,8 @@
+### Product changes
+
+- **Upstream error passthrough** -- Upstream error status codes (e.g. `429 Too Many Requests`) are now preserved through the streaming pipeline instead of being converted to generic errors.
+- **Tabbed BYOK settings** -- The [BYOK settings](https://openrouter.ai/settings/keys) page is now organized into tabs: Providers, Web Search, and Metering.
+- **Video playground duration** -- Video generation in the [Playground](https://openrouter.ai/playground) now derives available durations from endpoint `supported_video_parameters`.
+- **Session provider icons** -- The sessions tab now displays actual provider name icons instead of generic ones.
+- **User filtering in sessions** -- Added user filtering to the sessions tab for easier navigation in team accounts.
+- **Per-million-token pricing** -- Provider pricing cards now display units in per-million-tokens format for clearer cost comparison.

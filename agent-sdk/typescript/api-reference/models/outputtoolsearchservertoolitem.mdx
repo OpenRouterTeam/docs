@@ -1,0 +1,50 @@
+---
+title: OutputToolSearchServerToolItem - TypeScript SDK
+sidebarTitle: OutputToolSearchServerToolItem
+description: OutputToolSearchServerToolItem type definition
+seoTitle: OutputToolSearchServerToolItem Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/outputtoolsearchservertoolitem
+'og:site_name': OpenRouter Documentation
+'og:title': OutputToolSearchServerToolItem Type | OpenRouter TypeScript SDK
+'og:description': >-
+  OutputToolSearchServerToolItem type reference for the OpenRouter TypeScript
+  SDK. Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputToolSearchServerToolItem%20-%20TypeScript%20SDK&description=OutputToolSearchServerToolItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+An openrouter:tool_search server tool output item
+
+## Example Usage
+
+```typescript lines
+import { OutputToolSearchServerToolItem } from "@openrouter/sdk/models";
+
+let value: OutputToolSearchServerToolItem = {
+  status: "completed",
+  type: "openrouter:tool_search",
+};
+```
+
+## Fields
+
+| Field                                                                                        | Type                                                                                         | Required                                                                                     | Description                                                                                  | Example                                                                                      |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `id`                                                                                         | *string*                                                                                     | :heavy_minus_sign:                                                                           | N/A                                                                                          |                                                                                              |
+| `query`                                                                                      | *string*                                                                                     | :heavy_minus_sign:                                                                           | N/A                                                                                          |                                                                                              |
+| `status`                                                                                     | [models.ToolCallStatus](/agent-sdk/typescript/api-reference/models/toolcallstatus)                                         | :heavy_check_mark:                                                                           | N/A                                                                                          | completed                                                                                    |
+| `type`                                                                                       | [models.OutputToolSearchServerToolItemType](/agent-sdk/typescript/api-reference/models/outputtoolsearchservertoolitemtype) | :heavy_check_mark:                                                                           | N/A                                                                                          |                                                                                              |

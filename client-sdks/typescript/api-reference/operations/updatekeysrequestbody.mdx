@@ -1,0 +1,46 @@
+---
+title: UpdateKeysRequestBody - TypeScript SDK
+sidebarTitle: UpdateKeysRequestBody
+description: UpdateKeysRequestBody type definition
+seoTitle: UpdateKeysRequestBody Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/updatekeysrequestbody
+'og:site_name': OpenRouter Documentation
+'og:title': UpdateKeysRequestBody Type | OpenRouter TypeScript SDK
+'og:description': >-
+  UpdateKeysRequestBody type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=UpdateKeysRequestBody%20-%20TypeScript%20SDK&description=UpdateKeysRequestBody%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { UpdateKeysRequestBody } from "@openrouter/sdk/models/operations";
+
+let value: UpdateKeysRequestBody = {};
+```
+
+## Fields
+
+| Field                                                                                                                                                                  | Type                                                                                                                                                                   | Required                                                                                                                                                               | Description                                                                                                                                                            | Example                                                                                                                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `disabled`                                                                                                                                                             | *boolean*                                                                                                                                                              | :heavy_minus_sign:                                                                                                                                                     | Whether to disable the API key                                                                                                                                         | false                                                                                                                                                                  |
+| `includeByokInLimit`                                                                                                                                                   | *boolean*                                                                                                                                                              | :heavy_minus_sign:                                                                                                                                                     | Whether to include BYOK usage in the limit                                                                                                                             | true                                                                                                                                                                   |
+| `limit`                                                                                                                                                                | *number*                                                                                                                                                               | :heavy_minus_sign:                                                                                                                                                     | New spending limit for the API key in USD                                                                                                                              | 75                                                                                                                                                                     |
+| `limitReset`                                                                                                                                                           | [operations.UpdateKeysLimitReset](/client-sdks/typescript/api-reference/operations/updatekeyslimitreset)                                                                                     | :heavy_minus_sign:                                                                                                                                                     | New limit reset type for the API key (daily, weekly, monthly, or null for no reset). Resets happen automatically at midnight UTC, and weeks are Monday through Sunday. | daily                                                                                                                                                                  |
+| `name`                                                                                                                                                                 | *string*                                                                                                                                                               | :heavy_minus_sign:                                                                                                                                                     | New name for the API key                                                                                                                                               | Updated API Key Name                                                                                                                                                   |

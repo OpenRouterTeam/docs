@@ -1,0 +1,80 @@
+---
+title: ChatMessages - Go SDK
+sidebarTitle: ChatMessages
+description: ChatMessages type definition
+seoTitle: ChatMessages Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/chatmessages'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatMessages Type | OpenRouter Go SDK
+'og:description': >-
+  ChatMessages type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatMessages%20-%20Go%20SDK&description=ChatMessages%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Chat completion message with role-based discrimination
+
+## Supported Types
+
+### ChatAssistantMessage
+
+```go lines
+chatMessages := components.CreateChatMessagesAssistant(components.ChatAssistantMessage{/* values here */})
+```
+
+### ChatDeveloperMessage
+
+```go lines
+chatMessages := components.CreateChatMessagesDeveloper(components.ChatDeveloperMessage{/* values here */})
+```
+
+### ChatSystemMessage
+
+```go lines
+chatMessages := components.CreateChatMessagesSystem(components.ChatSystemMessage{/* values here */})
+```
+
+### ChatToolMessage
+
+```go lines
+chatMessages := components.CreateChatMessagesTool(components.ChatToolMessage{/* values here */})
+```
+
+### ChatUserMessage
+
+```go lines
+chatMessages := components.CreateChatMessagesUser(components.ChatUserMessage{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch chatMessages.Type {
+	case components.ChatMessagesTypeAssistant:
+		// chatMessages.ChatAssistantMessage is populated
+	case components.ChatMessagesTypeDeveloper:
+		// chatMessages.ChatDeveloperMessage is populated
+	case components.ChatMessagesTypeSystem:
+		// chatMessages.ChatSystemMessage is populated
+	case components.ChatMessagesTypeTool:
+		// chatMessages.ChatToolMessage is populated
+	case components.ChatMessagesTypeUser:
+		// chatMessages.ChatUserMessage is populated
+}
+```

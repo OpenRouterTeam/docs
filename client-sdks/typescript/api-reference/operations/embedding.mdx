@@ -1,0 +1,47 @@
+---
+title: Embedding - TypeScript SDK
+sidebarTitle: Embedding
+description: Embedding type definition
+seoTitle: Embedding Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/api-reference/operations/embedding'
+'og:site_name': OpenRouter Documentation
+'og:title': Embedding Type | OpenRouter TypeScript SDK
+'og:description': >-
+  Embedding type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Embedding%20-%20TypeScript%20SDK&description=Embedding%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Embedding vector as an array of floats or a base64 string
+
+## Supported Types
+
+### `number[]`
+
+```typescript lines
+const value: number[] = [
+  0.0023064255,
+  -0.009327292,
+  0.015797347,
+];
+```
+
+### `string`
+
+```typescript lines
+const value: string = "<value>";
+```

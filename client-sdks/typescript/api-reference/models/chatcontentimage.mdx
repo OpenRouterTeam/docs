@@ -1,0 +1,50 @@
+---
+title: ChatContentImage - TypeScript SDK
+sidebarTitle: ChatContentImage
+description: ChatContentImage type definition
+seoTitle: ChatContentImage Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/chatcontentimage
+'og:site_name': OpenRouter Documentation
+'og:title': ChatContentImage Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ChatContentImage type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatContentImage%20-%20TypeScript%20SDK&description=ChatContentImage%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Image content part for vision models
+
+## Example Usage
+
+```typescript lines
+import { ChatContentImage } from "@openrouter/sdk/models";
+
+let value: ChatContentImage = {
+  imageUrl: {
+    url: "https://vague-assist.org/",
+  },
+  type: "image_url",
+};
+```
+
+## Fields
+
+| Field                                                                    | Type                                                                     | Required                                                                 | Description                                                              |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `imageUrl`                                                               | [models.ChatContentImageImageUrl](/client-sdks/typescript/api-reference/models/chatcontentimageimageurl) | :heavy_check_mark:                                                       | N/A                                                                      |
+| `type`                                                                   | *"image_url"*                                                            | :heavy_check_mark:                                                       | N/A                                                                      |

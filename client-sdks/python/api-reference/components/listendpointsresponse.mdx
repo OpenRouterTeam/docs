@@ -1,0 +1,41 @@
+---
+title: ListEndpointsResponse - Python SDK
+sidebarTitle: ListEndpointsResponse
+description: ListEndpointsResponse method reference
+seoTitle: ListEndpointsResponse | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/listendpointsresponse
+'og:site_name': OpenRouter Documentation
+'og:title': ListEndpointsResponse | OpenRouter Python SDK
+'og:description': >-
+  ListEndpointsResponse method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ListEndpointsResponse%20-%20Python%20SDK&description=ListEndpointsResponse%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+List of available endpoints for a model
+
+## Fields
+
+| Field                                                                                                                                             | Type                                                                                                                                              | Required                                                                                                                                          | Description                                                                                                                                       | Example                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `architecture`                                                                                                                                    | [components.Architecture](/client-sdks/python/api-reference/components/architecture)                                                                                          | :heavy_check_mark:                                                                                                                                | N/A                                                                                                                                               | `{"input_modalities": ["text"],"instruct_type": "chatml","modality": "text-\u003etext","output_modalities": ["text"],"tokenizer": "GPT"}` |
+| `created`                                                                                                                                         | *int*                                                                                                                                             | :heavy_check_mark:                                                                                                                                | Unix timestamp of when the model was created                                                                                                      | 1692901234                                                                                                                                        |
+| `description`                                                                                                                                     | *str*                                                                                                                                             | :heavy_check_mark:                                                                                                                                | Description of the model                                                                                                                          | GPT-4 is a large multimodal model that can solve difficult problems with greater accuracy.                                                        |
+| `endpoints`                                                                                                                                       | List[[components.PublicEndpoint](/client-sdks/python/api-reference/components/publicendpoint)]                                                                                | :heavy_check_mark:                                                                                                                                | List of available endpoints for this model                                                                                                        |                                                                                                                                                   |
+| `id`                                                                                                                                              | *str*                                                                                                                                             | :heavy_check_mark:                                                                                                                                | Unique identifier for the model                                                                                                                   | openai/gpt-4                                                                                                                                      |
+| `name`                                                                                                                                            | *str*                                                                                                                                             | :heavy_check_mark:                                                                                                                                | Display name of the model                                                                                                                         | GPT-4                                                                                                                                             |

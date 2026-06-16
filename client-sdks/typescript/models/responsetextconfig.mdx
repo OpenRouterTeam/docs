@@ -1,0 +1,43 @@
+---
+title: ResponseTextConfig - TypeScript SDK
+description: ResponseTextConfig method reference
+seoTitle: ResponseTextConfig | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/models/responsetextconfig'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponseTextConfig | OpenRouter TypeScript SDK
+'og:description': >-
+  ResponseTextConfig method documentation for the OpenRouter TypeScript SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponseTextConfig%20-%20TypeScript%20SDK&description=ResponseTextConfig%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Text output configuration including format and verbosity
+
+## Example Usage
+
+```typescript lines
+import { ResponseTextConfig } from "@openrouter/sdk/models";
+
+let value: ResponseTextConfig = {};
+```
+
+## Fields
+
+| Field                                                                          | Type                                                                           | Required                                                                       | Description                                                                    | Example                                                                        |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `format`                                                                       | *models.ResponseFormatTextConfig*                                              | :heavy_minus_sign:                                                             | Text response format configuration                                             | `{"type": "text"}`                                                     |
+| `verbosity`                                                                    | [models.ResponseTextConfigVerbosity](/client-sdks/typescript/models/responsetextconfigverbosity) | :heavy_minus_sign:                                                             | N/A                                                                            |                                                                                |

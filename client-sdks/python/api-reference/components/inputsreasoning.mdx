@@ -1,0 +1,43 @@
+---
+title: InputsReasoning - Python SDK
+sidebarTitle: InputsReasoning
+description: InputsReasoning method reference
+seoTitle: InputsReasoning | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/inputsreasoning
+'og:site_name': OpenRouter Documentation
+'og:title': InputsReasoning | OpenRouter Python SDK
+'og:description': >-
+  InputsReasoning method documentation for the OpenRouter Python SDK. Learn how
+  to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=InputsReasoning%20-%20Python%20SDK&description=InputsReasoning%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+An output item containing reasoning
+
+## Fields
+
+| Field                                                                            | Type                                                                             | Required                                                                         | Description                                                                      | Example                                                                          |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `content`                                                                        | List[[components.ReasoningTextContent](/client-sdks/python/api-reference/components/reasoningtextcontent)]   | :heavy_minus_sign:                                                               | N/A                                                                              |                                                                                  |
+| `encrypted_content`                                                              | *OptionalNullable[str]*                                                          | :heavy_minus_sign:                                                               | N/A                                                                              |                                                                                  |
+| `id`                                                                             | *str*                                                                            | :heavy_check_mark:                                                               | N/A                                                                              |                                                                                  |
+| `status`                                                                         | [Optional[components.InputsStatusUnion2]](../components/inputsstatusunion2.md)   | :heavy_minus_sign:                                                               | N/A                                                                              |                                                                                  |
+| `summary`                                                                        | List[[components.ReasoningSummaryText](/client-sdks/python/api-reference/components/reasoningsummarytext)]   | :heavy_check_mark:                                                               | N/A                                                                              |                                                                                  |
+| `type`                                                                           | [components.InputsTypeReasoning](/client-sdks/python/api-reference/components/inputstypereasoning)           | :heavy_check_mark:                                                               | N/A                                                                              |                                                                                  |
+| `format_`                                                                        | [OptionalNullable[components.ReasoningFormat]](../components/reasoningformat.md) | :heavy_minus_sign:                                                               | N/A                                                                              | unknown                                                                          |
+| `signature`                                                                      | *OptionalNullable[str]*                                                          | :heavy_minus_sign:                                                               | A signature for the reasoning content, used for verification                     | EvcBCkgIChABGAIqQKkSDbRuVEQUk9qN1odC098l9SEj...                                  |

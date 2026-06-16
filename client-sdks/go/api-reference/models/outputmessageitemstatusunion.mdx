@@ -1,0 +1,63 @@
+---
+title: OutputMessageItemStatusUnion - Go SDK
+sidebarTitle: OutputMessageItemStatusUnion
+description: OutputMessageItemStatusUnion type definition
+seoTitle: OutputMessageItemStatusUnion Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/outputmessageitemstatusunion
+'og:site_name': OpenRouter Documentation
+'og:title': OutputMessageItemStatusUnion Type | OpenRouter Go SDK
+'og:description': >-
+  OutputMessageItemStatusUnion type reference for the OpenRouter Go SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputMessageItemStatusUnion%20-%20Go%20SDK&description=OutputMessageItemStatusUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### OutputMessageItemStatusCompleted
+
+```go lines
+outputMessageItemStatusUnion := components.CreateOutputMessageItemStatusUnionOutputMessageItemStatusCompleted(components.OutputMessageItemStatusCompleted{/* values here */})
+```
+
+### OutputMessageItemStatusIncomplete
+
+```go lines
+outputMessageItemStatusUnion := components.CreateOutputMessageItemStatusUnionOutputMessageItemStatusIncomplete(components.OutputMessageItemStatusIncomplete{/* values here */})
+```
+
+### OutputMessageItemStatusInProgress
+
+```go lines
+outputMessageItemStatusUnion := components.CreateOutputMessageItemStatusUnionOutputMessageItemStatusInProgress(components.OutputMessageItemStatusInProgress{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch outputMessageItemStatusUnion.Type {
+	case components.OutputMessageItemStatusUnionTypeOutputMessageItemStatusCompleted:
+		// outputMessageItemStatusUnion.OutputMessageItemStatusCompleted is populated
+	case components.OutputMessageItemStatusUnionTypeOutputMessageItemStatusIncomplete:
+		// outputMessageItemStatusUnion.OutputMessageItemStatusIncomplete is populated
+	case components.OutputMessageItemStatusUnionTypeOutputMessageItemStatusInProgress:
+		// outputMessageItemStatusUnion.OutputMessageItemStatusInProgress is populated
+}
+```

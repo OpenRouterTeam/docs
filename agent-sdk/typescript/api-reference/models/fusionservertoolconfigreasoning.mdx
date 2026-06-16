@@ -1,0 +1,45 @@
+---
+title: FusionServerToolConfigReasoning - TypeScript SDK
+sidebarTitle: FusionServerToolConfigReasoning
+description: FusionServerToolConfigReasoning type definition
+seoTitle: FusionServerToolConfigReasoning Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/fusionservertoolconfigreasoning
+'og:site_name': OpenRouter Documentation
+'og:title': FusionServerToolConfigReasoning Type | OpenRouter TypeScript SDK
+'og:description': >-
+  FusionServerToolConfigReasoning type reference for the OpenRouter TypeScript
+  SDK. Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=FusionServerToolConfigReasoning%20-%20TypeScript%20SDK&description=FusionServerToolConfigReasoning%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Reasoning configuration forwarded to panelist and judge inner calls. Use this to control reasoning effort and token budget for models that support extended thinking.
+
+## Example Usage
+
+```typescript lines
+import { FusionServerToolConfigReasoning } from "@openrouter/sdk/models";
+
+let value: FusionServerToolConfigReasoning = {};
+```
+
+## Fields
+
+| Field                                                                                                                                                | Type                                                                                                                                                 | Required                                                                                                                                             | Description                                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `effort`                                                                                                                                             | [models.FusionServerToolConfigEffort](/agent-sdk/typescript/api-reference/models/fusionservertoolconfigeffort)                                                                     | :heavy_minus_sign:                                                                                                                                   | Reasoning effort level for panelist and judge inner calls.                                                                                           |
+| `maxTokens`                                                                                                                                          | *number*                                                                                                                                             | :heavy_minus_sign:                                                                                                                                   | Maximum number of reasoning tokens each panelist and judge model may use. Helps bound cost when models allocate too much budget to chain-of-thought. |

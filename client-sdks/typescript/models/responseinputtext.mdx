@@ -1,0 +1,46 @@
+---
+title: ResponseInputText - TypeScript SDK
+description: ResponseInputText method reference
+seoTitle: ResponseInputText | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/models/responseinputtext'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponseInputText | OpenRouter TypeScript SDK
+'og:description': >-
+  ResponseInputText method documentation for the OpenRouter TypeScript SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponseInputText%20-%20TypeScript%20SDK&description=ResponseInputText%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Text input content item
+
+## Example Usage
+
+```typescript lines
+import { ResponseInputText } from "@openrouter/sdk/models";
+
+let value: ResponseInputText = {
+  type: "input_text",
+  text: "Hello, how can I help you?",
+};
+```
+
+## Fields
+
+| Field              | Type               | Required           | Description        |
+| ------------------ | ------------------ | ------------------ | ------------------ |
+| `type`             | *"input_text"*     | :heavy_check_mark: | N/A                |
+| `text`             | *string*           | :heavy_check_mark: | N/A                |

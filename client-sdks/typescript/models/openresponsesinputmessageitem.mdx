@@ -1,0 +1,52 @@
+---
+title: OpenResponsesInputMessageItem - TypeScript SDK
+description: OpenResponsesInputMessageItem method reference
+seoTitle: OpenResponsesInputMessageItem | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/models/openresponsesinputmessageitem
+'og:site_name': OpenRouter Documentation
+'og:title': OpenResponsesInputMessageItem | OpenRouter TypeScript SDK
+'og:description': >-
+  OpenResponsesInputMessageItem method documentation for the OpenRouter
+  TypeScript SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenResponsesInputMessageItem%20-%20TypeScript%20SDK&description=OpenResponsesInputMessageItem%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { OpenResponsesInputMessageItem } from "@openrouter/sdk/models";
+
+let value: OpenResponsesInputMessageItem = {
+  role: "system",
+  content: [
+    {
+      type: "input_text",
+      text: "Hello, how can I help you?",
+    },
+  ],
+};
+```
+
+## Fields
+
+| Field                                                                                                    | Type                                                                                                     | Required                                                                                                 | Description                                                                                              |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `id`                                                                                                     | *string*                                                                                                 | :heavy_minus_sign:                                                                                       | N/A                                                                                                      |
+| `type`                                                                                                   | [models.OpenResponsesInputMessageItemTypeMessage](/client-sdks/typescript/models/openresponsesinputmessageitemtypemessage) | :heavy_minus_sign:                                                                                       | N/A                                                                                                      |
+| `role`                                                                                                   | *models.OpenResponsesInputMessageItemRoleUnion*                                                          | :heavy_check_mark:                                                                                       | N/A                                                                                                      |
+| `content`                                                                                                | *models.OpenResponsesInputMessageItemContentUnion*[]                                                     | :heavy_check_mark:                                                                                       | N/A                                                                                                      |

@@ -1,0 +1,47 @@
+---
+title: CompletionTokensDetails - TypeScript SDK
+sidebarTitle: CompletionTokensDetails
+description: CompletionTokensDetails type definition
+seoTitle: CompletionTokensDetails Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/completiontokensdetails
+'og:site_name': OpenRouter Documentation
+'og:title': CompletionTokensDetails Type | OpenRouter TypeScript SDK
+'og:description': >-
+  CompletionTokensDetails type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CompletionTokensDetails%20-%20TypeScript%20SDK&description=CompletionTokensDetails%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Detailed completion token usage
+
+## Example Usage
+
+```typescript lines
+import { CompletionTokensDetails } from "@openrouter/sdk/models";
+
+let value: CompletionTokensDetails = {};
+```
+
+## Fields
+
+| Field                        | Type                         | Required                     | Description                  |
+| ---------------------------- | ---------------------------- | ---------------------------- | ---------------------------- |
+| `acceptedPredictionTokens`   | *number*                     | :heavy_minus_sign:           | Accepted prediction tokens   |
+| `audioTokens`                | *number*                     | :heavy_minus_sign:           | Tokens used for audio output |
+| `reasoningTokens`            | *number*                     | :heavy_minus_sign:           | Tokens used for reasoning    |
+| `rejectedPredictionTokens`   | *number*                     | :heavy_minus_sign:           | Rejected prediction tokens   |

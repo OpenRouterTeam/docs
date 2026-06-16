@@ -1,0 +1,46 @@
+---
+title: ResponseFormatJSONSchema - TypeScript SDK
+description: ResponseFormatJSONSchema method reference
+seoTitle: ResponseFormatJSONSchema | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/responseformatjsonschema'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponseFormatJSONSchema | OpenRouter TypeScript SDK
+'og:description': >-
+  ResponseFormatJSONSchema method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponseFormatJSONSchema%20-%20TypeScript%20SDK&description=ResponseFormatJSONSchema%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ResponseFormatJSONSchema } from "@openrouter/sdk/models";
+
+let value: ResponseFormatJSONSchema = {
+  type: "json_schema",
+  jsonSchema: {
+    name: "<value>",
+  },
+};
+```
+
+## Fields
+
+| Field                                                    | Type                                                     | Required                                                 | Description                                              |
+| -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| `type`                                                   | *"json_schema"*                                          | :heavy_check_mark:                                       | N/A                                                      |
+| `jsonSchema`                                             | [models.JSONSchemaConfig](/agent-sdk/typescript/models/jsonschemaconfig) | :heavy_check_mark:                                       | N/A                                                      |

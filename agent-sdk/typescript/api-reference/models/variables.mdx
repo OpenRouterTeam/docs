@@ -1,0 +1,61 @@
+---
+title: Variables - TypeScript SDK
+sidebarTitle: Variables
+description: Variables type definition
+seoTitle: Variables Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/api-reference/models/variables'
+'og:site_name': OpenRouter Documentation
+'og:title': Variables Type | OpenRouter TypeScript SDK
+'og:description': >-
+  Variables type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Variables%20-%20TypeScript%20SDK&description=Variables%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### `string`
+
+```typescript lines
+const value: string = "<value>";
+```
+
+### `models.InputText`
+
+```typescript lines
+const value: models.InputText = {
+  text: "Hello, how can I help you?",
+  type: "input_text",
+};
+```
+
+### `models.InputImage`
+
+```typescript lines
+const value: models.InputImage = {
+  detail: "auto",
+  type: "input_image",
+};
+```
+
+### `models.InputFile`
+
+```typescript lines
+const value: models.InputFile = {
+  type: "input_file",
+};
+```

@@ -1,0 +1,304 @@
+---
+title: OutputItems - TypeScript SDK
+sidebarTitle: OutputItems
+description: OutputItems type definition
+seoTitle: OutputItems Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/api-reference/models/outputitems'
+'og:site_name': OpenRouter Documentation
+'og:title': OutputItems Type | OpenRouter TypeScript SDK
+'og:description': >-
+  OutputItems type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputItems%20-%20TypeScript%20SDK&description=OutputItems%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+An output item from the response
+
+## Supported Types
+
+### `models.OutputApplyPatchCallItem`
+
+```typescript lines
+const value: models.OutputApplyPatchCallItem = {
+  callId: "<id>",
+  id: "msg-abc123",
+  operation: {
+    diff: "@@ function main() {\n+  console.log(\"hi\");\n }",
+    path: "/src/main.ts",
+    type: "update_file",
+  },
+  status: "completed",
+  type: "apply_patch_call",
+};
+```
+
+### `models.OutputCodeInterpreterCallItem`
+
+```typescript lines
+const value: models.OutputCodeInterpreterCallItem = {
+  code: "print(\"hello\")",
+  containerId: "ctr-xyz789",
+  id: "ci-abc123",
+  outputs: [
+    {
+      logs: "hello\n",
+      type: "logs",
+    },
+  ],
+  status: "completed",
+  type: "code_interpreter_call",
+};
+```
+
+### `models.OutputComputerCallItem`
+
+```typescript lines
+const value: models.OutputComputerCallItem = {
+  callId: "call-abc123",
+  pendingSafetyChecks: [],
+  status: "completed",
+  type: "computer_call",
+};
+```
+
+### `models.OutputCustomToolCallItem`
+
+```typescript lines
+const value: models.OutputCustomToolCallItem = {
+  callId: "call-abc123",
+  input: "*** Begin Patch\n*** End Patch",
+  name: "apply_patch",
+  type: "custom_tool_call",
+};
+```
+
+### `models.OutputFileSearchCallItem`
+
+```typescript lines
+const value: models.OutputFileSearchCallItem = {
+  id: "fs-abc123",
+  queries: [
+    "search term",
+  ],
+  status: "completed",
+  type: "file_search_call",
+};
+```
+
+### `models.OutputFunctionCallItem`
+
+```typescript lines
+const value: models.OutputFunctionCallItem = {
+  arguments: "{\"location\":\"San Francisco\"}",
+  callId: "call-abc123",
+  name: "get_weather",
+  type: "function_call",
+};
+```
+
+### `models.OutputImageGenerationCallItem`
+
+```typescript lines
+const value: models.OutputImageGenerationCallItem = {
+  id: "img-abc123",
+  status: "completed",
+  type: "image_generation_call",
+};
+```
+
+### `models.OutputMessageItem`
+
+```typescript lines
+const value: models.OutputMessageItem = {
+  content: [
+    {
+      text: "Hello! How can I help you today?",
+      type: "output_text",
+    },
+  ],
+  id: "msg-abc123",
+  role: "assistant",
+  type: "message",
+};
+```
+
+### `models.OutputApplyPatchServerToolItem`
+
+```typescript lines
+const value: models.OutputApplyPatchServerToolItem = {
+  status: "completed",
+  type: "openrouter:apply_patch",
+};
+```
+
+### `models.OutputBashServerToolItem`
+
+```typescript lines
+const value: models.OutputBashServerToolItem = {
+  status: "completed",
+  type: "openrouter:bash",
+};
+```
+
+### `models.OutputBrowserUseServerToolItem`
+
+```typescript lines
+const value: models.OutputBrowserUseServerToolItem = {
+  status: "completed",
+  type: "openrouter:browser_use",
+};
+```
+
+### `models.OutputCodeInterpreterServerToolItem`
+
+```typescript lines
+const value: models.OutputCodeInterpreterServerToolItem = {
+  status: "completed",
+  type: "openrouter:code_interpreter",
+};
+```
+
+### `models.OutputDatetimeItem`
+
+```typescript lines
+const value: models.OutputDatetimeItem = {
+  datetime: "2026-03-12T14:30:00.000Z",
+  status: "completed",
+  timezone: "UTC",
+  type: "openrouter:datetime",
+};
+```
+
+### `models.OutputSearchModelsServerToolItem`
+
+```typescript lines
+const value: models.OutputSearchModelsServerToolItem = {
+  status: "completed",
+  type: "openrouter:experimental__search_models",
+};
+```
+
+### `models.OutputFileSearchServerToolItem`
+
+```typescript lines
+const value: models.OutputFileSearchServerToolItem = {
+  status: "completed",
+  type: "openrouter:file_search",
+};
+```
+
+### `models.OutputFusionServerToolItem`
+
+```typescript lines
+const value: models.OutputFusionServerToolItem = {
+  status: "completed",
+  type: "openrouter:fusion",
+};
+```
+
+### `models.OutputImageGenerationServerToolItem`
+
+```typescript lines
+const value: models.OutputImageGenerationServerToolItem = {
+  status: "completed",
+  type: "openrouter:image_generation",
+};
+```
+
+### `models.OutputMcpServerToolItem`
+
+```typescript lines
+const value: models.OutputMcpServerToolItem = {
+  status: "completed",
+  type: "openrouter:mcp",
+};
+```
+
+### `models.OutputMemoryServerToolItem`
+
+```typescript lines
+const value: models.OutputMemoryServerToolItem = {
+  status: "completed",
+  type: "openrouter:memory",
+};
+```
+
+### `models.OutputTextEditorServerToolItem`
+
+```typescript lines
+const value: models.OutputTextEditorServerToolItem = {
+  status: "completed",
+  type: "openrouter:text_editor",
+};
+```
+
+### `models.OutputToolSearchServerToolItem`
+
+```typescript lines
+const value: models.OutputToolSearchServerToolItem = {
+  status: "completed",
+  type: "openrouter:tool_search",
+};
+```
+
+### `models.OutputWebFetchServerToolItem`
+
+```typescript lines
+const value: models.OutputWebFetchServerToolItem = {
+  status: "completed",
+  type: "openrouter:web_fetch",
+};
+```
+
+### `models.OutputWebSearchServerToolItem`
+
+```typescript lines
+const value: models.OutputWebSearchServerToolItem = {
+  status: "completed",
+  type: "openrouter:web_search",
+};
+```
+
+### `models.OutputReasoningItem`
+
+```typescript lines
+const value: models.OutputReasoningItem = {
+  id: "msg-abc123",
+  summary: [
+    {
+      text: "Analyzed the problem using first principles",
+      type: "summary_text",
+    },
+  ],
+  type: "reasoning",
+};
+```
+
+### `models.OutputWebSearchCallItem`
+
+```typescript lines
+const value: models.OutputWebSearchCallItem = {
+  action: {
+    pattern: "<value>",
+    type: "find_in_page",
+    url: "https://tragic-requirement.com/",
+  },
+  id: "ws-abc123",
+  status: "completed",
+  type: "web_search_call",
+};
+```

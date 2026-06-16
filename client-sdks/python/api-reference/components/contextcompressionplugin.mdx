@@ -1,0 +1,36 @@
+---
+title: ContextCompressionPlugin - Python SDK
+sidebarTitle: ContextCompressionPlugin
+description: ContextCompressionPlugin method reference
+seoTitle: ContextCompressionPlugin | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/contextcompressionplugin
+'og:site_name': OpenRouter Documentation
+'og:title': ContextCompressionPlugin | OpenRouter Python SDK
+'og:description': >-
+  ContextCompressionPlugin method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ContextCompressionPlugin%20-%20Python%20SDK&description=ContextCompressionPlugin%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                                      | Type                                                                                       | Required                                                                                   | Description                                                                                | Example                                                                                    |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `enabled`                                                                                  | *Optional[bool]*                                                                           | :heavy_minus_sign:                                                                         | Set to false to disable the context-compression plugin for this request. Defaults to true. |                                                                                            |
+| `engine`                                                                                   | [Optional[components.ContextCompressionEngine]](../components/contextcompressionengine.md) | :heavy_minus_sign:                                                                         | The compression engine to use. Defaults to "middle-out".                                   | middle-out                                                                                 |
+| `id`                                                                                       | [components.ContextCompressionPluginID](/client-sdks/python/api-reference/components/contextcompressionpluginid)       | :heavy_check_mark:                                                                         | N/A                                                                                        |                                                                                            |

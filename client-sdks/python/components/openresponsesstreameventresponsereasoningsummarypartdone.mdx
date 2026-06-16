@@ -1,0 +1,45 @@
+---
+title: OpenResponsesStreamEventResponseReasoningSummaryPartDone - Python SDK
+description: OpenResponsesStreamEventResponseReasoningSummaryPartDone method reference
+seoTitle: >-
+  OpenResponsesStreamEventResponseReasoningSummaryPartDone | OpenRouter Python
+  SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/components/openresponsesstreameventresponsereasoningsummarypartdone
+'og:site_name': OpenRouter Documentation
+'og:title': >-
+  OpenResponsesStreamEventResponseReasoningSummaryPartDone | OpenRouter Python
+  SDK
+'og:description': >-
+  OpenResponsesStreamEventResponseReasoningSummaryPartDone method documentation
+  for the OpenRouter Python SDK. Learn how to use this API endpoint with code
+  examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenResponsesStreamEventResponseReasoningSummaryPartDone%20-%20Python%20SDK&description=OpenResponsesStreamEventResponseReasoningSummaryPartDone%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Event emitted when a reasoning summary part is complete
+
+## Fields
+
+| Field                                                                                                    | Type                                                                                                     | Required                                                                                                 | Description                                                                                              | Example                                                                                                  |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `type`                                                                                                   | [components.TypeResponseReasoningSummaryPartDone](/client-sdks/python/components/typeresponsereasoningsummarypartdone) | :heavy_check_mark:                                                                                       | N/A                                                                                                      |                                                                                                          |
+| `output_index`                                                                                           | *float*                                                                                                  | :heavy_check_mark:                                                                                       | N/A                                                                                                      |                                                                                                          |
+| `item_id`                                                                                                | *str*                                                                                                    | :heavy_check_mark:                                                                                       | N/A                                                                                                      |                                                                                                          |
+| `summary_index`                                                                                          | *float*                                                                                                  | :heavy_check_mark:                                                                                       | N/A                                                                                                      |                                                                                                          |
+| `part`                                                                                                   | [components.ReasoningSummaryText](/client-sdks/python/components/reasoningsummarytext)                                 | :heavy_check_mark:                                                                                       | N/A                                                                                                      | `{"type": "summary_text","text": "Analyzed the problem using first principles"}`            |
+| `sequence_number`                                                                                        | *float*                                                                                                  | :heavy_check_mark:                                                                                       | N/A                                                                                                      |                                                                                                          |

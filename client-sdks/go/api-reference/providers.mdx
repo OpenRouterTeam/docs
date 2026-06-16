@@ -1,0 +1,88 @@
+---
+title: Providers - Go SDK
+sidebarTitle: Providers
+description: Providers method reference
+seoTitle: Providers | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/providers'
+'og:site_name': OpenRouter Documentation
+'og:title': Providers | OpenRouter Go SDK
+'og:description': >-
+  Providers method documentation for the OpenRouter Go SDK. Learn how to use
+  this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Providers%20-%20Go%20SDK&description=Providers%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+icon: cloud
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Overview
+
+Provider information endpoints
+
+### Available Operations
+
+* [List](#list) - List all providers
+
+## List
+
+List all providers
+
+### Example Usage
+
+{/* UsageSnippet language="go" operationID="listProviders" method="get" path="/providers" */}
+```go expandable lines
+package main
+
+import(
+	"context"
+	"os"
+	openrouter "github.com/OpenRouterTeam/go-sdk"
+	"log"
+)
+
+func main() {
+    ctx := context.Background()
+
+    s := openrouter.New(
+        openrouter.WithSecurity(os.Getenv("OPENROUTER_API_KEY")),
+    )
+
+    res, err := s.Providers.List(ctx)
+    if err != nil {
+        log.Fatal(err)
+    }
+    if res != nil {
+        // handle response
+    }
+}
+```
+
+### Parameters
+
+| Parameter                                                | Type                                                     | Required                                                 | Description                                              |
+| -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| `ctx`                                                    | [context.Context](https://pkg.go.dev/context#Context)    | :heavy_check_mark:                                       | The context to use for the request.                      |
+| `opts`                                                   | [][operations.Option](/client-sdks/go/api-reference/operations/option) | :heavy_minus_sign:                                       | The options for this request.                            |
+
+### Response
+
+**[*operations.ListProvidersResponse](/client-sdks/go/api-reference/operations/listprovidersresponse), error**
+
+### Errors
+
+| Error Type                            | Status Code                           | Content Type                          |
+| ------------------------------------- | ------------------------------------- | ------------------------------------- |
+| sdkerrors.InternalServerResponseError | 500                                   | application/json                      |
+| sdkerrors.APIError                    | 4XX, 5XX                              | \*/\*                                 |

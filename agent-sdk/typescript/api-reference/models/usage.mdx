@@ -1,0 +1,60 @@
+---
+title: Usage - TypeScript SDK
+sidebarTitle: Usage
+description: Usage type definition
+seoTitle: Usage Type | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/api-reference/models/usage'
+'og:site_name': OpenRouter Documentation
+'og:title': Usage Type | OpenRouter TypeScript SDK
+'og:description': >-
+  Usage type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Usage%20-%20TypeScript%20SDK&description=Usage%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Token usage information for the response
+
+## Example Usage
+
+```typescript lines
+import { Usage } from "@openrouter/sdk/models";
+
+let value: Usage = {
+  inputTokens: 10,
+  inputTokensDetails: {
+    cachedTokens: 0,
+  },
+  outputTokens: 25,
+  outputTokensDetails: {
+    reasoningTokens: 0,
+  },
+  totalTokens: 35,
+};
+```
+
+## Fields
+
+| Field                                                               | Type                                                                | Required                                                            | Description                                                         |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `inputTokens`                                                       | *number*                                                            | :heavy_check_mark:                                                  | N/A                                                                 |
+| `inputTokensDetails`                                                | [models.InputTokensDetails](/agent-sdk/typescript/api-reference/models/inputtokensdetails)        | :heavy_check_mark:                                                  | N/A                                                                 |
+| `outputTokens`                                                      | *number*                                                            | :heavy_check_mark:                                                  | N/A                                                                 |
+| `outputTokensDetails`                                               | [models.OutputTokensDetails](/agent-sdk/typescript/api-reference/models/outputtokensdetails)      | :heavy_check_mark:                                                  | N/A                                                                 |
+| `totalTokens`                                                       | *number*                                                            | :heavy_check_mark:                                                  | N/A                                                                 |
+| `cost`                                                              | *number*                                                            | :heavy_minus_sign:                                                  | Cost of the completion                                              |
+| `costDetails`                                                       | [models.UsageCostDetails](/agent-sdk/typescript/api-reference/models/usagecostdetails)            | :heavy_minus_sign:                                                  | N/A                                                                 |
+| `isByok`                                                            | *boolean*                                                           | :heavy_minus_sign:                                                  | Whether a request was made using a Bring Your Own Key configuration |

@@ -1,0 +1,47 @@
+---
+title: PromptTokensDetails - TypeScript SDK
+sidebarTitle: PromptTokensDetails
+description: PromptTokensDetails type definition
+seoTitle: PromptTokensDetails Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/prompttokensdetails
+'og:site_name': OpenRouter Documentation
+'og:title': PromptTokensDetails Type | OpenRouter TypeScript SDK
+'og:description': >-
+  PromptTokensDetails type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=PromptTokensDetails%20-%20TypeScript%20SDK&description=PromptTokensDetails%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Detailed prompt token usage
+
+## Example Usage
+
+```typescript lines
+import { PromptTokensDetails } from "@openrouter/sdk/models";
+
+let value: PromptTokensDetails = {};
+```
+
+## Fields
+
+| Field                                                                                            | Type                                                                                             | Required                                                                                         | Description                                                                                      |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `audioTokens`                                                                                    | *number*                                                                                         | :heavy_minus_sign:                                                                               | Audio input tokens                                                                               |
+| `cacheWriteTokens`                                                                               | *number*                                                                                         | :heavy_minus_sign:                                                                               | Tokens written to cache. Only returned for models with explicit caching and cache write pricing. |
+| `cachedTokens`                                                                                   | *number*                                                                                         | :heavy_minus_sign:                                                                               | Cached prompt tokens                                                                             |
+| `videoTokens`                                                                                    | *number*                                                                                         | :heavy_minus_sign:                                                                               | Video input tokens                                                                               |

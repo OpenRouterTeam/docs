@@ -1,0 +1,44 @@
+---
+title: ModelGroup - TypeScript SDK
+description: ModelGroup method reference
+seoTitle: ModelGroup | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/modelgroup'
+'og:site_name': OpenRouter Documentation
+'og:title': ModelGroup | OpenRouter TypeScript SDK
+'og:description': >-
+  ModelGroup method documentation for the OpenRouter TypeScript SDK. Learn how
+  to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ModelGroup%20-%20TypeScript%20SDK&description=ModelGroup%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Tokenizer type used by the model
+
+## Example Usage
+
+```typescript lines
+import { ModelGroup } from "@openrouter/sdk/models";
+
+let value: ModelGroup = "GPT";
+```
+
+## Values
+
+This is an open enum. Unrecognized values will be captured as the `Unrecognized<string>` branded type.
+
+```typescript lines
+"Router" | "Media" | "Other" | "GPT" | "Claude" | "Gemini" | "Grok" | "Cohere" | "Nova" | "Qwen" | "Yi" | "DeepSeek" | "Mistral" | "Llama2" | "Llama3" | "Llama4" | "PaLM" | "RWKV" | "Qwen3" | Unrecognized<string>
+```

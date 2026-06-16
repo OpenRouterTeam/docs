@@ -1,0 +1,62 @@
+---
+title: BaseInputsPhaseUnion - Go SDK
+sidebarTitle: BaseInputsPhaseUnion
+description: BaseInputsPhaseUnion type definition
+seoTitle: BaseInputsPhaseUnion Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/baseinputsphaseunion'
+'og:site_name': OpenRouter Documentation
+'og:title': BaseInputsPhaseUnion Type | OpenRouter Go SDK
+'og:description': >-
+  BaseInputsPhaseUnion type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=BaseInputsPhaseUnion%20-%20Go%20SDK&description=BaseInputsPhaseUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### BaseInputsPhaseCommentary
+
+```go lines
+baseInputsPhaseUnion := components.CreateBaseInputsPhaseUnionBaseInputsPhaseCommentary(components.BaseInputsPhaseCommentary{/* values here */})
+```
+
+### BaseInputsPhaseFinalAnswer
+
+```go lines
+baseInputsPhaseUnion := components.CreateBaseInputsPhaseUnionBaseInputsPhaseFinalAnswer(components.BaseInputsPhaseFinalAnswer{/* values here */})
+```
+
+### 
+
+```go lines
+baseInputsPhaseUnion := components.CreateBaseInputsPhaseUnionAny(any{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch baseInputsPhaseUnion.Type {
+	case components.BaseInputsPhaseUnionTypeBaseInputsPhaseCommentary:
+		// baseInputsPhaseUnion.BaseInputsPhaseCommentary is populated
+	case components.BaseInputsPhaseUnionTypeBaseInputsPhaseFinalAnswer:
+		// baseInputsPhaseUnion.BaseInputsPhaseFinalAnswer is populated
+	case components.BaseInputsPhaseUnionTypeAny:
+		// baseInputsPhaseUnion.Any is populated
+}
+```

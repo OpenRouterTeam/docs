@@ -1,0 +1,50 @@
+---
+title: OutputWebSearchServerToolItem - TypeScript SDK
+sidebarTitle: OutputWebSearchServerToolItem
+description: OutputWebSearchServerToolItem type definition
+seoTitle: OutputWebSearchServerToolItem Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/outputwebsearchservertoolitem
+'og:site_name': OpenRouter Documentation
+'og:title': OutputWebSearchServerToolItem Type | OpenRouter TypeScript SDK
+'og:description': >-
+  OutputWebSearchServerToolItem type reference for the OpenRouter TypeScript
+  SDK. Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputWebSearchServerToolItem%20-%20TypeScript%20SDK&description=OutputWebSearchServerToolItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+An openrouter:web_search server tool output item
+
+## Example Usage
+
+```typescript lines
+import { OutputWebSearchServerToolItem } from "@openrouter/sdk/models";
+
+let value: OutputWebSearchServerToolItem = {
+  status: "completed",
+  type: "openrouter:web_search",
+};
+```
+
+## Fields
+
+| Field                                                                                                                                                                    | Type                                                                                                                                                                     | Required                                                                                                                                                                 | Description                                                                                                                                                              | Example                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `action`                                                                                                                                                                 | [models.OutputWebSearchServerToolItemAction](/agent-sdk/typescript/api-reference/models/outputwebsearchservertoolitemaction)                                                                           | :heavy_minus_sign:                                                                                                                                                       | The search action performed, matching OpenAI web_search_call.action shape. Includes the query the model issued and optional source URLs returned by the search provider. |                                                                                                                                                                          |
+| `id`                                                                                                                                                                     | *string*                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                       | N/A                                                                                                                                                                      |                                                                                                                                                                          |
+| `status`                                                                                                                                                                 | [models.ToolCallStatus](/agent-sdk/typescript/api-reference/models/toolcallstatus)                                                                                                                     | :heavy_check_mark:                                                                                                                                                       | N/A                                                                                                                                                                      | completed                                                                                                                                                                |
+| `type`                                                                                                                                                                   | [models.OutputWebSearchServerToolItemTypeOpenrouterWebSearch](/agent-sdk/typescript/api-reference/models/outputwebsearchservertoolitemtypeopenrouterwebsearch)                                         | :heavy_check_mark:                                                                                                                                                       | N/A                                                                                                                                                                      |                                                                                                                                                                          |

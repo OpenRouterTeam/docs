@@ -1,0 +1,44 @@
+---
+title: WebSearchEngine - TypeScript SDK
+description: WebSearchEngine method reference
+seoTitle: WebSearchEngine | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/websearchengine'
+'og:site_name': OpenRouter Documentation
+'og:title': WebSearchEngine | OpenRouter TypeScript SDK
+'og:description': >-
+  WebSearchEngine method documentation for the OpenRouter TypeScript SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=WebSearchEngine%20-%20TypeScript%20SDK&description=WebSearchEngine%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The search engine to use for web search.
+
+## Example Usage
+
+```typescript lines
+import { WebSearchEngine } from "@openrouter/sdk/models";
+
+let value: WebSearchEngine = "native";
+```
+
+## Values
+
+This is an open enum. Unrecognized values will be captured as the `Unrecognized<string>` branded type.
+
+```typescript lines
+"native" | "exa" | Unrecognized<string>
+```

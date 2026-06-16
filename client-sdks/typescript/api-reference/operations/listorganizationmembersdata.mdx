@@ -1,0 +1,52 @@
+---
+title: ListOrganizationMembersData - TypeScript SDK
+sidebarTitle: ListOrganizationMembersData
+description: ListOrganizationMembersData type definition
+seoTitle: ListOrganizationMembersData Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/client-sdks/typescript/api-reference/operations/listorganizationmembersdata
+'og:site_name': OpenRouter Documentation
+'og:title': ListOrganizationMembersData Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ListOrganizationMembersData type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ListOrganizationMembersData%20-%20TypeScript%20SDK&description=ListOrganizationMembersData%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ListOrganizationMembersData } from "@openrouter/sdk/models/operations";
+
+let value: ListOrganizationMembersData = {
+  email: "jane.doe@example.com",
+  firstName: "Jane",
+  id: "user_2dHFtVWx2n56w6HkM0000000000",
+  lastName: "Doe",
+  role: "org:member",
+};
+```
+
+## Fields
+
+| Field                                              | Type                                               | Required                                           | Description                                        | Example                                            |
+| -------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
+| `email`                                            | *string*                                           | :heavy_check_mark:                                 | Email address of the member                        | jane.doe@example.com                               |
+| `firstName`                                        | *string*                                           | :heavy_check_mark:                                 | First name of the member                           | Jane                                               |
+| `id`                                               | *string*                                           | :heavy_check_mark:                                 | User ID of the organization member                 | user_2dHFtVWx2n56w6HkM0000000000                   |
+| `lastName`                                         | *string*                                           | :heavy_check_mark:                                 | Last name of the member                            | Doe                                                |
+| `role`                                             | [operations.Role](/client-sdks/typescript/api-reference/operations/role) | :heavy_check_mark:                                 | Role of the member in the organization             | org:member                                         |

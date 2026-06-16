@@ -1,0 +1,40 @@
+---
+title: OutputApplyPatchServerToolItem - Python SDK
+sidebarTitle: OutputApplyPatchServerToolItem
+description: OutputApplyPatchServerToolItem method reference
+seoTitle: OutputApplyPatchServerToolItem | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/outputapplypatchservertoolitem
+'og:site_name': OpenRouter Documentation
+'og:title': OutputApplyPatchServerToolItem | OpenRouter Python SDK
+'og:description': >-
+  OutputApplyPatchServerToolItem method documentation for the OpenRouter Python
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputApplyPatchServerToolItem%20-%20Python%20SDK&description=OutputApplyPatchServerToolItem%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+An openrouter:apply_patch server tool output item. The turn halts when validation succeeds so the client can apply the patch and echo an `apply_patch_call_output` on the next turn.
+
+## Fields
+
+| Field                                                                                                                             | Type                                                                                                                              | Required                                                                                                                          | Description                                                                                                                       | Example                                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `call_id`                                                                                                                         | *Optional[str]*                                                                                                                   | :heavy_minus_sign:                                                                                                                | N/A                                                                                                                               |                                                                                                                                   |
+| `id`                                                                                                                              | *Optional[str]*                                                                                                                   | :heavy_minus_sign:                                                                                                                | N/A                                                                                                                               |                                                                                                                                   |
+| `operation`                                                                                                                       | [Optional[components.ApplyPatchCallOperation]](../components/applypatchcalloperation.md)                                          | :heavy_minus_sign:                                                                                                                | The patch operation requested by an `apply_patch_call`. `create_file` and `update_file` carry a V4A diff; `delete_file` omits it. | `{"diff": "@@ function main() {\n+  console.log(\"hi\");\n }`",<br/>"path": "/src/main.ts",<br/>"type": "update_file"<br/>\}    |
+| `status`                                                                                                                          | [components.ToolCallStatus](/client-sdks/python/api-reference/components/toolcallstatus)                                                                      | :heavy_check_mark:                                                                                                                | N/A                                                                                                                               | completed                                                                                                                         |
+| `type`                                                                                                                            | [components.OutputApplyPatchServerToolItemType](/client-sdks/python/api-reference/components/outputapplypatchservertoolitemtype)                              | :heavy_check_mark:                                                                                                                | N/A                                                                                                                               |                                                                                                                                   |

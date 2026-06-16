@@ -1,0 +1,72 @@
+---
+title: BaseInputsContent1 - Go SDK
+sidebarTitle: BaseInputsContent1
+description: BaseInputsContent1 type definition
+seoTitle: BaseInputsContent1 Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/baseinputscontent1'
+'og:site_name': OpenRouter Documentation
+'og:title': BaseInputsContent1 Type | OpenRouter Go SDK
+'og:description': >-
+  BaseInputsContent1 type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=BaseInputsContent1%20-%20Go%20SDK&description=BaseInputsContent1%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### InputAudio
+
+```go lines
+baseInputsContent1 := components.CreateBaseInputsContent1InputAudio(components.InputAudio{/* values here */})
+```
+
+### InputFile
+
+```go lines
+baseInputsContent1 := components.CreateBaseInputsContent1InputFile(components.InputFile{/* values here */})
+```
+
+### InputImage
+
+```go lines
+baseInputsContent1 := components.CreateBaseInputsContent1InputImage(components.InputImage{/* values here */})
+```
+
+### InputText
+
+```go lines
+baseInputsContent1 := components.CreateBaseInputsContent1InputText(components.InputText{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch baseInputsContent1.Type {
+	case components.BaseInputsContent1TypeInputAudio:
+		// baseInputsContent1.InputAudio is populated
+	case components.BaseInputsContent1TypeInputFile:
+		// baseInputsContent1.InputFile is populated
+	case components.BaseInputsContent1TypeInputImage:
+		// baseInputsContent1.InputImage is populated
+	case components.BaseInputsContent1TypeInputText:
+		// baseInputsContent1.InputText is populated
+	default:
+		// Unknown type - use baseInputsContent1.GetUnknownRaw() for raw JSON
+}
+```

@@ -1,0 +1,38 @@
+---
+title: ChatChoice - Python SDK
+sidebarTitle: ChatChoice
+description: ChatChoice method reference
+seoTitle: ChatChoice | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/api-reference/components/chatchoice'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatChoice | OpenRouter Python SDK
+'og:description': >-
+  ChatChoice method documentation for the OpenRouter Python SDK. Learn how to
+  use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatChoice%20-%20Python%20SDK&description=ChatChoice%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Chat completion choice
+
+## Fields
+
+| Field                                                                                                              | Type                                                                                                               | Required                                                                                                           | Description                                                                                                        | Example                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `finish_reason`                                                                                                    | [Nullable[components.ChatFinishReasonEnum]](../components/chatfinishreasonenum.md)                                 | :heavy_check_mark:                                                                                                 | N/A                                                                                                                | stop                                                                                                               |
+| `index`                                                                                                            | *int*                                                                                                              | :heavy_check_mark:                                                                                                 | Choice index                                                                                                       | 0                                                                                                                  |
+| `logprobs`                                                                                                         | [OptionalNullable[components.ChatTokenLogprobs]](../components/chattokenlogprobs.md)                               | :heavy_minus_sign:                                                                                                 | Log probabilities for the completion                                                                               | `{"content": [{"bytes": null,"logprob": -0.612345,"token": " Hello","top_logprobs": []}`<br/>],<br/>"refusal": `null<br/>`\} |
+| `message`                                                                                                          | [components.ChatAssistantMessage](/client-sdks/python/api-reference/components/chatassistantmessage)                                           | :heavy_check_mark:                                                                                                 | Assistant message for requests and responses                                                                       | `{"content": "What is the capital of France?","role": "user"}`                                        |

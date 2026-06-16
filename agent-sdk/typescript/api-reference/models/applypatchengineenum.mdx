@@ -1,0 +1,46 @@
+---
+title: ApplyPatchEngineEnum - TypeScript SDK
+sidebarTitle: ApplyPatchEngineEnum
+description: ApplyPatchEngineEnum type definition
+seoTitle: ApplyPatchEngineEnum Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/applypatchengineenum
+'og:site_name': OpenRouter Documentation
+'og:title': ApplyPatchEngineEnum Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ApplyPatchEngineEnum type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ApplyPatchEngineEnum%20-%20TypeScript%20SDK&description=ApplyPatchEngineEnum%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Which apply_patch engine to use. "auto" (default) uses native passthrough when the endpoint advertises native apply_patch support, otherwise falls back to OpenRouter's HITL validator. "native" forces native passthrough — when the endpoint does not support native, the request falls back to HITL. "openrouter" always runs the HITL validator. Native passthrough streams the diff incrementally via `apply_patch_call_operation_diff.delta` events; HITL buffers the diff for atomic delivery as a single delta.
+
+## Example Usage
+
+```typescript lines
+import { ApplyPatchEngineEnum } from "@openrouter/sdk/models";
+
+let value: ApplyPatchEngineEnum = "auto";
+
+// Open enum: unrecognized values are captured as Unrecognized<string>
+```
+
+## Values
+
+```typescript lines
+"auto" | "native" | "openrouter" | Unrecognized<string>
+```

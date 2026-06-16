@@ -1,0 +1,54 @@
+---
+title: OutputWebFetchServerToolItem - TypeScript SDK
+sidebarTitle: OutputWebFetchServerToolItem
+description: OutputWebFetchServerToolItem type definition
+seoTitle: OutputWebFetchServerToolItem Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/outputwebfetchservertoolitem
+'og:site_name': OpenRouter Documentation
+'og:title': OutputWebFetchServerToolItem Type | OpenRouter TypeScript SDK
+'og:description': >-
+  OutputWebFetchServerToolItem type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputWebFetchServerToolItem%20-%20TypeScript%20SDK&description=OutputWebFetchServerToolItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+An openrouter:web_fetch server tool output item
+
+## Example Usage
+
+```typescript lines
+import { OutputWebFetchServerToolItem } from "@openrouter/sdk/models";
+
+let value: OutputWebFetchServerToolItem = {
+  status: "completed",
+  type: "openrouter:web_fetch",
+};
+```
+
+## Fields
+
+| Field                                                                                    | Type                                                                                     | Required                                                                                 | Description                                                                              | Example                                                                                  |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `content`                                                                                | *string*                                                                                 | :heavy_minus_sign:                                                                       | N/A                                                                                      |                                                                                          |
+| `error`                                                                                  | *string*                                                                                 | :heavy_minus_sign:                                                                       | The error message if the fetch failed.                                                   |                                                                                          |
+| `httpStatus`                                                                             | *number*                                                                                 | :heavy_minus_sign:                                                                       | The HTTP status code returned by the upstream URL fetch.                                 |                                                                                          |
+| `id`                                                                                     | *string*                                                                                 | :heavy_minus_sign:                                                                       | N/A                                                                                      |                                                                                          |
+| `status`                                                                                 | [models.ToolCallStatus](/client-sdks/typescript/api-reference/models/toolcallstatus)                                     | :heavy_check_mark:                                                                       | N/A                                                                                      | completed                                                                                |
+| `title`                                                                                  | *string*                                                                                 | :heavy_minus_sign:                                                                       | N/A                                                                                      |                                                                                          |
+| `type`                                                                                   | [models.OutputWebFetchServerToolItemType](/client-sdks/typescript/api-reference/models/outputwebfetchservertoolitemtype) | :heavy_check_mark:                                                                       | N/A                                                                                      |                                                                                          |
+| `url`                                                                                    | *string*                                                                                 | :heavy_minus_sign:                                                                       | N/A                                                                                      |                                                                                          |

@@ -1,0 +1,59 @@
+---
+title: TransferIntent - TypeScript SDK
+description: TransferIntent method reference
+seoTitle: TransferIntent | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/operations/transferintent'
+'og:site_name': OpenRouter Documentation
+'og:title': TransferIntent | OpenRouter TypeScript SDK
+'og:description': >-
+  TransferIntent method documentation for the OpenRouter TypeScript SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=TransferIntent%20-%20TypeScript%20SDK&description=TransferIntent%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript expandable lines
+import { TransferIntent } from "@openrouter/sdk/models/operations";
+
+let value: TransferIntent = {
+  callData: {
+    deadline: "<value>",
+    feeAmount: "<value>",
+    id: "<id>",
+    operator: "<value>",
+    prefix: "<value>",
+    recipient: "<value>",
+    recipientAmount: "<value>",
+    recipientCurrency: "<value>",
+    refundDestination: "<value>",
+    signature: "<value>",
+  },
+  metadata: {
+    chainId: 7497.17,
+    contractAddress: "<value>",
+    sender: "<value>",
+  },
+};
+```
+
+## Fields
+
+| Field                                                      | Type                                                       | Required                                                   | Description                                                |
+| ---------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- |
+| `callData`                                                 | [operations.CallData](/agent-sdk/typescript/operations/calldata) | :heavy_check_mark:                                         | N/A                                                        |
+| `metadata`                                                 | [operations.Metadata](/agent-sdk/typescript/operations/metadata) | :heavy_check_mark:                                         | N/A                                                        |

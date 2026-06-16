@@ -1,0 +1,55 @@
+---
+title: CreateEmbeddingsResponse - Go SDK
+sidebarTitle: CreateEmbeddingsResponse
+description: CreateEmbeddingsResponse type definition
+seoTitle: CreateEmbeddingsResponse Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/operations/createembeddingsresponse
+'og:site_name': OpenRouter Documentation
+'og:title': CreateEmbeddingsResponse Type | OpenRouter Go SDK
+'og:description': >-
+  CreateEmbeddingsResponse type reference for the OpenRouter Go SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateEmbeddingsResponse%20-%20Go%20SDK&description=CreateEmbeddingsResponse%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### CreateEmbeddingsResponseBody
+
+```go lines
+createEmbeddingsResponse := operations.CreateCreateEmbeddingsResponseCreateEmbeddingsResponseBody(operations.CreateEmbeddingsResponseBody{/* values here */})
+```
+
+### 
+
+```go lines
+createEmbeddingsResponse := operations.CreateCreateEmbeddingsResponseStr(string{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch createEmbeddingsResponse.Type {
+	case operations.CreateEmbeddingsResponseTypeCreateEmbeddingsResponseBody:
+		// createEmbeddingsResponse.CreateEmbeddingsResponseBody is populated
+	case operations.CreateEmbeddingsResponseTypeStr:
+		// createEmbeddingsResponse.Str is populated
+}
+```

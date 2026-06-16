@@ -1,0 +1,80 @@
+---
+title: ChatToolChoice - Go SDK
+sidebarTitle: ChatToolChoice
+description: ChatToolChoice type definition
+seoTitle: ChatToolChoice Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/chattoolchoice'
+'og:site_name': OpenRouter Documentation
+'og:title': ChatToolChoice Type | OpenRouter Go SDK
+'og:description': >-
+  ChatToolChoice type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ChatToolChoice%20-%20Go%20SDK&description=ChatToolChoice%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Tool choice configuration
+
+## Supported Types
+
+### ChatToolChoiceNone
+
+```go lines
+chatToolChoice := components.CreateChatToolChoiceChatToolChoiceNone(components.ChatToolChoiceNone{/* values here */})
+```
+
+### ChatToolChoiceAuto
+
+```go lines
+chatToolChoice := components.CreateChatToolChoiceChatToolChoiceAuto(components.ChatToolChoiceAuto{/* values here */})
+```
+
+### ChatToolChoiceRequired
+
+```go lines
+chatToolChoice := components.CreateChatToolChoiceChatToolChoiceRequired(components.ChatToolChoiceRequired{/* values here */})
+```
+
+### ChatNamedToolChoice
+
+```go lines
+chatToolChoice := components.CreateChatToolChoiceChatNamedToolChoice(components.ChatNamedToolChoice{/* values here */})
+```
+
+### ChatServerToolChoice
+
+```go lines
+chatToolChoice := components.CreateChatToolChoiceChatServerToolChoice(components.ChatServerToolChoice{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch chatToolChoice.Type {
+	case components.ChatToolChoiceTypeChatToolChoiceNone:
+		// chatToolChoice.ChatToolChoiceNone is populated
+	case components.ChatToolChoiceTypeChatToolChoiceAuto:
+		// chatToolChoice.ChatToolChoiceAuto is populated
+	case components.ChatToolChoiceTypeChatToolChoiceRequired:
+		// chatToolChoice.ChatToolChoiceRequired is populated
+	case components.ChatToolChoiceTypeChatNamedToolChoice:
+		// chatToolChoice.ChatNamedToolChoice is populated
+	case components.ChatToolChoiceTypeChatServerToolChoice:
+		// chatToolChoice.ChatServerToolChoice is populated
+}
+```

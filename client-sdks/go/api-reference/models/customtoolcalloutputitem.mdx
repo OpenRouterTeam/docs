@@ -1,0 +1,39 @@
+---
+title: CustomToolCallOutputItem - Go SDK
+sidebarTitle: CustomToolCallOutputItem
+description: CustomToolCallOutputItem type definition
+seoTitle: CustomToolCallOutputItem Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/customtoolcalloutputitem
+'og:site_name': OpenRouter Documentation
+'og:title': CustomToolCallOutputItem Type | OpenRouter Go SDK
+'og:description': >-
+  CustomToolCallOutputItem type reference for the OpenRouter Go SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CustomToolCallOutputItem%20-%20Go%20SDK&description=CustomToolCallOutputItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+The output from a custom (freeform-grammar) tool call execution. Mirrors `function_call_output` but is matched to a `custom_tool_call` rather than a `function_call`.
+
+## Fields
+
+| Field                                                                                                                                      | Type                                                                                                                                       | Required                                                                                                                                   | Description                                                                                                                                |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CallID`                                                                                                                                   | `string`                                                                                                                                   | :heavy_check_mark:                                                                                                                         | N/A                                                                                                                                        |
+| `ID`                                                                                                                                       | `*string`                                                                                                                                  | :heavy_minus_sign:                                                                                                                         | N/A                                                                                                                                        |
+| `Output`                                                                                                                                   | [components.CustomToolCallOutputItemOutputUnion2](/client-sdks/go/api-reference/models/customtoolcalloutputitemoutputunion2)                         | :heavy_check_mark:                                                                                                                         | N/A                                                                                                                                        |
+| `Type`                                                                                                                                     | [components.CustomToolCallOutputItemTypeCustomToolCallOutput](/client-sdks/go/api-reference/models/customtoolcalloutputitemtypecustomtoolcalloutput) | :heavy_check_mark:                                                                                                                         | N/A                                                                                                                                        |

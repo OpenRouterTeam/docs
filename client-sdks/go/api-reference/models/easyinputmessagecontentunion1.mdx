@@ -1,0 +1,79 @@
+---
+title: EasyInputMessageContentUnion1 - Go SDK
+sidebarTitle: EasyInputMessageContentUnion1
+description: EasyInputMessageContentUnion1 type definition
+seoTitle: EasyInputMessageContentUnion1 Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/easyinputmessagecontentunion1
+'og:site_name': OpenRouter Documentation
+'og:title': EasyInputMessageContentUnion1 Type | OpenRouter Go SDK
+'og:description': >-
+  EasyInputMessageContentUnion1 type reference for the OpenRouter Go SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=EasyInputMessageContentUnion1%20-%20Go%20SDK&description=EasyInputMessageContentUnion1%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### InputText
+
+```go lines
+easyInputMessageContentUnion1 := components.CreateEasyInputMessageContentUnion1InputText(components.InputText{/* values here */})
+```
+
+### EasyInputMessageContentInputImage
+
+```go lines
+easyInputMessageContentUnion1 := components.CreateEasyInputMessageContentUnion1InputImage(components.EasyInputMessageContentInputImage{/* values here */})
+```
+
+### InputFile
+
+```go lines
+easyInputMessageContentUnion1 := components.CreateEasyInputMessageContentUnion1InputFile(components.InputFile{/* values here */})
+```
+
+### InputAudio
+
+```go lines
+easyInputMessageContentUnion1 := components.CreateEasyInputMessageContentUnion1InputAudio(components.InputAudio{/* values here */})
+```
+
+### InputVideo
+
+```go lines
+easyInputMessageContentUnion1 := components.CreateEasyInputMessageContentUnion1InputVideo(components.InputVideo{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch easyInputMessageContentUnion1.Type {
+	case components.EasyInputMessageContentUnion1TypeInputText:
+		// easyInputMessageContentUnion1.InputText is populated
+	case components.EasyInputMessageContentUnion1TypeInputImage:
+		// easyInputMessageContentUnion1.EasyInputMessageContentInputImage is populated
+	case components.EasyInputMessageContentUnion1TypeInputFile:
+		// easyInputMessageContentUnion1.InputFile is populated
+	case components.EasyInputMessageContentUnion1TypeInputAudio:
+		// easyInputMessageContentUnion1.InputAudio is populated
+	case components.EasyInputMessageContentUnion1TypeInputVideo:
+		// easyInputMessageContentUnion1.InputVideo is populated
+}
+```

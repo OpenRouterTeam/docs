@@ -1,0 +1,46 @@
+---
+title: ContentImageURL - TypeScript SDK
+description: ContentImageURL method reference
+seoTitle: ContentImageURL | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/typescript/operations/contentimageurl'
+'og:site_name': OpenRouter Documentation
+'og:title': ContentImageURL | OpenRouter TypeScript SDK
+'og:description': >-
+  ContentImageURL method documentation for the OpenRouter TypeScript SDK. Learn
+  how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ContentImageURL%20-%20TypeScript%20SDK&description=ContentImageURL%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ContentImageURL } from "@openrouter/sdk/models/operations";
+
+let value: ContentImageURL = {
+  type: "image_url",
+  imageUrl: {
+    url: "https://zealous-march.biz/",
+  },
+};
+```
+
+## Fields
+
+| Field                                                      | Type                                                       | Required                                                   | Description                                                |
+| ---------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- |
+| `type`                                                     | *"image_url"*                                              | :heavy_check_mark:                                         | N/A                                                        |
+| `imageUrl`                                                 | [operations.ImageUrl](/client-sdks/typescript/operations/imageurl) | :heavy_check_mark:                                         | N/A                                                        |

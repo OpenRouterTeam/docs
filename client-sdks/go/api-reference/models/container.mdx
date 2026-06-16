@@ -1,0 +1,54 @@
+---
+title: Container - Go SDK
+sidebarTitle: Container
+description: Container type definition
+seoTitle: Container Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/container'
+'og:site_name': OpenRouter Documentation
+'og:title': Container Type | OpenRouter Go SDK
+'og:description': >-
+  Container type reference for the OpenRouter Go SDK. Complete type definition
+  and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Container%20-%20Go%20SDK&description=Container%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### 
+
+```go lines
+container := components.CreateContainerStr(string{/* values here */})
+```
+
+### ContainerAuto
+
+```go lines
+container := components.CreateContainerContainerAuto(components.ContainerAuto{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch container.Type {
+	case components.ContainerUnionTypeStr:
+		// container.Str is populated
+	case components.ContainerUnionTypeContainerAuto:
+		// container.ContainerAuto is populated
+}
+```

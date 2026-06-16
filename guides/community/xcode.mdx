@@ -1,0 +1,118 @@
+---
+title: Xcode
+description: Using OpenRouter with Apple Intelligence in Xcode
+seoTitle: 'Xcode Integration | OpenRouter Apple Intelligence Support'
+canonicalUrl: https://openrouter.ai/docs/guides/community/xcode
+og:site_name: OpenRouter Documentation
+og:title: 'Xcode Integration - OpenRouter Apple Intelligence Support'
+og:description: 'Integrate OpenRouter with Apple Intelligence in Xcode 26. Complete setup guide for accessing hundreds of AI models directly in your Xcode development environment.'
+og:image: https://openrouter.ai/dynamic-og?title=Xcode&description=Apple%20Intelligence%20Integration
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: puzzle-piece
+---
+
+import { API_KEY_REF } from '/snippets/exports/constants.mdx';
+
+{/* <llms-ignore> */}
+## Using Xcode with Apple Intelligence
+
+[Apple Intelligence](https://developer.apple.com/apple-intelligence/) in Xcode 26 provides built-in AI assistance for coding. By integrating OpenRouter, you can access hundreds of AI models directly in your Xcode development environment, going far beyond the default ChatGPT integration.
+
+This integration allows you to use models from Anthropic, Google, Meta, and many other providers without leaving your development environment.
+
+### Prerequisites
+
+<Warning>
+Apple Intelligence on Xcode is currently in Beta and requires:
+
+- **macOS Tahoe 26.0 Beta** or later
+- **[Xcode 26 beta 4](https://developer.apple.com/download/applications/)** or later
+</Warning>
+
+### Setup Instructions
+
+#### Step 1: Enable Apple Intelligence
+
+Navigate to **macOS Settings > Apple Intelligence & Siri** and make sure **Apple Intelligence** is turned on. This is required before Xcode can use any AI model providers.
+
+<Frame>
+![Apple Intelligence & Siri Settings](/assets/guides/community/xcode/xcode-setup-1.png)
+</Frame>
+
+#### Step 2: Open Xcode Intelligence Settings
+
+Open **Xcode > Settings > Intelligence** and click **Add a Chat Provider** at the bottom of the page.
+
+<Frame>
+![Xcode Intelligence Settings](/assets/guides/community/xcode/xcode-setup-1b.png)
+</Frame>
+
+#### Step 3: Configure OpenRouter Provider
+
+In the dialog that appears, enter the following details:
+
+- **URL**: `https://openrouter.ai/api`
+  - **Important**: Do not add `/v1` at the end of the endpoint like you typically would for direct API calls
+- **API Key Header**: `Authorization`
+- **API Key**: `Bearer YOUR_API_KEY_HERE` (replace `YOUR_API_KEY_HERE` with your OpenRouter API key that starts with `sk-or-v1-`)
+- **Description**: `OpenRouter` (or any name you prefer)
+
+Click **Add** to save the configuration.
+
+<Frame>
+![OpenRouter Configuration](/assets/guides/community/xcode/xcode-setup-2.png)
+</Frame>
+
+#### Step 4: Browse Available Models
+
+Once configured, click on **OpenRouter** to see all available models. Since OpenRouter offers hundreds of models, you should bookmark your favorite models for quick access. Bookmarked models will appear at the top of the list, making them easily accessible from within the pane whenever you need them.
+
+<Frame>
+![Available Models](/assets/guides/community/xcode/xcode-setup-3.png)
+</Frame>
+
+You'll have access to models from various providers including:
+- Anthropic Claude models
+- Google Gemini models
+- Meta Llama models
+- OpenAI GPT models
+- And hundreds more
+
+<Frame>
+![Extended Model List](/assets/guides/community/xcode/xcode-setup-4.png)
+</Frame>
+
+#### Step 5: Start Using AI in Xcode
+
+Head back to the chat interface (icon at the top) and start chatting with your selected models directly in Xcode.
+
+<Frame>
+![Xcode Chat Interface](/assets/guides/community/xcode/xcode-setup-5.png)
+</Frame>
+
+### Using Apple Intelligence Features
+
+Once configured, you can use Apple Intelligence features in Xcode with OpenRouter models:
+
+- **Code Completion**: Get intelligent code suggestions
+- **Code Explanation**: Ask questions about your code
+- **Refactoring Assistance**: Get help improving your code structure
+- **Documentation Generation**: Generate comments and documentation
+
+<Frame>
+![Apple Intelligence Interface](/assets/guides/community/xcode/xcode-setup-6.png)
+</Frame>
+
+*Image credit: [Apple Developer Documentation](https://developer.apple.com/documentation/Xcode/writing-code-with-intelligence-in-xcode)*
+
+### Learn More
+
+- **Apple Intelligence Documentation**: [Writing Code with Intelligence in Xcode](https://developer.apple.com/documentation/Xcode/writing-code-with-intelligence-in-xcode)
+- **OpenRouter Quick Start**: [Getting Started with OpenRouter](https://openrouter.ai/docs/quickstart)
+- **Available Models**: [Browse OpenRouter Models](https://openrouter.ai/models)
+{/* </llms-ignore> */}

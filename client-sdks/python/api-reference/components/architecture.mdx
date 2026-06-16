@@ -1,0 +1,39 @@
+---
+title: Architecture - Python SDK
+sidebarTitle: Architecture
+description: Architecture method reference
+seoTitle: Architecture | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/api-reference/components/architecture'
+'og:site_name': OpenRouter Documentation
+'og:title': Architecture | OpenRouter Python SDK
+'og:description': >-
+  Architecture method documentation for the OpenRouter Python SDK. Learn how to
+  use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Architecture%20-%20Python%20SDK&description=Architecture%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Model architecture information
+
+## Fields
+
+| Field                                                              | Type                                                               | Required                                                           | Description                                                        | Example                                                            |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `input_modalities`                                                 | List[[components.InputModality](/client-sdks/python/api-reference/components/inputmodality)]   | :heavy_check_mark:                                                 | Supported input modalities                                         |                                                                    |
+| `instruct_type`                                                    | [Nullable[components.InstructType]](../components/instructtype.md) | :heavy_check_mark:                                                 | Instruction format type                                            | chatml                                                             |
+| `modality`                                                         | *Nullable[str]*                                                    | :heavy_check_mark:                                                 | Primary modality of the model                                      | text                                                               |
+| `output_modalities`                                                | List[[components.OutputModality](/client-sdks/python/api-reference/components/outputmodality)] | :heavy_check_mark:                                                 | Supported output modalities                                        |                                                                    |
+| `tokenizer`                                                        | [Nullable[components.Tokenizer]](../components/tokenizer.md)       | :heavy_check_mark:                                                 | N/A                                                                | GPT                                                                |

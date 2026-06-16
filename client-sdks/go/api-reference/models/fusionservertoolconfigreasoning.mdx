@@ -1,0 +1,37 @@
+---
+title: FusionServerToolConfigReasoning - Go SDK
+sidebarTitle: FusionServerToolConfigReasoning
+description: FusionServerToolConfigReasoning type definition
+seoTitle: FusionServerToolConfigReasoning Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/fusionservertoolconfigreasoning
+'og:site_name': OpenRouter Documentation
+'og:title': FusionServerToolConfigReasoning Type | OpenRouter Go SDK
+'og:description': >-
+  FusionServerToolConfigReasoning type reference for the OpenRouter Go SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=FusionServerToolConfigReasoning%20-%20Go%20SDK&description=FusionServerToolConfigReasoning%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Reasoning configuration forwarded to panelist and judge inner calls. Use this to control reasoning effort and token budget for models that support extended thinking.
+
+## Fields
+
+| Field                                                                                                                                                | Type                                                                                                                                                 | Required                                                                                                                                             | Description                                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Effort`                                                                                                                                             | [*components.FusionServerToolConfigEffort](/client-sdks/go/api-reference/models/fusionservertoolconfigeffort)                                                  | :heavy_minus_sign:                                                                                                                                   | Reasoning effort level for panelist and judge inner calls.                                                                                           |
+| `MaxTokens`                                                                                                                                          | `*int64`                                                                                                                                             | :heavy_minus_sign:                                                                                                                                   | Maximum number of reasoning tokens each panelist and judge model may use. Helps bound cost when models allocate too much budget to chain-of-thought. |

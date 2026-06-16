@@ -1,0 +1,48 @@
+---
+title: ObservabilityDatadogDestinationConfig - TypeScript SDK
+sidebarTitle: ObservabilityDatadogDestinationConfig
+description: ObservabilityDatadogDestinationConfig type definition
+seoTitle: ObservabilityDatadogDestinationConfig Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/observabilitydatadogdestinationconfig
+'og:site_name': OpenRouter Documentation
+'og:title': ObservabilityDatadogDestinationConfig Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ObservabilityDatadogDestinationConfig type reference for the OpenRouter
+  TypeScript SDK. Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ObservabilityDatadogDestinationConfig%20-%20TypeScript%20SDK&description=ObservabilityDatadogDestinationConfig%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ObservabilityDatadogDestinationConfig } from "@openrouter/sdk/models";
+
+let value: ObservabilityDatadogDestinationConfig = {
+  apiKey: "<value>",
+  mlApp: "<value>",
+};
+```
+
+## Fields
+
+| Field                                                                                                                      | Type                                                                                                                       | Required                                                                                                                   | Description                                                                                                                |
+| -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `apiKey`                                                                                                                   | *string*                                                                                                                   | :heavy_check_mark:                                                                                                         | Datadog API key must have LLM Observability permissions. Create at:                                                        |
+| `headers`                                                                                                                  | `Record<string, *string*>`                                                                                                   | :heavy_minus_sign:                                                                                                         | Custom HTTP headers to include in requests to this destination.                                                            |
+| `mlApp`                                                                                                                    | *string*                                                                                                                   | :heavy_check_mark:                                                                                                         | Name to identify your application in Datadog LLM Observability                                                             |
+| `url`                                                                                                                      | *string*                                                                                                                   | :heavy_minus_sign:                                                                                                         | Datadog API URL for your region (e.g., https://api.datadoghq.com, https://api.us3.datadoghq.com, https://api.datadoghq.eu) |

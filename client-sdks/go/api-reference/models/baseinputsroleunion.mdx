@@ -1,0 +1,70 @@
+---
+title: BaseInputsRoleUnion - Go SDK
+sidebarTitle: BaseInputsRoleUnion
+description: BaseInputsRoleUnion type definition
+seoTitle: BaseInputsRoleUnion Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/baseinputsroleunion'
+'og:site_name': OpenRouter Documentation
+'og:title': BaseInputsRoleUnion Type | OpenRouter Go SDK
+'og:description': >-
+  BaseInputsRoleUnion type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=BaseInputsRoleUnion%20-%20Go%20SDK&description=BaseInputsRoleUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### BaseInputsRoleUser
+
+```go lines
+baseInputsRoleUnion := components.CreateBaseInputsRoleUnionBaseInputsRoleUser(components.BaseInputsRoleUser{/* values here */})
+```
+
+### BaseInputsRoleSystem
+
+```go lines
+baseInputsRoleUnion := components.CreateBaseInputsRoleUnionBaseInputsRoleSystem(components.BaseInputsRoleSystem{/* values here */})
+```
+
+### BaseInputsRoleAssistant
+
+```go lines
+baseInputsRoleUnion := components.CreateBaseInputsRoleUnionBaseInputsRoleAssistant(components.BaseInputsRoleAssistant{/* values here */})
+```
+
+### BaseInputsRoleDeveloper
+
+```go lines
+baseInputsRoleUnion := components.CreateBaseInputsRoleUnionBaseInputsRoleDeveloper(components.BaseInputsRoleDeveloper{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch baseInputsRoleUnion.Type {
+	case components.BaseInputsRoleUnionTypeBaseInputsRoleUser:
+		// baseInputsRoleUnion.BaseInputsRoleUser is populated
+	case components.BaseInputsRoleUnionTypeBaseInputsRoleSystem:
+		// baseInputsRoleUnion.BaseInputsRoleSystem is populated
+	case components.BaseInputsRoleUnionTypeBaseInputsRoleAssistant:
+		// baseInputsRoleUnion.BaseInputsRoleAssistant is populated
+	case components.BaseInputsRoleUnionTypeBaseInputsRoleDeveloper:
+		// baseInputsRoleUnion.BaseInputsRoleDeveloper is populated
+}
+```

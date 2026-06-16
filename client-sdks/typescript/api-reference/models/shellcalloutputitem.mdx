@@ -1,0 +1,57 @@
+---
+title: ShellCallOutputItem - TypeScript SDK
+sidebarTitle: ShellCallOutputItem
+description: ShellCallOutputItem type definition
+seoTitle: ShellCallOutputItem Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/shellcalloutputitem
+'og:site_name': OpenRouter Documentation
+'og:title': ShellCallOutputItem Type | OpenRouter TypeScript SDK
+'og:description': >-
+  ShellCallOutputItem type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ShellCallOutputItem%20-%20TypeScript%20SDK&description=ShellCallOutputItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Output from a shell command execution (newer variant)
+
+## Example Usage
+
+```typescript lines
+import { ShellCallOutputItem } from "@openrouter/sdk/models";
+
+let value: ShellCallOutputItem = {
+  callId: "call-abc123",
+  output: [
+    {
+      type: "stdout",
+    },
+  ],
+  type: "shell_call_output",
+};
+```
+
+## Fields
+
+| Field                                                                        | Type                                                                         | Required                                                                     | Description                                                                  | Example                                                                      |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `callId`                                                                     | *string*                                                                     | :heavy_check_mark:                                                           | N/A                                                                          |                                                                              |
+| `id`                                                                         | *string*                                                                     | :heavy_minus_sign:                                                           | N/A                                                                          |                                                                              |
+| `maxOutputLength`                                                            | *number*                                                                     | :heavy_minus_sign:                                                           | N/A                                                                          |                                                                              |
+| `output`                                                                     | [models.ShellCallOutputItemOutput](/client-sdks/typescript/api-reference/models/shellcalloutputitemoutput)[] | :heavy_check_mark:                                                           | N/A                                                                          |                                                                              |
+| `status`                                                                     | [models.ShellCallOutputItemStatus](/client-sdks/typescript/api-reference/models/shellcalloutputitemstatus)   | :heavy_minus_sign:                                                           | N/A                                                                          | completed                                                                    |
+| `type`                                                                       | [models.ShellCallOutputItemType](/client-sdks/typescript/api-reference/models/shellcalloutputitemtype)       | :heavy_check_mark:                                                           | N/A                                                                          |                                                                              |

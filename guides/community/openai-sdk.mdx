@@ -1,0 +1,94 @@
+---
+title: OpenAI SDK
+description: Using OpenRouter with OpenAI SDK
+seoTitle: 'OpenAI SDK Integration | OpenRouter SDK Support'
+canonicalUrl: https://openrouter.ai/docs/guides/community/openai-sdk
+og:site_name: OpenRouter Documentation
+og:title: 'OpenAI SDK Integration - OpenRouter SDK Support'
+og:description: 'Integrate OpenRouter using the official OpenAI SDK. Complete guide for OpenAI SDK integration with OpenRouter for Python and TypeScript.'
+og:image: https://openrouter.ai/dynamic-og?title=OpenAI%20SDK&description=OpenAI%20SDK%20Integration
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: puzzle-piece
+---
+
+import { API_KEY_REF } from '/snippets/exports/constants.mdx';
+
+{/* <llms-ignore> */}
+## Using the OpenAI SDK
+
+- Using `pip install openai`: [github](https://github.com/OpenRouterTeam/openrouter-examples-python/blob/main/src/openai_test.py).
+- Using `npm i openai`: [github](https://github.com/OpenRouterTeam/openrouter-examples/tree/main/typescript).
+  <Tip>
+    You can also use
+    [Grit](https://app.grit.io/studio?key=RKC0n7ikOiTGTNVkI8uRS) to
+    automatically migrate your code. Simply run `npx @getgrit/launcher
+    openrouter`.
+  </Tip>
+
+<CodeGroup>
+
+```typescript title="TypeScript" expandable lines
+import OpenAI from "openai"
+
+const openai = new OpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: "<OPENROUTER_API_KEY>",
+  defaultHeaders: {
+    "HTTP-Referer": "<YOUR_SITE_URL>", // Optional. Site URL for rankings on openrouter.ai.
+    "X-OpenRouter-Title": "<YOUR_SITE_NAME>", // Optional. Site title for rankings on openrouter.ai.
+  },
+})
+
+async function main() {
+  const completion = await openai.chat.completions.create({
+    model: "openai/gpt-4o",
+    messages: [
+      { role: "user", content: "Say this is a test" }
+    ],
+  })
+
+  console.log(completion.choices[0].message)
+}
+main();
+```
+
+```python title="Python" expandable lines
+from openai import OpenAI
+from os import getenv
+
+# gets API Key from environment variable OPENROUTER_API_KEY
+client = OpenAI(
+  base_url="https://openrouter.ai/api/v1",
+  api_key=getenv("OPENROUTER_API_KEY"),
+)
+
+completion = client.chat.completions.create(
+  model="openai/gpt-4o",
+  extra_headers={
+    "HTTP-Referer": "<YOUR_SITE_URL>", # Optional. Site URL for rankings on openrouter.ai.
+    "X-OpenRouter-Title": "<YOUR_SITE_NAME>", # Optional. Site title for rankings on openrouter.ai.
+  },
+  # pass extra_body to access OpenRouter-only arguments.
+  # extra_body={
+    # "models": [
+    #   "openai/gpt-4o",
+    #   "mistralai/mixtral-8x22b-instruct"
+    # ]
+  # },
+  messages=[
+    {
+      "role": "user",
+      "content": "Say this is a test",
+    },
+  ],
+)
+print(completion.choices[0].message.content)
+```
+
+</CodeGroup>
+{/* </llms-ignore> */}

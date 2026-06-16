@@ -1,0 +1,49 @@
+---
+title: OpenResponsesInputMessageItemContentInputImage - TypeScript SDK
+description: OpenResponsesInputMessageItemContentInputImage method reference
+seoTitle: OpenResponsesInputMessageItemContentInputImage | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/models/openresponsesinputmessageitemcontentinputimage
+'og:site_name': OpenRouter Documentation
+'og:title': OpenResponsesInputMessageItemContentInputImage | OpenRouter TypeScript SDK
+'og:description': >-
+  OpenResponsesInputMessageItemContentInputImage method documentation for the
+  OpenRouter TypeScript SDK. Learn how to use this API endpoint with code
+  examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenResponsesInputMessageItemContentInputImage%20-%20TypeScript%20SDK&description=OpenResponsesInputMessageItemContentInputImage%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Image input content item
+
+## Example Usage
+
+```typescript lines
+import { OpenResponsesInputMessageItemContentInputImage } from "@openrouter/sdk/models";
+
+let value: OpenResponsesInputMessageItemContentInputImage = {
+  type: "input_image",
+  detail: "auto",
+};
+```
+
+## Fields
+
+| Field                                                                                          | Type                                                                                           | Required                                                                                       | Description                                                                                    |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `type`                                                                                         | *"input_image"*                                                                                | :heavy_check_mark:                                                                             | N/A                                                                                            |
+| `detail`                                                                                       | [models.OpenResponsesInputMessageItemDetail](/agent-sdk/typescript/models/openresponsesinputmessageitemdetail) | :heavy_check_mark:                                                                             | N/A                                                                                            |
+| `imageUrl`                                                                                     | *string*                                                                                       | :heavy_minus_sign:                                                                             | N/A                                                                                            |

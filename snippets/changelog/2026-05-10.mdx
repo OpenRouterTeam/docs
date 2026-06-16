@@ -1,0 +1,3 @@
+### Product changes
+
+- **Fixed: Langfuse broadcast trace Environment and Release fields** -- The Langfuse broadcast destination now populates Langfuse's first-class `Environment` and `Release` trace fields (and the matching project filter) from the `environment` / `release` values you send on `trace.metadata` or `obs.metadata` — previously they always showed `default`. [Docs](/guides/features/broadcast/langfuse).

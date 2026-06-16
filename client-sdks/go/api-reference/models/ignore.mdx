@@ -1,0 +1,54 @@
+---
+title: Ignore - Go SDK
+sidebarTitle: Ignore
+description: Ignore type definition
+seoTitle: Ignore Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/ignore'
+'og:site_name': OpenRouter Documentation
+'og:title': Ignore Type | OpenRouter Go SDK
+'og:description': >-
+  Ignore type reference for the OpenRouter Go SDK. Complete type definition and
+  usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Ignore%20-%20Go%20SDK&description=Ignore%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### ProviderName
+
+```go lines
+ignore := components.CreateIgnoreProviderName(components.ProviderName{/* values here */})
+```
+
+### 
+
+```go lines
+ignore := components.CreateIgnoreStr(string{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch ignore.Type {
+	case components.IgnoreTypeProviderName:
+		// ignore.ProviderName is populated
+	case components.IgnoreTypeStr:
+		// ignore.Str is populated
+}
+```

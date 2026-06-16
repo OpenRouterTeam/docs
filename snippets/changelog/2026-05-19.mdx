@@ -1,0 +1,13 @@
+### Product changes
+
+- **Download fusion responses as markdown** -- Fusion responses in the [chatroom](https://openrouter.ai/chat) can now be downloaded as `.md` files with human-readable filenames based on the prompt title and timestamp.
+- **Profile page improvements** -- User profiles now show per-model breakdowns for token and prompt counts, a discoverable profile picture change button, and a refreshed header layout.
+- **Request ID filter in logs** -- The [logs page](https://openrouter.ai/logs) now displays request IDs in generation details and supports filtering by request ID alongside generation ID and session ID.
+- **Unified date range picker on activity page** -- The [activity page](https://openrouter.ai/activity) now uses the same date range preset picker as the logs page for consistent date selection.
+- **Collapsible citation icons in chatroom** -- When a [chatroom](https://openrouter.ai/chat) response has more than five citation icons, only the first three are shown with an expander button to reveal the rest.
+- **Model pinning for router sessions** -- Router models like `openrouter/auto` now pin to the same concrete model across requests sharing a `session_id`, improving prompt cache hit rates for multi-turn conversations.
+- **Fixed: router fallback blocked by generation start events** -- Protocol-level generation start events no longer prevent provider fallback, so the router correctly retries with another provider when the first one errors before delivering content.
+
+### New models
+
+- [**Google: Gemini 3.5 Flash**](https://openrouter.ai/google/gemini-3.5-flash)

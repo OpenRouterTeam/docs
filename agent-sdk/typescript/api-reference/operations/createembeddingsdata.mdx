@@ -1,0 +1,53 @@
+---
+title: CreateEmbeddingsData - TypeScript SDK
+sidebarTitle: CreateEmbeddingsData
+description: CreateEmbeddingsData type definition
+seoTitle: CreateEmbeddingsData Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/createembeddingsdata
+'og:site_name': OpenRouter Documentation
+'og:title': CreateEmbeddingsData Type | OpenRouter TypeScript SDK
+'og:description': >-
+  CreateEmbeddingsData type reference for the OpenRouter TypeScript SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateEmbeddingsData%20-%20TypeScript%20SDK&description=CreateEmbeddingsData%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+A single embedding object
+
+## Example Usage
+
+```typescript lines
+import { CreateEmbeddingsData } from "@openrouter/sdk/models/operations";
+
+let value: CreateEmbeddingsData = {
+  embedding: [
+    0.0023064255,
+    -0.009327292,
+    0.015797347,
+  ],
+  object: "embedding",
+};
+```
+
+## Fields
+
+| Field                                                                    | Type                                                                     | Required                                                                 | Description                                                              | Example                                                                  |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `embedding`                                                              | *operations.Embedding*                                                   | :heavy_check_mark:                                                       | Embedding vector as an array of floats or a base64 string                | [<br/>0.0023064255,<br/>-0.009327292,<br/>0.015797347<br/>]              |
+| `index`                                                                  | *number*                                                                 | :heavy_minus_sign:                                                       | Index of the embedding in the input list                                 | 0                                                                        |
+| `object`                                                                 | [operations.ObjectEmbedding](/agent-sdk/typescript/api-reference/operations/objectembedding) | :heavy_check_mark:                                                       | N/A                                                                      |                                                                          |

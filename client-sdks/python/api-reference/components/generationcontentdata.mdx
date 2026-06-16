@@ -1,0 +1,37 @@
+---
+title: GenerationContentData - Python SDK
+sidebarTitle: GenerationContentData
+description: GenerationContentData method reference
+seoTitle: GenerationContentData | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/generationcontentdata
+'og:site_name': OpenRouter Documentation
+'og:title': GenerationContentData | OpenRouter Python SDK
+'og:description': >-
+  GenerationContentData method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=GenerationContentData%20-%20Python%20SDK&description=GenerationContentData%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Stored prompt and completion content
+
+## Fields
+
+| Field                                                                                  | Type                                                                                   | Required                                                                               | Description                                                                            |
+| -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `input`                                                                                | [components.InputUnion](/client-sdks/python/api-reference/components/inputunion)                                   | :heavy_check_mark:                                                                     | The input to the generation — either a prompt string or an array of messages           |
+| `output`                                                                               | [components.GenerationContentDataOutput](/client-sdks/python/api-reference/components/generationcontentdataoutput) | :heavy_check_mark:                                                                     | The output from the generation                                                         |

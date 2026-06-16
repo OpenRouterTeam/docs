@@ -1,0 +1,62 @@
+---
+title: Keep - Go SDK
+sidebarTitle: Keep
+description: Keep type definition
+seoTitle: Keep Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/keep'
+'og:site_name': OpenRouter Documentation
+'og:title': Keep Type | OpenRouter Go SDK
+'og:description': >-
+  Keep type reference for the OpenRouter Go SDK. Complete type definition and
+  usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Keep%20-%20Go%20SDK&description=Keep%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### AnthropicThinkingTurns
+
+```go lines
+keep := components.CreateKeepAnthropicThinkingTurns(components.AnthropicThinkingTurns{/* values here */})
+```
+
+### KeepAll
+
+```go lines
+keep := components.CreateKeepKeepAll(components.KeepAll{/* values here */})
+```
+
+### KeepEnum
+
+```go lines
+keep := components.CreateKeepKeepEnum(components.KeepEnum{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch keep.Type {
+	case components.KeepUnionTypeAnthropicThinkingTurns:
+		// keep.AnthropicThinkingTurns is populated
+	case components.KeepUnionTypeKeepAll:
+		// keep.KeepAll is populated
+	case components.KeepUnionTypeKeepEnum:
+		// keep.KeepEnum is populated
+}
+```

@@ -1,0 +1,46 @@
+---
+title: FilePath - TypeScript SDK
+description: FilePath method reference
+seoTitle: FilePath | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/filepath'
+'og:site_name': OpenRouter Documentation
+'og:title': FilePath | OpenRouter TypeScript SDK
+'og:description': >-
+  FilePath method documentation for the OpenRouter TypeScript SDK. Learn how to
+  use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=FilePath%20-%20TypeScript%20SDK&description=FilePath%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { FilePath } from "@openrouter/sdk/models";
+
+let value: FilePath = {
+  type: "file_path",
+  fileId: "file-xyz789",
+  index: 0,
+};
+```
+
+## Fields
+
+| Field              | Type               | Required           | Description        |
+| ------------------ | ------------------ | ------------------ | ------------------ |
+| `type`             | *"file_path"*      | :heavy_check_mark: | N/A                |
+| `fileId`           | *string*           | :heavy_check_mark: | N/A                |
+| `index`            | *number*           | :heavy_check_mark: | N/A                |

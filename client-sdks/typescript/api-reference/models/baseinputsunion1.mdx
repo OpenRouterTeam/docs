@@ -1,0 +1,149 @@
+---
+title: BaseInputsUnion1 - TypeScript SDK
+sidebarTitle: BaseInputsUnion1
+description: BaseInputsUnion1 type definition
+seoTitle: BaseInputsUnion1 Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/baseinputsunion1
+'og:site_name': OpenRouter Documentation
+'og:title': BaseInputsUnion1 Type | OpenRouter TypeScript SDK
+'og:description': >-
+  BaseInputsUnion1 type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=BaseInputsUnion1%20-%20TypeScript%20SDK&description=BaseInputsUnion1%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### `models.BaseInputsMessage`
+
+```typescript lines
+const value: models.BaseInputsMessage = {
+  content: "<value>",
+  role: "user",
+};
+```
+
+### `models.OpenAIResponseInputMessageItem`
+
+```typescript lines
+const value: models.OpenAIResponseInputMessageItem = {
+  content: [
+    {
+      text: "Hello, how are you?",
+      type: "input_text",
+    },
+  ],
+  id: "msg-abc123",
+  role: "user",
+};
+```
+
+### `models.OpenAIResponseFunctionToolCallOutput`
+
+```typescript lines
+const value: models.OpenAIResponseFunctionToolCallOutput = {
+  callId: "call-abc123",
+  output: "{\"temperature\":72,\"conditions\":\"sunny\"}",
+  type: "function_call_output",
+};
+```
+
+### `models.OpenAIResponseFunctionToolCall`
+
+```typescript lines
+const value: models.OpenAIResponseFunctionToolCall = {
+  arguments: "{\"location\":\"San Francisco\"}",
+  callId: "call-abc123",
+  name: "get_weather",
+  type: "function_call",
+};
+```
+
+### `models.OutputItemImageGenerationCall`
+
+```typescript lines
+const value: models.OutputItemImageGenerationCall = {
+  id: "imagegen-abc123",
+  result:
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  status: "completed",
+  type: "image_generation_call",
+};
+```
+
+### `models.OutputMessage`
+
+```typescript lines
+const value: models.OutputMessage = {
+  content: [
+    {
+      text: "Hello! How can I help you today?",
+      type: "output_text",
+    },
+  ],
+  id: "msg-abc123",
+  role: "assistant",
+  type: "message",
+};
+```
+
+### `models.OpenAIResponseCustomToolCall`
+
+```typescript lines
+const value: models.OpenAIResponseCustomToolCall = {
+  callId: "call-abc123",
+  input: "*** Begin Patch\n*** End Patch",
+  name: "apply_patch",
+  type: "custom_tool_call",
+};
+```
+
+### `models.OpenAIResponseCustomToolCallOutput`
+
+```typescript lines
+const value: models.OpenAIResponseCustomToolCallOutput = {
+  callId: "call-abc123",
+  output: "patch applied successfully",
+  type: "custom_tool_call_output",
+};
+```
+
+### `models.ApplyPatchCallItem`
+
+```typescript lines
+const value: models.ApplyPatchCallItem = {
+  callId: "call_abc123",
+  operation: {
+    diff: "@@ function main() {\n+  console.log(\"hi\");\n }",
+    path: "/src/main.ts",
+    type: "update_file",
+  },
+  status: "completed",
+  type: "apply_patch_call",
+};
+```
+
+### `models.ApplyPatchCallOutputItem`
+
+```typescript lines
+const value: models.ApplyPatchCallOutputItem = {
+  callId: "call_abc123",
+  status: "completed",
+  type: "apply_patch_call_output",
+};
+```

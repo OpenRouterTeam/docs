@@ -1,0 +1,37 @@
+---
+title: FusionServerToolOpenRouter - Go SDK
+sidebarTitle: FusionServerToolOpenRouter
+description: FusionServerToolOpenRouter type definition
+seoTitle: FusionServerToolOpenRouter Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/fusionservertoolopenrouter
+'og:site_name': OpenRouter Documentation
+'og:title': FusionServerToolOpenRouter Type | OpenRouter Go SDK
+'og:description': >-
+  FusionServerToolOpenRouter type reference for the OpenRouter Go SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=FusionServerToolOpenRouter%20-%20Go%20SDK&description=FusionServerToolOpenRouter%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+OpenRouter built-in server tool: fans out the user prompt to a panel of analysis models, then asks a judge model to summarize their collective output as structured JSON the outer model can synthesize from.
+
+## Fields
+
+| Field                                                                                                         | Type                                                                                                          | Required                                                                                                      | Description                                                                                                   | Example                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `Parameters`                                                                                                  | [*components.FusionServerToolConfig](/client-sdks/go/api-reference/models/fusionservertoolconfig)                       | :heavy_minus_sign:                                                                                            | Configuration for the openrouter:fusion server tool.                                                          | `{"analysis_models": ["~anthropic/claude-opus-latest","~openai/gpt-latest","~google/gemini-pro-latest"]}` |
+| `Type`                                                                                                        | [components.FusionServerToolOpenRouterType](/client-sdks/go/api-reference/models/fusionservertoolopenroutertype)        | :heavy_check_mark:                                                                                            | N/A                                                                                                           |                                                                                                               |

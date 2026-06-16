@@ -1,0 +1,40 @@
+---
+title: OutputApplyPatchCallItem - Go SDK
+sidebarTitle: OutputApplyPatchCallItem
+description: OutputApplyPatchCallItem type definition
+seoTitle: OutputApplyPatchCallItem Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/outputapplypatchcallitem
+'og:site_name': OpenRouter Documentation
+'og:title': OutputApplyPatchCallItem Type | OpenRouter Go SDK
+'og:description': >-
+  OutputApplyPatchCallItem type reference for the OpenRouter Go SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OutputApplyPatchCallItem%20-%20Go%20SDK&description=OutputApplyPatchCallItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+A native `apply_patch_call` output item matching OpenAI's Responses API shape. Emitted when the client requested the `apply_patch` shorthand.
+
+## Fields
+
+| Field                                                                                                                             | Type                                                                                                                              | Required                                                                                                                          | Description                                                                                                                       | Example                                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `CallID`                                                                                                                          | `string`                                                                                                                          | :heavy_check_mark:                                                                                                                | N/A                                                                                                                               |                                                                                                                                   |
+| `ID`                                                                                                                              | `string`                                                                                                                          | :heavy_check_mark:                                                                                                                | N/A                                                                                                                               |                                                                                                                                   |
+| `Operation`                                                                                                                       | [components.ApplyPatchCallOperation](/client-sdks/go/api-reference/models/applypatchcalloperation)                                          | :heavy_check_mark:                                                                                                                | The patch operation requested by an `apply_patch_call`. `create_file` and `update_file` carry a V4A diff; `delete_file` omits it. | `{"diff": "@@ function main() {\n+  console.log(\"hi\");\n }`",<br/>"path": "/src/main.ts",<br/>"type": "update_file"<br/>\}    |
+| `Status`                                                                                                                          | [components.ApplyPatchCallStatus](/client-sdks/go/api-reference/models/applypatchcallstatus)                                                | :heavy_check_mark:                                                                                                                | Lifecycle state of an `apply_patch_call` output item.                                                                             | completed                                                                                                                         |
+| `Type`                                                                                                                            | [components.OutputApplyPatchCallItemType](/client-sdks/go/api-reference/models/outputapplypatchcallitemtype)                                | :heavy_check_mark:                                                                                                                | N/A                                                                                                                               |                                                                                                                                   |

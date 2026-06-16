@@ -1,0 +1,64 @@
+---
+title: PreferredMaxLatency - Go SDK
+sidebarTitle: PreferredMaxLatency
+description: PreferredMaxLatency type definition
+seoTitle: PreferredMaxLatency Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/preferredmaxlatency'
+'og:site_name': OpenRouter Documentation
+'og:title': PreferredMaxLatency Type | OpenRouter Go SDK
+'og:description': >-
+  PreferredMaxLatency type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=PreferredMaxLatency%20-%20Go%20SDK&description=PreferredMaxLatency%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Preferred maximum latency (in seconds). Can be a number (applies to p50) or an object with percentile-specific cutoffs. Endpoints above the threshold(s) may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
+
+## Supported Types
+
+### 
+
+```go lines
+preferredMaxLatency := components.CreatePreferredMaxLatencyNumber(float64{/* values here */})
+```
+
+### PercentileLatencyCutoffs
+
+```go lines
+preferredMaxLatency := components.CreatePreferredMaxLatencyPercentileLatencyCutoffs(components.PercentileLatencyCutoffs{/* values here */})
+```
+
+### 
+
+```go lines
+preferredMaxLatency := components.CreatePreferredMaxLatencyAny(any{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch preferredMaxLatency.Type {
+	case components.PreferredMaxLatencyTypeNumber:
+		// preferredMaxLatency.Number is populated
+	case components.PreferredMaxLatencyTypePercentileLatencyCutoffs:
+		// preferredMaxLatency.PercentileLatencyCutoffs is populated
+	case components.PreferredMaxLatencyTypeAny:
+		// preferredMaxLatency.Any is populated
+}
+```

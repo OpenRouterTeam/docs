@@ -1,0 +1,59 @@
+---
+title: OpenResponsesReasoningSummaryPartAddedEvent - TypeScript SDK
+description: OpenResponsesReasoningSummaryPartAddedEvent method reference
+seoTitle: OpenResponsesReasoningSummaryPartAddedEvent | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/models/openresponsesreasoningsummarypartaddedevent
+'og:site_name': OpenRouter Documentation
+'og:title': OpenResponsesReasoningSummaryPartAddedEvent | OpenRouter TypeScript SDK
+'og:description': >-
+  OpenResponsesReasoningSummaryPartAddedEvent method documentation for the
+  OpenRouter TypeScript SDK. Learn how to use this API endpoint with code
+  examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenResponsesReasoningSummaryPartAddedEvent%20-%20TypeScript%20SDK&description=OpenResponsesReasoningSummaryPartAddedEvent%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Event emitted when a reasoning summary part is added
+
+## Example Usage
+
+```typescript lines
+import { OpenResponsesReasoningSummaryPartAddedEvent } from "@openrouter/sdk/models";
+
+let value: OpenResponsesReasoningSummaryPartAddedEvent = {
+  type: "response.reasoning_summary_part.added",
+  outputIndex: 0,
+  itemId: "item-1",
+  summaryIndex: 0,
+  part: {
+    type: "summary_text",
+    text: "",
+  },
+  sequenceNumber: 3,
+};
+```
+
+## Fields
+
+| Field                                                                             | Type                                                                              | Required                                                                          | Description                                                                       | Example                                                                           |
+| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `type`                                                                            | *"response.reasoning_summary_part.added"*                                         | :heavy_check_mark:                                                                | N/A                                                                               |                                                                                   |
+| `outputIndex`                                                                     | *number*                                                                          | :heavy_check_mark:                                                                | N/A                                                                               |                                                                                   |
+| `itemId`                                                                          | *string*                                                                          | :heavy_check_mark:                                                                | N/A                                                                               |                                                                                   |
+| `summaryIndex`                                                                    | *number*                                                                          | :heavy_check_mark:                                                                | N/A                                                                               |                                                                                   |
+| `part`                                                                            | [models.ReasoningSummaryText](/client-sdks/typescript/models/reasoningsummarytext)                  | :heavy_check_mark:                                                                | N/A                                                                               | `{"type": "summary_text","text": "Analyzed the problem using first principles"}` |
+| `sequenceNumber`                                                                  | *number*                                                                          | :heavy_check_mark:                                                                | N/A                                                                               |                                                                                   |

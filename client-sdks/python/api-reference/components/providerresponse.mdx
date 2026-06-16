@@ -1,0 +1,42 @@
+---
+title: ProviderResponse - Python SDK
+sidebarTitle: ProviderResponse
+description: ProviderResponse method reference
+seoTitle: ProviderResponse | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/providerresponse
+'og:site_name': OpenRouter Documentation
+'og:title': ProviderResponse | OpenRouter Python SDK
+'og:description': >-
+  ProviderResponse method documentation for the OpenRouter Python SDK. Learn how
+  to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ProviderResponse%20-%20Python%20SDK&description=ProviderResponse%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Details of a provider response for a generation attempt
+
+## Fields
+
+| Field                                                                                              | Type                                                                                               | Required                                                                                           | Description                                                                                        | Example                                                                                            |
+| -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `endpoint_id`                                                                                      | *Optional[str]*                                                                                    | :heavy_minus_sign:                                                                                 | Internal endpoint identifier                                                                       | ep_abc123                                                                                          |
+| `id`                                                                                               | *Optional[str]*                                                                                    | :heavy_minus_sign:                                                                                 | Upstream provider response identifier                                                              | chatcmpl-abc123                                                                                    |
+| `is_byok`                                                                                          | *Optional[bool]*                                                                                   | :heavy_minus_sign:                                                                                 | Whether the request used a bring-your-own-key                                                      | false                                                                                              |
+| `latency`                                                                                          | *Optional[float]*                                                                                  | :heavy_minus_sign:                                                                                 | Response latency in milliseconds                                                                   | 1200                                                                                               |
+| `model_permaslug`                                                                                  | *Optional[str]*                                                                                    | :heavy_minus_sign:                                                                                 | Canonical model slug                                                                               | openai/gpt-4                                                                                       |
+| `provider_name`                                                                                    | [Optional[components.ProviderResponseProviderName]](../components/providerresponseprovidername.md) | :heavy_minus_sign:                                                                                 | Name of the provider                                                                               | OpenAI                                                                                             |
+| `status`                                                                                           | *Nullable[float]*                                                                                  | :heavy_check_mark:                                                                                 | HTTP status code from the provider                                                                 | 200                                                                                                |

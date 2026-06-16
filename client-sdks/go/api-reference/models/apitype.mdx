@@ -1,0 +1,54 @@
+---
+title: APIType - Go SDK
+sidebarTitle: APIType
+description: APIType type definition
+seoTitle: APIType Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/apitype'
+'og:site_name': OpenRouter Documentation
+'og:title': APIType Type | OpenRouter Go SDK
+'og:description': >-
+  APIType type reference for the OpenRouter Go SDK. Complete type definition and
+  usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=APIType%20-%20Go%20SDK&description=APIType%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Type of API used for the generation
+
+## Example Usage
+
+```go lines
+import (
+	"github.com/OpenRouterTeam/go-sdk/models/components"
+)
+
+value := components.APITypeCompletions
+
+// Open enum: custom values can be created with a direct type cast
+custom := components.APIType("custom_value")
+```
+
+## Values
+
+| Name                 | Value                |
+| -------------------- | -------------------- |
+| `APITypeCompletions` | completions          |
+| `APITypeEmbeddings`  | embeddings           |
+| `APITypeRerank`      | rerank               |
+| `APITypeTts`         | tts                  |
+| `APITypeStt`         | stt                  |
+| `APITypeVideo`       | video                |
+| `APITypeImage`       | image                |

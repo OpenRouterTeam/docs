@@ -1,0 +1,58 @@
+---
+title: GetUserActivityResponse - TypeScript SDK
+description: GetUserActivityResponse method reference
+seoTitle: GetUserActivityResponse | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/operations/getuseractivityresponse'
+'og:site_name': OpenRouter Documentation
+'og:title': GetUserActivityResponse | OpenRouter TypeScript SDK
+'og:description': >-
+  GetUserActivityResponse method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=GetUserActivityResponse%20-%20TypeScript%20SDK&description=GetUserActivityResponse%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Returns user activity data grouped by endpoint
+
+## Example Usage
+
+```typescript lines
+import { GetUserActivityResponse } from "@openrouter/sdk/models/operations";
+
+let value: GetUserActivityResponse = {
+  data: [
+    {
+      date: "2025-08-24",
+      model: "openai/gpt-4.1",
+      modelPermaslug: "openai/gpt-4.1-2025-04-14",
+      endpointId: "550e8400-e29b-41d4-a716-446655440000",
+      providerName: "OpenAI",
+      usage: 0.015,
+      byokUsageInference: 0.012,
+      requests: 5,
+      promptTokens: 50,
+      completionTokens: 125,
+      reasoningTokens: 25,
+    },
+  ],
+};
+```
+
+## Fields
+
+| Field                                                 | Type                                                  | Required                                              | Description                                           |
+| ----------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
+| `data`                                                | [models.ActivityItem](/agent-sdk/typescript/models/activityitem)[] | :heavy_check_mark:                                    | List of activity items                                |

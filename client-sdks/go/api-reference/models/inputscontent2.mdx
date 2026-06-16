@@ -1,0 +1,62 @@
+---
+title: InputsContent2 - Go SDK
+sidebarTitle: InputsContent2
+description: InputsContent2 type definition
+seoTitle: InputsContent2 Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/inputscontent2'
+'og:site_name': OpenRouter Documentation
+'og:title': InputsContent2 Type | OpenRouter Go SDK
+'og:description': >-
+  InputsContent2 type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=InputsContent2%20-%20Go%20SDK&description=InputsContent2%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### 
+
+```go lines
+inputsContent2 := components.CreateInputsContent2ArrayOfInputsContent1([]components.InputsContent1{/* values here */})
+```
+
+### 
+
+```go lines
+inputsContent2 := components.CreateInputsContent2Str(string{/* values here */})
+```
+
+### 
+
+```go lines
+inputsContent2 := components.CreateInputsContent2Any(any{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch inputsContent2.Type {
+	case components.InputsContent2TypeArrayOfInputsContent1:
+		// inputsContent2.ArrayOfInputsContent1 is populated
+	case components.InputsContent2TypeStr:
+		// inputsContent2.Str is populated
+	case components.InputsContent2TypeAny:
+		// inputsContent2.Any is populated
+}
+```

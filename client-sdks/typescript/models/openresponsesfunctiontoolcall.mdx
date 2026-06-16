@@ -1,0 +1,54 @@
+---
+title: OpenResponsesFunctionToolCall - TypeScript SDK
+description: OpenResponsesFunctionToolCall method reference
+seoTitle: OpenResponsesFunctionToolCall | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/models/openresponsesfunctiontoolcall
+'og:site_name': OpenRouter Documentation
+'og:title': OpenResponsesFunctionToolCall | OpenRouter TypeScript SDK
+'og:description': >-
+  OpenResponsesFunctionToolCall method documentation for the OpenRouter
+  TypeScript SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenResponsesFunctionToolCall%20-%20TypeScript%20SDK&description=OpenResponsesFunctionToolCall%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+A function call initiated by the model
+
+## Example Usage
+
+```typescript lines
+import { OpenResponsesFunctionToolCall } from "@openrouter/sdk/models";
+
+let value: OpenResponsesFunctionToolCall = {
+  type: "function_call",
+  callId: "call-abc123",
+  name: "get_weather",
+  arguments: "{\"location\":\"San Francisco\"}",
+  id: "call-abc123",
+};
+```
+
+## Fields
+
+| Field                                                                                      | Type                                                                                       | Required                                                                                   | Description                                                                                | Example                                                                                    |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `type`                                                                                     | [models.OpenResponsesFunctionToolCallType](/client-sdks/typescript/models/openresponsesfunctiontoolcalltype) | :heavy_check_mark:                                                                         | N/A                                                                                        |                                                                                            |
+| `callId`                                                                                   | *string*                                                                                   | :heavy_check_mark:                                                                         | N/A                                                                                        |                                                                                            |
+| `name`                                                                                     | *string*                                                                                   | :heavy_check_mark:                                                                         | N/A                                                                                        |                                                                                            |
+| `arguments`                                                                                | *string*                                                                                   | :heavy_check_mark:                                                                         | N/A                                                                                        |                                                                                            |
+| `id`                                                                                       | *string*                                                                                   | :heavy_check_mark:                                                                         | N/A                                                                                        |                                                                                            |
+| `status`                                                                                   | [models.ToolCallStatus](/client-sdks/typescript/models/toolcallstatus)                                       | :heavy_minus_sign:                                                                         | N/A                                                                                        | completed                                                                                  |

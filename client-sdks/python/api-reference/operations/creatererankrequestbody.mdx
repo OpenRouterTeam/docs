@@ -1,0 +1,40 @@
+---
+title: CreateRerankRequestBody - Python SDK
+sidebarTitle: CreateRerankRequestBody
+description: CreateRerankRequestBody method reference
+seoTitle: CreateRerankRequestBody | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/operations/creatererankrequestbody
+'og:site_name': OpenRouter Documentation
+'og:title': CreateRerankRequestBody | OpenRouter Python SDK
+'og:description': >-
+  CreateRerankRequestBody method documentation for the OpenRouter Python SDK.
+  Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreateRerankRequestBody%20-%20Python%20SDK&description=CreateRerankRequestBody%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Rerank request input
+
+## Fields
+
+| Field                                                                                    | Type                                                                                     | Required                                                                                 | Description                                                                              | Example                                                                                  |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `documents`                                                                              | List[*str*]                                                                              | :heavy_check_mark:                                                                       | The list of documents to rerank                                                          | [<br/>"Paris is the capital of France.",<br/>"Berlin is the capital of Germany."<br/>]   |
+| `model`                                                                                  | *str*                                                                                    | :heavy_check_mark:                                                                       | The rerank model to use                                                                  | cohere/rerank-v3.5                                                                       |
+| `provider`                                                                               | [OptionalNullable[components.ProviderPreferences]](../components/providerpreferences.md) | :heavy_minus_sign:                                                                       | N/A                                                                                      | `{"allow_fallbacks": true}`                                                      |
+| `query`                                                                                  | *str*                                                                                    | :heavy_check_mark:                                                                       | The search query to rerank documents against                                             | What is the capital of France?                                                           |
+| `top_n`                                                                                  | *Optional[int]*                                                                          | :heavy_minus_sign:                                                                       | Number of most relevant documents to return                                              | 3                                                                                        |

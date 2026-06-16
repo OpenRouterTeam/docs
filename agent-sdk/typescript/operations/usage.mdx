@@ -1,0 +1,45 @@
+---
+title: Usage - TypeScript SDK
+description: Usage method reference
+seoTitle: Usage | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/operations/usage'
+'og:site_name': OpenRouter Documentation
+'og:title': Usage | OpenRouter TypeScript SDK
+'og:description': >-
+  Usage method documentation for the OpenRouter TypeScript SDK. Learn how to use
+  this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Usage%20-%20TypeScript%20SDK&description=Usage%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { Usage } from "@openrouter/sdk/models/operations";
+
+let value: Usage = {
+  promptTokens: 9797.96,
+  totalTokens: 7874.4,
+};
+```
+
+## Fields
+
+| Field              | Type               | Required           | Description        |
+| ------------------ | ------------------ | ------------------ | ------------------ |
+| `promptTokens`     | *number*           | :heavy_check_mark: | N/A                |
+| `totalTokens`      | *number*           | :heavy_check_mark: | N/A                |
+| `cost`             | *number*           | :heavy_minus_sign: | N/A                |

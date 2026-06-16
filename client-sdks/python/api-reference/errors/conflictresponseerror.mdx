@@ -1,0 +1,38 @@
+---
+title: ConflictResponseError - Python SDK
+sidebarTitle: ConflictResponseError
+description: ConflictResponseError error handling
+seoTitle: ConflictResponseError Error | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/errors/conflictresponseerror
+'og:site_name': OpenRouter Documentation
+'og:title': ConflictResponseError Error | OpenRouter Python SDK
+'og:description': >-
+  ConflictResponseError error documentation for the OpenRouter Python SDK. Learn
+  how to handle this error type.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ConflictResponseError%20-%20Python%20SDK&description=ConflictResponseError%20error%20handling
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Conflict - Resource conflict or concurrent modification
+
+## Fields
+
+| Field                                                                              | Type                                                                               | Required                                                                           | Description                                                                        | Example                                                                            |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `error`                                                                            | [components.ConflictResponseErrorData](/client-sdks/python/api-reference/components/conflictresponseerrordata) | :heavy_check_mark:                                                                 | Error data for ConflictResponse                                                    | `{"code": 409,"message": "Resource conflict. Please try again later."}` |
+| `openrouter_metadata`                                                              | Dict[str, *Nullable[Any]*]                                                         | :heavy_minus_sign:                                                                 | N/A                                                                                |                                                                                    |
+| `user_id`                                                                          | *OptionalNullable[str]*                                                            | :heavy_minus_sign:                                                                 | N/A                                                                                |                                                                                    |

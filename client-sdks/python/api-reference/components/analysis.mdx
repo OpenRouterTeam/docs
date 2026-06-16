@@ -1,0 +1,39 @@
+---
+title: Analysis - Python SDK
+sidebarTitle: Analysis
+description: Analysis method reference
+seoTitle: Analysis | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/api-reference/components/analysis'
+'og:site_name': OpenRouter Documentation
+'og:title': Analysis | OpenRouter Python SDK
+'og:description': >-
+  Analysis method documentation for the OpenRouter Python SDK. Learn how to use
+  this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=Analysis%20-%20Python%20SDK&description=Analysis%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Structured analysis produced by the fusion judge model.
+
+## Fields
+
+| Field                                                                | Type                                                                 | Required                                                             | Description                                                          |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `blind_spots`                                                        | List[*str*]                                                          | :heavy_check_mark:                                                   | N/A                                                                  |
+| `consensus`                                                          | List[*str*]                                                          | :heavy_check_mark:                                                   | N/A                                                                  |
+| `contradictions`                                                     | List[[components.Contradiction](/client-sdks/python/api-reference/components/contradiction)]     | :heavy_check_mark:                                                   | N/A                                                                  |
+| `partial_coverage`                                                   | List[[components.PartialCoverage](/client-sdks/python/api-reference/components/partialcoverage)] | :heavy_check_mark:                                                   | N/A                                                                  |
+| `unique_insights`                                                    | List[[components.UniqueInsight](/client-sdks/python/api-reference/components/uniqueinsight)]     | :heavy_check_mark:                                                   | N/A                                                                  |

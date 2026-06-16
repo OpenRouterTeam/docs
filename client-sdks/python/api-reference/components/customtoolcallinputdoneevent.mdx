@@ -1,0 +1,40 @@
+---
+title: CustomToolCallInputDoneEvent - Python SDK
+sidebarTitle: CustomToolCallInputDoneEvent
+description: CustomToolCallInputDoneEvent method reference
+seoTitle: CustomToolCallInputDoneEvent | OpenRouter Python SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/python/api-reference/components/customtoolcallinputdoneevent
+'og:site_name': OpenRouter Documentation
+'og:title': CustomToolCallInputDoneEvent | OpenRouter Python SDK
+'og:description': >-
+  CustomToolCallInputDoneEvent method documentation for the OpenRouter Python
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CustomToolCallInputDoneEvent%20-%20Python%20SDK&description=CustomToolCallInputDoneEvent%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Event emitted when a custom tool call's freeform input streaming is complete. Mirrors `response.function_call_arguments.done` but for `custom` tools.
+
+## Fields
+
+| Field                                                                                            | Type                                                                                             | Required                                                                                         | Description                                                                                      |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `input`                                                                                          | *str*                                                                                            | :heavy_check_mark:                                                                               | N/A                                                                                              |
+| `item_id`                                                                                        | *str*                                                                                            | :heavy_check_mark:                                                                               | N/A                                                                                              |
+| `output_index`                                                                                   | *int*                                                                                            | :heavy_check_mark:                                                                               | N/A                                                                                              |
+| `sequence_number`                                                                                | *int*                                                                                            | :heavy_check_mark:                                                                               | N/A                                                                                              |
+| `type`                                                                                           | [components.CustomToolCallInputDoneEventType](/client-sdks/python/api-reference/components/customtoolcallinputdoneeventtype) | :heavy_check_mark:                                                                               | N/A                                                                                              |

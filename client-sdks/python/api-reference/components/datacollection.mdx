@@ -1,0 +1,39 @@
+---
+title: DataCollection - Python SDK
+sidebarTitle: DataCollection
+description: DataCollection method reference
+seoTitle: DataCollection | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/api-reference/components/datacollection'
+'og:site_name': OpenRouter Documentation
+'og:title': DataCollection | OpenRouter Python SDK
+'og:description': >-
+  DataCollection method documentation for the OpenRouter Python SDK. Learn how
+  to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=DataCollection%20-%20Python%20SDK&description=DataCollection%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Data collection setting. If no available model provider meets the requirement, your request will return an error.
+- allow: (default) allow providers which store user data non-transiently and may train on it
+
+- deny: use only providers which do not collect user data.
+
+## Values
+
+| Name    | Value   |
+| ------- | ------- |
+| `DENY`  | deny    |
+| `ALLOW` | allow   |

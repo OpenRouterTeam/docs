@@ -1,0 +1,65 @@
+---
+title: McpListToolsItem - TypeScript SDK
+sidebarTitle: McpListToolsItem
+description: McpListToolsItem type definition
+seoTitle: McpListToolsItem Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/mcplisttoolsitem
+'og:site_name': OpenRouter Documentation
+'og:title': McpListToolsItem Type | OpenRouter TypeScript SDK
+'og:description': >-
+  McpListToolsItem type reference for the OpenRouter TypeScript SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=McpListToolsItem%20-%20TypeScript%20SDK&description=McpListToolsItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+List of available MCP tools from a server
+
+## Example Usage
+
+```typescript lines
+import { McpListToolsItem } from "@openrouter/sdk/models";
+
+let value: McpListToolsItem = {
+  id: "mcp-list-abc123",
+  serverLabel: "database-server",
+  tools: [
+    {
+      inputSchema: {
+        "properties": {
+          "query": {
+            "type": "string",
+          },
+        },
+        "type": "object",
+      },
+      name: "query_database",
+    },
+  ],
+  type: "mcp_list_tools",
+};
+```
+
+## Fields
+
+| Field                                                              | Type                                                               | Required                                                           | Description                                                        |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `error`                                                            | *string*                                                           | :heavy_minus_sign:                                                 | N/A                                                                |
+| `id`                                                               | *string*                                                           | :heavy_check_mark:                                                 | N/A                                                                |
+| `serverLabel`                                                      | *string*                                                           | :heavy_check_mark:                                                 | N/A                                                                |
+| `tools`                                                            | [models.McpListToolsItemTool](/client-sdks/typescript/api-reference/models/mcplisttoolsitemtool)[] | :heavy_check_mark:                                                 | N/A                                                                |
+| `type`                                                             | [models.McpListToolsItemType](/client-sdks/typescript/api-reference/models/mcplisttoolsitemtype)   | :heavy_check_mark:                                                 | N/A                                                                |

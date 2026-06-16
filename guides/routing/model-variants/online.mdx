@@ -1,0 +1,53 @@
+---
+title: Online Variant
+description: Real-time web search with :online
+seoTitle: 'Online Variant | Real-Time Web Search'
+canonicalUrl: https://openrouter.ai/docs/guides/routing/model-variants/online
+og:site_name: OpenRouter Documentation
+og:title: 'Online Variant - Real-Time Web Search'
+og:description: "Enable real-time web search capabilities using the :online variant."
+og:image: https://openrouter.ai/dynamic-og?title=Online%20Variant&description=Real-time%20web%20search
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: globe-pointer
+sidebarTitle: Online
+---
+
+<Warning>
+**Deprecated**
+
+The `:online` variant is deprecated. Use the [`openrouter:web_search` server tool](/guides/features/server-tools/web-search) instead, which gives the model control over when and how often to search.
+
+If your application already provides the `web_search` tool (e.g. OpenAI's built-in web search tool type), OpenRouter automatically recognizes it and hoists it to the `openrouter:web_search` server tool. This means you can safely remove the `:online` suffix from any model slug — as long as the application exposes the `web_search` tool, web search functionality will still work as a server tool with any model on OpenRouter.
+</Warning>
+
+The `:online` variant enables real-time web search capabilities for any model on OpenRouter.
+
+## Usage
+
+Append `:online` to any model ID:
+
+```json lines
+{
+  "model": "openai/gpt-5.2:online"
+}
+```
+
+This is a shortcut for using the `web` plugin, and is exactly equivalent to:
+
+```json lines
+{
+  "model": "openrouter/auto",
+  "plugins": [{ "id": "web" }]
+}
+```
+
+## Details
+
+The Online variant incorporates relevant web search results into model responses, providing access to real-time information and current events. This is particularly useful for queries that require up-to-date information beyond the model's training data.
+
+For the recommended approach, see: [Web Search Server Tool](/guides/features/server-tools/web-search). For legacy plugin details, see: [Web Search Plugin](/guides/features/plugins/web-search).

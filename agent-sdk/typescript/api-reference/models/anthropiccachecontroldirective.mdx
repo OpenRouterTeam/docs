@@ -1,0 +1,47 @@
+---
+title: AnthropicCacheControlDirective - TypeScript SDK
+sidebarTitle: AnthropicCacheControlDirective
+description: AnthropicCacheControlDirective type definition
+seoTitle: AnthropicCacheControlDirective Type | OpenRouter TypeScript SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/typescript/api-reference/models/anthropiccachecontroldirective
+'og:site_name': OpenRouter Documentation
+'og:title': AnthropicCacheControlDirective Type | OpenRouter TypeScript SDK
+'og:description': >-
+  AnthropicCacheControlDirective type reference for the OpenRouter TypeScript
+  SDK. Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=AnthropicCacheControlDirective%20-%20TypeScript%20SDK&description=AnthropicCacheControlDirective%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Enable automatic prompt caching. When set at the top level, the system automatically applies cache breakpoints to the last cacheable block in the request. Currently supported for Anthropic Claude models.
+
+## Example Usage
+
+```typescript lines
+import { AnthropicCacheControlDirective } from "@openrouter/sdk/models";
+
+let value: AnthropicCacheControlDirective = {
+  type: "ephemeral",
+};
+```
+
+## Fields
+
+| Field                                                                                        | Type                                                                                         | Required                                                                                     | Description                                                                                  | Example                                                                                      |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `ttl`                                                                                        | [models.AnthropicCacheControlTtl](/agent-sdk/typescript/api-reference/models/anthropiccachecontrolttl)                     | :heavy_minus_sign:                                                                           | N/A                                                                                          | 5m                                                                                           |
+| `type`                                                                                       | [models.AnthropicCacheControlDirectiveType](/agent-sdk/typescript/api-reference/models/anthropiccachecontroldirectivetype) | :heavy_check_mark:                                                                           | N/A                                                                                          |                                                                                              |

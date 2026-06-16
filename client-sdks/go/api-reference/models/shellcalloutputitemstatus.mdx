@@ -1,0 +1,49 @@
+---
+title: ShellCallOutputItemStatus - Go SDK
+sidebarTitle: ShellCallOutputItemStatus
+description: ShellCallOutputItemStatus type definition
+seoTitle: ShellCallOutputItemStatus Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/shellcalloutputitemstatus
+'og:site_name': OpenRouter Documentation
+'og:title': ShellCallOutputItemStatus Type | OpenRouter Go SDK
+'og:description': >-
+  ShellCallOutputItemStatus type reference for the OpenRouter Go SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ShellCallOutputItemStatus%20-%20Go%20SDK&description=ShellCallOutputItemStatus%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```go lines
+import (
+	"github.com/OpenRouterTeam/go-sdk/models/components"
+)
+
+value := components.ShellCallOutputItemStatusInProgress
+
+// Open enum: custom values can be created with a direct type cast
+custom := components.ShellCallOutputItemStatus("custom_value")
+```
+
+## Values
+
+| Name                                  | Value                                 |
+| ------------------------------------- | ------------------------------------- |
+| `ShellCallOutputItemStatusInProgress` | in_progress                           |
+| `ShellCallOutputItemStatusCompleted`  | completed                             |
+| `ShellCallOutputItemStatusIncomplete` | incomplete                            |

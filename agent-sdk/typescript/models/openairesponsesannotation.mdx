@@ -1,0 +1,61 @@
+---
+title: OpenAIResponsesAnnotation - TypeScript SDK
+description: OpenAIResponsesAnnotation method reference
+seoTitle: OpenAIResponsesAnnotation | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/openairesponsesannotation'
+'og:site_name': OpenRouter Documentation
+'og:title': OpenAIResponsesAnnotation | OpenRouter TypeScript SDK
+'og:description': >-
+  OpenAIResponsesAnnotation method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=OpenAIResponsesAnnotation%20-%20TypeScript%20SDK&description=OpenAIResponsesAnnotation%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### `models.FileCitation`
+
+```typescript lines
+const value: models.FileCitation = {
+  type: "file_citation",
+  fileId: "file-abc123",
+  filename: "research_paper.pdf",
+  index: 0,
+};
+```
+
+### `models.URLCitation`
+
+```typescript lines
+const value: models.URLCitation = {
+  type: "url_citation",
+  url: "https://openrouter.ai/docs",
+  title: "OpenRouter Documentation",
+  startIndex: 0,
+  endIndex: 42,
+};
+```
+
+### `models.FilePath`
+
+```typescript lines
+const value: models.FilePath = {
+  type: "file_path",
+  fileId: "file-xyz789",
+  index: 0,
+};
+```

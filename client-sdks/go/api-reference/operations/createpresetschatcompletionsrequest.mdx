@@ -1,0 +1,35 @@
+---
+title: CreatePresetsChatCompletionsRequest - Go SDK
+sidebarTitle: CreatePresetsChatCompletionsRequest
+description: CreatePresetsChatCompletionsRequest type definition
+seoTitle: CreatePresetsChatCompletionsRequest Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/operations/createpresetschatcompletionsrequest
+'og:site_name': OpenRouter Documentation
+'og:title': CreatePresetsChatCompletionsRequest Type | OpenRouter Go SDK
+'og:description': >-
+  CreatePresetsChatCompletionsRequest type reference for the OpenRouter Go SDK.
+  Complete type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=CreatePresetsChatCompletionsRequest%20-%20Go%20SDK&description=CreatePresetsChatCompletionsRequest%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                                                                                                                                                                | Type                                                                                                                                                                                                                 | Required                                                                                                                                                                                                             | Description                                                                                                                                                                                                          | Example                                                                                                                                                                                                              |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Slug`                                                                                                                                                                                                               | `string`                                                                                                                                                                                                             | :heavy_check_mark:                                                                                                                                                                                                   | URL-safe slug identifying the preset. Created if it does not exist.                                                                                                                                                  | my-preset                                                                                                                                                                                                            |
+| `ChatRequest`                                                                                                                                                                                                        | [components.ChatRequest](/client-sdks/go/api-reference/models/chatrequest)                                                                                                                                                     | :heavy_check_mark:                                                                                                                                                                                                   | N/A                                                                                                                                                                                                                  | `{"max_tokens": 150,"messages": [{"content": "You are a helpful assistant.","role": "system"}`,<br/>`{"content": "What is the capital of France?","role": "user"}`<br/>],<br/>"model": "openai/gpt-4",<br/>"temperature": 0.7<br/>\} |

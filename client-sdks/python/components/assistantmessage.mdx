@@ -1,0 +1,38 @@
+---
+title: AssistantMessage - Python SDK
+description: AssistantMessage method reference
+seoTitle: AssistantMessage | OpenRouter Python SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/python/components/assistantmessage'
+'og:site_name': OpenRouter Documentation
+'og:title': AssistantMessage | OpenRouter Python SDK
+'og:description': >-
+  AssistantMessage method documentation for the OpenRouter Python SDK. Learn how
+  to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=AssistantMessage%20-%20Python%20SDK&description=AssistantMessage%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Python SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/python-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Fields
+
+| Field                                                                                            | Type                                                                                             | Required                                                                                         | Description                                                                                      |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `role`                                                                                           | *Literal["assistant"]*                                                                           | :heavy_check_mark:                                                                               | N/A                                                                                              |
+| `content`                                                                                        | [OptionalNullable[components.AssistantMessageContent]](../components/assistantmessagecontent.md) | :heavy_minus_sign:                                                                               | N/A                                                                                              |
+| `name`                                                                                           | *Optional[str]*                                                                                  | :heavy_minus_sign:                                                                               | N/A                                                                                              |
+| `tool_calls`                                                                                     | List[[components.ChatMessageToolCall](/client-sdks/python/components/chatmessagetoolcall)]                     | :heavy_minus_sign:                                                                               | N/A                                                                                              |
+| `refusal`                                                                                        | *OptionalNullable[str]*                                                                          | :heavy_minus_sign:                                                                               | N/A                                                                                              |
+| `reasoning`                                                                                      | *OptionalNullable[str]*                                                                          | :heavy_minus_sign:                                                                               | N/A                                                                                              |
+| `reasoning_details`                                                                              | List[[components.Schema2](/client-sdks/python/components/schema2)]                                             | :heavy_minus_sign:                                                                               | N/A                                                                                              |

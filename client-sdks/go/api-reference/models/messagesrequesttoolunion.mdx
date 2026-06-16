@@ -1,0 +1,135 @@
+---
+title: MessagesRequestToolUnion - Go SDK
+sidebarTitle: MessagesRequestToolUnion
+description: MessagesRequestToolUnion type definition
+seoTitle: MessagesRequestToolUnion Type | OpenRouter Go SDK
+canonicalUrl: >-
+  https://openrouter.ai/docs/sdks/go/api-reference/models/messagesrequesttoolunion
+'og:site_name': OpenRouter Documentation
+'og:title': MessagesRequestToolUnion Type | OpenRouter Go SDK
+'og:description': >-
+  MessagesRequestToolUnion type reference for the OpenRouter Go SDK. Complete
+  type definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=MessagesRequestToolUnion%20-%20Go%20SDK&description=MessagesRequestToolUnion%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Supported Types
+
+### ToolCustom
+
+```go lines
+messagesRequestToolUnion := components.CreateMessagesRequestToolUnionToolCustom(components.ToolCustom{/* values here */})
+```
+
+### ToolBash20250124
+
+```go lines
+messagesRequestToolUnion := components.CreateMessagesRequestToolUnionToolBash20250124(components.ToolBash20250124{/* values here */})
+```
+
+### ToolTextEditor20250124
+
+```go lines
+messagesRequestToolUnion := components.CreateMessagesRequestToolUnionToolTextEditor20250124(components.ToolTextEditor20250124{/* values here */})
+```
+
+### ToolWebSearch20250305
+
+```go lines
+messagesRequestToolUnion := components.CreateMessagesRequestToolUnionToolWebSearch20250305(components.ToolWebSearch20250305{/* values here */})
+```
+
+### ToolWebSearch20260209
+
+```go lines
+messagesRequestToolUnion := components.CreateMessagesRequestToolUnionToolWebSearch20260209(components.ToolWebSearch20260209{/* values here */})
+```
+
+### ToolAdvisor20260301
+
+```go lines
+messagesRequestToolUnion := components.CreateMessagesRequestToolUnionToolAdvisor20260301(components.ToolAdvisor20260301{/* values here */})
+```
+
+### DatetimeServerTool
+
+```go lines
+messagesRequestToolUnion := components.CreateMessagesRequestToolUnionDatetimeServerTool(components.DatetimeServerTool{/* values here */})
+```
+
+### ImageGenerationServerToolOpenRouter
+
+```go lines
+messagesRequestToolUnion := components.CreateMessagesRequestToolUnionImageGenerationServerToolOpenRouter(components.ImageGenerationServerToolOpenRouter{/* values here */})
+```
+
+### ChatSearchModelsServerTool
+
+```go lines
+messagesRequestToolUnion := components.CreateMessagesRequestToolUnionChatSearchModelsServerTool(components.ChatSearchModelsServerTool{/* values here */})
+```
+
+### WebFetchServerTool
+
+```go lines
+messagesRequestToolUnion := components.CreateMessagesRequestToolUnionWebFetchServerTool(components.WebFetchServerTool{/* values here */})
+```
+
+### OpenRouterWebSearchServerTool
+
+```go lines
+messagesRequestToolUnion := components.CreateMessagesRequestToolUnionOpenRouterWebSearchServerTool(components.OpenRouterWebSearchServerTool{/* values here */})
+```
+
+### MessagesRequestTool
+
+```go lines
+messagesRequestToolUnion := components.CreateMessagesRequestToolUnionMessagesRequestTool(components.MessagesRequestTool{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go expandable lines
+switch messagesRequestToolUnion.Type {
+	case components.MessagesRequestToolUnionTypeToolCustom:
+		// messagesRequestToolUnion.ToolCustom is populated
+	case components.MessagesRequestToolUnionTypeToolBash20250124:
+		// messagesRequestToolUnion.ToolBash20250124 is populated
+	case components.MessagesRequestToolUnionTypeToolTextEditor20250124:
+		// messagesRequestToolUnion.ToolTextEditor20250124 is populated
+	case components.MessagesRequestToolUnionTypeToolWebSearch20250305:
+		// messagesRequestToolUnion.ToolWebSearch20250305 is populated
+	case components.MessagesRequestToolUnionTypeToolWebSearch20260209:
+		// messagesRequestToolUnion.ToolWebSearch20260209 is populated
+	case components.MessagesRequestToolUnionTypeToolAdvisor20260301:
+		// messagesRequestToolUnion.ToolAdvisor20260301 is populated
+	case components.MessagesRequestToolUnionTypeDatetimeServerTool:
+		// messagesRequestToolUnion.DatetimeServerTool is populated
+	case components.MessagesRequestToolUnionTypeImageGenerationServerToolOpenRouter:
+		// messagesRequestToolUnion.ImageGenerationServerToolOpenRouter is populated
+	case components.MessagesRequestToolUnionTypeChatSearchModelsServerTool:
+		// messagesRequestToolUnion.ChatSearchModelsServerTool is populated
+	case components.MessagesRequestToolUnionTypeWebFetchServerTool:
+		// messagesRequestToolUnion.WebFetchServerTool is populated
+	case components.MessagesRequestToolUnionTypeOpenRouterWebSearchServerTool:
+		// messagesRequestToolUnion.OpenRouterWebSearchServerTool is populated
+	case components.MessagesRequestToolUnionTypeMessagesRequestTool:
+		// messagesRequestToolUnion.MessagesRequestTool is populated
+}
+```

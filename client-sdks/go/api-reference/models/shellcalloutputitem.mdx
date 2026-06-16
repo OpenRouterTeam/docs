@@ -1,0 +1,40 @@
+---
+title: ShellCallOutputItem - Go SDK
+sidebarTitle: ShellCallOutputItem
+description: ShellCallOutputItem type definition
+seoTitle: ShellCallOutputItem Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/shellcalloutputitem'
+'og:site_name': OpenRouter Documentation
+'og:title': ShellCallOutputItem Type | OpenRouter Go SDK
+'og:description': >-
+  ShellCallOutputItem type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ShellCallOutputItem%20-%20Go%20SDK&description=ShellCallOutputItem%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Output from a shell command execution (newer variant)
+
+## Fields
+
+| Field                                                                                                                           | Type                                                                                                                            | Required                                                                                                                        | Description                                                                                                                     | Example                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `CallID`                                                                                                                        | `string`                                                                                                                        | :heavy_check_mark:                                                                                                              | N/A                                                                                                                             |                                                                                                                                 |
+| `ID`                                                                                                                            | optionalnullable.OptionalNullable[`string`]                                                                                     | :heavy_minus_sign:                                                                                                              | N/A                                                                                                                             |                                                                                                                                 |
+| `MaxOutputLength`                                                                                                               | optionalnullable.OptionalNullable[`int64`]                                                                                      | :heavy_minus_sign:                                                                                                              | N/A                                                                                                                             |                                                                                                                                 |
+| `Output`                                                                                                                        | [][components.ShellCallOutputItemOutput](/client-sdks/go/api-reference/models/shellcalloutputitemoutput)                                  | :heavy_check_mark:                                                                                                              | N/A                                                                                                                             |                                                                                                                                 |
+| `Status`                                                                                                                        | optionalnullable.OptionalNullable[[components.ShellCallOutputItemStatus](/client-sdks/go/api-reference/models/shellcalloutputitemstatus)] | :heavy_minus_sign:                                                                                                              | N/A                                                                                                                             | completed                                                                                                                       |
+| `Type`                                                                                                                          | [components.ShellCallOutputItemType](/client-sdks/go/api-reference/models/shellcalloutputitemtype)                                        | :heavy_check_mark:                                                                                                              | N/A                                                                                                                             |                                                                                                                                 |

@@ -1,0 +1,49 @@
+---
+title: WorkspaceMemberRole - Go SDK
+sidebarTitle: WorkspaceMemberRole
+description: WorkspaceMemberRole type definition
+seoTitle: WorkspaceMemberRole Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/workspacememberrole'
+'og:site_name': OpenRouter Documentation
+'og:title': WorkspaceMemberRole Type | OpenRouter Go SDK
+'og:description': >-
+  WorkspaceMemberRole type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=WorkspaceMemberRole%20-%20Go%20SDK&description=WorkspaceMemberRole%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Role of the member in the workspace
+
+## Example Usage
+
+```go lines
+import (
+	"github.com/OpenRouterTeam/go-sdk/models/components"
+)
+
+value := components.WorkspaceMemberRoleAdmin
+
+// Open enum: custom values can be created with a direct type cast
+custom := components.WorkspaceMemberRole("custom_value")
+```
+
+## Values
+
+| Name                        | Value                       |
+| --------------------------- | --------------------------- |
+| `WorkspaceMemberRoleAdmin`  | admin                       |
+| `WorkspaceMemberRoleMember` | member                      |

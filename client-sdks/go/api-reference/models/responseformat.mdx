@@ -1,0 +1,80 @@
+---
+title: ResponseFormat - Go SDK
+sidebarTitle: ResponseFormat
+description: ResponseFormat type definition
+seoTitle: ResponseFormat Type | OpenRouter Go SDK
+canonicalUrl: 'https://openrouter.ai/docs/client-sdks/go/api-reference/models/responseformat'
+'og:site_name': OpenRouter Documentation
+'og:title': ResponseFormat Type | OpenRouter Go SDK
+'og:description': >-
+  ResponseFormat type reference for the OpenRouter Go SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=ResponseFormat%20-%20Go%20SDK&description=ResponseFormat%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The Go SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/go-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Response format configuration
+
+## Supported Types
+
+### ChatFormatGrammarConfig
+
+```go lines
+responseFormat := components.CreateResponseFormatGrammar(components.ChatFormatGrammarConfig{/* values here */})
+```
+
+### FormatJSONObjectConfig
+
+```go lines
+responseFormat := components.CreateResponseFormatJSONObject(components.FormatJSONObjectConfig{/* values here */})
+```
+
+### ChatFormatJSONSchemaConfig
+
+```go lines
+responseFormat := components.CreateResponseFormatJSONSchema(components.ChatFormatJSONSchemaConfig{/* values here */})
+```
+
+### ChatFormatPythonConfig
+
+```go lines
+responseFormat := components.CreateResponseFormatPython(components.ChatFormatPythonConfig{/* values here */})
+```
+
+### ChatFormatTextConfig
+
+```go lines
+responseFormat := components.CreateResponseFormatText(components.ChatFormatTextConfig{/* values here */})
+```
+
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go lines
+switch responseFormat.Type {
+	case components.ResponseFormatTypeGrammar:
+		// responseFormat.ChatFormatGrammarConfig is populated
+	case components.ResponseFormatTypeJSONObject:
+		// responseFormat.FormatJSONObjectConfig is populated
+	case components.ResponseFormatTypeJSONSchema:
+		// responseFormat.ChatFormatJSONSchemaConfig is populated
+	case components.ResponseFormatTypePython:
+		// responseFormat.ChatFormatPythonConfig is populated
+	case components.ResponseFormatTypeText:
+		// responseFormat.ChatFormatTextConfig is populated
+}
+```

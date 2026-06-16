@@ -1,0 +1,45 @@
+---
+title: PercentileThroughputCutoffs - TypeScript SDK
+description: PercentileThroughputCutoffs method reference
+seoTitle: PercentileThroughputCutoffs | OpenRouter TypeScript SDK
+canonicalUrl: 'https://openrouter.ai/docs/agent-sdks/typescript/models/percentilethroughputcutoffs'
+'og:site_name': OpenRouter Documentation
+'og:title': PercentileThroughputCutoffs | OpenRouter TypeScript SDK
+'og:description': >-
+  PercentileThroughputCutoffs method documentation for the OpenRouter TypeScript
+  SDK. Learn how to use this API endpoint with code examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=PercentileThroughputCutoffs%20-%20TypeScript%20SDK&description=PercentileThroughputCutoffs%20method%20reference
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouter'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Percentile-based throughput cutoffs. All specified cutoffs must be met for an endpoint to be preferred.
+
+## Example Usage
+
+```typescript lines
+import { PercentileThroughputCutoffs } from "@openrouter/sdk/models";
+
+let value: PercentileThroughputCutoffs = {};
+```
+
+## Fields
+
+| Field                               | Type                                | Required                            | Description                         |
+| ----------------------------------- | ----------------------------------- | ----------------------------------- | ----------------------------------- |
+| `p50`                               | *number*                            | :heavy_minus_sign:                  | Minimum p50 throughput (tokens/sec) |
+| `p75`                               | *number*                            | :heavy_minus_sign:                  | Minimum p75 throughput (tokens/sec) |
+| `p90`                               | *number*                            | :heavy_minus_sign:                  | Minimum p90 throughput (tokens/sec) |
+| `p99`                               | *number*                            | :heavy_minus_sign:                  | Minimum p99 throughput (tokens/sec) |
