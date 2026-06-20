@@ -1,0 +1,107 @@
+---
+title: AFK
+description: Use AFK with OpenRouter
+seoTitle: 'Integration with AFK | OpenRouter'
+canonicalUrl: https://openrouter.ai/docs/cookbook/coding-agents/afk-integration
+og:site_name: OpenRouter Documentation
+og:title: 'AFK Integration - OpenRouter'
+og:description: 'Learn how to configure AFK to use OpenRouter for browser-based coding-agent sessions with access to hundreds of AI models.'
+og:image: https://openrouter.ai/dynamic-og?title=AFK&description=Use%20AFK%20with%20OpenRouter
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: terminal
+---
+
+## What is AFK?
+
+[AFK](https://afk.mooglest.com) is a browser-based command center for persistent coding-agent sessions. You connect a local or shared daemon to your projects, configure model connections in the browser, then start and supervise coding-agent work from the web UI.
+
+AFK supports OpenRouter as a first-class LLM connection, so you can bring one OpenRouter API key and choose an OpenRouter model for each AFK session.
+
+## Quick Start
+
+### Step 1: Create or sign in to AFK
+
+Open [afk.mooglest.com](https://afk.mooglest.com) and create an account or sign in.
+
+### Step 2: Install and connect an AFK daemon
+
+AFK sessions run through a daemon that has access to your projects. In AFK:
+
+1. Open **Account → API Keys**.
+2. Create a daemon token.
+3. Follow the AFK installation command shown in the app to install and connect the daemon.
+4. Confirm your machine appears as a connected daemon in the browser.
+
+For more details, see the [AFK installation docs](https://docs.mooglest.com/installation).
+
+### Step 3: Get your OpenRouter API key
+
+1. Sign up or log in at [OpenRouter](https://openrouter.ai).
+2. Open your [API Keys page](https://openrouter.ai/settings/keys).
+3. Create a new API key.
+4. Copy your key, which starts with `sk-or-...`.
+
+### Step 4: Add OpenRouter in AFK
+
+In AFK:
+
+1. Open **Account → LLM**.
+2. Click **Add connection** and choose **OpenRouter**.
+3. Paste your OpenRouter API key.
+4. Leave **Base URL** blank unless you route through a custom proxy or gateway. AFK uses `https://openrouter.ai/api/v1` automatically.
+5. Save or test the connection.
+
+### Step 5: Start an AFK session with OpenRouter
+
+1. Click **New session** in AFK.
+2. Select the connected daemon and project directory.
+3. Choose your OpenRouter connection.
+4. Select or type an OpenRouter model slug, such as:
+
+```text lines
+anthropic/claude-sonnet-4.5
+openai/gpt-5.1
+google/gemini-2.5-pro
+```
+
+5. Choose a permission mode and enter the task.
+
+Your AFK coding-agent session now routes model requests through OpenRouter.
+
+## Why use OpenRouter with AFK?
+
+### Access to hundreds of models
+
+Use models from Anthropic, OpenAI, Google, xAI, Meta, DeepSeek, and many more through one OpenRouter connection. AFK lets you choose or type the model for each session.
+
+### Persistent browser-visible agent work
+
+AFK keeps coding-agent sessions visible in the browser, including transcript history, tool activity, approvals, artifacts, child agents, and session status.
+
+### Team and budget visibility
+
+OpenRouter provides usage and cost visibility through the [Activity Dashboard](https://openrouter.ai/activity). Teams can centralize model access while AFK provides browser-based supervision of agent work.
+
+### Flexible execution
+
+AFK supports personal daemons, shared daemons, local project sessions, Docker-backed repository sessions, workspace isolation, `AGENTS.md` instructions, skills, MCP tools, and sub-agents.
+
+## Troubleshooting
+
+- **Auth errors:** Verify the API key in AFK under **Account → LLM**. OpenRouter keys start with `sk-or-...`.
+- **Model not found:** Check the exact model slug on [openrouter.ai/models](https://openrouter.ai/models). If it is missing from AFK's picker, type the model slug manually.
+- **Base URL confusion:** Leave Base URL blank for normal OpenRouter use. Only set it when using a custom proxy or gateway.
+- **Daemon not listed:** Confirm the daemon is running, connected with the correct AFK daemon token, and allowed to access the project directory.
+
+## Resources
+
+- [AFK](https://afk.mooglest.com)
+- [AFK OpenRouter setup docs](https://docs.mooglest.com/providers#openrouter)
+- [OpenRouter API Keys](https://openrouter.ai/settings/keys)
+- [OpenRouter Models](https://openrouter.ai/models)
+- [OpenRouter Activity Dashboard](https://openrouter.ai/activity)
