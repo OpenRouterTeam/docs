@@ -88,7 +88,7 @@ The assistant will know to use:
 ```typescript lines
 import { OpenRouter } from '@openrouter/sdk';
 
-const client = new OpenRouter();
+const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
 
 const completion = await client.chat.send({
   model: 'anthropic/claude-sonnet-4',
