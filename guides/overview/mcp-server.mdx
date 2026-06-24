@@ -21,7 +21,7 @@ The **OpenRouter MCP server** plugs OpenRouter into the AI tools you already use
 It's a remote server hosted by OpenRouter (nothing is installed locally). You connect by adding one URL to your MCP client and approving an OAuth login in your browser.
 
 <Note>
-This is a **development helper, not a runtime client.** The tools give your in-editor agent live OpenRouter context; your production app still calls the OpenRouter API directly.
+Use this MCP while you build. It lets your coding assistant pull live OpenRouter info (which models exist, what they cost, your credit balance) and send quick test messages, without leaving your editor. To actually run models in your app, keep calling the OpenRouter API directly.
 </Note>
 
 ## Connect your agent
@@ -30,7 +30,7 @@ This is a **development helper, not a runtime client.** The tools give your in-e
 <Tabs>
   <Tab title="Claude Code">
     ```bash lines
-    claude mcp add --transport http openrouter https://openrouter.ai/api/v1/mcp
+    claude mcp add --transport http openrouter https://mcp.openrouter.ai/mcp
     claude mcp login openrouter
     ```
 
@@ -39,7 +39,7 @@ This is a **development helper, not a runtime client.** The tools give your in-e
 
   <Tab title="Codex CLI">
     ```bash lines
-    codex mcp add openrouter --url https://openrouter.ai/api/v1/mcp
+    codex mcp add openrouter --url https://mcp.openrouter.ai/mcp
     codex mcp login openrouter   # opens the browser OAuth flow
     ```
   </Tab>
@@ -52,7 +52,7 @@ This is a **development helper, not a runtime client.** The tools give your in-e
       "mcp": {
         "openrouter": {
           "type": "remote",
-          "url": "https://openrouter.ai/api/v1/mcp",
+          "url": "https://mcp.openrouter.ai/mcp",
           "enabled": true
         }
       }
@@ -66,7 +66,7 @@ This is a **development helper, not a runtime client.** The tools give your in-e
     ```json lines
     {
       "mcpServers": {
-        "openrouter": { "url": "https://openrouter.ai/api/v1/mcp" }
+        "openrouter": { "url": "https://mcp.openrouter.ai/mcp" }
       }
     }
     ```
@@ -100,38 +100,31 @@ The MCP exposes these tools. All are read-only lookups against live OpenRouter d
 
 ## Pick the right model for a task
 
-This is the main use case. You describe a task and the assistant recommends a model for it, and the recommendation is backed by live data, not the model's stale training knowledge. `chat-send` is grounded so the assistant won't name a model from memory; for any "which model should I use" question it defers to the live `benchmarks`, `rankings-daily`, and `models-list` tools. The right pick might be the cheapest, the smartest, the fastest, a specific modality, or a particular provider.
+You describe a task and the assistant recommends a model for it, and the recommendation is backed by live data, not the model's stale training knowledge. `chat-send` is grounded so the assistant won't name a model from memory; for any "which model should I use" question it defers to the live `benchmarks`, `rankings-daily`, and `models-list` tools. The right pick might be the cheapest, the smartest, the fastest, a specific modality, or a particular provider.
 
 By task and trade-off:
 
 - "What's the best model for coding right now?"
 - "Smartest model for hard reasoning, money no object?"
-- "Best cheap model for a high-volume chatbot?"
-- "Fastest model that's still good at writing code?"
 - "Best value model for summarizing long documents?"
 
 By modality (OpenRouter supports far more than text):
 
 - "What embedding models are available, and which is best?"
 - "Do you support reranking models? Recommend one."
-- "What video generation models can I use?"
 - "Best text-to-speech model? What about speech-to-text?"
-- "Cheapest model that can take images as input?"
 
 By benchmark and provider:
 
 - "Which model tops the Artificial Analysis intelligence index?"
 - "What's the best model for landing page design?"
-- "Which providers serve GLM-5.2, and who's cheapest?"
 - "Recommend a model and tell me which provider to route to."
 
-## Other things to try
+## More things you can do 
 
 - "How much credit do I have left on OpenRouter?"
-- "Compare the top models on quality benchmarks."
 - "Which apps send the most traffic to OpenRouter?"
 - "How do I pin a model to a specific provider, e.g. Bedrock?"
-- "Search the OpenRouter docs for how streaming works."
 - "Send a test message to GPT-5.5 and tell me what it cost."
 - "Compare the answers for the same prompt across Opus 4.8, DeepSeek v4 Pro, Gemini 3.5 Flash, and GLM-5.2."
 
