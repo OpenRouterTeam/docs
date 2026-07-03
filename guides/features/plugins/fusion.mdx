@@ -2,7 +2,6 @@
 title: Fusion
 description: Multi-model analysis with a judge model
 seoTitle: 'Fusion | Multi-model AI Analysis with OpenRouter'
-canonicalUrl: https://openrouter.ai/docs/guides/features/plugins/fusion
 og:site_name: OpenRouter Documentation
 og:title: 'Fusion - Multi-model Analysis on OpenRouter'
 og:description: "Get richer answers by running a panel of models in parallel and comparing their responses through a judge. Fusion makes this a one-line addition to any OpenRouter request."
@@ -65,12 +64,39 @@ flowchart LR
 
 | Field | Default | Description |
 |-------|---------|-------------|
+| `preset` | _none_ | A curated OpenRouter preset slug (e.g. `general-high`) that expands into a panel + judge, so you don't have to name models. Explicit `analysis_models` / `model` override it. See [Presets](#presets). |
 | `analysis_models` | Quality preset (`~anthropic/claude-opus-latest`, `~openai/gpt-latest`, `~google/gemini-pro-latest`) | Models that form the panel. Each runs in parallel with `openrouter:web_search` and `openrouter:web_fetch`. 1–8 models allowed. |
 | `model` | First model in the Quality preset (`~anthropic/claude-opus-latest`) | The judge model that produces the structured analysis. With `model: "openrouter/fusion"`, this also becomes the model that writes your final answer; when you attach the plugin to your own model instead, the judge defaults to that model. |
 | `max_tool_calls` | `8` | Max tool-calling steps each panel model and the judge may take in their `openrouter:web_search` / `openrouter:web_fetch` loop before they must return text. Range 1–16. |
 | `enabled` | `true` | Set to `false` to bypass fusion for a single request. |
 
 When you send `model: "openrouter/fusion"` without a plugin config, the defaults match the **Quality** preset on the [Fusion lab](https://openrouter.ai/fusion/).
+
+### Presets
+
+Don't want to pick models? Reference a curated preset by slug with `preset` —
+the panel and judge are chosen for you:
+
+```json lines
+{
+  "model": "openrouter/fusion",
+  "plugins": [{ "id": "fusion", "preset": "general-budget" }]
+}
+```
+
+Slugs follow `<task>-<tier>`: `task` is what you're optimizing the panel for,
+and `tier` is the quality/cost/speed tradeoff (`high` = strongest models, `budget` =
+cheaper panel with the same frontier judge, `fast` = a latency-homogeneous panel
+where every model has similar TTFT so no single model gates the fan-out). These
+mirror the presets shown in the [Fusion lab](/labs/fusion) UI.
+
+| Preset | For |
+|--------|-----|
+| `general-high` | The strongest all-round panel. |
+| `general-budget` | A cheaper panel with a frontier judge for strong synthesis at lower cost. |
+| `general-fast` | A latency-homogeneous panel optimized for fast agentic turns, with a frontier judge. |
+
+Explicit `analysis_models` or `model` always take precedence over a preset.
 
 ## Two entry points, one pipeline
 

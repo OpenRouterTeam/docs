@@ -2,7 +2,6 @@
 title: Tool Calling
 description: Function calling and tool integration with the Responses API Beta
 seoTitle: 'Responses API Beta Tool Calling | Function Calling Integration'
-canonicalUrl: https://openrouter.ai/docs/api/reference/responses/tool-calling
 og:site_name: OpenRouter Documentation
 og:title: 'Responses API Beta Tool Calling - Function Calling Integration'
 og:description: "Integrate function calling with support for parallel execution and complex tool interactions using OpenRouter's Responses API Beta."
@@ -654,10 +653,31 @@ response = requests.post(
 </CodeGroup>
 
 <Info>
-**Required Field**
+**Optional Field**
 
-  The `id` field is required for `function_call_output` objects when including tool responses in conversation history.
+  The `id` field is optional for `function_call_output` objects. Only `type`, `call_id`, and `output` are required — `call_id` is what pairs the output with its originating `function_call`. The examples above include `id` for completeness, but you can safely omit it.
 </Info>
+
+### Multimodal tool outputs
+
+`function_call_output.output` accepts either a string or an array of input content parts (`input_text`, `input_image`, `input_file`) — the same shape as user-message content. Use the array form to return images or files from a tool; the non-text parts are only forwarded to supported multimodal models.
+
+```json lines
+{
+  "type": "function_call_output",
+  "call_id": "call_123",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "{\"results\":[{\"title\":\"Golden Gate Bridge\"}]}"
+    },
+    {
+      "type": "input_image",
+      "image_url": "https://example.com/image.jpg"
+    }
+  ]
+}
+```
 
 ## Streaming Tool Calls
 

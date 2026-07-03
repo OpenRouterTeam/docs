@@ -1,7 +1,6 @@
 ---
 title: Provider Integration
 seoTitle: 'Provider Integration | Add Your AI Models to OpenRouter'
-canonicalUrl: https://openrouter.ai/docs/guides/community/for-providers
 og:site_name: OpenRouter Documentation
 og:title: 'Provider Integration - Add Your Models to OpenRouter'
 og:description: "Learn how to integrate your AI models with OpenRouter. Complete guide for providers to make their models available through OpenRouter's unified API."
@@ -36,7 +35,7 @@ You must implement an endpoint that returns all models that should be served by 
       "name": "Anthropic: Claude Sonnet 4",
       "created": 1690502400,
       "input_modalities": ["text", "image", "file"],
-      "output_modalities": ["text", "image", "file"],
+      "output_modalities": ["text"],
       "quantization": "fp8",
       "context_length": 1000000,
       "max_output_length": 128000,
@@ -59,6 +58,9 @@ You must implement an endpoint that returns all models that should be served by 
       "description": "Anthropic's flagship model...",
       "deprecation_date": "2025-06-01T15:00:00Z", // ISO 8601 date or UTC hour
       "is_ready": true, // false to keep the model staged-but-hidden on OpenRouter
+      "is_free": false, // true to mark as a free endpoint
+      "discount_to_user": 0, // fractional discount on user-facing pricing (0 = none)
+      "capacity_tpm": 1000000, // input tokens per minute capacity for this model (optional)
       "openrouter": {
         "slug": "anthropic/claude-sonnet-4"
       },
@@ -75,6 +77,10 @@ You must implement an endpoint that returns all models that should be served by 
 The `id` field should be the exact model identifier that OpenRouter will use when calling your API.
 
 The `pricing` fields are in string format to avoid floating point precision issues, and must be in USD.
+
+Valid input modalities are: `text`, `image`, `file`, `audio`, `video`.
+
+Valid output modalities are: `text`, `image`, `embeddings`, `audio`, `video`, `rerank`, `speech`, `transcription`.
 
 Valid quantization values are: `int4`, `int8`, `fp4`, `fp6`, `fp8`, `fp16`, `bf16`, `fp32`.
 
@@ -113,6 +119,35 @@ Limitations:
 - Currently, OpenRouter supports up to 2 pricing tiers.
 - The `image` and `request` fields are only supported in the base tier (index 0) and will be ignored if included in other tiers.
 
+#### Discounts with `discount_to_user`
+
+To offer a discount on the prices users see and pay, include the optional `discount_to_user` field. It's a decimal fraction that OpenRouter applies to your displayed pricing:
+
+```text lines
+user price = base price × (1 - discount_to_user)
+```
+
+```json lines
+{
+  "id": "your-org/your-model",
+  "pricing": {
+    "prompt": "0.000008",
+    "completion": "0.000024"
+  },
+  "discount_to_user": 0.2
+}
+```
+
+Behavior:
+
+- `0.2` means users see and pay 20% less than your listed `pricing`. The example `completion` price of `0.000024` displays as `0.0000192`.
+- The discount applies to every priced SKU (prompt, completion, image, cache reads, and so on) and to both flat and tiered pricing.
+- `0`, an omitted field, or an absent field all mean no discount.
+- A negative value applies a markup instead of a discount, so `-0.1` shows prices 10% higher.
+- A value of `1` or higher would make the model free (or negative-priced), which isn't a valid discount. We treat it as a misconfiguration and fall back to no discount (`0`), so use a value below `1`.
+
+Send `discount_to_user` as a number, not a string. Unlike the `pricing` fields, it isn't quoted.
+
 #### Deprecation Date
 
 If a model is scheduled for deprecation, include the `deprecation_date` field in ISO 8601 format. OpenRouter accepts either a date-only value or a specific UTC hour:
@@ -142,7 +177,7 @@ By default, when OpenRouter's provider monitor sees a new model in your `/v1/mod
 
 Behavior:
 
-- `is_ready: false` keeps newly-staged endpoints hidden even if all baseline tests pass, and auto-hides any matching endpoint that is currently live. Use this to upload a model in advance of launch, or to take a live model offline coordinated with us.
+- `is_ready: false` skips baseline tests for newly-staged endpoints, keeping them hidden, and auto-hides any matching endpoint that is currently live. Use this to upload a model in advance of launch, or to take a live model offline coordinated with us.
 - `is_ready: true` and an omitted/absent field both preserve the default auto-stage and auto-unhide behavior.
 
 #### Free Model Variants with `is_free`
@@ -161,6 +196,21 @@ Behavior:
 - `is_free: true` marks the endpoint as a free endpoint (`:free` suffix).
 - Any upstream `pricing` sent alongside `is_free: true` is ignored — free endpoints always have zero cost.
 - `is_free: false` or an omitted field preserves the default behavior (standard paid variant).
+
+#### Capacity with `capacity_tpm`
+
+Report your per-model throughput capacity so OpenRouter can make better routing and capacity-planning decisions. The value is in **input tokens per minute**:
+
+```json lines
+{
+  "id": "your-org/your-model",
+  "capacity_tpm": 5000000
+}
+```
+
+- The value is an integer representing the input tokens per minute your infrastructure can process for this model (i.e. prompt/input throughput, not output generation).
+- Omitting the field or setting it to `null` leaves the capacity unknown (the default).
+- OpenRouter's provider monitor auto-applies capacity changes when they appear in your `/v1/models` response.
 
 ### 2. Auto Top Up or Invoicing
 

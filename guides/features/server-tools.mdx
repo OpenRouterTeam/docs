@@ -2,7 +2,6 @@
 title: Server Tools
 description: Tools operated by OpenRouter that models can call during request
 seoTitle: 'Server Tools | Model-Callable Tools Operated by OpenRouter'
-canonicalUrl: https://openrouter.ai/docs/guides/features/server-tools
 og:site_name: OpenRouter Documentation
 og:title: 'Server Tools - Model-Callable Tools by OpenRouter'
 og:description: 'Add powerful server-side tools like web search, web fetch, datetime, and image generation to any model on OpenRouter. Models decide when to call them — OpenRouter executes them automatically.'
@@ -56,8 +55,10 @@ Server tools are specialized tools operated by OpenRouter that any model can cal
 | [**Image Generation**](/guides/features/server-tools/image-generation) | `openrouter:image_generation` | Generate images from text prompts |
 | [**Web Fetch**](/guides/features/server-tools/web-fetch) | `openrouter:web_fetch` | Fetch and extract content from URLs |
 | [**Apply Patch**](/guides/features/server-tools/apply-patch) | `openrouter:apply_patch` | Propose file edits via V4A diff patches (Responses API only) |
+| [**Files**](/guides/features/server-tools/files) | `openrouter:files` | Read, write, edit, and list workspace files via the Files API |
 | [**Fusion**](/guides/features/server-tools/fusion) | `openrouter:fusion` | Run a panel of models and a judge for multi-model analysis |
 | [**Advisor**](/guides/features/server-tools/advisor) | `openrouter:advisor` | Consult a stronger model for guidance mid-generation |
+| [**Subagent**](/guides/features/server-tools/subagent) | `openrouter:subagent` | Delegate self-contained tasks to a smaller, faster worker model |
 
 ## How Server Tools Work
 
@@ -208,6 +209,8 @@ Server tool usage is tracked in the response `usage` object:
 - [Image Generation](/guides/features/server-tools/image-generation) — Generate images from text prompts
 - [Web Fetch](/guides/features/server-tools/web-fetch) — Fetch and extract content from URLs
 - [Apply Patch](/guides/features/server-tools/apply-patch) — Propose file edits via V4A diffs
+- [Files](/guides/features/server-tools/files) — Read, write, edit, and list workspace files
 - [Fusion](/guides/features/server-tools/fusion) — Run a panel of models and a judge for multi-model analysis
 - [Advisor](/guides/features/server-tools/advisor) — Consult a stronger model for guidance mid-generation
+- [Subagent](/guides/features/server-tools/subagent) — Delegate self-contained tasks to a smaller, faster worker model
 - [Tool Calling](/guides/features/tool-calling) — Learn about user-defined tool calling

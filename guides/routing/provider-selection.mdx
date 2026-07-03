@@ -2,7 +2,6 @@
 title: Provider Routing
 description: Route requests to the best provider
 seoTitle: 'Provider Routing | Intelligent Multi-Provider Request Routing'
-canonicalUrl: https://openrouter.ai/docs/guides/routing/provider-selection
 og:site_name: OpenRouter Documentation
 og:title: 'Provider Routing - Smart Multi-Provider Request Management'
 og:description: "Route AI model requests across multiple providers intelligently. Learn how to optimize for cost, performance, and reliability with OpenRouter's provider routing."
@@ -17,6 +16,7 @@ icon: network-wired
 sidebarTitle: Provider Selection
 ---
 import QuantizationLevels from "/snippets/quantization-levels.mdx";
+import { TermsOfServiceDescriptions } from '/snippets/exports/TermsOfServiceDescriptions.jsx';
 
 OpenRouter routes requests to the best available providers for your model. By default, [requests are load balanced](#price-based-load-balancing-default-strategy) across the top providers to maximize uptime.
 
@@ -1731,124 +1731,17 @@ When using Anthropic models (Claude), you can request specific beta features by 
 
 | Feature | Header Value | Description |
 | --- | --- | --- |
-| Fine-Grained Tool Streaming | `fine-grained-tool-streaming-2025-05-14` | Enables more granular streaming events during tool calls, providing real-time updates as tool arguments are being generated |
 | Interleaved Thinking | `interleaved-thinking-2025-05-14` | Allows Claude's thinking/reasoning to be interleaved with regular output, rather than appearing as a single block |
 | Structured Outputs | `structured-outputs-2025-11-13` | Enables the strict tool use feature for supported Claude models, validating tool parameters against your schema to ensure correctly-typed arguments |
 
 <Note>
-  OpenRouter manages some Anthropic beta features automatically:
+  OpenRouter manages some Anthropic features automatically:
   - **Prompt caching and extended context** are enabled based on model capabilities
-  - **Structured outputs for JSON schema response format** (`response_format.type: "json_schema"`) - the header is automatically applied
+  - **Structured outputs for JSON schema response format** (`response_format.type: "json_schema"`) — the header is automatically applied
+  - **Fine-grained tool streaming** — for every streamed request (`stream: true`) that includes user-defined tools, OpenRouter sets `eager_input_streaming: true` on each tool so Anthropic emits tool arguments as a sequence of incremental chunks rather than buffering them. This matches the streaming behavior already exposed by other providers. See [Anthropic's fine-grained tool streaming docs](https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming) for details.
 
   For **strict tool use** (`strict: true` on tools), you must explicitly pass the `structured-outputs-2025-11-13` header. Without this header, OpenRouter will strip the `strict` field and route normally.
 </Note>
-
-#### Example: Enabling Fine-Grained Tool Streaming
-
-<CodeGroup>
-
-```typescript title="TypeScript SDK" expandable lines
-import { OpenRouter } from '@openrouter/sdk';
-
-const openRouter = new OpenRouter({
-  apiKey: '<OPENROUTER_API_KEY>',
-});
-
-const completion = await openRouter.chat.send(
-  {
-    model: 'anthropic/claude-sonnet-4.5',
-    messages: [{ role: 'user', content: 'What is the weather in Tokyo?' }],
-    tools: [
-      {
-        type: 'function',
-        function: {
-          name: 'get_weather',
-          description: 'Get the current weather for a location',
-          parameters: {
-            type: 'object',
-            properties: {
-              location: { type: 'string' },
-            },
-            required: ['location'],
-          },
-        },
-      },
-    ],
-    stream: true,
-  },
-  {
-    headers: {
-      'x-anthropic-beta': 'fine-grained-tool-streaming-2025-05-14',
-    },
-  },
-);
-```
-
-```typescript title="TypeScript (fetch)" expandable lines
-fetch('https://openrouter.ai/api/v1/chat/completions', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer <OPENROUTER_API_KEY>',
-    'Content-Type': 'application/json',
-    'x-anthropic-beta': 'fine-grained-tool-streaming-2025-05-14',
-  },
-  body: JSON.stringify({
-    model: 'anthropic/claude-sonnet-4.5',
-    messages: [{ role: 'user', content: 'What is the weather in Tokyo?' }],
-    tools: [
-      {
-        type: 'function',
-        function: {
-          name: 'get_weather',
-          description: 'Get the current weather for a location',
-          parameters: {
-            type: 'object',
-            properties: {
-              location: { type: 'string' },
-            },
-            required: ['location'],
-          },
-        },
-      },
-    ],
-    stream: true,
-  }),
-});
-```
-
-```python title="Python" expandable lines
-import requests
-
-headers = {
-  'Authorization': 'Bearer <OPENROUTER_API_KEY>',
-  'Content-Type': 'application/json',
-  'x-anthropic-beta': 'fine-grained-tool-streaming-2025-05-14',
-}
-
-response = requests.post('https://openrouter.ai/api/v1/chat/completions', headers=headers, json={
-  'model': 'anthropic/claude-sonnet-4.5',
-  'messages': [{ 'role': 'user', 'content': 'What is the weather in Tokyo?' }],
-  'tools': [
-    {
-      'type': 'function',
-      'function': {
-        'name': 'get_weather',
-        'description': 'Get the current weather for a location',
-        'parameters': {
-          'type': 'object',
-          'properties': {
-            'location': { 'type': 'string' },
-          },
-          'required': ['location'],
-        },
-      },
-    },
-  ],
-  'stream': True,
-})
-```
-
-</CodeGroup>
 
 #### Example: Enabling Interleaved Thinking
 
@@ -1914,7 +1807,7 @@ response = requests.post('https://openrouter.ai/api/v1/chat/completions', header
 You can enable multiple beta features by separating them with commas:
 
 ```bash lines
-x-anthropic-beta: fine-grained-tool-streaming-2025-05-14,interleaved-thinking-2025-05-14
+x-anthropic-beta: interleaved-thinking-2025-05-14,structured-outputs-2025-11-13
 ```
 
 <Warning>
@@ -1925,130 +1818,4 @@ x-anthropic-beta: fine-grained-tool-streaming-2025-05-14,interleaved-thinking-20
 
 You can view the terms of service for each provider below. You may not violate the terms of service or policies of third-party providers that power the models on OpenRouter.
 
-{/* <TermsOfServiceDescriptions /> */}
-
-- `SambaNova`: [https://sambanova.ai/terms-and-conditions](https://sambanova.ai/terms-and-conditions)
-
-- `Reka AI`: [https://reka.ai/legal/terms-of-use](https://reka.ai/legal/terms-of-use)
-
-- `Cerebras`: [https://www.cerebras.ai/terms-of-service](https://www.cerebras.ai/terms-of-service)
-
-- `Morph`: [https://www.morphllm.com/privacy/tos](https://www.morphllm.com/privacy/tos)
-
-- `AkashML`: [https://akashml.com/terms](https://akashml.com/terms)
-
-- `Moonshot AI`: [https://platform.moonshot.ai/docs/agreement/modeluse](https://platform.moonshot.ai/docs/agreement/modeluse)
-
-- `OpenAI`: [https://openai.com/policies/row-terms-of-use/](https://openai.com/policies/row-terms-of-use/)
-
-- `Z.ai`: [https://chat.z.ai/legal-agreement/terms-of-service](https://chat.z.ai/legal-agreement/terms-of-service)
-
-- `Weights & Biases`: [https://site.wandb.ai/terms/](https://site.wandb.ai/terms/)
-
-- `Black Forest Labs`: [https://bfl.ai/legal/terms-of-service](https://bfl.ai/legal/terms-of-service)
-
-- `Ionstream`: [https://ionstream.ai/terms-and-conditions/](https://ionstream.ai/terms-and-conditions/)
-
-- `AI21`: [https://www.ai21.com/terms-of-service/](https://www.ai21.com/terms-of-service/)
-
-- `MiniMax`: [https://www.minimax.io/platform/protocol/terms-of-service](https://www.minimax.io/platform/protocol/terms-of-service)
-
-- `Fireworks`: [https://fireworks.ai/terms-of-service](https://fireworks.ai/terms-of-service)
-
-- `Baseten`: [https://www.baseten.co/terms-and-conditions](https://www.baseten.co/terms-and-conditions)
-
-- `Groq`: [https://groq.com/terms-of-use/](https://groq.com/terms-of-use/)
-
-- `GMICloud`: [https://www.gmicloud.ai/terms-and-conditions](https://www.gmicloud.ai/terms-and-conditions)
-
-- `NextBit`: [https://www.nextbit256.com/docs/terms-of-service](https://www.nextbit256.com/docs/terms-of-service)
-
-- `Cohere`: [https://cohere.com/terms-of-use](https://cohere.com/terms-of-use)
-
-- `Mancer`: [https://mancer.tech/terms](https://mancer.tech/terms)
-
-- `DeepSeek`: [https://chat.deepseek.com/downloads/DeepSeek%20Terms%20of%20Use.html](https://chat.deepseek.com/downloads/DeepSeek%20Terms%20of%20Use.html)
-
-- `Perplexity`: [https://www.perplexity.ai/hub/legal/perplexity-api-terms-of-service](https://www.perplexity.ai/hub/legal/perplexity-api-terms-of-service)
-
-- `SiliconFlow`: [https://docs.siliconflow.com/en/legals/terms-of-service](https://docs.siliconflow.com/en/legals/terms-of-service)
-
-- `Infermatic`: [https://infermatic.ai/terms-and-conditions/](https://infermatic.ai/terms-and-conditions/)
-
-- `xAI`: [https://x.ai/legal/terms-of-service-enterprise](https://x.ai/legal/terms-of-service-enterprise)
-
-- `Inflection`: [https://developers.inflection.ai/tos](https://developers.inflection.ai/tos)
-
-- `Alibaba Cloud Int.`: [https://www.alibabacloud.com/help/en/legal/latest/alibaba-cloud-international-website-product-terms-of-service-v-3-8-0](https://www.alibabacloud.com/help/en/legal/latest/alibaba-cloud-international-website-product-terms-of-service-v-3-8-0)
-
-- `NovitaAI`: [https://novita.ai/legal/terms-of-service](https://novita.ai/legal/terms-of-service)
-
-- `DeepInfra`: [https://deepinfra.com/terms](https://deepinfra.com/terms)
-
-- `Sourceful`: [https://www.sourceful.com/legal/spring-terms-of-use](https://www.sourceful.com/legal/spring-terms-of-use)
-
-- `Perceptron`: [https://www.perceptron.inc/terms-of-use](https://www.perceptron.inc/terms-of-use)
-
-- `MARA`: [https://www.mara.com/mara-legals/ai-policies#cloud-toc](https://www.mara.com/mara-legals/ai-policies#cloud-toc)
-
-- `DigitalOcean`: [https://www.digitalocean.com/legal/terms-of-service-agreement](https://www.digitalocean.com/legal/terms-of-service-agreement)
-
-- `Xiaomi`: [https://platform.xiaomimimo.com/#/docs/terms/user-agreement](https://platform.xiaomimimo.com/#/docs/terms/user-agreement)
-
-- `Azure`: [https://www.microsoft.com/en-us/legal/terms-of-use?oneroute=true](https://www.microsoft.com/en-us/legal/terms-of-use?oneroute=true)
-
-- `NVIDIA`: [https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf)
-
-- `Friendli`: [https://friendli.ai/terms-of-service](https://friendli.ai/terms-of-service)
-
-- `Inception`: [https://www.inceptionlabs.ai/terms](https://www.inceptionlabs.ai/terms)
-
-- `Mistral`: [https://mistral.ai/terms/#terms-of-use](https://mistral.ai/terms/#terms-of-use)
-
-- `Nebius Token Factory`: [https://docs.nebius.com/legal/studio/terms-of-use/](https://docs.nebius.com/legal/studio/terms-of-use/)
-
-- `AionLabs`: [https://www.aionlabs.ai/terms/](https://www.aionlabs.ai/terms/)
-
-- `Cloudflare`: [https://www.cloudflare.com/service-specific-terms-developer-platform/#developer-platform-terms](https://www.cloudflare.com/service-specific-terms-developer-platform/#developer-platform-terms)
-
-- `Liquid`: [https://www.liquid.ai/terms-conditions](https://www.liquid.ai/terms-conditions)
-
-- `OpenInference`: [https://www.openinference.xyz/terms](https://www.openinference.xyz/terms)
-
-- `Relace`: [https://www.relace.ai/terms-of-use](https://www.relace.ai/terms-of-use)
-
-- `DekaLLM`: [https://docs.cloudeka.ai/service-portal-ai/end-user-license-agreement](https://docs.cloudeka.ai/service-portal-ai/end-user-license-agreement)
-
-- `Phala`: [https://red-pill.ai/terms](https://red-pill.ai/terms)
-
-- `Poolside`: [http://poolside.ai/legal](http://poolside.ai/legal)
-
-- `Parasail`: [https://parasail.io/legal/terms-of-service](https://parasail.io/legal/terms-of-service)
-
-- `ModelRun`: [https://modelrun.org/TOS.html](https://modelrun.org/TOS.html)
-
-- `Seed`: [https://docs.byteplus.com/en/docs/legal/docs-terms-of-service](https://docs.byteplus.com/en/docs/legal/docs-terms-of-service)
-
-- `Clarifai`: [https://www.clarifai.com/company/terms](https://www.clarifai.com/company/terms)
-
-- `Anthropic`: [https://www.anthropic.com/legal/commercial-terms](https://www.anthropic.com/legal/commercial-terms)
-
-- `Baidu Qianfan`: [https://intl.cloud.baidu.com/en/doc/Agreements/s/bmesahnjh-intl-en](https://intl.cloud.baidu.com/en/doc/Agreements/s/bmesahnjh-intl-en)
-
-- `AtlasCloud`: [https://www.atlascloud.ai/privacy](https://www.atlascloud.ai/privacy)
-
-- `Together`: [https://www.together.ai/terms-of-service](https://www.together.ai/terms-of-service)
-
-- `Amazon Bedrock`: [https://aws.amazon.com/service-terms/](https://aws.amazon.com/service-terms/)
-
-- `Venice`: [https://venice.ai/legal/tos](https://venice.ai/legal/tos)
-
-- `Inceptron`: [https://www.inceptron.io/termsofservice](https://www.inceptron.io/termsofservice)
-
-- `StreamLake`: [https://www.streamlake.ai/document/DOC/mgkchnd89grpt1961fw](https://www.streamlake.ai/document/DOC/mgkchnd89grpt1961fw)
-
-- `Google Vertex`: [https://cloud.google.com/terms/](https://cloud.google.com/terms/)
-
-- `Chutes`: [https://chutes.ai/tos](https://chutes.ai/tos)
-
-- `Google AI Studio`: [https://cloud.google.com/terms/](https://cloud.google.com/terms/)
+<TermsOfServiceDescriptions />

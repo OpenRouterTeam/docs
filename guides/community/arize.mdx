@@ -1,12 +1,11 @@
 ---
-title: Arize
-description: Using OpenRouter with Arize
-seoTitle: 'Arize Integration | OpenRouter SDK Support'
-canonicalUrl: https://openrouter.ai/docs/guides/community/arize
+title: Arize AX
+description: Using OpenRouter with Arize AX
+seoTitle: 'Arize AX Integration | OpenRouter SDK Support'
 og:site_name: OpenRouter Documentation
-og:title: 'Arize Integration - OpenRouter SDK Support'
-og:description: 'Integrate OpenRouter using Arize for observability and tracing. Complete guide for Arize integration with OpenRouter for Python and JavaScript applications.'
-og:image: https://openrouter.ai/dynamic-og?title=Arize&description=Arize%20Integration
+og:title: 'Arize AX Integration - OpenRouter SDK Support'
+og:description: 'Integrate OpenRouter using Arize AX for observability and tracing. Complete guide for Arize AX integration with OpenRouter for Python and JavaScript applications.'
+og:image: https://openrouter.ai/dynamic-og?title=Arize%20AX&description=Arize%20AX%20Integration
 og:image:width: 1200
 og:image:height: 630
 twitter:card: summary_large_image
@@ -19,9 +18,9 @@ icon: puzzle-piece
 import { API_KEY_REF } from '/snippets/exports/constants.mdx';
 
 {/* <llms-ignore> */}
-## Using Arize
+## Using Arize AX
 
-[Arize](https://arize.com/) provides observability and tracing for LLM applications. Since OpenRouter uses the OpenAI API schema, you can utilize Arize's OpenInference auto-instrumentation with the OpenAI SDK to automatically trace and monitor your OpenRouter API calls.
+[Arize AX](https://arize.com/) provides observability and tracing for LLM applications. Since OpenRouter uses the OpenAI API schema, you can utilize Arize's OpenInference auto-instrumentation with the OpenAI SDK to automatically trace and monitor your OpenRouter API calls.
 
 ### Installation
 
@@ -34,7 +33,7 @@ pip install openinference-instrumentation-openai openai arize-otel
 - OpenRouter account and API key
 - Arize account with Space ID and API Key
 
-### Why OpenRouter Works with Arize
+### Why OpenRouter Works with Arize AX
 
 Arize's OpenInference auto-instrumentation works with OpenRouter because:
 
@@ -59,7 +58,7 @@ os.environ["OPENAI_API_KEY"] = "<OPENROUTER_API_KEY>"
 
 ### Simple LLM Call
 
-Initialize Arize and instrument your OpenAI client to automatically trace OpenRouter calls:
+Initialize Arize AX and instrument your OpenAI client to automatically trace OpenRouter calls:
 
 <CodeGroup>
 
@@ -123,7 +122,7 @@ OpenInference also provides instrumentation for the OpenAI JavaScript/TypeScript
 
 ### Learn More
 
-- **Arize OpenRouter Integration**: [https://arize.com/docs/ax/integrations/llm-providers/openrouter/openrouter-tracing](https://arize.com/docs/ax/integrations/llm-providers/openrouter/openrouter-tracing)
+- **Arize AX OpenRouter Integration**: [https://arize.com/docs/ax/integrations/llm-providers/openrouter/openrouter-tracing](https://arize.com/docs/ax/integrations/llm-providers/openrouter/openrouter-tracing)
 - **OpenRouter Quick Start Guide**: [https://openrouter.ai/docs/quickstart](https://openrouter.ai/docs/quickstart)
 - **OpenInference OpenAI Instrumentation**: [https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-openai](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-openai)
 {/* </llms-ignore> */}

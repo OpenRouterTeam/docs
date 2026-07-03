@@ -2,7 +2,6 @@
 title: Provider Logging
 description: Provider logging and data retention policies
 seoTitle: 'Provider Logging | Provider Data Retention'
-canonicalUrl: https://openrouter.ai/docs/guides/privacy/provider-logging
 og:site_name: OpenRouter Documentation
 og:title: 'Provider Logging - Provider Data Retention Policies'
 og:description: "Understand how AI providers handle logging and data retention when you use OpenRouter."
@@ -15,6 +14,8 @@ noindex: false
 nofollow: false
 icon: file-lines
 ---
+
+import { ProviderDataRetentionTable } from '/snippets/exports/ProviderDataRetentionTable.jsx';
 
 
 Each AI provider on OpenRouter has its own data handling policies for logging and retention. This page explains how to control which providers can access your data.
@@ -44,81 +45,7 @@ Providers also have their own data retention policies, often for compliance reas
 
 The full terms of service for each provider are linked from the provider's page, and aggregated in the [documentation](/guides/routing/provider-selection#terms-of-service).
 
-{/* <ProviderDataRetentionTable /> */}
-| Provider | Data Retention | Train on Prompts |
-| --- | --- | --- |
-| AI21 | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| AionLabs | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
-| AkashML | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Alibaba Cloud Int. | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| Amazon Bedrock | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Ambient | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| Anthropic | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
-| Arcee AI | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| AtlasCloud | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Azure | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Baidu Qianfan | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| Baseten | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Black Forest Labs | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
-| Cerebras | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Chutes | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| Clarifai | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Cloudflare | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| Cohere | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
-| Crucible | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| DeepInfra | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| DeepSeek | Prompts are retained for unknown period | <span className="text-red-500">✕</span> May train |
-| DekaLLM | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| DigitalOcean | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Fireworks | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Friendli | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| GMICloud | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| Google AI Studio | Retained for 55 days | <span className="text-green-500">✓</span> Does not train |
-| Google Vertex | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Groq | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Inception | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Inceptron | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Infermatic | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Inflection | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
-| io.net | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Ionstream | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Liquid | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| Mancer | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| MARA | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| MiniMax | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| Mistral | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
-| ModelRun | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Moonshot AI | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Morph | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Nebius Token Factory | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| NextBit | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| NovitaAI | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| NVIDIA | Prompts are retained for unknown period | <span className="text-red-500">✕</span> May train |
-| OpenAI | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| OpenInference | Prompts are retained for unknown period | <span className="text-red-500">✕</span> May train |
-| Parasail | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Perceptron | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Perplexity | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Phala | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Poolside | Prompts are retained for unknown period | <span className="text-red-500">✕</span> May train |
-| Recraft | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| Reka AI | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Relace | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| SambaNova | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Seed | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| SiliconFlow | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Sourceful | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
-| Stealth | Prompts are retained for unknown period | <span className="text-red-500">✕</span> May train |
-| StepFun | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| StreamLake | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Switchpoint | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| Together | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Upstage | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Venice | Zero retention | <span className="text-green-500">✓</span> Does not train |
-| Weights & Biases | Prompts are retained for unknown period | <span className="text-green-500">✓</span> Does not train |
-| xAI | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
-| Xiaomi | Retained for 30 days | <span className="text-green-500">✓</span> Does not train |
-| Z.ai | Zero retention | <span className="text-green-500">✓</span> Does not train |
+<ProviderDataRetentionTable />
 
 
 ## Enterprise EU in-region routing

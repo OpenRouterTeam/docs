@@ -2,7 +2,6 @@
 title: Uptime Optimization
 description: OpenRouter tracks provider availability
 seoTitle: 'Uptime Optimization | Maximize AI Model Availability'
-canonicalUrl: https://openrouter.ai/docs/guides/best-practices/uptime-optimization
 og:site_name: OpenRouter Documentation
 og:title: 'Uptime Optimization - Ensure Reliable AI Model Access'
 og:description: 'Learn how OpenRouter maximizes AI model uptime through real-time monitoring, intelligent routing, and automatic fallbacks across multiple providers.'
@@ -16,6 +15,8 @@ nofollow: false
 icon: chart-line
 ---
 
+import { UptimeChart } from '/snippets/exports/UptimeChart.jsx';
+
 OpenRouter continuously monitors the health and availability of AI providers to ensure maximum uptime for your applications. We track response times, error rates, and availability across all providers in real-time, and route based on this feedback.
 
 ## How It Works
@@ -24,15 +25,11 @@ OpenRouter tracks response times, error rates, and availability across all provi
 
 ## Uptime Example: Claude Sonnet 4.6
 
-<Frame>
-<iframe title="uptime comparison" src="https://us5.datadoghq.com/graph/embed?token=23e1e9ed45487d0dae73bff06d997d5afe2fe4c3da092edb123e23f6658da2a4&amp;legend=true&amp;height=320&amp;width=800" width="640" height="320" spellcheck="false"></iframe>
-</Frame>
+<UptimeChart permaslug="anthropic/claude-4.6-sonnet-20260217" />
 
 ## Uptime Example: GLM 5.1
 
-<Frame>
-<iframe title="uptime comparison" src="https://us5.datadoghq.com/graph/embed?token=96e992f1184628fe212b79bfe1f8093543de94dfe2604d2519f47c922c081274&legend=true&height=320&width=800" width="640" height="320" spellcheck="false"></iframe>
-</Frame>
+<UptimeChart permaslug="z-ai/glm-5.1-20260406" />
 
 ## Customizing Provider Selection
 

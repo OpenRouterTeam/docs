@@ -12,6 +12,11 @@
     "light": "/assets/logo.svg",
     "dark": "/assets/logo-white.svg"
   },
+  "seo": {
+    "metatags": {
+      "canonical": "https://openrouter.ai/docs"
+    }
+  },
   "navbar": {
     "links": [
       {
@@ -123,7 +128,9 @@
             "icon": "stars",
             "pages": [
               "guides/features/workspaces",
+              "guides/features/workspaces/workspace-budgets",
               "guides/features/presets",
+              "guides/features/classifiers",
               "guides/features/response-caching",
               "guides/features/tool-calling",
               {
@@ -136,7 +143,10 @@
                   "guides/features/server-tools/datetime",
                   "guides/features/server-tools/image-generation",
                   "guides/features/server-tools/apply-patch",
-                  "guides/features/server-tools/fusion"
+                  "guides/features/server-tools/bash",
+                  "guides/features/server-tools/fusion",
+                  "guides/features/server-tools/advisor",
+                  "guides/features/server-tools/subagent"
                 ]
               },
               {
@@ -160,6 +170,7 @@
                 "pages": [
                   "guides/features/guardrails",
                   "guides/features/guardrails/prompt-injection",
+                  "guides/features/guardrails/prompt-injection/allowlist",
                   "guides/features/guardrails/sensitive-info"
                 ]
               },
@@ -183,6 +194,7 @@
                   "guides/features/broadcast/newrelic",
                   "guides/features/broadcast/otel-collector",
                   "guides/features/broadcast/posthog",
+                  "guides/features/broadcast/raindrop",
                   "guides/features/broadcast/ramp",
                   "guides/features/broadcast/s3",
                   "guides/features/broadcast/sentry",
@@ -289,40 +301,8 @@
             "group": "TypeScript SDK",
             "icon": "code",
             "pages": [
-              "client-sdks/typescript/overview",
               {
-                "group": "API Reference",
-                "icon": "code",
-                "pages": [
-                  "client-sdks/typescript/api-reference/analytics",
-                  "client-sdks/typescript/api-reference/apikeys",
-                  "client-sdks/typescript/api-reference/byok",
-                  "client-sdks/typescript/api-reference/chat",
-                  "client-sdks/typescript/api-reference/credits",
-                  "client-sdks/typescript/api-reference/datasets",
-                  "client-sdks/typescript/api-reference/embeddings",
-                  "client-sdks/typescript/api-reference/endpoints",
-                  "client-sdks/typescript/api-reference/generations",
-                  "client-sdks/typescript/api-reference/guardrails",
-                  {
-                    "group": "Models",
-                    "icon": "cube",
-                    "pages": [
-                      "client-sdks/typescript/api-reference/models"
-                    ]
-                  },
-                  "client-sdks/typescript/api-reference/oauth",
-                  "client-sdks/typescript/api-reference/observability",
-                  "client-sdks/typescript/api-reference/organization",
-                  "client-sdks/typescript/api-reference/presets",
-                  "client-sdks/typescript/api-reference/providers",
-                  "client-sdks/typescript/api-reference/rerank",
-                  "client-sdks/typescript/api-reference/responses",
-                  "client-sdks/typescript/api-reference/stt",
-                  "client-sdks/typescript/api-reference/tts",
-                  "client-sdks/typescript/api-reference/videogeneration",
-                  "client-sdks/typescript/api-reference/workspaces"
-                ]
+                "sourceRef": "OpenRouterTeam/typescript-sdk"
               }
             ]
           },
@@ -330,40 +310,8 @@
             "group": "Python SDK",
             "icon": "code",
             "pages": [
-              "client-sdks/python/overview",
               {
-                "group": "API Reference",
-                "icon": "code",
-                "pages": [
-                  "client-sdks/python/api-reference/analytics",
-                  "client-sdks/python/api-reference/apikeys",
-                  "client-sdks/python/api-reference/byok",
-                  "client-sdks/python/api-reference/chat",
-                  "client-sdks/python/api-reference/credits",
-                  "client-sdks/python/api-reference/datasets",
-                  "client-sdks/python/api-reference/embeddings",
-                  "client-sdks/python/api-reference/endpoints",
-                  "client-sdks/python/api-reference/generations",
-                  "client-sdks/python/api-reference/guardrails",
-                  {
-                    "group": "Models",
-                    "icon": "cube",
-                    "pages": [
-                      "client-sdks/python/api-reference/models"
-                    ]
-                  },
-                  "client-sdks/python/api-reference/oauth",
-                  "client-sdks/python/api-reference/observability",
-                  "client-sdks/python/api-reference/organization",
-                  "client-sdks/python/api-reference/presets",
-                  "client-sdks/python/api-reference/providers",
-                  "client-sdks/python/api-reference/rerank",
-                  "client-sdks/python/api-reference/responses",
-                  "client-sdks/python/api-reference/stt",
-                  "client-sdks/python/api-reference/tts",
-                  "client-sdks/python/api-reference/videogeneration",
-                  "client-sdks/python/api-reference/workspaces"
-                ]
+                "sourceRef": "OpenRouterTeam/python-sdk"
               }
             ]
           },
@@ -372,38 +320,7 @@
             "icon": "code",
             "pages": [
               {
-                "group": "API Reference",
-                "icon": "code",
-                "pages": [
-                  "client-sdks/go/api-reference/analytics",
-                  "client-sdks/go/api-reference/apikeys",
-                  "client-sdks/go/api-reference/byok",
-                  "client-sdks/go/api-reference/chat",
-                  "client-sdks/go/api-reference/credits",
-                  "client-sdks/go/api-reference/datasets",
-                  "client-sdks/go/api-reference/embeddings",
-                  "client-sdks/go/api-reference/endpoints",
-                  "client-sdks/go/api-reference/generations",
-                  "client-sdks/go/api-reference/guardrails",
-                  {
-                    "group": "Models",
-                    "icon": "cube",
-                    "pages": [
-                      "client-sdks/go/api-reference/models"
-                    ]
-                  },
-                  "client-sdks/go/api-reference/oauth",
-                  "client-sdks/go/api-reference/observability",
-                  "client-sdks/go/api-reference/organization",
-                  "client-sdks/go/api-reference/presets",
-                  "client-sdks/go/api-reference/providers",
-                  "client-sdks/go/api-reference/rerank",
-                  "client-sdks/go/api-reference/responses",
-                  "client-sdks/go/api-reference/stt",
-                  "client-sdks/go/api-reference/tts",
-                  "client-sdks/go/api-reference/videogeneration",
-                  "client-sdks/go/api-reference/workspaces"
-                ]
+                "sourceRef": "OpenRouterTeam/go-sdk"
               }
             ]
           },
@@ -503,6 +420,7 @@
             "icon": "rocket",
             "pages": [
               "cookbook/get-started/quickstart",
+              "cookbook/get-started/migrate-to-openrouter",
               "cookbook/get-started/enterprise-quickstart",
               "cookbook/get-started/free-models-router-playground"
             ]
@@ -529,6 +447,8 @@
             "pages": [
               "cookbook/building-agents/hitl-tools",
               "cookbook/building-agents/long-horizon-agents",
+              "cookbook/building-agents/advisor-server-tool",
+              "cookbook/building-agents/subagent-server-tool",
               "cookbook/building-agents/create-agent-harness-tui",
               "cookbook/building-agents/create-headless-agent"
             ]
@@ -546,6 +466,13 @@
             ]
           },
           {
+            "group": "Image Generation",
+            "icon": "image",
+            "pages": [
+              "cookbook/image-generation/preset-enhanced-images"
+            ]
+          },
+          {
             "group": "Evaluate & Optimize",
             "icon": "flask",
             "pages": [
@@ -554,6 +481,7 @@
                 "group": "Model Migrations",
                 "icon": "arrow-right-arrow-left",
                 "pages": [
+                  "cookbook/evaluate-and-optimize/model-migrations/sonnet-5",
                   "cookbook/evaluate-and-optimize/model-migrations/claude-4-7",
                   "cookbook/evaluate-and-optimize/model-migrations/claude-4-6",
                   "cookbook/evaluate-and-optimize/model-migrations/gpt-5-4"
@@ -569,26 +497,950 @@
             "pages": [
               "cookbook/administration/activity-export",
               "cookbook/administration/api-key-rotation",
+              "cookbook/administration/analytics-cost-control",
               "cookbook/administration/crypto-api",
               "cookbook/administration/organization-management",
+              "cookbook/administration/tax-id",
               "cookbook/administration/usage-accounting",
               "cookbook/administration/user-tracking"
             ]
           }
         ]
-      },
-      {
-        "tab": "Changelog",
-        "icon": "clock-rotate-left",
-        "groups": [
-          {
-            "group": "Changelog",
-            "pages": [
-              "changelog"
-            ]
-          }
-        ]
       }
     ]
-  }
+  },
+  "redirects": [
+    {
+      "source": "/docs/quick-start",
+      "destination": "/docs/quickstart"
+    },
+    {
+      "source": "/docs/principles",
+      "destination": "/docs/guides/overview/principles"
+    },
+    {
+      "source": "/docs/models",
+      "destination": "/docs/guides/overview/models"
+    },
+    {
+      "source": "/docs/provider-routing",
+      "destination": "/docs/guides/routing/provider-selection"
+    },
+    {
+      "source": "/docs/model-routing/model-fallbacks",
+      "destination": "/docs/guides/routing/model-fallbacks"
+    },
+    {
+      "source": "/docs/model-routing/provider-routing",
+      "destination": "/docs/guides/routing/provider-selection"
+    },
+    {
+      "source": "/docs/model-routing",
+      "destination": "/docs/guides/routing/routers/auto-router"
+    },
+    {
+      "source": "/docs/features/model-routing",
+      "destination": "/docs/guides/routing/routers/auto-router"
+    },
+    {
+      "source": "/docs/guides/routing/auto-model-selection",
+      "destination": "/docs/guides/routing/routers/auto-router"
+    },
+    {
+      "source": "/docs/guides/features/model-routing",
+      "destination": "/docs/guides/routing/routers/auto-router"
+    },
+    {
+      "source": "/docs/features/privacy-and-logging",
+      "destination": "/docs/guides/privacy/provider-logging"
+    },
+    {
+      "source": "/docs/guides/privacy/logging",
+      "destination": "/docs/guides/privacy/provider-logging"
+    },
+    {
+      "source": "/docs/web-search",
+      "destination": "/docs/guides/features/plugins/web-search"
+    },
+    {
+      "source": "/docs/oauth",
+      "destination": "/docs/guides/overview/auth/oauth"
+    },
+    {
+      "source": "/docs/use-cases/oauth-pkce",
+      "destination": "/docs/guides/overview/auth/oauth"
+    },
+    {
+      "source": "/docs/features/management-api-keys",
+      "destination": "/docs/guides/overview/auth/management-api-keys"
+    },
+    {
+      "source": "/docs/auth/management-api-keys",
+      "destination": "/docs/guides/overview/auth/management-api-keys"
+    },
+    {
+      "source": "/docs/features/provisioning-api-keys",
+      "destination": "/docs/guides/overview/auth/management-api-keys"
+    },
+    {
+      "source": "/docs/guides/overview/auth/provisioning-api-keys",
+      "destination": "/docs/guides/overview/auth/management-api-keys"
+    },
+    {
+      "source": "/docs/api-keys",
+      "destination": "/docs/api/reference/authentication"
+    },
+    {
+      "source": "/docs/crypto-api",
+      "destination": "/docs/cookbook/administration/crypto-api"
+    },
+    {
+      "source": "/docs/requests",
+      "destination": "/docs/api/reference/overview"
+    },
+    {
+      "source": "/docs/responses",
+      "destination": "/docs/api/reference/responses/overview"
+    },
+    {
+      "source": "/docs/parameters",
+      "destination": "/docs/api/reference/parameters"
+    },
+    {
+      "source": "/docs/structured-outputs",
+      "destination": "/docs/guides/features/structured-outputs"
+    },
+    {
+      "source": "/docs/response-healing",
+      "destination": "/docs/guides/features/plugins/response-healing"
+    },
+    {
+      "source": "/docs/prompt-caching",
+      "destination": "/docs/guides/best-practices/prompt-caching"
+    },
+    {
+      "source": "/docs/transforms",
+      "destination": "/docs/guides/features/message-transforms"
+    },
+    {
+      "source": "/docs/errors",
+      "destination": "/docs/api/reference/errors"
+    },
+    {
+      "source": "/docs/limits",
+      "destination": "/docs/api/reference/limits"
+    },
+    {
+      "source": "/docs/integrations",
+      "destination": "/docs/guides/overview/auth/byok"
+    },
+    {
+      "source": "/docs/use-cases/byok",
+      "destination": "/docs/guides/overview/auth/byok"
+    },
+    {
+      "source": "/docs/frameworks",
+      "destination": "/docs/guides/community/frameworks-and-integrations-overview"
+    },
+    {
+      "source": "/docs/uptime",
+      "destination": "/docs/guides/best-practices/uptime-optimization"
+    },
+    {
+      "source": "/docs/features/images-and-pdfs",
+      "destination": "/docs/guides/overview/multimodal/overview"
+    },
+    {
+      "source": "/docs/api-reference/responses-alpha/overview",
+      "destination": "/docs/api/reference/responses/overview"
+    },
+    {
+      "source": "/docs/api-reference/responses-alpha/basic-usage",
+      "destination": "/docs/api/reference/responses/basic-usage"
+    },
+    {
+      "source": "/docs/api-reference/responses-alpha/reasoning",
+      "destination": "/docs/api/reference/responses/reasoning"
+    },
+    {
+      "source": "/docs/api-reference/responses-alpha/tool-calling",
+      "destination": "/docs/api/reference/responses/tool-calling"
+    },
+    {
+      "source": "/docs/api-reference/responses-alpha/web-search",
+      "destination": "/docs/api/reference/responses/web-search"
+    },
+    {
+      "source": "/docs/api-reference/responses-alpha/error-handling",
+      "destination": "/docs/api/reference/responses/error-handling"
+    },
+    {
+      "source": "/docs/sdks/typescript/reference",
+      "destination": "/docs/client-sdks/typescript"
+    },
+    {
+      "source": "/docs/api-reference/overview",
+      "destination": "/docs/api/reference/overview"
+    },
+    {
+      "source": "/docs/api-reference/streaming",
+      "destination": "/docs/api/reference/streaming"
+    },
+    {
+      "source": "/docs/api-reference/limits",
+      "destination": "/docs/api/reference/limits"
+    },
+    {
+      "source": "/docs/api-reference/errors",
+      "destination": "/docs/api/reference/errors"
+    },
+    {
+      "source": "/docs/api-reference/authentication",
+      "destination": "/docs/api/reference/authentication"
+    },
+    {
+      "source": "/docs/api-reference/parameters",
+      "destination": "/docs/api/reference/parameters"
+    },
+    {
+      "source": "/docs/api-reference/responses/overview",
+      "destination": "/docs/api/reference/responses/overview"
+    },
+    {
+      "source": "/docs/api/embeddings",
+      "destination": "/docs/api/reference/embeddings"
+    },
+    {
+      "source": "/docs/api/authentication",
+      "destination": "/docs/api/reference/authentication"
+    },
+    {
+      "source": "/docs/api/errors",
+      "destination": "/docs/api/reference/errors"
+    },
+    {
+      "source": "/docs/api-reference/embeddings",
+      "destination": "/docs/api/reference/embeddings"
+    },
+    {
+      "source": "/docs/api-reference/chat-completion",
+      "destination": "/docs/api/api-reference/chat/send-chat-completion-request"
+    },
+    {
+      "source": "/docs/api-reference/get-credits",
+      "destination": "/docs/api/api-reference/credits/get-credits"
+    },
+    {
+      "source": "/docs/api-reference/get-a-generation",
+      "destination": "/docs/api/api-reference/generations/get-generation"
+    },
+    {
+      "source": "/docs/api-reference/models/get-models",
+      "destination": "/docs/api/api-reference/models/get-models"
+    },
+    {
+      "source": "/docs/api-reference/embeddings/create-embeddings",
+      "destination": "/docs/api/api-reference/embeddings/create-embeddings"
+    },
+    {
+      "source": "/docs/api-reference/api-keys/create-api-key",
+      "destination": "/docs/api/api-reference/api-keys/create-keys"
+    },
+    {
+      "source": "/docs/features/latency-and-performance",
+      "destination": "/docs/guides/best-practices/latency-and-performance"
+    },
+    {
+      "source": "/docs/features/prompt-caching",
+      "destination": "/docs/guides/best-practices/prompt-caching"
+    },
+    {
+      "source": "/docs/features/uptime-optimization",
+      "destination": "/docs/guides/best-practices/uptime-optimization"
+    },
+    {
+      "source": "/docs/features/provider-routing",
+      "destination": "/docs/guides/routing/provider-selection"
+    },
+    {
+      "source": "/docs/features/variants/free",
+      "destination": "/docs/guides/routing/model-variants/free"
+    },
+    {
+      "source": "/docs/features/variants/nitro",
+      "destination": "/docs/guides/routing/model-variants/nitro"
+    },
+    {
+      "source": "/docs/features/variants/thinking",
+      "destination": "/docs/guides/routing/model-variants/thinking"
+    },
+    {
+      "source": "/docs/features/app-attribution",
+      "destination": "/docs/app-attribution"
+    },
+    {
+      "source": "/docs/rankings",
+      "destination": "/docs/app-attribution"
+    },
+    {
+      "source": "/docs/features/zdr",
+      "destination": "/docs/guides/features/zdr"
+    },
+    {
+      "source": "/docs/features/exacto",
+      "destination": "/docs/guides/routing/model-variants/exacto"
+    },
+    {
+      "source": "/docs/features/exacto-variant",
+      "destination": "/docs/guides/routing/model-variants/exacto"
+    },
+    {
+      "source": "/docs/features/multimodal/image-generation",
+      "destination": "/docs/guides/overview/multimodal/image-generation"
+    },
+    {
+      "source": "/docs/features/multimodal/images",
+      "destination": "/docs/guides/overview/multimodal/image-generation"
+    },
+    {
+      "source": "/docs/features/multimodal/videos",
+      "destination": "/docs/guides/overview/multimodal/videos"
+    },
+    {
+      "source": "/docs/features/multimodal/pdfs",
+      "destination": "/docs/guides/overview/multimodal/pdfs"
+    },
+    {
+      "source": "/docs/features/multimodal/audio",
+      "destination": "/docs/guides/overview/multimodal/audio"
+    },
+    {
+      "source": "/docs/features/multimodal/video-generation",
+      "destination": "/docs/guides/overview/multimodal/video-generation"
+    },
+    {
+      "source": "/docs/features/multimodal/tts",
+      "destination": "/docs/guides/overview/multimodal/tts"
+    },
+    {
+      "source": "/docs/community/open-ai-sdk",
+      "destination": "/docs/guides/community/openai-sdk"
+    },
+    {
+      "source": "/docs/community/lang-chain",
+      "destination": "/docs/guides/community/langchain"
+    },
+    {
+      "source": "/docs/community/pydantic-ai",
+      "destination": "/docs/guides/community/pydantic-ai"
+    },
+    {
+      "source": "/docs/community/live-kit",
+      "destination": "/docs/guides/community/livekit"
+    },
+    {
+      "source": "/docs/use-cases/user-tracking",
+      "destination": "/docs/cookbook/administration/user-tracking"
+    },
+    {
+      "source": "/docs/use-cases/reasoning-tokens",
+      "destination": "/docs/guides/best-practices/reasoning-tokens"
+    },
+    {
+      "source": "/docs/use-cases/mcp-servers",
+      "destination": "/docs/cookbook/coding-agents/mcp-servers"
+    },
+    {
+      "source": "/docs/use-cases/usage-accounting",
+      "destination": "/docs/cookbook/administration/usage-accounting"
+    },
+    {
+      "source": "/docs/use-cases/for-providers",
+      "destination": "/docs/guides/community/for-providers"
+    },
+    {
+      "source": "/docs/use-cases/crypto-api",
+      "destination": "/docs/cookbook/administration/crypto-api"
+    },
+    {
+      "source": "/docs/use-cases/organization-management",
+      "destination": "/docs/cookbook/administration/organization-management"
+    },
+    {
+      "source": "/docs/use-cases/providers",
+      "destination": "/docs/guides/community/for-providers"
+    },
+    {
+      "source": "/docs/guides/coding-agents/agent-multiplexer",
+      "destination": "/docs/cookbook/coding-agents/automatic-code-review"
+    },
+    {
+      "source": "/docs/guides/guides/openclaw-integration",
+      "destination": "/docs/cookbook/coding-agents/openclaw-integration"
+    },
+    {
+      "source": "/docs/guides/guides/activity-export",
+      "destination": "/docs/cookbook/administration/activity-export"
+    },
+    {
+      "source": "/docs/guides/guides/api-key-rotation",
+      "destination": "/docs/cookbook/administration/api-key-rotation"
+    },
+    {
+      "source": "/docs/guides/guides/crypto-api",
+      "destination": "/docs/cookbook/administration/crypto-api"
+    },
+    {
+      "source": "/docs/guides/guides/organization-management",
+      "destination": "/docs/cookbook/administration/organization-management"
+    },
+    {
+      "source": "/docs/guides/guides/usage-accounting",
+      "destination": "/docs/cookbook/administration/usage-accounting"
+    },
+    {
+      "source": "/docs/guides/guides/user-tracking",
+      "destination": "/docs/cookbook/administration/user-tracking"
+    },
+    {
+      "source": "/docs/guides/guides/claude-code-integration",
+      "destination": "/docs/cookbook/coding-agents/claude-code-integration"
+    },
+    {
+      "source": "/docs/guides/guides/codex-cli",
+      "destination": "/docs/cookbook/coding-agents/codex-cli"
+    },
+    {
+      "source": "/docs/guides/guides/mcp-servers",
+      "destination": "/docs/cookbook/coding-agents/mcp-servers"
+    },
+    {
+      "source": "/docs/guides/guides/distillation",
+      "destination": "/docs/cookbook/evaluate-and-optimize/distillation"
+    },
+    {
+      "source": "/docs/guides/guides/red-teaming",
+      "destination": "/docs/cookbook/evaluate-and-optimize/red-teaming"
+    },
+    {
+      "source": "/docs/guides/guides/model-migrations",
+      "destination": "/docs/cookbook/evaluate-and-optimize/model-migrations"
+    },
+    {
+      "source": "/docs/guides/guides/enterprise-quickstart",
+      "destination": "/docs/cookbook/get-started/enterprise-quickstart"
+    },
+    {
+      "source": "/docs/guides/guides/for-providers",
+      "destination": "/docs/guides/community/for-providers"
+    },
+    {
+      "source": "/docs/guides/guides/free-models-router-playground",
+      "destination": "/docs/cookbook/get-started/free-models-router-playground"
+    },
+    {
+      "source": "/docs/guides/guides/model-migrations/claude-4-6-opus",
+      "destination": "/docs/cookbook/evaluate-and-optimize/model-migrations/claude-4-6"
+    },
+    {
+      "source": "/docs/guides/guides/model-migrations/claude-4-6",
+      "destination": "/docs/cookbook/evaluate-and-optimize/model-migrations/claude-4-6"
+    },
+    {
+      "source": "/docs/guides/guides/model-migrations/gpt-5-4",
+      "destination": "/docs/cookbook/evaluate-and-optimize/model-migrations/gpt-5-4"
+    },
+    {
+      "source": "/docs/guides/guides/administration/activity-export",
+      "destination": "/docs/cookbook/administration/activity-export"
+    },
+    {
+      "source": "/docs/guides/guides/administration/api-key-rotation",
+      "destination": "/docs/cookbook/administration/api-key-rotation"
+    },
+    {
+      "source": "/docs/guides/guides/administration/crypto-api",
+      "destination": "/docs/cookbook/administration/crypto-api"
+    },
+    {
+      "source": "/docs/guides/guides/administration/organization-management",
+      "destination": "/docs/cookbook/administration/organization-management"
+    },
+    {
+      "source": "/docs/guides/guides/administration/usage-accounting",
+      "destination": "/docs/cookbook/administration/usage-accounting"
+    },
+    {
+      "source": "/docs/guides/guides/administration/user-tracking",
+      "destination": "/docs/cookbook/administration/user-tracking"
+    },
+    {
+      "source": "/docs/guides/guides/coding-agents/claude-code-integration",
+      "destination": "/docs/cookbook/coding-agents/claude-code-integration"
+    },
+    {
+      "source": "/docs/guides/guides/coding-agents/codex-cli",
+      "destination": "/docs/cookbook/coding-agents/codex-cli"
+    },
+    {
+      "source": "/docs/guides/guides/coding-agents/junie",
+      "destination": "/docs/cookbook/coding-agents/junie"
+    },
+    {
+      "source": "/docs/guides/guides/coding-agents/mcp-servers",
+      "destination": "/docs/cookbook/coding-agents/mcp-servers"
+    },
+    {
+      "source": "/docs/guides/guides/coding-agents/openclaw-integration",
+      "destination": "/docs/cookbook/coding-agents/openclaw-integration"
+    },
+    {
+      "source": "/docs/guides/guides/coding-agents/claude-desktop-integration",
+      "destination": "/docs/cookbook/coding-agents/claude-desktop-integration"
+    },
+    {
+      "source": "/docs/guides/guides/evaluate-and-optimize/distillation",
+      "destination": "/docs/cookbook/evaluate-and-optimize/distillation"
+    },
+    {
+      "source": "/docs/guides/guides/evaluate-and-optimize/model-migrations",
+      "destination": "/docs/cookbook/evaluate-and-optimize/model-migrations"
+    },
+    {
+      "source": "/docs/guides/guides/evaluate-and-optimize/model-migrations/claude-4-6",
+      "destination": "/docs/cookbook/evaluate-and-optimize/model-migrations/claude-4-6"
+    },
+    {
+      "source": "/docs/guides/guides/evaluate-and-optimize/model-migrations/gpt-5-4",
+      "destination": "/docs/cookbook/evaluate-and-optimize/model-migrations/gpt-5-4"
+    },
+    {
+      "source": "/docs/guides/guides/evaluate-and-optimize/red-teaming",
+      "destination": "/docs/cookbook/evaluate-and-optimize/red-teaming"
+    },
+    {
+      "source": "/docs/guides/guides/get-started/enterprise-quickstart",
+      "destination": "/docs/cookbook/get-started/enterprise-quickstart"
+    },
+    {
+      "source": "/docs/guides/guides/get-started/for-providers",
+      "destination": "/docs/guides/community/for-providers"
+    },
+    {
+      "source": "/docs/guides/guides/get-started/free-models-router-playground",
+      "destination": "/docs/cookbook/get-started/free-models-router-playground"
+    },
+    {
+      "source": "/docs/guides/guides/report-feedback",
+      "destination": "/docs/guides/overview/report-feedback"
+    },
+    {
+      "source": "/docs/enterprise-quickstart",
+      "destination": "/docs/cookbook/get-started/enterprise-quickstart"
+    },
+    {
+      "source": "/docs/organization-management",
+      "destination": "/docs/cookbook/administration/organization-management"
+    },
+    {
+      "source": "/docs/models/utils/retryconfig.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/operations/createkeyslimitreset.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/operations/updatekeyslimitreset.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/reasoning.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/chatgenerationparamsresponseformatunion.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/chatgenerationparamsstop.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/chatstreamoptions.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/completioncreateparamsstop.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/streamoptions.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/completioncreateparamsresponseformatunion.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/operations/createembeddingsprovider.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/operations/encodingformat.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/operations/exchangeauthcodeforapikeycodechallengemethod.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/operations/createauthkeyscodecodechallengemethod.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/operations/getparametersprovider.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/openresponsesinput.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/openairesponsestoolchoiceunion.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/openresponsesresponsetext.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/openresponsesreasoningconfig.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/openairesponsesprompt.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/servicetier.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/truncation.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/components/provider.md",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/sdks/components/components/tooldefinitionjsonfunction",
+      "destination": "/docs/client-sdks/typescript"
+    },
+    {
+      "source": "/docs/sdks/operations/operations/getgenerationdata",
+      "destination": "/docs/client-sdks/typescript"
+    },
+    {
+      "source": "/docs/features/web-search",
+      "destination": "/docs/guides/features/plugins/web-search"
+    },
+    {
+      "source": "/docs/sdks/python/reference",
+      "destination": "/docs/client-sdks/python"
+    },
+    {
+      "source": "/docs/api-reference/responses/basic-usage",
+      "destination": "/docs/api/reference/responses/basic-usage"
+    },
+    {
+      "source": "/docs/api-reference/responses/error-handling",
+      "destination": "/docs/api/reference/responses/error-handling"
+    },
+    {
+      "source": "/docs/api-reference/responses/reasoning",
+      "destination": "/docs/api/reference/responses/reasoning"
+    },
+    {
+      "source": "/docs/api-reference/responses/tool-calling",
+      "destination": "/docs/api/reference/responses/tool-calling"
+    },
+    {
+      "source": "/docs/api-reference/responses/web-search",
+      "destination": "/docs/api/reference/responses/web-search"
+    },
+    {
+      "source": "/docs/best-practices/reasoning-tokens",
+      "destination": "/docs/guides/best-practices/reasoning-tokens"
+    },
+    {
+      "source": "/docs/guides/features/prompt-caching",
+      "destination": "/docs/guides/best-practices/prompt-caching"
+    },
+    {
+      "source": "/docs/community/effect-ai-sdk",
+      "destination": "/docs/guides/community/effect-ai-sdk"
+    },
+    {
+      "source": "/docs/community/frameworks-and-integrations-overview",
+      "destination": "/docs/guides/community/frameworks-and-integrations-overview"
+    },
+    {
+      "source": "/docs/community/langchain",
+      "destination": "/docs/guides/community/langchain"
+    },
+    {
+      "source": "/docs/community/langfuse",
+      "destination": "/docs/guides/community/langfuse"
+    },
+    {
+      "source": "/docs/community/mastra",
+      "destination": "/docs/guides/community/mastra"
+    },
+    {
+      "source": "/docs/community/openai-sdk",
+      "destination": "/docs/guides/community/openai-sdk"
+    },
+    {
+      "source": "/docs/community/pydanticai",
+      "destination": "/docs/guides/community/pydantic-ai"
+    },
+    {
+      "source": "/docs/community/vercel-ai-sdk",
+      "destination": "/docs/guides/community/vercel-ai-sdk"
+    },
+    {
+      "source": "/docs/community/xcode",
+      "destination": "/docs/guides/community/xcode"
+    },
+    {
+      "source": "/docs/community/frameworks",
+      "destination": "/docs/guides/community/frameworks-and-integrations-overview"
+    },
+    {
+      "source": "/docs/features/message-transforms",
+      "destination": "/docs/guides/features/message-transforms"
+    },
+    {
+      "source": "/docs/features/multimodal/overview",
+      "destination": "/docs/guides/overview/multimodal/overview"
+    },
+    {
+      "source": "/docs/features/presets",
+      "destination": "/docs/guides/features/presets"
+    },
+    {
+      "source": "/docs/features/structured-outputs",
+      "destination": "/docs/guides/features/structured-outputs"
+    },
+    {
+      "source": "/docs/features/response-healing",
+      "destination": "/docs/guides/features/plugins/response-healing"
+    },
+    {
+      "source": "/docs/guides/features/web-search",
+      "destination": "/docs/guides/features/plugins/web-search"
+    },
+    {
+      "source": "/docs/guides/features/response-healing",
+      "destination": "/docs/guides/features/plugins/response-healing"
+    },
+    {
+      "source": "/docs/guides/community/pydanticai",
+      "destination": "/docs/guides/community/pydantic-ai"
+    },
+    {
+      "source": "/docs/guides/crypto-api",
+      "destination": "/docs/cookbook/administration/crypto-api"
+    },
+    {
+      "source": "/docs/guides/privacy/zdr",
+      "destination": "/docs/guides/features/zdr"
+    },
+    {
+      "source": "/docs/guides/reasoning-tokens",
+      "destination": "/docs/guides/best-practices/reasoning-tokens"
+    },
+    {
+      "source": "/docs/guides/user-tracking",
+      "destination": "/docs/cookbook/administration/user-tracking"
+    },
+    {
+      "source": "/docs/overview/models",
+      "destination": "/docs/guides/overview/models"
+    },
+    {
+      "source": "/docs/overview/principles",
+      "destination": "/docs/guides/overview/principles"
+    },
+    {
+      "source": "/docs/routing/auto-model-selection",
+      "destination": "/docs/guides/routing/routers/auto-router"
+    },
+    {
+      "source": "/docs/features/byok",
+      "destination": "/docs/guides/overview/auth/byok"
+    },
+    {
+      "source": "/docs/guides/features/routers/body-builder",
+      "destination": "/docs/guides/routing/routers/body-builder"
+    },
+    {
+      "source": "/docs/guides/features/routers/auto-router",
+      "destination": "/docs/guides/routing/routers/auto-router"
+    },
+    {
+      "source": "/docs/routing/model-variants",
+      "destination": "/docs/guides/routing/model-variants/free"
+    },
+    {
+      "source": "/docs/guides/features/broadcast/firehose",
+      "destination": "/docs/guides/features/broadcast"
+    },
+    {
+      "source": "/docs/sdks/call-model/text-generation",
+      "destination": "/docs/agent-sdk/call-model/text-generation"
+    },
+    {
+      "source": "/docs/sdks/call-model/streaming",
+      "destination": "/docs/agent-sdk/call-model/streaming"
+    },
+    {
+      "source": "/docs/sdks/call-model/next-turn-params",
+      "destination": "/docs/agent-sdk/call-model/next-turn-params"
+    },
+    {
+      "source": "/docs/sdks/call-model/tools",
+      "destination": "/docs/agent-sdk/call-model/tools"
+    },
+    {
+      "source": "/docs/sdks/call-model/message-formats",
+      "destination": "/docs/agent-sdk/call-model/message-formats"
+    },
+    {
+      "source": "/docs/sdks/call-model/stop-conditions",
+      "destination": "/docs/agent-sdk/call-model/stop-conditions"
+    },
+    {
+      "source": "/docs/sdks/call-model/dynamic-parameters",
+      "destination": "/docs/agent-sdk/call-model/dynamic-parameters"
+    },
+    {
+      "source": "/docs/sdks/call-model/examples/skills-loader",
+      "destination": "/docs/agent-sdk/call-model/tool-examples/skills-loader"
+    },
+    {
+      "source": "/docs/sdks/call-model/examples/weather-tool",
+      "destination": "/docs/agent-sdk/call-model/tool-examples/weather-tool"
+    },
+    {
+      "source": "/docs/sdks/call-model/api-reference",
+      "destination": "/docs/agent-sdk/call-model/api-reference"
+    },
+    {
+      "source": "/docs/sdks/call-model/overview",
+      "destination": "/docs/agent-sdk/call-model"
+    },
+    {
+      "source": "/docs/sdks",
+      "destination": "/docs/client-sdks/overview"
+    },
+    {
+      "source": "/docs/sdks/typescript/call-model/:slug*",
+      "destination": "/docs/agent-sdk/call-model/:slug*"
+    },
+    {
+      "source": "/docs/sdks/typescript/call-model",
+      "destination": "/docs/agent-sdk/call-model"
+    },
+    {
+      "source": "/docs/sdks/typescript/:slug*",
+      "destination": "/docs/client-sdks/typescript/:slug*"
+    },
+    {
+      "source": "/docs/sdks/python/:slug*",
+      "destination": "/docs/client-sdks/python/:slug*"
+    },
+    {
+      "source": "/docs/sdks/go/:slug*",
+      "destination": "/docs/client-sdks/go/:slug*"
+    },
+    {
+      "source": "/docs/sdks/agentic-usage",
+      "destination": "/docs/agent-sdk/usage-for-agents"
+    },
+    {
+      "source": "/docs/agent-sdk/agentic-usage",
+      "destination": "/docs/agent-sdk/usage-for-agents"
+    },
+    {
+      "source": "/docs/sdks/devtools",
+      "destination": "/docs/agent-sdk/devtools"
+    },
+    {
+      "source": "/docs/sdks/agent-migration",
+      "destination": "/docs/agent-sdk/agent-migration"
+    },
+    {
+      "source": "/docs/core-sdk/:slug*",
+      "destination": "/docs/client-sdks/:slug*"
+    },
+    {
+      "source": "/docs/core-sdk",
+      "destination": "/docs/client-sdks/overview"
+    },
+    {
+      "source": "/docs/inference-sdk/:slug*",
+      "destination": "/docs/client-sdks/:slug*"
+    },
+    {
+      "source": "/docs/guides/administration/:slug*",
+      "destination": "/docs/cookbook/administration/:slug*"
+    },
+    {
+      "source": "/docs/guides/coding-agents/:slug*",
+      "destination": "/docs/cookbook/coding-agents/:slug*"
+    },
+    {
+      "source": "/docs/guides/evaluate-and-optimize/:slug*",
+      "destination": "/docs/cookbook/evaluate-and-optimize/:slug*"
+    },
+    {
+      "source": "/docs/guides/get-started/:slug*",
+      "destination": "/docs/cookbook/get-started/:slug*"
+    },
+    {
+      "source": "/docs/cookbook/overview",
+      "destination": "/docs/cookbook/get-started/quickstart"
+    },
+    {
+      "source": "/docs/cookbook/get-started/sovereign-ai",
+      "destination": "/docs/guides/features/sovereign-ai"
+    },
+    {
+      "source": "/docs/cookbook/get-started/for-providers",
+      "destination": "/docs/guides/community/for-providers"
+    },
+    {
+      "source": "/docs/cookbook/get-started/stripe-projects",
+      "destination": "/docs/guides/overview/stripe-projects"
+    },
+    {
+      "source": "/docs/cookbook/coding-agents/create-agent-harness-tui",
+      "destination": "/docs/cookbook/building-agents/create-agent-harness-tui"
+    },
+    {
+      "source": "/docs/cookbook/coding-agents/create-headless-agent",
+      "destination": "/docs/cookbook/building-agents/create-headless-agent"
+    },
+    {
+      "source": "/docs/changelog/:slug*",
+      "destination": "/docs/quickstart"
+    },
+    {
+      "source": "/docs/changelog",
+      "destination": "/docs/quickstart"
+    }
+  ]
 }
