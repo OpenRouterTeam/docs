@@ -2,7 +2,6 @@
 title: MCP
 description: Connect your AI coding tools to OpenRouter over MCP
 seoTitle: 'OpenRouter MCP Server | OpenRouter'
-canonicalUrl: https://openrouter.ai/docs/guides/overview/mcp-server
 og:site_name: OpenRouter Documentation
 og:title: 'OpenRouter MCP Server - OpenRouter'
 og:description: 'Plug OpenRouter into the AI tools you already use. Pull live model, pricing, credit, and ranking data, search the docs, and send test messages, all from your editor.'
@@ -73,7 +72,20 @@ Use this MCP while you build. It lets your coding assistant pull live OpenRouter
   </Tab>
 
   <Tab title="Claude Desktop / Web">
-    Go to **Settings → Connectors → OpenRouter MCP** and log in to run the OAuth flow.
+    OpenRouter isn't in Claude's connector directory, so add it as a custom connector:
+
+    1. Go to **Settings > Connectors > Customize > Connectors**, click the **+**, then choose **Add custom connector**.
+
+       ![Claude's Connectors page with the + menu open and Add custom connector highlighted](/assets/guides/overview/claude-connectors-menu.png)
+
+    2. Enter the **Name** `OpenRouter MCP` and set the **Remote MCP server URL** to `https://mcp.openrouter.ai/mcp`. Leave the OAuth fields blank.
+    3. Click **Add**, then open the connector and **Connect** to run the OAuth flow.
+
+       ![Claude's Add custom connector dialog with the Name set to OpenRouter MCP and the Remote MCP server URL set to https://mcp.openrouter.ai/mcp](/assets/guides/overview/claude-add-custom-connector.png)
+
+    <Note>
+      Some organizations don't allow adding custom connectors, so this option may not appear for everyone. If you don't see it, talk to your admin.
+    </Note>
   </Tab>
 </Tabs>
 

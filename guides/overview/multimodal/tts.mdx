@@ -2,7 +2,6 @@
 title: Text-to-Speech
 description: How to generate speech audio from text with OpenRouter models
 seoTitle: 'OpenRouter Text-to-Speech (TTS) | Complete Documentation'
-canonicalUrl: https://openrouter.ai/docs/guides/overview/multimodal/tts
 og:site_name: OpenRouter Documentation
 og:title: 'OpenRouter Text-to-Speech - Complete Documentation'
 og:description: 'Generate speech audio from text using AI models through the OpenRouter API.'
@@ -199,6 +198,35 @@ You can pass provider-specific options using the `provider` parameter. Options a
   }
 }
 ```
+
+#### Azure (MAI-Voice-2)
+
+Azure TTS uses SSML internally, but this is fully abstracted — you only need the standard parameters. The `voice` parameter takes an Azure voice name (e.g., `en-US-Harper:MAI-Voice-2`), and `speed` is supported (range: 0.5–2.0).
+
+For expressive synthesis, pass `style` and optionally `styledegree` via provider options:
+
+```json lines
+{
+  "model": "microsoft/mai-voice-2",
+  "input": "Welcome to the event!",
+  "voice": "en-US-Harper:MAI-Voice-2",
+  "response_format": "mp3",
+  "speed": 1.0,
+  "provider": {
+    "options": {
+      "azure": {
+        "style": "cheerful",
+        "styledegree": 1.2
+      }
+    }
+  }
+}
+```
+
+| Option | Type | Description |
+|---|---|---|
+| `style` | string | Expressive speaking style (e.g., `cheerful`, `sad`, `angry`, `excited`). Available styles depend on the voice. |
+| `styledegree` | number | Intensity of the style effect. Default is `1.0`; higher values increase expressiveness. |
 
 ## Response Format
 

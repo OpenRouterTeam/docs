@@ -2,7 +2,6 @@
 title: Fusion
 description: Multi-model deliberation as a server tool
 seoTitle: 'Fusion Server Tool | Multi-model AI Analysis with OpenRouter'
-canonicalUrl: https://openrouter.ai/docs/guides/features/server-tools/fusion
 og:site_name: OpenRouter Documentation
 og:title: 'Fusion Server Tool - Multi-model Analysis for Any Model'
 og:description: 'Let any model invoke an expert panel and judge to surface consensus, contradictions, coverage gaps, unique insights, and blind spots.'
@@ -128,7 +127,7 @@ Pass an optional `parameters` object on the tool entry to override defaults:
 | `max_tool_calls` | `8` | Max tool-calling steps each panel model and the judge may take in their `openrouter:web_search` / `openrouter:web_fetch` loop before they must return text. Range 1–16. |
 | `max_completion_tokens` | Provider default | Max output tokens (including reasoning) per inner panel/judge call. Keeps reasoning-heavy models from exhausting their budget before producing visible text. |
 | `reasoning` | Provider default | Reasoning config forwarded to the panel and judge calls — an object with optional `effort` and `max_tokens`. |
-| `temperature` | Provider default | Sampling temperature (`0`–`2`) forwarded to the panel and judge calls. |
+| `temperature` | Provider default | Temperature (`0`–`2`) forwarded to the panel calls. The judge always runs at temperature 0. |
 
 ## What the tool returns
 

@@ -1,15 +1,85 @@
+{/*
+  AUTO-GENERATED — DO NOT EDIT BY HAND.
+  Generated from monorepo source by scripts/generate-docs-constants.ts.
+  Run `bun run generate:docs:constants` to regenerate.
+  projects/docs must not import from other packages, so these constants are
+  emitted here as a standalone snippet and refreshed on merge to main.
+*/}
+
 export const API_KEY_REF = '<OPENROUTER_API_KEY>';
 
 export const HTTPStatus = {
+  S100_Continue: 100,
+  S101_Switching_Protocols: 101,
+  S102_Processing: 102,
   S200_OK: 200,
+  S201_Created: 201,
+  S202_Accepted: 202,
+  S203_Non_Authoritative_Information: 203,
+  S204_No_Content: 204,
+  S205_Reset_Content: 205,
+  S206_Partial_Content: 206,
+  S207_Multi_Status: 207,
+  S208_Already_Reported: 208,
+  S300_Multiple_Choices: 300,
+  S301_Moved_Permanently: 301,
+  S302_Found: 302,
+  S303_See_Other: 303,
+  S304_Not_Modified: 304,
+  S305_Use_Proxy: 305,
+  S307_Temporary_Redirect: 307,
+  S308_Permanent_Redirect: 308,
   S400_Bad_Request: 400,
   S401_Unauthorized: 401,
   S402_Payment_Required: 402,
   S403_Forbidden: 403,
+  S404_Not_Found: 404,
+  S405_Method_Not_Allowed: 405,
+  S406_Not_Acceptable: 406,
+  S407_Proxy_Authentication_Required: 407,
   S408_Request_Timeout: 408,
+  S409_Conflict: 409,
+  S410_Gone: 410,
+  S411_Length_Required: 411,
+  S412_Precondition_Failed: 412,
+  S413_Payload_Too_Large: 413,
+  S414_URI_Too_Long: 414,
+  S415_Unsupported_Media_Type: 415,
+  S416_Range_Not_Satisfiable: 416,
+  S417_Expectation_Failed: 417,
+  S418_Im_a_teapot: 418,
+  S421_Misdirected_Request: 421,
+  S422_Unprocessable_Entity: 422,
+  S423_Locked: 423,
+  S424_Failed_Dependency: 424,
+  S425_Too_Early: 425,
+  S426_Upgrade_Required: 426,
+  S428_Precondition_Required: 428,
   S429_Too_Many_Requests: 429,
+  S431_Request_Header_Fields_Too_Large: 431,
+  S451_Unavailable_For_Legal_Reasons: 451,
+  S498_Invalid_Token: 498,
+  S499_Client_Closed_Request: 499,
+  S500_Internal_Server_Error: 500,
+  S501_Not_Implemented: 501,
   S502_Bad_Gateway: 502,
   S503_Service_Unavailable: 503,
+  S504_Gateway_Timeout: 504,
+  S505_HTTP_Version_Not_Supported: 505,
+  S506_Variant_Also_Negotiates: 506,
+  S507_Insufficient_Storage: 507,
+  S508_Loop_Detected: 508,
+  S510_Not_Extended: 510,
+  S511_Network_Authentication_Required: 511,
+  S520_Web_Server_Returned_Unknown_Error: 520,
+  S521_Web_Server_Is_Down: 521,
+  S522_Connection_Timed_Out: 522,
+  S523_Origin_Unreachable: 523,
+  S524_A_Timeout_Occurred: 524,
+  S525_SSL_Handshake_Failed: 525,
+  S526_Invalid_SSL_Certificate: 526,
+  S529_Overloaded: 529,
+  S530_Origin_DNS_Error: 530,
 };
 
 export const sep = ':';
@@ -25,7 +95,7 @@ export const Model = {
 export const PDFParserEngine = {
   MistralOCR: 'mistral-ocr',
   CloudflareAI: 'cloudflare-ai',
-  Native: 'native'
+  Native: 'native',
 };
 
 export const DEFAULT_PDF_ENGINE = 'mistral-ocr';
@@ -65,17 +135,13 @@ export const MOONSHOT_CACHE_READ_MULTIPLIER = '0.25';
 export const BYOK_FEE_MONTHLY_REQUEST_THRESHOLD = '1M';
 
 export const openRouterBYOKFee = {
-  fraction: '5'
-}
-
-export const FREE_MODEL_CREDITS_THRESHOLD = '10';
-
-export const FREE_MODEL_NO_CREDITS_RPD = '50';
+  fraction: '5',
+};
 
 export const getTotalFeeString = (type, value) => {
-  if (type === 'stripe') return "5.5% ($0.80 minimum)";
-  if (type === 'coinbase') return "5%";
-}
+  if (type === 'stripe') return '5.5% ($0.80 minimum)';
+  if (type === 'coinbase') return '5%';
+};
 
 export const anthropicMaxMessagesCount = 1000;
 

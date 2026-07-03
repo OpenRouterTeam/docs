@@ -1,5 +1,0 @@
-### Product changes
-
-- **BYOK key test in logs** -- Failed [BYOK](/guides/overview/auth/byok) requests in the [Activity](https://openrouter.ai/activity) page now show a warning and a "Test Key" button that replays the route with your current BYOK config, uses the exact logged request if [I/O Logging](/guides/features/input-output-logging) is enabled, and displays the full provider error message.
-- **`supported_voices` in models API** -- Text-to-speech models now expose their available voices via the `supported_voices` field in the [models API](/api/api-reference/models/list-all-models-and-their-properties) response.
-- **Video generation error detection** -- Video generation jobs that fail upstream (e.g. content moderation rejection, invalid input) now fail immediately instead of retrying until timeout. Previously, certain provider error responses could cause the polling loop to retry before surfacing the failure.

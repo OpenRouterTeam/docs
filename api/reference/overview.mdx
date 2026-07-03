@@ -2,7 +2,6 @@
 title: API Reference
 description: An overview of OpenRouter's API
 seoTitle: 'OpenRouter API Reference | Complete API Documentation'
-canonicalUrl: https://openrouter.ai/docs/api/reference/overview
 og:site_name: OpenRouter Documentation
 og:title: 'OpenRouter API Reference - Complete Documentation'
 og:description: "Comprehensive guide to OpenRouter's API. Learn about request/response schemas, authentication, parameters, and integration with multiple AI model providers."
@@ -355,7 +354,7 @@ type ResponseUsage = {
   is_byok?: boolean;
   /** Detailed cost breakdown (optional) */
   cost_details?: {
-    upstream_inference_cost?: number;             // Only shown for BYOK requests
+    upstream_inference_cost?: number;
     upstream_inference_prompt_cost: number;
     upstream_inference_completions_cost: number;
   };

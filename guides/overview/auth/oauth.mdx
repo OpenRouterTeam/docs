@@ -2,7 +2,6 @@
 title: OAuth PKCE
 description: Connect your users to OpenRouter
 seoTitle: 'OAuth PKCE | Secure Authentication for OpenRouter'
-canonicalUrl: https://openrouter.ai/docs/guides/overview/auth/oauth
 og:site_name: OpenRouter Documentation
 og:title: 'OAuth PKCE - Secure User Authentication'
 og:description: 'Implement secure user authentication with OpenRouter using OAuth PKCE. Complete guide to setting up and managing OAuth authentication flows.'
@@ -84,9 +83,13 @@ const generatedCodeChallenge = await createSHA256CodeChallenge(codeVerifier);
 
 #### Localhost Apps
 
-If your app is a local-first app or otherwise doesn't have a public URL, it is recommended to test with `http://localhost:3000` as the callback and referrer URLs.
+Localhost callbacks are supported on **any port**. This is useful for CLI tools and local-first apps that bind to an arbitrary free OS port for the OAuth callback (e.g. `http://localhost:51423/callback`).
 
-When moving to production, replace the localhost/private referrer URL with a public GitHub repo or a link to your project website.
+<Note>
+Localhost apps are assigned a fixed title matching the host and port (e.g. `localhost:3000`) but will not appear in the OpenRouter marketplace or rankings. If you want a custom app name and marketplace presence, use a public URL as the callback instead.
+</Note>
+
+When moving to production, replace the localhost callback URL with a public URL (your project website or a GitHub repo link) to get full app attribution.
 
 ### Step 2: Exchange the code for a user-controlled API key
 

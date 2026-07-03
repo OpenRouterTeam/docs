@@ -1,9 +1,0 @@
-### Product changes
-
-- **Model comparison page** -- Compare up to five models side by side on pricing, context length, and benchmark scores with the new [comparison tool](https://openrouter.ai/compare), including a "Highlight best" toggle to call out the top value in each row.
-- **Redesigned model detail API tab** -- The API tab on each [model page](https://openrouter.ai/models) now walks you through numbered steps (get an API key, make a request, enable streaming) with an endpoint reference and interactive parameters table.
-- **Rankings daily dataset endpoint** -- A new `GET /api/v1/datasets/rankings-daily` endpoint returns the top-50 models by daily token volume, matching the data behind the public [rankings chart](https://openrouter.ai/rankings). [SDK reference](/client-sdks/typescript/api-reference/datasets)
-- **IP allowlist enforcement** -- API keys configured with an IP allowlist now actively block requests from non-allowlisted IPs with a `403` response, upgrading the previous observe-only mode. [Docs](/guides/features/workspaces)
-- **Auto router `cost_quality_tradeoff` parameter** -- The auto router now accepts a `cost_quality_tradeoff` integer (0–10) instead of the previous binary tradeoff, giving finer control over the cost-versus-quality balance when routing requests. [Docs](/guides/routing/routers/auto-router)
-- **Fixed: dashboard not refreshing on account switch** -- Switching between accounts in the dashboard now correctly remounts the page so data reflects the selected account.
-- **Fixed: Bedrock BYOK region prefix mismatch** -- Bring-your-own-key Bedrock requests now normalize the inference profile region prefix to match the customer's configured region, fixing "invalid model identifier" errors when the endpoint and key regions differed.

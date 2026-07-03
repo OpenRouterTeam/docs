@@ -2,7 +2,6 @@
 title: Errors and Debugging
 description: API Errors and Debugging
 seoTitle: 'API Error Handling and Debugging | OpenRouter Documentation'
-canonicalUrl: https://openrouter.ai/docs/api/reference/errors
 og:site_name: OpenRouter Documentation
 og:title: 'API Error Handling and Debugging - Complete Guide'
 og:description: 'Learn how to handle errors and debug requests in OpenRouter API interactions. Comprehensive guide to error codes, messages, debugging options, and best practices.'
@@ -156,14 +155,47 @@ The `openrouter_metadata` object follows the same shape as on successful respons
 
 ## Provider Errors
 
-If the model provider encounters an error, the `error.metadata` will contain information about the issue. The shape of the metadata is as follows:
+OpenRouter normalizes every upstream provider error into the stable, typed
+`error_type` vocabulary documented under [Typed Error Codes](#typed-error-codes).
+The same `error_type` values describe what went wrong whether the provider
+error arrives in a non-streaming response body or as a mid-stream SSE event.
+Native protocol codes (the Anthropic `error.type`, the Responses `error.code`)
+are best-effort and can differ between formats — `error_type` is the field to
+rely on across all of them.
 
-```typescript lines
-type ProviderErrorMetadata = {
-  provider_name: string; // The name of the provider that encountered the error
-  raw: unknown; // The raw error from the provider
-};
+For Chat Completions, a provider error that interrupts generation carries
+`error_type` inside `error.metadata`:
+
+```json lines
+{
+  "error": {
+    "code": 429,
+    "message": "Rate limit exceeded",
+    "metadata": {
+      "error_type": "rate_limit_exceeded",
+      "provider_code": "rate_limited"
+    }
+  }
+}
 ```
+
+The same value is carried on mid-stream errors and on the Anthropic and
+Responses skins — see [Skin-Specific Error Formats](#skin-specific-error-formats)
+for the exact wire location in each format.
+
+### Masking and raw provider details
+
+When a request fails with a `500`, the `message` is replaced with a generic
+string and `provider_code` and `openrouter_metadata` are omitted, but
+`error_type` is still present (`server`).
+
+For non-500 errors, the upstream provider's own error code is surfaced in
+`error.metadata.provider_code` when available. Opt-in routing context (which
+provider was selected, fallback attempts, etc.) is carried in the
+`openrouter_metadata` object when the request sets `X-OpenRouter-Metadata`
+— it follows the same shape as on successful responses (routing-summary
+fields only; see
+[Pipeline Stages](/features/router-metadata#pipeline-stages)).
 
 ## When No Content is Generated
 
@@ -184,13 +216,33 @@ When using streaming mode (`stream: true`), errors are handled differently depen
 
 ### Pre-Stream Errors
 
-Errors that occur before any tokens are sent follow the standard error format above, with appropriate HTTP status codes.
+Errors that occur before any tokens are sent follow the standard error format above, with appropriate HTTP status codes. At this stage the HTTP response hasn't been committed yet, so OpenRouter can:
+
+- Return a proper HTTP error status (4xx/5xx)
+- Silently retry with a different provider endpoint if [fallback routing](/guides/features/provider-routing) is enabled
+- Apply rate-limit or auth checks before any work begins
+
+You'll see pre-stream errors for issues like invalid API keys, malformed requests, or when every available provider endpoint is exhausted before streaming starts.
 
 ### Mid-Stream Errors
 
-Errors that occur after streaming has begun are sent as Server-Sent Events (SSE) with a unified structure that includes both the error details and a completion choice:
+Once the first token has been written to the client, the HTTP `200 OK` status and headers are already committed — they can't be changed. If the provider fails at this point, OpenRouter **cannot** silently fail over to another provider because partial content has already been delivered to your application. The error must arrive in-band as an SSE event.
 
-```typescript lines
+Common causes of mid-stream errors:
+
+- **Provider disconnect** — the upstream connection drops after partial output (network issue, provider crash, load balancer timeout)
+- **Provider timeout** — the model stops responding mid-generation and the read deadline expires
+- **Token limit hit during generation** — the model reaches `max_tokens` or the context window fills up while producing output
+- **Output content filter** — a content moderation system flags generated text after some of it was already streamed
+- **Provider overload** — the upstream returns a rate-limit or capacity error after beginning to stream
+
+<Note>
+If an error occurs before any tokens are written — even on a streaming request — OpenRouter can still retry with a backup provider transparently. Mid-stream errors only happen when partial content has already been committed to your stream, making failover impossible.
+</Note>
+
+Mid-stream errors are sent as Server-Sent Events (SSE) with a unified structure that includes both the error details and a completion choice:
+
+```typescript expandable lines
 type MidStreamError = {
   id: string;
   object: 'chat.completion.chunk';
@@ -198,8 +250,12 @@ type MidStreamError = {
   model: string;
   provider: string;
   error: {
-    code: string | number;
+    code: number;       // HTTP status code (e.g. 400, 429, 502)
     message: string;
+    metadata?: {
+      error_type: string;     // Typed error code — see table below
+      provider_code?: string; // Original upstream error code (omitted on 500s)
+    };
   };
   choices: [{
     index: 0;
@@ -212,133 +268,234 @@ type MidStreamError = {
 
 Example SSE data:
 ```text lines
-data: {"id":"cmpl-abc123","object":"chat.completion.chunk","created":1234567890,"model":"openai/gpt-4o","provider":"openai","error":{"code":"server_error","message":"Provider disconnected"},"choices":[{"index":0,"delta":{"content":""},"finish_reason":"error"}]}
+data: {"id":"gen-abc123","object":"chat.completion.chunk","created":1234567890,"model":"openai/gpt-4o","provider":"OpenAI","error":{"code":429,"message":"Rate limit exceeded","metadata":{"error_type":"rate_limit_exceeded"}},"choices":[{"index":0,"delta":{"content":""},"finish_reason":"error"}]}
 ```
 
 Key characteristics:
 - The error appears at the **top level** alongside standard response fields
+- `error.metadata.error_type` carries a typed code you can switch on programmatically — see [Typed Error Codes](#typed-error-codes) for the full list
 - A `choices` array is included with `finish_reason: "error"` to properly terminate the stream
 - The HTTP status remains 200 OK since headers were already sent
 - The stream is terminated after this event
+- On 500-class errors, `error.message` is replaced with a generic string and `provider_code` is omitted to prevent leaking upstream details
 
-## OpenAI Responses API Error Events
+## Typed Error Codes
 
-The OpenAI Responses API (`/api/v1/responses`) uses specific event types for streaming errors:
+When a provider error reaches your application, OpenRouter tags it with a
+canonical `error_type` string — both on the non-streaming response body and
+on mid-stream SSE events. Use this value, not the HTTP status code alone, to
+programmatically distinguish error categories. It is stable across all three
+API skins even when the native protocol code is lossy.
 
-### Error Event Types
+Where `error_type` appears depends on the skin and path:
 
-1. **`response.failed`** - Official failure event
+- **Chat Completions**: `error.metadata.error_type` — on the mid-stream error
+  chunk (see [Mid-Stream Errors](#mid-stream-errors)) and on the non-streaming
+  response when a provider error interrupts generation.
+- **Anthropic Messages**: `error.error_type` on the SSE `error` event and the
+  non-streaming error envelope.
+- **Responses**: top-level `error_type` on the failed response, for both the
+  streaming `response.failed` event and the non-streaming JSON body.
+
+The HTTP status each `error_type` maps to is listed in the tables below.
+
+### Token and Length Limits
+
+| `error_type` | HTTP Status | Description |
+|---|---|---|
+| `context_length_exceeded` | {HTTPStatus.S400_Bad_Request} | The combined input and output tokens exceed the model's context window. |
+| `max_tokens_exceeded` | {HTTPStatus.S400_Bad_Request} | Generation stopped because `max_tokens` (or `max_completion_tokens`) was reached. |
+| `token_limit_exceeded` | {HTTPStatus.S400_Bad_Request} | A token budget enforced by OpenRouter (e.g. credit-based cap) was exceeded. |
+| `string_too_long` | {HTTPStatus.S400_Bad_Request} | A single string field in the request (system prompt, user message, etc.) exceeded the provider's per-field character limit. |
+
+### Authentication and Authorization
+
+| `error_type` | HTTP Status | Description |
+|---|---|---|
+| `authentication` | {HTTPStatus.S401_Unauthorized} | The API key is missing, invalid, or revoked. |
+| `permission_denied` | {HTTPStatus.S403_Forbidden} | The key is valid but lacks the required permission or the request was blocked by a [guardrail](/guides/features/guardrails). |
+| `payment_required` | {HTTPStatus.S402_Payment_Required} | The account or API key has insufficient credits. [Add credits](https://openrouter.ai/credits) and retry. |
+
+### Rate Limiting and Availability
+
+| `error_type` | HTTP Status | Description |
+|---|---|---|
+| `rate_limit_exceeded` | {HTTPStatus.S429_Too_Many_Requests} | Request- or token-level rate limit hit. Respect the `Retry-After` header before retrying. |
+| `provider_overloaded` | {HTTPStatus.S503_Service_Unavailable} | The upstream provider is temporarily overloaded. Retry after a short delay. |
+| `provider_unavailable` | {HTTPStatus.S502_Bad_Gateway} | The upstream provider returned an invalid or empty response. OpenRouter may auto-retry with another provider if fallback routing is enabled. |
+
+### Request Validation
+
+| `error_type` | HTTP Status | Description |
+|---|---|---|
+| `invalid_request` | {HTTPStatus.S400_Bad_Request} | A request parameter is malformed or missing. |
+| `invalid_prompt` | {HTTPStatus.S400_Bad_Request} | A specific message in the `messages` array is invalid (e.g. unsupported role, empty content). |
+| `not_found` | {HTTPStatus.S404_Not_Found} | The requested resource (model, file, etc.) does not exist. |
+| `precondition_failed` | {HTTPStatus.S412_Precondition_Failed} | A precondition header (e.g. `If-Match`) was not satisfied. |
+| `payload_too_large` | {HTTPStatus.S413_Payload_Too_Large} | The request body exceeds the maximum allowed size. |
+| `unprocessable` | {HTTPStatus.S422_Unprocessable_Entity} | The request is syntactically valid but semantically unprocessable. |
+
+### Content Policy
+
+| `error_type` | HTTP Status | Description |
+|---|---|---|
+| `content_policy_violation` | {HTTPStatus.S400_Bad_Request} | The input or output was flagged by a content filter (provider- or OpenRouter-level). |
+| `refusal` | {HTTPStatus.S400_Bad_Request} | The model explicitly refused to comply with the request (e.g. safety refusal). |
+
+### Image Errors
+
+| `error_type` | HTTP Status | Description |
+|---|---|---|
+| `invalid_image` | {HTTPStatus.S400_Bad_Request} | An image in the request is corrupt or unreadable. |
+| `image_too_large` | {HTTPStatus.S400_Bad_Request} | An image exceeds the provider's maximum file size or pixel dimensions. |
+| `image_too_small` | {HTTPStatus.S400_Bad_Request} | An image is below the provider's minimum pixel dimensions. |
+| `unsupported_image_format` | {HTTPStatus.S400_Bad_Request} | The image format is not supported by the provider. |
+| `image_not_found` | {HTTPStatus.S404_Not_Found} | The referenced image URL or file ID could not be resolved. |
+| `image_download_failed` | {HTTPStatus.S400_Bad_Request} | OpenRouter could not download the image from the provided URL (DNS failure, timeout, non-200 response, etc.). |
+
+### Generic
+
+| `error_type` | HTTP Status | Description |
+|---|---|---|
+| `server` | {HTTPStatus.S500_Internal_Server_Error} | An unexpected internal error. The upstream error message is masked on this type. |
+| `timeout` | {HTTPStatus.S504_Gateway_Timeout} | The provider did not respond within the allowed time. |
+| `unmapped` | {HTTPStatus.S500_Internal_Server_Error} | An upstream error that doesn't map to any known category. `error.metadata.provider_code` may contain the original code. |
+
+## Skin-Specific Error Formats
+
+OpenRouter exposes three API skins. Each translates the same internal provider error types into its own wire format, for non-streaming responses and in-stream errors alike. In every case `error_type` is the stable field; the wire location differs per skin.
+
+### Chat Completions (`/api/v1/chat/completions`)
+
+Mid-stream errors appear as a `chat.completion.chunk` with a top-level `error` object (shape shown [above](#mid-stream-errors)). The `error.metadata.error_type` field carries the typed code.
+
+For non-streaming requests where a provider error occurs, the error is embedded in the final response alongside any partial content:
+
+```json lines
+{
+  "choices": [{
+    "message": { "role": "assistant", "content": "partial output..." },
+    "finish_reason": "error",
+    "error": {
+      "code": 502,
+      "message": "Provider disconnected mid-stream",
+      "metadata": { "error_type": "provider_unavailable" }
+    }
+  }]
+}
+```
+
+### Responses API (`/api/v1/responses`)
+
+The Responses API maps internal error types to the OpenAI Responses error code set. The mapping is narrower — many distinct internal types collapse to `server_error` — so the precise reason is preserved in a top-level `error_type` field on the response, outside the native `error` object:
+
+| Internal `error_type` | Responses API `code` |
+|---|---|
+| `rate_limit_exceeded` | `rate_limit_exceeded` |
+| `context_length_exceeded`, `invalid_request` | `invalid_prompt` |
+| `content_policy_violation` | `image_content_policy_violation` |
+| `authentication`, `provider_overloaded`, `provider_unavailable`, `timeout`, `server` | `server_error` |
+| All others (including `invalid_prompt`) | `server_error` |
+
+Both the streaming terminal event and the non-streaming JSON body carry the canonical `error_type` at the top level of the response object. For example, an authentication failure collapses to the native `server_error` code but keeps `error_type: "authentication"`:
+
+```json lines
+{
+  "id": "resp_abc123",
+  "status": "failed",
+  "error": { "code": "server_error", "message": "Invalid credentials" },
+  "error_type": "authentication"
+}
+```
+
+Streaming errors surface as one of three SSE event types, each wrapping the same response object:
+
+1. **`response.failed`** — terminal event when the response could not complete:
    ```json lines
    {
      "type": "response.failed",
      "response": {
        "id": "resp_abc123",
        "status": "failed",
-       "error": {
-         "code": "server_error",
-         "message": "Internal server error"
-       }
+       "error": { "code": "server_error", "message": "Internal server error" },
+       "error_type": "server"
      }
    }
    ```
 
-2. **`response.error`** - Error during response generation
+2. **`response.error`** — error during response generation:
    ```json lines
    {
      "type": "response.error",
-     "error": {
-       "code": "rate_limit_exceeded",
-       "message": "Rate limit exceeded"
-     }
+     "error": { "code": "rate_limit_exceeded", "message": "Rate limit exceeded" }
    }
    ```
 
-3. **`error`** - Plain error event (undocumented but sent by OpenAI)
+3. **`error`** — plain error event (matches upstream OpenAI behavior):
    ```json lines
    {
      "type": "error",
-     "error": {
-       "code": "invalid_api_key",
-       "message": "Invalid API key provided"
-     }
+     "error": { "code": "invalid_api_key", "message": "Invalid API key provided" }
    }
    ```
 
-### Error Code Transformations
+#### Error Code Transformations
 
-The Responses API transforms certain error codes into successful completions with specific finish reasons:
+Certain token/length errors are transformed into successful completions instead of failures:
 
-| Error Code | Transformed To | Finish Reason |
-|------------|----------------|---------------|
+| `error_type` | Transformed To | Finish Reason |
+|---|---|---|
 | `context_length_exceeded` | Success | `length` |
 | `max_tokens_exceeded` | Success | `length` |
 | `token_limit_exceeded` | Success | `length` |
 | `string_too_long` | Success | `length` |
 
-This allows for graceful handling of limit-based errors without treating them as failures.
+This allows graceful handling of limit-based errors without treating them as failures.
 
-## API-Specific Error Handling
+### Anthropic Messages (`/api/v1/messages`)
 
-Different OpenRouter API endpoints handle errors in distinct ways:
+The Anthropic Messages skin maps internal types to Anthropic-native error type strings:
 
-### OpenAI Chat Completions API (`/api/v1/chat/completions`)
+| Internal `error_type` | Anthropic `error.type` |
+|---|---|
+| `authentication` | `authentication_error` |
+| `rate_limit_exceeded` | `rate_limit_error` |
+| `context_length_exceeded`, `content_policy_violation`, `invalid_request` | `invalid_request_error` |
+| `provider_overloaded` | `overloaded_error` |
+| `provider_unavailable`, `timeout`, `server` | `api_error` |
+| All others | `api_error` |
 
-- **No tokens sent**: Returns standalone `ErrorResponse`
-- **Some tokens sent**: Embeds error information within the `choices` array of the final response
-- **Streaming**: Errors sent as SSE events with top-level error field
+Because the native `error.type` is lossy (many internal types collapse to `api_error`), the canonical `error_type` is added inside the `error` object alongside it. This holds for both the non-streaming error envelope and mid-stream SSE `error` events.
 
-### OpenAI Responses API (`/api/v1/responses`)
+Non-streaming error envelope:
 
-- **Error transformations**: Certain errors become successful responses with appropriate finish reasons
-- **Streaming events**: Uses typed events (`response.failed`, `response.error`, `error`)
-- **Graceful degradation**: Handles provider-specific errors with fallback behavior
-
-### Error Response Type Definitions
-
-```typescript expandable lines
-// Standard error response
-interface ErrorResponse {
-  error: {
-    code: number;
-    message: string;
-    metadata?: Record<string, unknown>;
-  };
+```json lines
+{
+  "type": "error",
+  "error": {
+    "type": "authentication_error",
+    "message": "Invalid credentials",
+    "error_type": "authentication"
+  }
 }
+```
 
-// Mid-stream error with completion data
-interface StreamErrorChunk {
-  error: {
-    code: string | number;
-    message: string;
-  };
-  choices: Array<{
-    delta: { content: string };
-    finish_reason: 'error';
-    native_finish_reason: string;
-  }>;
-}
+Mid-stream errors are emitted as an SSE `error` event with the same shape:
 
-// Responses API error event
-interface ResponsesAPIErrorEvent {
-  type: 'response.failed' | 'response.error' | 'error';
-  error?: {
-    code: string;
-    message: string;
-  };
-  response?: {
-    id: string;
-    status: 'failed';
-    error: {
-      code: string;
-      message: string;
-    };
-  };
+```json lines
+{
+  "type": "error",
+  "error": {
+    "type": "overloaded_error",
+    "message": "Provider is temporarily overloaded",
+    "error_type": "provider_overloaded"
+  }
 }
 ```
 
 ## Debugging
 
-OpenRouter provides a `debug` option that allows you to inspect the exact request body that was sent to the upstream provider. This is useful for understanding how OpenRouter transforms your request parameters to work with different providers.
+OpenRouter provides a `debug` option that allows you to inspect the exact request body that was sent to the upstream provider. This works with both the Chat Completions API (`/api/v1/chat/completions`) and the Responses API (`/api/v1/responses`). Useful for understanding how OpenRouter transforms your request parameters for different providers.
 
 ### Debug Option Shape
 
@@ -353,6 +510,8 @@ type DebugOptions = {
 ### Usage
 
 To enable debug output, include the `debug` parameter in your request:
+
+#### Chat Completions
 
 <CodeGroup>
 
@@ -427,9 +586,78 @@ for line in response.iter_lines():
 
 </CodeGroup>
 
+#### Responses API
+
+<CodeGroup>
+
+```typescript title="TypeScript" expandable lines
+fetch('https://openrouter.ai/api/v1/responses', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <OPENROUTER_API_KEY>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'anthropic/claude-haiku-4.5',
+    stream: true,
+    input: 'Hello!',
+    debug: {
+      echo_upstream_body: true,
+    },
+  }),
+});
+
+const text = await response.text();
+
+for (const line of text.split('\n')) {
+  if (!line.startsWith('data: ')) continue;
+
+  const data = line.slice(6);
+  if (data === '[DONE]') break;
+
+  const parsed = JSON.parse(data);
+
+  if (parsed.type === 'response.debug') {
+    console.log('\nDebug:', JSON.stringify(parsed.debug, null, 2));
+  }
+}
+```
+
+```python title="Python" expandable lines
+import requests
+import json
+
+response = requests.post(
+  url="https://openrouter.ai/api/v1/responses",
+  headers={
+    "Authorization": "Bearer <OPENROUTER_API_KEY>",
+    "Content-Type": "application/json",
+  },
+  data=json.dumps({
+    "model": "anthropic/claude-haiku-4.5",
+    "stream": True,
+    "input": "Hello!",
+    "debug": {
+      "echo_upstream_body": True
+    }
+  }),
+  stream=True
+)
+
+for line in response.iter_lines():
+  if line:
+    text = line.decode('utf-8')
+    if 'response.debug' in text:
+      print(text)
+```
+
+</CodeGroup>
+
 ### Debug Response Format
 
-When `debug.echo_upstream_body` is set to `true`, OpenRouter will send a debug chunk as the **first chunk** in the streaming response. This chunk will have an empty `choices` array and include a `debug` field containing the transformed request body:
+#### Chat Completions
+
+When `debug.echo_upstream_body` is set to `true`, OpenRouter sends a debug chunk as the **first chunk** in the streaming response. This chunk has an empty `choices` array and includes a `debug` field with the transformed request body:
 
 ```json expandable lines
 {
@@ -456,12 +684,34 @@ When `debug.echo_upstream_body` is set to `true`, OpenRouter will send a debug c
 }
 ```
 
+#### Responses API
+
+On the Responses API, debug data arrives as a `response.debug` SSE event:
+
+```json lines
+{
+  "type": "response.debug",
+  "debug": {
+    "echo_upstream_body": {
+      "model": "claude-haiku-4-5-20251001",
+      "messages": [
+        { "role": "user", "content": "Hello!" }
+      ],
+      "stream": true,
+      "max_tokens": 64000,
+      "temperature": 1
+    }
+  },
+  "sequence_number": 0
+}
+```
+
 ### Important Notes
 
 <Warning>
-**Streaming Chat Completions Only**
+**Streaming Only**
 
-  The debug option **only works with streaming mode** (`stream: true`) for the Chat Completions API. Non-streaming requests and Responses API requests will ignore the debug parameter.
+  The debug option **only works with streaming mode** (`stream: true`). Non-streaming requests will ignore the debug parameter.
 </Warning>
 
 <Warning>
