@@ -69,6 +69,31 @@ Both hit the same pipeline. The model alias is simpler — it auto-injects the t
 
 In both cases, the model decides when to call `openrouter:fusion`. For prompts that don't need deliberation, it answers directly — including invoking any other tools you've defined. Add `tool_choice: "required"` to force fusion on every request.
 
+## Fast preset model: `openrouter/fusion-flash`
+
+`openrouter/fusion-flash` is a separately-listed model that runs the fusion pipeline with the `general-fast` preset pre-selected — a latency-homogeneous panel tuned for fast agentic turns. When you don't pin your own fusion config, these two requests behave the same:
+
+<CodeGroup>
+
+```json title="Fusion Flash"
+{
+  "model": "openrouter/fusion-flash",
+  "messages": [{ "role": "user", "content": "..." }]
+}
+```
+
+```json title="Explicit preset"
+{
+  "model": "openrouter/fusion",
+  "plugins": [{ "id": "fusion", "preset": "general-fast" }],
+  "messages": [{ "role": "user", "content": "..." }]
+}
+```
+
+</CodeGroup>
+
+The model pins the preset as a default and gets its own entry in `/api/v1/models` and its own usage attribution in your activity feed. Anything you pass explicitly wins: a `fusion` plugin config with its own `preset`, `analysis_models`, or `model` overrides the implied `general-fast`. Variant suffixes (`openrouter/fusion-flash:free`) parse the same way they do on `openrouter/fusion`.
+
 ## Quick start
 
 <CodeGroup>
