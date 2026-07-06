@@ -254,7 +254,7 @@ Control output dimensions with `resolution`, `aspect_ratio`, or the convenience 
 
 - `resolution` &mdash; normalized tier (`512`, `1K`, `2K`, `4K`). Concrete pixel dimensions are derived per-provider.
 - `aspect_ratio` &mdash; normalized ratio. Pass `auto` to let the provider choose. Common values include `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`, `4:5`, `5:4`, and extended ratios like `1:2`, `2:1`, `1:4`, `4:1`, `1:8`, `8:1`, `9:21`, `21:9`. Providers clamp to their supported subset — check the model's `supported_parameters` for accepted values.
-- `size` &mdash; convenience shorthand. Pass a tier (`"2K"`) or explicit pixels (`"2048x2048"`) and it gets normalized for the provider. Interchangeable with `resolution` + `aspect_ratio`; conflicting values are rejected.
+- `size` &mdash; convenience shorthand. Pass a tier (`"2K"`) or explicit pixels (`"2048x2048"`) and it gets normalized for the provider. A tier size is equivalent to setting `resolution` and combines with `aspect_ratio`. An explicit pixel size is authoritative &mdash; a mismatched `resolution` or `aspect_ratio` alongside it is rejected with a 400.
 
 Check the model's `supported_parameters` to see which values each endpoint accepts.
 
@@ -271,7 +271,7 @@ Check the model's `supported_parameters` to see which values each endpoint accep
 ```
 
 - `quality` &mdash; `auto`, `low`, `medium`, or `high`. Providers without a quality knob ignore this.
-- `output_format` &mdash; `png`, `jpeg`, or `webp`.
+- `output_format` &mdash; `png`, `jpeg`, `webp`, or `svg` (vectorization models only; SVG markup is base64-encoded in `b64_json`).
 - `background` &mdash; `auto`, `transparent`, or `opaque`. `transparent` requires an alpha-capable format (png or webp).
 - `output_compression` &mdash; 0&ndash;100 for webp/jpeg. Ignored for png.
 
@@ -454,7 +454,7 @@ curl -N -X POST "https://openrouter.ai/api/v1/images" \
 | `aspect_ratio` | string | No | Aspect ratio (`1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `1:4`, `4:1`, etc.) |
 | `size` | string | No | Convenience shorthand &mdash; a tier or explicit pixels (`"2048x2048"`) |
 | `quality` | string | No | `auto`, `low`, `medium`, or `high` |
-| `output_format` | string | No | `png`, `jpeg`, or `webp` |
+| `output_format` | string | No | `png`, `jpeg`, `webp`, or `svg` |
 | `background` | string | No | `auto`, `transparent`, or `opaque` |
 | `output_compression` | integer | No | Compression level (0&ndash;100) for webp/jpeg |
 | `seed` | integer | No | Seed for deterministic generation (where supported) |
