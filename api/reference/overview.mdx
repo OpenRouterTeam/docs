@@ -27,33 +27,6 @@ The complete OpenRouter API is documented using the OpenAPI specification. You c
 
 These specifications can be used with tools like [Swagger UI](https://swagger.io/tools/swagger-ui/), [Postman](https://www.postman.com/), or any OpenAPI-compatible code generator to explore the API or generate client libraries.
 
-## Base URL and endpoints
-
-Every request goes to the OpenRouter base URL, followed by the endpoint path — never to a model-specific URL. If you're migrating from another provider's native SDK (Google Gemini, Vertex AI, etc.), the URL and body shape are different from what you're used to.
-
-- **Base URL**: `https://openrouter.ai/api/v1` (no trailing slash, no model name appended)
-- **Chat completions**: `POST https://openrouter.ai/api/v1/chat/completions`
-- **Authentication**: `Authorization: Bearer <OPENROUTER_API_KEY>` header — not a `?key=` query parameter
-- **Model selection**: the model slug (for example `google/gemini-2.5-flash`) goes in the JSON body as `"model": "..."`, not in the URL path
-
-<Warning>
-**Migrating from Google AI Studio or the Gemini API?**
-
-OpenRouter's Chat Completions endpoint uses the OpenAI request shape, not Gemini's native shape. Before you send a request, translate:
-
-| Gemini native | OpenRouter (OpenAI-compatible) |
-| --- | --- |
-| URL: `.../models/{model}:generateContent?key=...` | URL: `.../api/v1/chat/completions` (model in body) |
-| Header/query: `?key=<GOOGLE_KEY>` | Header: `Authorization: Bearer <OPENROUTER_KEY>` |
-| Body: `contents: [{ role, parts: [{ text }] }]` | Body: `messages: [{ role, content }]` |
-| Body: `generationConfig: { maxOutputTokens, ... }` | Body: top-level `max_tokens`, `temperature`, ... |
-| Roles: `user`, `model` | Roles: `user`, `assistant`, `system` |
-
-Sending Gemini-shaped requests to `/api/v1/chat/completions` will return `404 Not Found` (if the model slug is embedded in the URL) or a validation error (if the body uses `contents`/`parts`). See the [Quickstart](/quickstart) for the correct request shape in Python, TypeScript, and curl.
-</Warning>
-
-To browse available model slugs, see [openrouter.ai/models](https://openrouter.ai/models) or query the [Models API](/api/api-reference/models/list-all-models-and-their-properties). You can also look up a single model — including alias resolution — via `GET /api/v1/model/{author}/{slug}` (see [Models](/guides/overview/models#single-model-lookup)).
-
 ## Requests
 
 ### Completions Request Format
