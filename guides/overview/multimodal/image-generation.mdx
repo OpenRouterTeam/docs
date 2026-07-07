@@ -443,6 +443,17 @@ curl -N -X POST "https://openrouter.ai/api/v1/images" \
 </CodeGroup>
 </Template>
 
+## Billing and Cancellation
+
+Image generation billing is **all-or-nothing**. A generation is either completed and billed in full, or it fails and is not billed &mdash; there is no partial or fractional image billing. This differs from chat completions, where a cancelled stream still bills for the tokens produced before cancellation.
+
+- **Completed generations** are billed for the full image output based on the endpoint's pricing.
+- **Failed or cancelled generations** are not billed. When a generation does not complete, the request returns a `502 Bad Gateway` rather than a partial result, and no charge is recorded.
+
+If a client disconnects mid-generation, the upstream provider may still finish rendering the image and charge OpenRouter for it. Regardless, the client only ever observes one of two outcomes: a fully-billed result, or an error. OpenRouter does not attempt to bill the user for work they did not receive.
+
+For streaming requests, any partial preview images delivered before the stream ends do **not** create partial charges. Billing keys off completion of the final image, so a stream that terminates early (client disconnect or mid-stream error) is billed exactly as a failed generation: not at all.
+
 ## Request Parameters
 
 | Parameter | Type | Required | Description |
