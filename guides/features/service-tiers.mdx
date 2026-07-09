@@ -166,6 +166,10 @@ Non-default tier endpoints (`flex`, `priority`) are only considered when your re
 
 Requests that don't use either of these are never routed to a non-default service tier.
 
+### Tier Endpoints in the API
+
+Tier endpoints are listed in the [model endpoints API](/docs/api/api-reference/list-endpoints) alongside standard endpoints. Each appears as its own entry with a tier-suffixed `tag` (e.g. `openai/priority`) and pricing with the tier multiplier already applied — the same pricing used for billing. Their presence in the listing doesn't change routing: they remain opt-in as described above.
+
 ### Supported Providers
 
 The following providers support `flex` and `priority` service tiers for select models:
