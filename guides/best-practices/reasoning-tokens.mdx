@@ -654,6 +654,37 @@ For more detailed information about thinking encryption, redacted blocks, and ad
 
 For more information about OpenAI reasoning models, see [OpenAI's reasoning documentation](https://platform.openai.com/docs/guides/reasoning#keeping-reasoning-items-in-context).
 
+## Reasoning Mode
+
+For models that offer a pro reasoning variant, the `reasoning.mode` parameter controls which variant serves your request:
+
+- **`standard`**: The model's standard reasoning behavior. Omitting `reasoning.mode` has the same effect.
+- **`pro`**: Routes the request to the model's pro variant, which uses deeper multi-pass reasoning for harder problems.
+
+<Note title='Provider Support'>
+  `reasoning.mode` is only supported by OpenAI GPT-5.6 and newer.
+</Note>
+
+For each supported model, there are two equivalent ways to request pro mode on OpenRouter:
+
+1. Send `reasoning.mode: "pro"` with the standard model — OpenRouter reroutes the request to the matching `*-pro` model.
+2. Call the `*-pro` model listing directly.
+
+```json
+{
+  "model": "~openai/gpt-latest",
+  "input": "Prove that there are infinitely many primes.",
+  "reasoning": {
+    "mode": "pro"
+  }
+}
+```
+
+<Note title='Behavior'>
+  - `mode` is independent of `effort`: you can combine `mode: "pro"` with any supported effort level.
+  - Pro mode bills at the same per-token rates as standard mode, but typically consumes more tokens.
+</Note>
+
 <span id="responses-api-shape"></span>
 
 ## Reasoning Details API Shape
