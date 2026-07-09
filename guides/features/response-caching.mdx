@@ -13,20 +13,11 @@ twitter:site: '@OpenRouter'
 noindex: false
 nofollow: false
 icon: box-archive
-tag: Beta
 ---
-
-<Badge color="blue">Beta</Badge>
 
 import { API_KEY_REF } from '/snippets/exports/constants.mdx';
 import {LlmsOnly} from "/snippets/LlmsOnly.jsx";
 import { Template } from "/snippets/exports/Template.jsx";
-
-<Note>
-**Beta**
-
-Response caching is currently in beta. The API and behavior may change.
-</Note>
 
 Response caching allows you to cache responses for identical API requests. When a cached response is available, OpenRouter returns it immediately from cache with no billing (all billable usage counters are reported as `0`), reducing both latency and cost.
 
