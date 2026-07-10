@@ -34,7 +34,12 @@ import {
   issues.
 </Tip>
 
-## Rate Limits and Credits Remaining
+OpenRouter enforces two kinds of limits:
+
+1. **Credit limits** — how much you can spend, based on your credit balance and any per-key credit limits. Exceeding these returns <code>{HTTPStatus.S402_Payment_Required}</code>.
+2. **Rate limits** — how many requests you can make in a given window, such as free-model request caps and DDoS protection. Exceeding these returns `429 Too Many Requests`.
+
+## Checking Your Limits
 
 To check the rate limit or credits left on an API key, make a GET request to `https://openrouter.ai/api/v1/key`.
 
@@ -108,9 +113,26 @@ type Key = {
 };
 ```
 
-There are a few rate limits that apply to certain types of requests, regardless of account status:
+## Credit Limits
 
-1. Free usage limits: If you're using a free model variant (with an ID ending in <code>{sep}{Variant.Free}</code>), you can make up to {FREE_MODEL_RATE_LIMIT_RPM} requests per minute. The following per-day limits apply:
+Credit limits govern how much you can spend. They come from two places:
+
+1. **Account balance** — your available credits across the account. If your account has a negative credit balance, you may see <code>{HTTPStatus.S402_Payment_Required}</code> errors, including for free models. Adding credits to put your balance above zero allows you to use those models again.
+2. **Per-key credit limits** — an optional spending cap configured on an individual API key. The `limit`, `limit_reset`, and `limit_remaining` fields in the `GET /api/v1/key` response above describe this cap and how much of it remains.
+
+### Handling `402 Payment Required`
+
+To resolve <code>{HTTPStatus.S402_Payment_Required}</code> errors:
+
+- **Add credits** to bring your account balance above zero.
+- **Check per-key limits.** If `limit_remaining` on the key is exhausted, raise the key's credit limit or wait for it to reset (see `limit_reset`).
+- **Monitor proactively.** Call `GET /api/v1/key` as shown above to track `limit_remaining` and usage before requests start failing.
+
+## Rate Limits
+
+Rate limits govern how many requests you can make. There are a few rate limits that apply to certain types of requests, regardless of account status:
+
+1. **Free usage limits**: If you're using a free model variant (with an ID ending in <code>{sep}{Variant.Free}</code>), you can make up to {FREE_MODEL_RATE_LIMIT_RPM} requests per minute. The following per-day limits apply:
 
 - If you have purchased less than {FREE_MODEL_CREDITS_THRESHOLD} credits, you're limited to {FREE_MODEL_NO_CREDITS_RPD} <code>{sep}{Variant.Free}</code> model requests per day.
 
@@ -118,4 +140,39 @@ There are a few rate limits that apply to certain types of requests, regardless 
 
 2. **DDoS protection**: Cloudflare's DDoS protection will block requests that dramatically exceed reasonable usage.
 
-If your account has a negative credit balance, you may see <code>{HTTPStatus.S402_Payment_Required}</code> errors, including for free models. Adding credits to put your balance above zero allows you to use those models again.
+### Handling `429 Too Many Requests`
+
+Rate-limited requests fail with a standard [error response](/api/reference/errors-and-debugging):
+
+```json lines
+{
+  "error": {
+    "code": 429,
+    "message": "Rate limit exceeded",
+    "metadata": {
+      "error_type": "rate_limit_exceeded"
+    }
+  }
+}
+```
+
+A `429` can come from two places:
+
+1. **OpenRouter** — you hit one of the platform limits above (free-model requests per minute or per day, or DDoS protection).
+2. **The upstream provider** — the provider serving your request is rate limiting or at capacity. In this case `error.metadata.provider_code` carries the provider's original error code when available, and [fallback routing](/guides/routing/provider-selection) retries other providers for the same model automatically before the error reaches you. You can also specify [fallback models](/guides/routing/model-fallbacks) to try a different model when all providers for the first are exhausted.
+
+<Note>
+  Successful inference responses do not include `X-RateLimit-*` headers. When
+  OpenRouter itself returns a `429` for a platform limit, the error response
+  carries `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`
+  headers describing the limit that was hit. To monitor your remaining quota
+  before hitting a limit, call `GET /api/v1/key` as shown above.
+</Note>
+
+To resolve `429` errors:
+
+- **Retry with exponential backoff.** Rate limits are transient; wait and retry rather than immediately re-sending. When every attempted provider returned a retry hint, the response carries a `Retry-After` header — honor it when present.
+- **On free variants**, purchase at least {FREE_MODEL_CREDITS_THRESHOLD} credits to raise your daily limit, or switch to the paid variant of the model, which has no platform-level request cap.
+- **For provider-side limits**, add [fallback models](/guides/routing/model-fallbacks) or relax [provider routing preferences](/guides/routing/provider-selection) so more providers are eligible to serve the request.
+
+If a rate limit is hit after streaming has started, the error arrives as an SSE event with `finish_reason: "error"` instead of an HTTP `429`, since the `200` status was already sent. See [Handling Errors During Streaming](/api/reference/streaming#handling-errors-during-streaming).
