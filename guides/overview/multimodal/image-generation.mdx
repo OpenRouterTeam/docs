@@ -311,6 +311,31 @@ Pass reference images to guide generation via `input_references`:
 
 Reference images can be HTTP(S) URLs or base64 data URLs. The number of references accepted varies by provider.
 
+### Provider Routing
+
+When a model has multiple providers, use the `provider` object to choose which endpoints can serve the request:
+
+```json lines
+{
+  "model": "google/gemini-2.5-flash-image",
+  "prompt": "a red panda astronaut floating in space",
+  "provider": {
+    "only": ["google-ai-studio"],
+    "allow_fallbacks": false
+  }
+}
+```
+
+The Image API supports these routing fields:
+
+- `only` &mdash; allow only the listed provider slugs.
+- `order` &mdash; try providers in the listed order.
+- `ignore` &mdash; exclude the listed provider slugs.
+- `sort` &mdash; sort eligible endpoints by `price`, `throughput`, or `latency`.
+- `allow_fallbacks` &mdash; when `false`, stop after the primary provider instead of trying another eligible provider.
+
+Use `provider_tag` from the [per-endpoint records](#per-endpoint-records) as the base provider slug. See [Provider Routing](/guides/routing/provider-selection) for the routing behavior shared across OpenRouter APIs.
+
 ### Provider-Specific Options
 
 Pass provider-specific parameters through `provider.options`, keyed by the provider slug from the endpoints API:
@@ -472,6 +497,11 @@ For streaming requests, any partial preview images delivered before the stream e
 | `seed` | integer | No | Seed for deterministic generation (where supported) |
 | `stream` | boolean | No | Stream partial images via SSE |
 | `input_references` | array | No | Reference images for image-to-image generation |
+| `provider.only` | string[] | No | Allow only these provider slugs |
+| `provider.order` | string[] | No | Try provider slugs in this order |
+| `provider.ignore` | string[] | No | Exclude these provider slugs |
+| `provider.sort` | string or object | No | Sort eligible endpoints by price, throughput, or latency |
+| `provider.allow_fallbacks` | boolean | No | Allow another eligible provider when the primary fails |
 | `provider.options` | object | No | Provider-specific parameters keyed by provider slug |
 
 Use the [Image Models API](#via-the-image-models-api) to check which parameters each model and endpoint supports.
