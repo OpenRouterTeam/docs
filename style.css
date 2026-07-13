@@ -1,4 +1,106 @@
-/* Custom Mintlify styles. Any .css file in this directory is applied globally. */
+/*
+ * OpenRouter Docs — Bauhaus theme overrides
+ *
+ * Custom CSS for Mintlify to align with the bauhaus design system.
+ * Uses Mintlify's exposed ID/element selectors for targeted styling.
+ *
+ * Brand palette:
+ *   Ink #03080A   Cloud #FCFCFE   Grape #7624F4
+ *   Volt #C8FF00  Coral #FF6849   Royal #035ADE
+ */
+
+/* ── Code font: Geist Mono ── */
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap');
+
+code,
+pre,
+pre code,
+.code-block code,
+[class*="code"] code {
+  font-family: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* ── Text selection: accent tint per DESIGN.md ── */
+::selection {
+  background: rgb(118 36 244 / 0.14);
+}
+
+.dark ::selection,
+html.dark ::selection {
+  background: rgb(200 255 0 / 0.14);
+  color: inherit;
+}
+
+/* ── Dark-mode accent swap: Volt (#C8FF00 = rgb(200 255 0)) per DESIGN.md ──
+ * Mintlify + Tailwind use space-separated RGB: rgb(var(--primary-light) / alpha).
+ * Override accent in dark mode from Grape to Volt. */
+.dark,
+[data-theme="dark"],
+html.dark {
+  --primary: 200 255 0;
+  --primary-light: 200 255 0;
+  --primary-dark: 200 255 0;
+  --light-primary: 200 255 0;
+  --primary-foreground: 3 8 10;
+
+  /* ── Dark-mode border: Cloud at 14% per DESIGN.md ── */
+  --default-border-color: rgb(252 252 254 / 0.14);
+
+  /* Tooltip foreground: Cloud */
+  --tooltip-foreground: 252 252 254;
+}
+
+/* ── Border radius: bauhaus 4/6/8px scale ── */
+#navbar {
+  border-radius: 0;
+}
+
+/* Sidebar active item */
+#sidebar a[aria-current="page"],
+nav[aria-label="Pages"] a[aria-current="page"] {
+  border-radius: 8px;
+}
+
+/* Cards and code blocks */
+[data-component-part="code-block-root"] {
+  border-radius: 8px;
+}
+
+/* ── Link styling per DESIGN.md ──
+ * underline at 40% opacity of current color, full on hover, offset 2px */
+a:not([class]) {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  text-decoration-color: rgb(0 0 0 / 0.4);
+}
+
+a:not([class]):hover {
+  text-decoration-color: currentColor;
+}
+
+.dark a:not([class]),
+html.dark a:not([class]) {
+  text-decoration-color: rgb(255 255 255 / 0.4);
+}
+
+.dark a:not([class]):hover,
+html.dark a:not([class]):hover {
+  text-decoration-color: currentColor;
+}
+
+/* ── Sidebar badges: outline style ── */
+.nav-tag-pill-text {
+  background: transparent !important;
+  color: rgb(0 0 0 / 0.5) !important;
+  border: 1px solid rgb(0 0 0 / 0.2) !important;
+}
+
+.dark .nav-tag-pill-text,
+html.dark .nav-tag-pill-text {
+  background: transparent !important;
+  color: rgb(252 252 254 / 0.5) !important;
+  border: 1px solid rgb(252 252 254 / 0.2) !important;
+}
 
 /* Enlarge the navbar logo (Mintlify default is h-7 / 1.75rem). */
 .nav-logo {
