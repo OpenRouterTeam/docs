@@ -197,6 +197,19 @@ The `[LABEL]` in the error message depends on what triggered the block:
 - For custom patterns without a label: `[BLOCKED]`
 - For NLP-detected entities: the entity type (e.g., `Blocked PII detected: PERSON`)
 
+## Reporting False Positives
+
+If a detection incorrectly flags legitimate content, you can mark it as a false positive from the [Logs](https://openrouter.ai/logs) page. Generations with a guardrail event show a shield icon on the row; hover it to open the guardrail popover.
+
+- **Single entity type detected** — click **Mark as false positive** directly in the popover.
+- **Multiple entity types detected** — the popover links to the generation detail view, where you check the specific entity types that were flagged incorrectly under **Mark as false positive**, then click **Submit**.
+
+The event is visually marked and your feedback is recorded for future detection improvements.
+
+<Note>
+Marking a detection as false positive does not retroactively unblock the request. If the action was **block**, the original request was already rejected.
+</Note>
+
 ## Best Practices
 
 - **Start with Redact** — Use **Redact** as the default action when getting started. This lets requests proceed while protecting sensitive data, giving you time to evaluate detection accuracy before switching to **Block**.
@@ -205,7 +218,7 @@ The `[LABEL]` in the error message depends on what triggered the block:
 
 - **Be aware of NLP latency** — The **Person Name** and **Address** presets use NLP-based detection, which adds latency proportional to input size. If latency is critical, consider using only regex-based presets.
 
-- **Test before deploying** — Use the Test Preview in the guardrail editor to verify your filters work as expected before saving and assigning the guardrail.
+- **Test before deploying** — Use the Test Preview in the guardrail editor to verify your filters work as expected before saving and assigning the guardrail. If a detection misfires, you can [report false positives](#reporting-false-positives) from the Logs page.
 
 - **Combine with other guardrail settings** — Sensitive info filters work alongside budget limits, model allowlists, provider restrictions, and ZDR enforcement. Use them together for comprehensive governance.
 
