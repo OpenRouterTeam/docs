@@ -201,8 +201,17 @@ The `[LABEL]` in the error message depends on what triggered the block:
 
 If a detection incorrectly flags legitimate content, you can mark it as a false positive from the [Logs](https://openrouter.ai/logs) page. Generations with a guardrail event show a shield icon on the row; hover it to open the guardrail popover.
 
-- **Single entity type detected** — click **Mark as false positive** directly in the popover.
-- **Multiple entity types detected** — the popover links to the generation detail view, where you check the specific entity types that were flagged incorrectly under **Mark as false positive**, then click **Submit**.
+When a single entity type was detected, click **Mark as false positive** directly in the popover:
+
+![Guardrail popover with a Mark as false positive button for a single detected sensitive info entity type](/assets/guides/features/guardrails/false-positives/fp-popover-single-pattern-sensitive-info.png)
+
+When multiple entity types were detected, the popover instead links to the generation detail view, where you can select the specific entity types to report:
+
+![Guardrail popover linking to Review entity types in detail for a multi-entity sensitive info detection](/assets/guides/features/guardrails/false-positives/fp-popover-multi-pattern-sensitive-info.png)
+
+In the detail view, check the entity types that were flagged incorrectly under **Mark as false positive**, then click **Submit**:
+
+![Generation detail view with per-entity Mark as false positive checkboxes for a sensitive info detection](/assets/guides/features/guardrails/false-positives/fp-detail-view-multi-pattern-sensitive-info.png)
 
 The event is visually marked and your feedback is recorded for future detection improvements.
 
