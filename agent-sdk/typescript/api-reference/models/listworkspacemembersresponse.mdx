@@ -1,0 +1,38 @@
+---
+title: ListWorkspaceMembersResponse - TypeScript SDK
+sidebarTitle: ListWorkspaceMembersResponse
+description: ListWorkspaceMembersResponse type definition
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+## Example Usage
+
+```typescript lines
+import { ListWorkspaceMembersResponse } from "@openrouter/sdk/models";
+
+let value: ListWorkspaceMembersResponse = {
+  data: [
+    {
+      createdAt: "2025-08-24T10:30:00Z",
+      id: "660e8400-e29b-41d4-a716-446655440000",
+      role: "member",
+      userId: "user_abc123",
+      workspaceId: "550e8400-e29b-41d4-a716-446655440000",
+    },
+  ],
+  totalCount: 1,
+};
+```
+
+## Fields
+
+| Field | Type | Required | Description | Example |
+| --- | --- | --- | --- | --- |
+| `data` | [models.WorkspaceMember](/agent-sdk/typescript/api-reference/models/workspacemember)[] | :heavy_check_mark: | List of workspace members. | |
+| `totalCount` | *number* | :heavy_check_mark: | Total number of members in the workspace. | 5 |
