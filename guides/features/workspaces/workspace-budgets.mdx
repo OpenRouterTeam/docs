@@ -35,7 +35,7 @@ Each workspace can have up to four budgets, one per interval:
 When a request comes in, OpenRouter checks the workspace's current spend against every configured budget. If any budget is met or exceeded, the request returns a `403 Forbidden` error:
 
 ```
-Workspace monthly budget of $500.00 exceeded. Contact your workspace admin.
+Workspace monthly budget of $500.00 exceeded. Contact your org admin.
 ```
 
 The error names the broadest exceeded interval so users know which limit triggered the block.
