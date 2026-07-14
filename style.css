@@ -61,15 +61,8 @@ nav[aria-label="Pages"] a[aria-current="page"] {
   border-radius: 8px;
 }
 
-/* Standalone code blocks: round the outer bordered wrapper AND its inner
- * background layer together, so the radii match at the corners.
- * Code groups (.code-group with tabs) are untouched — their inner roots
- * get rounded-xt!important from Mintlify and manage their own radii. */
-.code-block {
-  border-radius: 8px;
-}
-
-.code-block [data-component-part="code-block-root"] {
+/* Cards and code blocks */
+[data-component-part="code-block-root"] {
   border-radius: 8px;
 }
 
