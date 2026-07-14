@@ -1088,7 +1088,7 @@ You can restrict requests only to providers that support all parameters in your 
 | --- | --- | --- | --- |
 | `require_parameters` | boolean | `false` | Only use providers that support all parameters in your request. |
 
-With the default routing strategy, providers that don't support all the [LLM parameters](/api/reference/parameters) specified in your request can still receive the request, but will ignore unknown parameters. When you set `require_parameters` to `true`, the request won't even be routed to that provider.
+With the default routing strategy, providers that don't support all the [LLM parameters](/api_reference/parameters) specified in your request can still receive the request, but will ignore unknown parameters. When you set `require_parameters` to `true`, the request won't even be routed to that provider.
 
 ### Example: Excluding providers that don't support JSON formatting
 
