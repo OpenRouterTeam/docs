@@ -4,7 +4,7 @@
 
   projects/docs must not import from other packages in the repo, so this fetches
   the public endpoint directly in the browser instead of importing monorepo code.
-  Source of truth: https://openrouter.ai/api/frontend/all-providers
+  Source of truth: https://openrouter.ai/api/frontend/v1/all-providers
 */
 export const ProviderDataRetentionTable = () => {
   // Helpers are defined inside the component: Mintlify evaluates each exported
@@ -39,7 +39,7 @@ export const ProviderDataRetentionTable = () => {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("https://openrouter.ai/api/frontend/all-providers", { signal: controller.signal })
+    fetch("https://openrouter.ai/api/frontend/v1/all-providers", { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
       .then((body) => setProviders(body.data ?? []))
       .catch((err) => {
