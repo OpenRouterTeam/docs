@@ -221,6 +221,8 @@ Behavior:
 - Any upstream `pricing` sent alongside `is_free: true` is ignored — free endpoints always have zero cost.
 - `is_free: false` or an omitted field preserves the default behavior (standard paid variant).
 
+You can list both a free and a paid version of the same model — just always set `is_free: true` on the free one.
+
 #### Capacity with `capacity_tpm`
 
 Report your per-model throughput capacity so OpenRouter can make better routing and capacity-planning decisions. The value is in **input tokens per minute**:
