@@ -106,3 +106,16 @@ html.dark .nav-tag-pill-text {
 .nav-logo {
   height: 1.5rem;
 }
+
+/* ── Callout + code block alignment ──
+ * A code block that is the only child of a callout body carries Mintlify's default
+ * prose margins (mt-5 mb-8), which push the snippet down so it no longer lines
+ * up with the top-aligned callout icon. Drop those margins so the snippet's
+ * top edge aligns with the icon. */
+.callout [data-component-part="callout-content"] > .code-block:first-child {
+  margin-top: 0;
+}
+
+.callout [data-component-part="callout-content"] > .code-block:last-child {
+  margin-bottom: 0;
+}
