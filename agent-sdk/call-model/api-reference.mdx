@@ -34,6 +34,7 @@ Creates a response using the OpenResponses API with multiple consumption pattern
 | `tools` | `Tool[]` | No | Tools available to the model |
 | `maxToolRounds` | `MaxToolRounds` | No | Tool execution limit (deprecated) |
 | `stopWhen` | `StopWhen` | No | Stop conditions |
+| `allowFinalResponse` | `boolean \| string` | No | Final text turn when `stopWhen` halts mid-tool-call. Default on: makes one more turn with `toolChoice: 'none'` and a built-in final-answer directive (`DEFAULT_FINAL_RESPONSE_DIRECTIVE`). A string overrides the directive wording; `''` appends no message; `false` disables the final turn |
 | `temperature` | `number \| ((ctx: TurnContext) => number)` | No | Sampling temperature (0-2) |
 | `maxOutputTokens` | `number \| ((ctx: TurnContext) => number)` | No | Maximum tokens to generate |
 | `topP` | `number` | No | Top-p sampling |
@@ -604,6 +605,9 @@ export { fromChatMessages, toChatMessage, fromClaudeMessages, toClaudeMessage } 
 
 // Stop condition helpers
 export { stepCountIs, hasToolCall, maxTokensUsed, maxCost, finishReasonIs } from '@openrouter/agent';
+
+// Final-turn directive appended when allowFinalResponse is on (the default)
+export { DEFAULT_FINAL_RESPONSE_DIRECTIVE } from '@openrouter/agent';
 
 // Context helpers
 export {
