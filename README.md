@@ -16,6 +16,8 @@ cd projects/docs
 mint dev
 ```
 
+Or use Tilt: `tilt trigger docs` with a running `tilt up` (or start it enabled with `tilt up -- docs`). The docs are served at http://localhost:3003 (override with `DOCS_PORT`).
+
 ## Resources
 
 - [Mintlify Documentation](https://mintlify.com/docs)
