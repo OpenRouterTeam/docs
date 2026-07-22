@@ -22,13 +22,13 @@ export const ZapierIframe = ({
     const cssLink = document.createElement("link");
     cssLink.rel = "stylesheet";
     cssLink.href = "https://cdn.zapier.com/packages/partner-sdk/v0/zapier-elements/zapier-elements.css";
-    document.head.appendChild(cssLink);
+    document.head.append(cssLink);
 
     const script = document.createElement("script");
     script.type = "module";
     script.src = "https://cdn.zapier.com/packages/partner-sdk/v0/zapier-elements/zapier-elements.esm.js";
     script.onload = () => setIsLoaded(true);
-    document.head.appendChild(script);
+    document.head.append(script);
 
     return () => {
       const existingScript = document.querySelector('script[src*="zapier-elements"]');
@@ -54,7 +54,7 @@ export const ZapierIframe = ({
     if (signUpFirstName) zapierWorkflow.setAttribute("sign-up-first-name", signUpFirstName);
     if (signUpLastName) zapierWorkflow.setAttribute("sign-up-last-name", signUpLastName);
 
-    containerRef.current.appendChild(zapierWorkflow);
+    containerRef.current.append(zapierWorkflow);
 
     return () => {
       if (containerRef.current && zapierWorkflow.parentNode) {
