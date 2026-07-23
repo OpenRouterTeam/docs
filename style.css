@@ -107,6 +107,30 @@ html.dark .nav-tag-pill-text {
   height: 1.5rem;
 }
 
+/* ── Sidebar expand chevrons: raise dark-mode contrast ──
+ * Collapsible group toggles render a caret whose default dark tone
+ * (gray-600 on Ink) is nearly invisible, so it isn't clear which items
+ * have subsections. Derive the caret from Cloud via the DESIGN.md opacity
+ * scale: muted-foreground (Cloud `a0`) at rest, full Cloud (foreground) on
+ * hover — no custom hex outside the brand palette. */
+.dark nav[aria-label="Pages"] button[aria-expanded] svg.transition-transform,
+html.dark nav[aria-label="Pages"] button[aria-expanded] svg.transition-transform {
+  color: rgb(252 252 254 / 0.627);
+}
+
+.dark nav[aria-label="Pages"] button[aria-expanded]:hover svg.transition-transform,
+html.dark nav[aria-label="Pages"] button[aria-expanded]:hover svg.transition-transform {
+  color: rgb(252 252 254);
+}
+
+/* ── Sidebar expand chevrons: enlarge for legibility ──
+ * The default caret (w-2 ≈ 8px) is easy to miss; bump its footprint so it
+ * reads clearly as an expandable affordance. */
+nav[aria-label="Pages"] button[aria-expanded] svg.transition-transform {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
 /* ── Callout + code block alignment ──
  * A code block that is the only child of a callout body carries Mintlify's default
  * prose margins (mt-5 mb-8), which push the snippet down so it no longer lines
