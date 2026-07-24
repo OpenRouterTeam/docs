@@ -143,3 +143,27 @@ nav[aria-label="Pages"] button[aria-expanded] svg.transition-transform {
 .callout [data-component-part="callout-content"] > .code-block:last-child {
   margin-bottom: 0;
 }
+
+/* ── Changelog: Update tags as outline pills (matches sidebar badges) ── */
+[data-component-part="update-tag"] {
+  border: 1px solid rgb(0 0 0 / 0.2);
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  color: rgb(0 0 0 / 0.6);
+}
+
+.dark [data-component-part="update-tag"],
+html.dark [data-component-part="update-tag"] {
+  border-color: rgb(252 252 254 / 0.2);
+  color: rgb(252 252 254 / 0.6);
+}
+
+/* ── Changelog: selected filter pill readability ──
+ * Mintlify renders the active filter as bg-primary + text-white/90. In dark
+ * mode our primary is Volt (#C8FF00), so switch the text to Ink per DESIGN.md. */
+.dark #changelog-filters-content button.bg-primary,
+html.dark #changelog-filters-content button.bg-primary {
+  color: rgb(3 8 10 / 0.9) !important;
+}
