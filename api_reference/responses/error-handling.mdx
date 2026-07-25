@@ -1,10 +1,10 @@
 ---
 title: Error Handling
-description: Understanding and handling errors in the Responses API Beta
-seoTitle: 'Responses API Beta Error Handling | Basic Error Guide'
+description: Understanding and handling errors in the Responses API
+seoTitle: 'Responses API Error Handling | Basic Error Guide'
 og:site_name: OpenRouter Documentation
-og:title: 'Responses API Beta Error Handling - Basic Error Guide'
-og:description: "Learn how to handle errors in OpenRouter's Responses API Beta with the basic error response format."
+og:title: 'Responses API Error Handling - Basic Error Guide'
+og:description: "Learn how to handle errors in OpenRouter's Responses API with the basic error response format."
 og:image: https://openrouter.ai/dynamic-og?title=Responses%20API%20Error%20Handling&description=Basic%20error%20handling%20guide
 og:image:width: 1200
 og:image:height: 630
@@ -15,19 +15,13 @@ nofollow: false
 icon: triangle-exclamation
 ---
 
-<Warning>
-**Beta API**
-
-  This API is in **beta stage** and may have breaking changes. Use with caution in production environments.
-</Warning>
-
 <Info>
 **Stateless Only**
 
   This API is **stateless** - each request is independent and no conversation state is persisted between requests. You must include the full conversation history in each request. Requests that set `store: true` or a non-null `previous_response_id` are rejected with a `400` error.
 </Info>
 
-The Responses API Beta returns structured error responses that follow a consistent format.
+The Responses API returns structured error responses that follow a consistent format.
 
 ## Error Response Format
 

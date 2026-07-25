@@ -1,12 +1,12 @@
 ---
-title: Responses API Beta
+title: Responses API
 sidebarTitle: Overview
-description: OpenAI-compatible Responses API (Beta)
-seoTitle: 'OpenRouter Responses API Beta'
+description: OpenAI-compatible Responses API
+seoTitle: 'OpenRouter Responses API'
 og:site_name: OpenRouter Documentation
-og:title: 'OpenRouter Responses API Beta - OpenAI-Compatible Documentation'
-og:description: "Beta version of OpenRouter's OpenAI-compatible Responses API. Stateless transformation layer with support for reasoning, tool calling, and web search."
-og:image: https://openrouter.ai/dynamic-og?title=Responses%20API%20Beta&description=OpenAI-compatible%20stateless%20API
+og:title: 'OpenRouter Responses API - OpenAI-Compatible Documentation'
+og:description: "OpenRouter's OpenAI-compatible Responses API. Stateless transformation layer with support for reasoning, tool calling, and web search."
+og:image: https://openrouter.ai/dynamic-og?title=Responses%20API&description=OpenAI-compatible%20stateless%20API
 og:image:width: 1200
 og:image:height: 630
 twitter:card: summary_large_image
@@ -16,19 +16,13 @@ nofollow: false
 icon: compass
 ---
 
-<Warning>
-**Beta API**
-
-  This API is in **beta stage** and may have breaking changes. Use with caution in production environments.
-</Warning>
-
 <Info>
 **Stateless Only**
 
   This API is **stateless** - each request is independent and no conversation state is persisted between requests. You must include the full conversation history in each request. Requests that set `store: true` or a non-null `previous_response_id` are rejected with a `400` error.
 </Info>
 
-OpenRouter's Responses API Beta provides OpenAI-compatible access to multiple AI models through a unified interface, designed to be a drop-in replacement for OpenAI's Responses API. This stateless API offers enhanced capabilities including reasoning, tool calling, and web search integration, with each request being independent and no server-side state persisted.
+OpenRouter's Responses API provides OpenAI-compatible access to multiple AI models through a unified interface, designed to be a drop-in replacement for OpenAI's Responses API. This stateless API offers enhanced capabilities including reasoning, tool calling, and web search integration, with each request being independent and no server-side state persisted.
 
 ## Base URL
 

@@ -1,10 +1,10 @@
 ---
 title: Basic Usage
-description: Getting started with the Responses API Beta
-seoTitle: 'Responses API Beta Basic Usage | Simple Text Requests'
+description: Getting started with the Responses API
+seoTitle: 'Responses API Basic Usage | Simple Text Requests'
 og:site_name: OpenRouter Documentation
-og:title: 'Responses API Beta Basic Usage - Simple Text Requests'
-og:description: "Learn the basics of OpenRouter's Responses API Beta with simple text input examples and response handling."
+og:title: 'Responses API Basic Usage - Simple Text Requests'
+og:description: "Learn the basics of OpenRouter's Responses API with simple text input examples and response handling."
 og:image: https://openrouter.ai/dynamic-og?title=Responses%20API%20Basic%20Usage&description=Simple%20text%20requests%20and%20responses
 og:image:width: 1200
 og:image:height: 630
@@ -15,13 +15,7 @@ nofollow: false
 icon: play
 ---
 
-<Warning>
-**Beta API**
-
-  This API is in **beta stage** and may have breaking changes.
-</Warning>
-
-The Responses API Beta supports both simple string input and structured message arrays, making it easy to get started with basic text generation.
+The Responses API supports both simple string input and structured message arrays, making it easy to get started with basic text generation.
 
 ## Simple String Input
 
@@ -385,7 +379,7 @@ except requests.RequestException as e:
 
 ## Multiple Turn Conversations
 
-Since the Responses API Beta is stateless, you must include the full conversation history in each request to maintain context. Stateful parameters like `store: true` and `previous_response_id` are not supported and are rejected with a `400` error:
+Since the Responses API is stateless, you must include the full conversation history in each request to maintain context. Stateful parameters like `store: true` and `previous_response_id` are not supported and are rejected with a `400` error:
 
 <CodeGroup>
 
