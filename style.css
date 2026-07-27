@@ -168,6 +168,22 @@ nav[aria-label="Pages"] button[aria-expanded] svg.transition-transform {
   margin-bottom: 0;
 }
 
+/* ── Floating code-block buttons: opaque background ──
+ * Mintlify only backs the floating buttons (report / copy / ask) with
+ * gray-100/gray-800 when the code block has no fade overlay
+ * (group-[:not(:has([data-fade-overlay]))]). Collapsible/expandable blocks
+ * always carry a fade overlay, so the buttons stay transparent and the code
+ * text bleeds through behind them. Apply the same background unconditionally
+ * so the buttons are legible on every code block. */
+[data-floating-buttons] button {
+  background-color: rgb(241 239 245);
+}
+
+.dark [data-floating-buttons] button,
+html.dark [data-floating-buttons] button {
+  background-color: rgb(40 38 44);
+}
+
 /* ── Changelog: Update tags as outline pills (matches sidebar badges) ── */
 [data-component-part="update-tag"] {
   border: 1px solid rgb(0 0 0 / 0.2);
