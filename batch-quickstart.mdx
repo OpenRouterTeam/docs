@@ -1,0 +1,378 @@
+---
+title: Batch API Quickstart
+sidebarTitle: Batch
+description: Submit and retrieve asynchronous batches of inference requests
+slug: batch-quickstart
+seoTitle: 'Batch API Quickstart | OpenRouter Documentation'
+og:site_name: OpenRouter Documentation
+og:title: 'Batch API Quickstart'
+og:description: 'Submit multiple inference requests with OpenRouter and retrieve their results asynchronously.'
+og:image: https://openrouter.ai/dynamic-og?pathname=batch-quickstart&title=Batch%20API%20Quickstart&description=Submit%20and%20retrieve%20asynchronous%20batches%20of%20inference%20requests
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: layers
+hidden: true
+tag: Beta
+---
+
+The Batch API lets you submit many inference requests together and retrieve the results asynchronously. It is useful for work that does not need an immediate response and uses a 24-hour completion window, so you can process requests without managing each individual call separately.
+
+The Batch API supports several OpenRouter API shapes, including chat completions, Responses, and Anthropic Messages. Requests are submitted as an inline JSON `requests` array. You do not upload a JSONL file; OpenRouter handles JSONL persistence internally.
+
+<Note>
+  Batch results are available asynchronously. A successful submission returns `202 Accepted` with `status: "validating"` — this means the request was persisted and queued for validation, not that every request has completed.
+</Note>
+
+---
+
+## Submit a batch
+
+Submit a batch with:
+
+```text title="Endpoint" lines
+POST https://openrouter.ai/api/beta/batches
+```
+
+The request body has three required top-level fields:
+
+| Field | Description |
+|-------|-------------|
+| `endpoint` | The API shape used by every request in the batch. Choose `/v1/chat/completions`, `/v1/responses`, `/v1/messages`, or `/v1/embeddings`. |
+| `model` | An OpenRouter model slug, such as `openai/gpt-4o`. This batch-level model is applied to every request. |
+| `requests` | A non-empty array of `{ custom_id, body }` items. `custom_id` must be unique within the batch, and `body` follows the shape of the selected `endpoint`. |
+
+<Warning>
+  Serialize `endpoint` and `model` before `requests` in the JSON body. The API stream-parses the request so it can accept very large `requests` arrays without buffering, so it returns a `400` if `requests` appears first. Every example on this page already uses this order.
+</Warning>
+
+The batch-level `model` is applied to each request. A request body may omit `model` to inherit the batch-level value, but if it includes its own `model`, that value must match the batch-level `model` or the submission is rejected.
+
+<CodeGroup>
+
+```python title="Python" lines
+import json
+import requests
+
+response = requests.post(
+  url="https://openrouter.ai/api/beta/batches",
+  headers={
+    "Authorization": "Bearer <OPENROUTER_API_KEY>",
+    "Content-Type": "application/json",
+  },
+  data=json.dumps({
+    "endpoint": "/v1/chat/completions",
+    "model": "openai/gpt-4o",
+    "requests": [
+      {
+        "custom_id": "req-0001",
+        "body": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Summarize OpenRouter in one sentence."
+            }
+          ]
+        }
+      }
+    ]
+  })
+)
+
+print(response.json())
+```
+
+```typescript title="TypeScript (fetch)" lines
+const response = await fetch('https://openrouter.ai/api/beta/batches', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <OPENROUTER_API_KEY>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    endpoint: '/v1/chat/completions',
+    model: 'openai/gpt-4o',
+    requests: [
+      {
+        custom_id: 'req-0001',
+        body: {
+          messages: [
+            {
+              role: 'user',
+              content: 'Summarize OpenRouter in one sentence.',
+            },
+          ],
+        },
+      },
+    ],
+  }),
+});
+
+console.log(await response.json());
+```
+
+```shell title="Shell" lines
+curl https://openrouter.ai/api/beta/batches \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+  "endpoint": "/v1/chat/completions",
+  "model": "openai/gpt-4o",
+  "requests": [
+    {
+      "custom_id": "req-0001",
+      "body": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "Summarize OpenRouter in one sentence."
+          }
+        ]
+      }
+    }
+  ]
+}'
+```
+
+</CodeGroup>
+
+The response is a batch object with an ID you can use to check progress:
+
+```json title="202 Accepted" lines
+{
+  "id": "batch_123",
+  "object": "batch",
+  "endpoint": "/v1/chat/completions",
+  "model": "openai/gpt-4o",
+  "completion_window": "24h",
+  "status": "validating",
+  "created_at": 1782097200,
+  "finalized_at": null,
+  "request_counts": {
+    "total": 1,
+    "completed": 0,
+    "failed": 0
+  },
+  "usage": null,
+  "results": null,
+  "error": null
+}
+```
+
+The only supported completion window is `24h`.
+
+---
+
+## Poll for results
+
+Use the batch ID to retrieve the current status:
+
+```text title="Endpoint" lines
+GET https://openrouter.ai/api/beta/batches/:id
+```
+
+For example:
+
+```shell title="Shell" lines
+curl https://openrouter.ai/api/beta/batches/batch_123 \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY"
+```
+
+The status normally progresses through:
+
+```text title="Status progression" lines
+validating → in_progress → finalizing → completed
+```
+
+Other possible statuses are `failed`, `expired`, `cancelling`, and `cancelled`. The terminal statuses are `completed`, `failed`, `expired`, and `cancelled`. Poll until the batch reaches a terminal status.
+
+`request_counts` contains the total number of requests and the number that completed or failed:
+
+```json title="request_counts" lines
+{
+  "total": 100,
+  "completed": 98,
+  "failed": 2
+}
+```
+
+When a batch is in progress, or has failed, expired, or been cancelled, `results` is `null`. When a batch completes, `results` is returned inline as an array in the same response. There is no separate results-download endpoint.
+
+Each result maps back to an input using `custom_id`. Exactly one of `response` or `error` is populated for each result:
+
+```json title="Result item" lines
+{
+  "id": "batch_req_123",
+  "custom_id": "req-0001",
+  "response": {
+    "status_code": 200,
+    "request_id": "request_123",
+    "body": {
+      "id": "chatcmpl-123",
+      "object": "chat.completion",
+      "created": 1782097200,
+      "model": "openai/gpt-4o",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "OpenRouter provides one API for many AI models."
+          },
+          "finish_reason": "stop"
+        }
+      ]
+    }
+  },
+  "error": null
+}
+```
+
+A completed batch response looks like this:
+
+```json title="Completed batch" lines
+{
+  "id": "batch_123",
+  "object": "batch",
+  "endpoint": "/v1/chat/completions",
+  "model": "openai/gpt-4o",
+  "completion_window": "24h",
+  "status": "completed",
+  "created_at": 1782097200,
+  "finalized_at": 1782100800,
+  "request_counts": {
+    "total": 1,
+    "completed": 1,
+    "failed": 0
+  },
+  "usage": {
+    "prompt_tokens": 20,
+    "completion_tokens": 40,
+    "total_tokens": 60,
+    "cost": 0.00045,
+    "is_byok": false
+  },
+  "results": [
+    {
+      "id": "batch_req_123",
+      "custom_id": "req-0001",
+      "response": {
+        "status_code": 200,
+        "request_id": "request_123",
+        "body": {
+          "id": "chatcmpl-123",
+          "object": "chat.completion",
+          "created": 1782097200,
+          "model": "openai/gpt-4o",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "OpenRouter provides one API for many AI models."
+              },
+              "finish_reason": "stop"
+            }
+          ]
+        }
+      },
+      "error": null
+    }
+  ],
+  "error": null
+}
+```
+
+---
+
+## Use different API shapes
+
+Set the top-level `endpoint` to choose the request shape used by every `body` in the batch. Batch API skins support:
+
+- Chat completions: `/v1/chat/completions`
+- Responses: `/v1/responses`
+- Anthropic Messages: `/v1/messages`
+
+For example, an Anthropic Messages batch uses `/v1/messages` and puts the Messages-shaped request in each item's `body`:
+
+```json title="Anthropic Messages batch" lines
+{
+  "endpoint": "/v1/messages",
+  "model": "anthropic/claude-3.5-sonnet",
+  "requests": [
+    {
+      "custom_id": "req-1",
+      "body": {
+        "max_tokens": 32,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello."
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+All requests in one batch use the same top-level `endpoint`. To mix API shapes, submit separate batches.
+
+---
+
+## Embeddings
+
+Embeddings are rolling out on providers that support them, as we continue to expand upstream provider coverage.
+
+Set the top-level `endpoint` to `/v1/embeddings` and put the embeddings request in each item's `body`. Each `body` takes an `input` (a string, an array of strings, a token array, or an array of token arrays). Multimodal inputs, `input_type`, and `provider` preferences are not supported on the Batch API — use the sync API for those.
+
+```json title="Embeddings batch" lines
+{
+  "endpoint": "/v1/embeddings",
+  "model": "openai/text-embedding-3-small",
+  "requests": [
+    {
+      "custom_id": "emb-0001",
+      "body": {
+        "input": "The quick brown fox jumped over the lazy dog."
+      }
+    }
+  ]
+}
+```
+
+Poll for results the same way as any other batch (`GET https://openrouter.ai/api/beta/batches/:id`). Each embeddings result carries the standard embeddings response in its `body`:
+
+```json title="Embeddings result item" lines
+{
+  "id": "batch_req_emb_1",
+  "custom_id": "emb-0001",
+  "response": {
+    "status_code": 200,
+    "request_id": "request_456",
+    "body": {
+      "object": "list",
+      "data": [
+        {
+          "object": "embedding",
+          "embedding": [0.0023064255, -0.009327292, 0.015797347],
+          "index": 0
+        }
+      ],
+      "model": "openai/text-embedding-3-small",
+      "usage": {
+        "prompt_tokens": 8,
+        "total_tokens": 8
+      }
+    }
+  },
+  "error": null
+}
+```
+
+<Note>
+  Batch inputs and results are stored as JSONL artifacts in Google Cloud Storage and automatically deleted 30 days after creation, matching the upstream batch retention window. Download any results you need before the 30-day retention window elapses.
+</Note>
