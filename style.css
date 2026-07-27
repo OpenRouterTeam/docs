@@ -12,6 +12,18 @@
 /* ── Code font: Geist Mono ── */
 @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap');
 
+/*
+ * Inverse semantic pair mirrors packages/frontend/components/v2/theme.css.
+ * Mintlify is a separate app, so its generated tooltip DOM uses the same
+ * light Ink/Cloud and dark Cloud/Ink values through RGB channel variables.
+ */
+:root {
+  --inverse: 3 8 10;
+  --inverse-foreground: 252 252 254;
+  --tooltip-background: var(--inverse);
+  --tooltip-foreground: var(--inverse-foreground);
+}
+
 code,
 pre,
 pre code,
@@ -42,12 +54,11 @@ html.dark {
   --primary-dark: 200 255 0;
   --light-primary: 200 255 0;
   --primary-foreground: 3 8 10;
+  --inverse: 252 252 254;
+  --inverse-foreground: 3 8 10;
 
   /* ── Dark-mode border: Cloud at 14% per DESIGN.md ── */
   --default-border-color: rgb(252 252 254 / 0.14);
-
-  /* Tooltip foreground: Cloud */
-  --tooltip-foreground: 252 252 254;
 }
 
 /* ── Border radius: bauhaus 4/6/8px scale ── */
@@ -129,6 +140,19 @@ html.dark nav[aria-label="Pages"] button[aria-expanded]:hover svg.transition-tra
 nav[aria-label="Pages"] button[aria-expanded] svg.transition-transform {
   width: 0.625rem;
   height: 0.625rem;
+}
+
+/* ── Tooltips: inverse surface pairing ──
+ * Mintlify has a foreground variable for Radix tooltips but no matching
+ * background variable, so both values are mirrored here from the inverse pair.
+ * Radix opens tooltips as "delayed-open" on a normal hover but "instant-open"
+ * when moving between triggers within its skip-delay window; cover both. */
+[data-radix-popper-content-wrapper]
+  > div[data-state="delayed-open"],
+[data-radix-popper-content-wrapper]
+  > div[data-state="instant-open"] {
+  background-color: rgb(var(--tooltip-background)) !important;
+  color: rgb(var(--tooltip-foreground)) !important;
 }
 
 /* ── Callout + code block alignment ──
