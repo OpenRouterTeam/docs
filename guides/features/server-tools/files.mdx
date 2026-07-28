@@ -5,7 +5,7 @@ description: Let any model read, write, edit, and list workspace files
 seoTitle: 'Files Server Tool | Workspace File Access for Any Model'
 og:site_name: OpenRouter Documentation
 og:title: 'Files Server Tool - Workspace File Access for Any Model'
-og:description: 'Give any model on OpenRouter the ability to read, write, edit, and list text files in your workspace via the Files API. The model decides when to operate on files — OpenRouter executes the operations server-side.'
+og:description: 'Give any model on OpenRouter the ability to read, write, edit, and list text files in your workspace via the Files API. The model decides when to operate on files, and OpenRouter executes the operations server-side.'
 og:image: https://openrouter.ai/dynamic-og?title=Files%20Server%20Tool&description=Workspace%20file%20access%20for%20any%20model
 og:image:width: 1200
 og:image:height: 630
@@ -28,7 +28,7 @@ import { Template } from "/snippets/exports/Template.jsx";
 Server tools are currently in beta. The API and behavior may change.
 </Note>
 
-The `openrouter:files` server tool lets a model read, write, edit, and list text files in your workspace via the OpenRouter Files API. When the model needs file access — reading an uploaded document, saving output, or applying a targeted edit — it calls the tool and OpenRouter executes the operation server-side.
+The `openrouter:files` server tool lets a model read, write, edit, and list text files in your workspace via the OpenRouter Files API. When the model needs file access (reading an uploaded document, saving output, or applying a targeted edit), it calls the tool and OpenRouter executes the operation server-side.
 
 <Warning>
 **Requires the file-ids header**
@@ -36,7 +36,7 @@ The `openrouter:files` server tool lets a model read, write, edit, and list text
 The files tool requires the `x-openrouter-file-ids: openrouter` request header and an authenticated workspace. Without the header, tool calls return an error to the model.
 </Warning>
 
-## Quick Start
+## Quick start
 
 <Template data={{
   API_KEY_REF,
@@ -122,7 +122,7 @@ curl https://openrouter.ai/api/v1/chat/completions \
 
 ## Configuration
 
-The files tool has no configuration options — which workspace and files it can access is determined by your API key and the `x-openrouter-file-ids` header, so enabling the tool takes only its type:
+The files tool has no configuration options. Which workspace and files it can access is determined by your API key and the `x-openrouter-file-ids` header, so enabling the tool takes only its type:
 
 ```json lines
 {
@@ -141,7 +141,7 @@ The model generates the call arguments. Each call performs one operation:
 | `write` | Create a new file from `filename` and `content` |
 | `edit` | Replace `old_string` with `new_string` in a file |
 
-### Call Arguments
+### Call arguments
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -162,14 +162,14 @@ Editing a file creates a new copy with a new `file_id`; the original file is lef
 
 ## Response
 
-The tool returns `{ "result": ... }` on success with the operation's output (file listing, file content, or the new file's metadata), or `{ "error": "..." }` when the operation fails — for example, when a required field is missing or the target file isn't found. The model reads the error and can retry with corrected arguments.
+The tool returns `{ "result": ... }` on success with the operation's output (file listing, file content, or the new file's metadata), or `{ "error": "..." }` when the operation fails (for example, when a required field is missing or the target file isn't found). The model reads the error and can retry with corrected arguments.
 
 ## Pricing
 
-There is currently no separate charge for the files tool; you pay only for standard token usage.
+There's currently no separate charge for the files tool; you pay only for standard token usage.
 
-## Next Steps
+## Next steps
 
-- [Server Tools Overview](/guides/features/server-tools) — Learn about server tools
-- [Apply Patch](/guides/features/server-tools/apply-patch) — Let models propose file edits as V4A diffs
-- [Tool Calling](/guides/features/tool-calling) — Learn about user-defined tool calling
+- [Server Tools Overview](/guides/features/server-tools): Learn about server tools
+- [Apply Patch](/guides/features/server-tools/apply-patch): Let models propose file edits as V4A diffs
+- [Tool Calling](/guides/features/tool-calling): Learn about user-defined tool calling

@@ -24,7 +24,7 @@ The Batch API lets you submit many inference requests together and retrieve the 
 The Batch API supports several OpenRouter API shapes, including chat completions, Responses, and Anthropic Messages. Requests are submitted as an inline JSON `requests` array. You do not upload a JSONL file; OpenRouter handles JSONL persistence internally.
 
 <Note>
-  Batch results are available asynchronously. A successful submission returns `202 Accepted` with `status: "validating"` — this means the request was persisted and queued for validation, not that every request has completed.
+  Batch results are available asynchronously. A successful submission returns `202 Accepted` with `status: "validating"`, which means the request was persisted and queued for validation, not that every request has completed.
 </Note>
 
 ---
@@ -327,7 +327,7 @@ All requests in one batch use the same top-level `endpoint`. To mix API shapes, 
 
 Embeddings are rolling out on providers that support them, as we continue to expand upstream provider coverage.
 
-Set the top-level `endpoint` to `/v1/embeddings` and put the embeddings request in each item's `body`. Each `body` takes an `input` (a string, an array of strings, a token array, or an array of token arrays). Multimodal inputs, `input_type`, and `provider` preferences are not supported on the Batch API — use the sync API for those.
+Set the top-level `endpoint` to `/v1/embeddings` and put the embeddings request in each item's `body`. Each `body` takes an `input` (a string, an array of strings, a token array, or an array of token arrays). Multimodal inputs, `input_type`, and `provider` preferences are not supported on the Batch API. Use the sync API for those.
 
 ```json title="Embeddings batch" lines
 {
