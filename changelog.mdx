@@ -9,7 +9,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="July 28, 2026" tags={["Breaking","Files","Responses","Schemas"]} rss="2 breaking changes, 5 modified endpoints, 17 modified schemas.">
+<Update label="July 28, 2026" tags={["Breaking","Files","Responses","Schemas"]} rss="2 breaking changes, 5 modified endpoints, 20 modified schemas.">
 
 ## Breaking changes
 
@@ -93,6 +93,22 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - Used by [`GET /files`](/api/api-reference/files/list-files), [`GET /files/{file_id}`](/api/api-reference/files/get-file-metadata), [`POST /files`](/api/api-reference/files/upload-a-file)
 - `GenerationResponse` — property `data_region` updated
   - Used by [`GET /generation`](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation)
+- `CreateGuardrailRequest` — new property `enable_free_model_publication`; new property `enable_free_model_training`; new property `enable_paid_model_training`
+  - Used by [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail)
+- `Guardrail`:
+  - example modified
+  - new property `enable_free_model_publication`
+  - new property `enable_free_model_training`
+  - new property `enable_paid_model_training`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /guardrails`](/api/api-reference/guardrails/list-guardrails)
+    - [`GET /guardrails/{id}`](/api/api-reference/guardrails/get-a-guardrail)
+    - [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail)
+    - [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail)
+  </Expandable>
+- `UpdateGuardrailRequest` — new property `enable_free_model_publication`; new property `enable_free_model_training`; new property `enable_paid_model_training`
+  - Used by [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail)
 
 </Update>
 
