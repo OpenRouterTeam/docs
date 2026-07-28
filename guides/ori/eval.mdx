@@ -17,11 +17,25 @@ icon: vial-circle-check
 
 Ori Eval answers "which model is best for what I'm building?" with evidence instead of vibes. Ask the question in plain words and the agent finds test material in your repo, writes the eval, runs your candidates, and comes back with a ranked answer. Under the hood an eval is a `*.eval.ts` file — you can write one by hand whenever you want the control, but you never have to start there.
 
+## Start with your agent
+
+The fastest path is to not run anything yourself. Tell your coding agent:
+
+```text
+go to https://openrouter.ai/skills/spawn-ori-eval to get started
+```
+
+The [`spawn-ori-eval`](https://openrouter.ai/skills/spawn-ori-eval) skill walks the agent through everything: it installs Ori, checks `ori login`, and starts `ori code -p` with your request. Inside the run, Ori's `create-eval` skill asks the questions that shape the eval — which surface to test, what it needs to be good at, whether you have real data, and the cost ceiling — then writes it, runs your candidates, and reports back with a recommendation.
+
 ## Why run evals through Ori
 
 The hardest part of evals is keeping the test bench stable. Ori is a harness, not just a skill: it pins the model and settings at a level prompts can't, so a score change means your agent changed, not the environment. And because Ori routes through OpenRouter, a bakeoff can cover every major lab's models — not just the one vendor your usual harness supports.
 
-## Before you start
+## Run it manually
+
+Everything below is the same flow by hand — use it when you want the control, or to understand what the agent built.
+
+### Before you start
 
 Install the CLI:
 
@@ -32,34 +46,34 @@ curl -fsSL https://openrouter.ai/labs/ori/install.sh | sh
 Sign in once:
 
 ```sh
-ori
+ori login
 ```
 
-An eval calls a real model, so a credential is required — the browser login covers it, or export `OPENROUTER_API_KEY` directly. Running evals also needs [Bun](https://bun.sh); if it is missing, `ori eval` offers to install it on an interactive terminal.
+An eval calls a real model, so a credential is required — `ori login` stores one for Ori to use. Running evals also needs [Bun](https://bun.sh); if it is missing, `ori eval` offers to install it on an interactive terminal.
 
 <Tip>
   Your project does not need to be TypeScript, and TypeScript never needs a
   separate install: the eval file tests the agent, not your codebase.
 </Tip>
 
-## Start from a question
+### Start from a question
 
-From your project directory, start a session and ask:
+From your project directory, ask Ori to run the eval:
 
 ```sh
 cd my-project
-ori
+ori code -p "What's the best model for my support agent?"
+# For a long request:
+ori code --prompt-file /tmp/ori-task.txt
 ```
 
-```text
-What's the best model for my support agent?
-```
+`ori code -p` runs without a TTY, streams output to stdout, and exits when the prompt completes. Use `--prompt-file` instead for a long request; the flags are mutually exclusive and positional prompts are rejected.
 
 You do not need to know eval methodology or model names. The agent:
 
 1. **Scans your repo** for test material — existing prompts, tool definitions, data files (`.jsonl`, `.csv`, chat logs), and gold answers. Tests in any language count: pytest files and Go tests get mined for cases, even though the eval itself is always TypeScript.
 2. **Asks what matters** — a question or two like "accuracy first, or speed and cost?" — only when the answer changes the eval.
-3. **Writes and runs the eval** — scaffolds the `*.eval.ts`, seeds candidate models from OpenRouter's live catalog under your price cap, and runs them.
+3. **Writes and runs the eval** — scaffolds `evals/<feature>/<name>.eval.ts`, seeds candidate models from OpenRouter's live catalog under your price cap, and runs them.
 4. **Recommends one model**, with the scores, latency, and cost that back it up.
 
 Every artifact stays in your repo as plain code: re-run it when a new model drops, tighten the criteria, or put it in CI.
@@ -68,7 +82,7 @@ Every artifact stays in your repo as plain code: re-run it when a new model drop
 
 When you want control — or want to understand what the agent built — here is the whole surface. An eval reads like a normal `bun test`:
 
-```ts recommends.eval.ts
+```ts evals/support/recommends.eval.ts
 import { test } from 'bun:test';
 import { setupAgent } from 'ori/eval';
 
@@ -80,6 +94,8 @@ test('recommends restaurants using the search tool', async () => {
   run.tool('search').toBeCalled();
   run.tool('delete_file').toNotBeCalled();
   run.toComplete();
+  run.toCostAtMost(0.01);
+  run.toFinishWithin(30_000);
 });
 ```
 
@@ -87,15 +103,19 @@ test('recommends restaurants using the search tool', async () => {
 
 ```sh
 ori eval
+ori eval --report eval-report.md
+ori eval --baseline best
 ```
 
-Ori discovers every `*.eval.ts` in the directory, boots an ephemeral runtime, and hands the files to `bun test`. The exit code mirrors `bun test`, so a failing eval fails CI.
+Ori discovers every `*.eval.ts` in the workspace — keep them under top-level `evals/<feature>/` directories — boots an ephemeral runtime, and hands the files to `bun test`. The exit code mirrors `bun test`, so a failing eval fails CI. Use `--baseline last|best|model:<slug>` to compare against an earlier run recorded in `.ori/eval/history.jsonl`, and `--report <path>` for a shareable Markdown report. Baselines only compare runs that covered exactly the same eval files.
+
+If a bakeoff candidate is cut off before it answers, the shareable report keeps it visible as unmeasured instead of silently dropping it.
 
 ### Compare models
 
 Seed candidates from OpenRouter's live catalog instead of hand-listing slugs, cap the price, and run the same eval against each:
 
-```ts model.eval.ts
+```ts evals/support/model.eval.ts
 import { test } from 'bun:test';
 import { candidateModels, setupAgent } from 'ori/eval';
 
@@ -115,11 +135,15 @@ for (const model of candidates) {
 }
 ```
 
+`candidateModels` can also filter by `maxCompletionPrice`, `minContextLength`, quality indexes, required parameters or input modalities, and `excludeExpiring`, so unknown catalog values do not silently pass a bound.
+
+Use `assertModelIsLive(slug)` when you pin an incumbent model, so the eval fails clearly if it leaves the live catalog.
+
 ### Grade open-ended answers
 
 When there is no single right string, grade with an LLM judge. The judge defaults to a dedicated agent on a strong grading model, so scoring stays independent of the model under test:
 
-```ts quality.eval.ts
+```ts evals/support/quality.eval.ts
 import { test } from 'bun:test';
 import { setupAgent, setupJudge } from 'ori/eval';
 
@@ -134,6 +158,8 @@ test('gives an accurate, grounded answer', async () => {
   });
 });
 ```
+
+For common dimensions, `startingCriteria.accuracy`, `completeness`, `instructionFollowing`, `safety`, `structuredOutput`, and `toneAndVoice` provide editable starter rubrics for `judge.autoEvals`.
 
 ### Eval against your own data
 
