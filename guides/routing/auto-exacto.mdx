@@ -41,11 +41,11 @@ new Validator(parameters, '7')
 
 Tools whose `parameters` schema is absent or fails to compile are treated as having no schema and are always considered valid, so the metric is conservative when caller-side schemas are malformed.
 
-### Regex engine
+### Regex Engine
 
 `@cfworker/json-schema` delegates `pattern` and `patternProperties` to the runtime's built-in regex implementation. In OpenRouter's environment that is the native JavaScript `RegExp` (V8 / ECMA-262). There is no ECMA-262-conformance shim layered on top, so JavaScript regex semantics differ in some edge cases from the regex dialect specified by JSON Schema.
 
-### Per-tool-call classification
+### Per-Tool-Call Classification
 
 Each tool call is bucketed into one of three error categories, or counted as valid:
 
@@ -53,7 +53,7 @@ Each tool call is bucketed into one of three error categories, or counted as val
 - **`UnknownName`** -- `function.name` is not present in the request's `tools[]`.
 - **`SchemaMismatch`** -- the validator returns `valid: false` against the resolved schema.
 
-### Request-level aggregation
+### Request-Level Aggregation
 
 A request is flagged as errored if **any** of its tool calls falls into one of the three buckets above. The Tool Call Error Rate displayed per endpoint per day is then computed at the **request** level -- both the numerator and the denominator are counts of requests, not counts of individual tool calls:
 
@@ -75,7 +75,7 @@ The benchmark signal comes from OpenRouter's in-house benchmark harness, which r
 - **GPQA Diamond** -- graduate-level multiple-choice science questions. The benchmark fixes temperature at `0.5` (matching the reference openbench configuration), shuffles answer options deterministically per question, and runs 10 epochs (repeated passes over the dataset) by default.
 - **Tau2-Bench Airline** -- an agentic tool-calling benchmark where an LLM user-simulator drives multi-turn conversations against airline-domain tools, with a binary reward from final database-state, golden-action, and communication-information checks. The benchmark fixes temperature at `0`, and runs 1 epoch by default.
 
-### How runs are executed
+### How Runs Are Executed
 
 - Each benchmark run **pins a specific provider endpoint**, so every score is attributable to exactly one endpoint with no fallback. An additional unpinned run against OpenRouter's default routing is executed as a baseline.
 - Tool-requiring presets are skipped on endpoints without tool support.
