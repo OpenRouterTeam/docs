@@ -42,7 +42,7 @@ OpenRouter enforces two kinds of limits:
 | [Credit limits](#credit-limits)   | How much you can spend (account balance and per-key credit caps)             | <StatusCode code={HTTPStatus.S402_Payment_Required} />  | `GET /api/v1/key` → `limit_remaining`                           |
 | [Rate limits](#rate-limits)       | How many requests you can make (free-model request caps and DDoS protection) | <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> | `X-RateLimit-*` headers on the error response                   |
 
-## Checking Your Limits
+## Checking your limits
 
 To check the rate limit or credits left on an API key, make a GET request to `https://openrouter.ai/api/v1/key`.
 
@@ -116,7 +116,7 @@ type Key = {
 };
 ```
 
-## Credit Limits
+## Credit limits
 
 Credit limits govern how much you can spend. They come from two places:
 
@@ -131,7 +131,7 @@ To resolve <StatusCode code={HTTPStatus.S402_Payment_Required} /> errors:
 - **Check per-key limits.** If `limit_remaining` on the key is exhausted, raise the key's credit limit or wait for it to reset (see `limit_reset`).
 - **Monitor proactively.** Call `GET /api/v1/key` as shown above to track `limit_remaining` and usage before requests start failing.
 
-## Rate Limits
+## Rate limits
 
 Rate limits govern how many requests you can make. There are a few rate limits that apply to certain types of requests, regardless of account status:
 
