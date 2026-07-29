@@ -1,0 +1,1278 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Provider Monitor Schema V2",
+    "version": "2.4",
+    "description": "A provider’s declaration of a model, expressed as typed input/output modality objects that own their pricing (nested pricing design). Only request-scoped SKUs live at the document root."
+  },
+  "components": {
+    "schemas": {
+      "ModelDocumentV2": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "2.4"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "hugging_face_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "created": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "quantization": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Quantization"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "input_modalities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputModality"
+            }
+          },
+          "output_modalities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutputModality"
+            }
+          },
+          "pricing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequestPricingEntry"
+            }
+          },
+          "passthrough_parameters": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ParameterDescriptor"
+            }
+          },
+          "deprecation_date": {
+            "type": "string"
+          },
+          "is_ready": {
+            "type": "boolean"
+          },
+          "is_free": {
+            "type": "boolean"
+          },
+          "discount_to_user": {
+            "type": "number"
+          },
+          "capacity_tpm": {
+            "type": "number"
+          },
+          "openrouter": {
+            "type": "object",
+            "properties": {
+              "slug": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug"
+            ],
+            "additionalProperties": false
+          },
+          "datacenters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Datacenter"
+            }
+          },
+          "compliance": {
+            "$ref": "#/components/schemas/Compliance"
+          }
+        },
+        "required": [
+          "schema_version",
+          "id",
+          "name",
+          "input_modalities",
+          "output_modalities"
+        ],
+        "additionalProperties": false
+      },
+      "InputModality": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "text"
+              },
+              "supported_inputs": {
+                "type": "object",
+                "properties": {
+                  "max_length": {
+                    "$ref": "#/components/schemas/IntegerInputLimit"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/InputPricingEntry"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "image"
+              },
+              "supported_inputs": {
+                "$ref": "#/components/schemas/ImageSupportedInputs"
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/InputPricingEntry"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "video"
+              },
+              "supported_inputs": {
+                "type": "object",
+                "properties": {
+                  "sources": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "enum"
+                      },
+                      "values": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/MediaSource"
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "values"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "formats": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "enum"
+                      },
+                      "values": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/VideoInputFormat"
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "values"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "max_duration_seconds": {
+                    "$ref": "#/components/schemas/NumberInputLimit"
+                  },
+                  "max_content_size_bytes": {
+                    "$ref": "#/components/schemas/IntegerInputLimit"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/InputPricingEntry"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "audio"
+              },
+              "supported_inputs": {
+                "type": "object",
+                "properties": {
+                  "sources": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "enum"
+                      },
+                      "values": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/MediaSource"
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "values"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "formats": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "enum"
+                      },
+                      "values": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/AudioInputFormat"
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "values"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "max_duration_seconds": {
+                    "$ref": "#/components/schemas/NumberInputLimit"
+                  },
+                  "max_content_size_bytes": {
+                    "$ref": "#/components/schemas/IntegerInputLimit"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/InputPricingEntry"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "file"
+              },
+              "supported_inputs": {
+                "type": "object",
+                "properties": {
+                  "sources": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "enum"
+                      },
+                      "values": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/MediaSource"
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "values"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "formats": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "enum"
+                      },
+                      "values": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/FileInputFormat"
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "values"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "references": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "integer"
+                      },
+                      "min": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "max": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "unit": {
+                        "$ref": "#/components/schemas/DescriptorUnit"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "max_content_size_bytes": {
+                    "$ref": "#/components/schemas/IntegerInputLimit"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/InputPricingEntry"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "OutputModality": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "text"
+              },
+              "max_length": {
+                "$ref": "#/components/schemas/IntegerInputLimit"
+              },
+              "streaming": {
+                "type": "boolean"
+              },
+              "supported_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OutputPricingEntry"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "supported_parameters"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "image"
+              },
+              "streaming": {
+                "type": "boolean"
+              },
+              "supported_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OutputPricingEntry"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "supported_parameters"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "video"
+              },
+              "streaming": {
+                "type": "boolean"
+              },
+              "supported_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OutputPricingEntry"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "supported_parameters"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "speech"
+              },
+              "streaming": {
+                "type": "boolean"
+              },
+              "supported_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OutputPricingEntry"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "supported_parameters"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "transcription"
+              },
+              "streaming": {
+                "type": "boolean"
+              },
+              "supported_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OutputPricingEntry"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "supported_parameters"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "embeddings"
+              },
+              "supported_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OutputPricingEntry"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "supported_parameters"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "rerank"
+              },
+              "supported_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OutputPricingEntry"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "supported_parameters"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "audio"
+              },
+              "streaming": {
+                "type": "boolean"
+              },
+              "supported_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OutputPricingEntry"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "supported_parameters"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "InputPricingEntry": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/InputPricingType"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/PricingUnit"
+          },
+          "cost_usd": {
+            "type": "string"
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PricingOverride"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "unit",
+          "cost_usd"
+        ],
+        "additionalProperties": false
+      },
+      "OutputPricingEntry": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/OutputPricingType"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/PricingUnit"
+          },
+          "cost_usd": {
+            "type": "string"
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PricingOverride"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "unit",
+          "cost_usd"
+        ],
+        "additionalProperties": false
+      },
+      "RequestPricingEntry": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/RequestPricingType"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/PricingUnit"
+          },
+          "cost_usd": {
+            "type": "string"
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PricingOverride"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "unit",
+          "cost_usd"
+        ],
+        "additionalProperties": false
+      },
+      "InputPricingType": {
+        "type": "string",
+        "enum": [
+          "prompt",
+          "cached_prompt",
+          "cache_write"
+        ]
+      },
+      "OutputPricingType": {
+        "type": "string",
+        "enum": [
+          "completion",
+          "internal_reasoning"
+        ]
+      },
+      "RequestPricingType": {
+        "type": "string",
+        "enum": [
+          "request",
+          "web_search"
+        ]
+      },
+      "PricingUnit": {
+        "type": "string",
+        "enum": [
+          "token",
+          "image",
+          "second",
+          "character",
+          "request",
+          "search"
+        ]
+      },
+      "PricingOverride": {
+        "type": "object",
+        "properties": {
+          "when": {
+            "type": "object",
+            "properties": {
+              "parameter": {
+                "type": "string"
+              },
+              "equals": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "gte": {
+                "type": "number"
+              },
+              "lte": {
+                "type": "number"
+              },
+              "min_items": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "parameter"
+            ],
+            "additionalProperties": false
+          },
+          "cost_usd": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "when",
+          "cost_usd"
+        ],
+        "additionalProperties": false
+      },
+      "ParameterDescriptor": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ParameterDescriptorType"
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "default": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            }
+          },
+          "unit": {
+            "$ref": "#/components/schemas/DescriptorUnit"
+          },
+          "max_items": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "properties": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ParameterDescriptor"
+            }
+          },
+          "items": {
+            "$ref": "#/components/schemas/ParameterDescriptor"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "ParameterDescriptorType": {
+        "type": "string",
+        "enum": [
+          "range",
+          "integer",
+          "boolean",
+          "enum",
+          "array",
+          "object",
+          "unknown"
+        ]
+      },
+      "DescriptorUnit": {
+        "type": "string",
+        "enum": [
+          "second",
+          "pixel",
+          "byte",
+          "token",
+          "character"
+        ]
+      },
+      "MediaSource": {
+        "type": "string",
+        "enum": [
+          "url",
+          "base64"
+        ]
+      },
+      "Quantization": {
+        "type": "string",
+        "enum": [
+          "int4",
+          "int8",
+          "fp4",
+          "mxfp4",
+          "nvfp4",
+          "fp6",
+          "fp8",
+          "mxfp8",
+          "fp16",
+          "bf16",
+          "fp32"
+        ]
+      },
+      "ImageInputFormat": {
+        "type": "string",
+        "enum": [
+          "image/png",
+          "image/jpeg",
+          "image/webp",
+          "image/gif"
+        ]
+      },
+      "VideoInputFormat": {
+        "type": "string",
+        "enum": [
+          "video/mp4",
+          "video/webm"
+        ]
+      },
+      "AudioInputFormat": {
+        "type": "string",
+        "enum": [
+          "audio/wav",
+          "audio/mpeg"
+        ]
+      },
+      "FileInputFormat": {
+        "type": "string",
+        "enum": [
+          "application/pdf",
+          "text/plain",
+          "text/markdown",
+          "text/html",
+          "text/csv",
+          "application/json"
+        ]
+      },
+      "ImageDetailLevel": {
+        "type": "string",
+        "enum": [
+          "auto",
+          "low",
+          "high",
+          "original"
+        ]
+      },
+      "ImageInputRole": {
+        "type": "string",
+        "enum": [
+          "reference",
+          "first_frame",
+          "last_frame"
+        ]
+      },
+      "ImageSupportedInputs": {
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "enum"
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/MediaSource"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "values"
+            ],
+            "additionalProperties": false
+          },
+          "formats": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "enum"
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ImageInputFormat"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "values"
+            ],
+            "additionalProperties": false
+          },
+          "detail_levels": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "enum"
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ImageDetailLevel"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "values"
+            ],
+            "additionalProperties": false
+          },
+          "references": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "integer"
+              },
+              "min": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "max": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "unit": {
+                "$ref": "#/components/schemas/DescriptorUnit"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          "role": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "enum"
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ImageInputRole"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "values"
+            ],
+            "additionalProperties": false
+          },
+          "max_content_size_bytes": {
+            "$ref": "#/components/schemas/IntegerInputLimit"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IntegerInputLimit": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "unit": {
+            "$ref": "#/components/schemas/DescriptorUnit"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "NumberInputLimit": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/DescriptorUnit"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "Datacenter": {
+        "type": "object",
+        "properties": {
+          "country_code": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Compliance": {
+        "type": "object",
+        "properties": {
+          "zdr": {
+            "type": "boolean"
+          },
+          "hipaa": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
