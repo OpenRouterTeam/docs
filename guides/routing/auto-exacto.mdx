@@ -79,10 +79,14 @@ The benchmark signal comes from OpenRouter's in-house benchmark harness, which r
 
 - Each benchmark run **pins a specific provider endpoint**, so every score is attributable to exactly one endpoint with no fallback. An additional unpinned run against OpenRouter's default routing is executed as a baseline.
 - Tool-requiring presets are skipped on endpoints without tool support.
-- Scores used for routing are aggregated over a **rolling 32-day window**.
+- Scores used for routing are each endpoint's current score, aggregated over a **rolling 32-day window**.
 - Runs must meet a minimum sample-size floor to count (currently at least 50 GPQA questions and 45 Tau2 tasks), so partial or failed runs do not affect routing.
 
 GPQA option shuffling deliberately differs from openbench: openbench reseeds per record so the correct answer is always `B`, while this harness shuffles by index, so its GPQA numbers are not directly comparable to openbench-published scores.
+
+### How the benchmark threshold is set
+
+Each model and benchmark type has a fixed baseline: the median of per-endpoint scores during the model's first approximately 21 days of benchmarking. The derank threshold is that baseline minus **2σ**. An endpoint's current rolling score is compared against this fixed threshold, which does not move when another provider's current score changes.
 
 ## Where to Find the Scores
 
