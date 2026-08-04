@@ -33,9 +33,15 @@ returns the combined output and exit code.
 <Note>
 **Messages API only**
 
-`openrouter:bash` is only available on the Anthropic Messages API. Requesting
-it on the Chat Completions or Responses API returns a `400` error. On those
-APIs, use a client-side function tool instead.
+`openrouter:bash` is only available on the Anthropic Messages API, on every
+`engine`. Requesting it on the Chat Completions or Responses API returns a
+`400` error.
+
+For **sandboxed** commands on those APIs, use
+[Shell](/guides/features/server-tools/shell) — it runs server-side in the same
+container infrastructure and is available on the Responses API. For
+**client-side** execution, send a normal function tool and run the command
+yourself.
 </Note>
 
 ## How It Works
@@ -223,6 +229,10 @@ The `engine` parameter controls where commands run:
 
 This lets you opt into OpenRouter's sandboxed execution with `openrouter`, while
 the default leaves command execution to your own application.
+
+`engine` selects where commands run, not which APIs accept the tool: every
+engine, `openrouter` included, is Messages-API-only. For sandboxed commands on
+the Responses API, use [Shell](/guides/features/server-tools/shell).
 
 ## Response Format
 

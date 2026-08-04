@@ -12149,6 +12149,31 @@ components:
         - 'tool_use_id'
         - 'content'
       type: 'object'
+    MessagesBashToolResultBlock:
+      description: 'Output of a sandbox-executed `openrouter:bash` call from a prior assistant turn. Accepted on replay and dropped before the provider request — Anthropic has no equivalent block.'
+      example:
+        content:
+          command: 'ls'
+          exitCode: 0
+          stderr: ''
+          stdout: "README.md\n"
+        tool_use_id: 'srvtoolu_01abc'
+        type: 'openrouter_bash_tool_result'
+      properties:
+        content:
+          additionalProperties: {}
+          type: 'object'
+        tool_use_id:
+          type: 'string'
+        type:
+          enum:
+            - 'openrouter_bash_tool_result'
+          type: 'string'
+      required:
+        - 'type'
+        - 'tool_use_id'
+        - 'content'
+      type: 'object'
     MessagesContentBlockDeltaEvent:
       description: 'Event sent when content is added to a content block'
       example:
@@ -12282,6 +12307,8 @@ components:
             - $ref: '#/components/schemas/AnthropicContainerUpload'
             - $ref: '#/components/schemas/AnthropicCompactionBlock'
             - $ref: '#/components/schemas/AnthropicAdvisorToolResult'
+            - $ref: '#/components/schemas/ORAnthropicShellToolResult'
+            - $ref: '#/components/schemas/ORAnthropicBashToolResult'
             - properties:
                 content:
                   type:
@@ -12657,6 +12684,8 @@ components:
                   - $ref: '#/components/schemas/MessagesAdvisorToolResultBlock'
                   - $ref: '#/components/schemas/MessagesToolAdditionBlock'
                   - $ref: '#/components/schemas/MessagesToolRemovalBlock'
+                  - $ref: '#/components/schemas/MessagesShellToolResultBlock'
+                  - $ref: '#/components/schemas/MessagesBashToolResultBlock'
               type: 'array'
         role:
           enum:
@@ -13183,6 +13212,7 @@ components:
                 type: 'object'
               - $ref: '#/components/schemas/AnthropicToolSearchToolBm25'
               - $ref: '#/components/schemas/AnthropicToolSearchToolRegex'
+              - $ref: '#/components/schemas/ShellServerTool_OpenRouter'
           type: 'array'
         top_k:
           type: 'integer'
@@ -13298,6 +13328,33 @@ components:
           type: 'string'
       required:
         - 'type'
+      type: 'object'
+    MessagesShellToolResultBlock:
+      description: 'Output of an `openrouter:shell` call from a prior assistant turn. Accepted on replay and dropped before the provider request — Anthropic has no equivalent block.'
+      example:
+        content:
+          output:
+            - outcome:
+                exit_code: 0
+                type: 'exit'
+              stderr: ''
+              stdout: "README.md\n"
+        tool_use_id: 'srvtoolu_01abc'
+        type: 'openrouter_shell_tool_result'
+      properties:
+        content:
+          additionalProperties: {}
+          type: 'object'
+        tool_use_id:
+          type: 'string'
+        type:
+          enum:
+            - 'openrouter_shell_tool_result'
+          type: 'string'
+      required:
+        - 'type'
+        - 'tool_use_id'
+        - 'content'
       type: 'object'
     MessagesStartEvent:
       description: 'Event sent at the start of a streaming message'
@@ -15939,7 +15996,9 @@ components:
         config:
           properties:
             account:
+              maxLength: 255
               minLength: 1
+              pattern: '^[a-zA-Z0-9_]+(?:[.-][a-zA-Z0-9_]+)*$'
               type: 'string'
             database:
               default: 'SNOWFLAKE_LEARNING_DB'
@@ -17169,6 +17228,31 @@ components:
       required:
         - 'type'
       type: 'object'
+    ORAnthropicBashToolResult:
+      description: 'Output of an `openrouter:bash` call executed in the OpenRouter sandbox (`engine: ''openrouter''`)'
+      example:
+        content:
+          command: 'ls'
+          exitCode: 0
+          stderr: ''
+          stdout: "README.md\n"
+        tool_use_id: 'srvtoolu_01abc'
+        type: 'openrouter_bash_tool_result'
+      properties:
+        content:
+          additionalProperties: {}
+          type: 'object'
+        tool_use_id:
+          type: 'string'
+        type:
+          enum:
+            - 'openrouter_bash_tool_result'
+          type: 'string'
+      required:
+        - 'type'
+        - 'tool_use_id'
+        - 'content'
+      type: 'object'
     ORAnthropicContentBlock:
       discriminator:
         mapping:
@@ -17177,6 +17261,8 @@ components:
           code_execution_tool_result: '#/components/schemas/AnthropicCodeExecutionToolResult'
           compaction: '#/components/schemas/AnthropicCompactionBlock'
           container_upload: '#/components/schemas/AnthropicContainerUpload'
+          openrouter_bash_tool_result: '#/components/schemas/ORAnthropicBashToolResult'
+          openrouter_shell_tool_result: '#/components/schemas/ORAnthropicShellToolResult'
           redacted_thinking: '#/components/schemas/AnthropicRedactedThinkingBlock'
           server_tool_use: '#/components/schemas/ORAnthropicServerToolUseBlock'
           text: '#/components/schemas/AnthropicTextBlock'
@@ -17206,6 +17292,8 @@ components:
         - $ref: '#/components/schemas/AnthropicContainerUpload'
         - $ref: '#/components/schemas/AnthropicCompactionBlock'
         - $ref: '#/components/schemas/AnthropicAdvisorToolResult'
+        - $ref: '#/components/schemas/ORAnthropicShellToolResult'
+        - $ref: '#/components/schemas/ORAnthropicBashToolResult'
     ORAnthropicNullableCaller:
       discriminator:
         mapping:
@@ -17244,6 +17332,33 @@ components:
         - 'type'
         - 'id'
         - 'name'
+      type: 'object'
+    ORAnthropicShellToolResult:
+      description: 'Output of an `openrouter:shell` call executed in the OpenRouter sandbox'
+      example:
+        content:
+          output:
+            - outcome:
+                exit_code: 0
+                type: 'exit'
+              stderr: ''
+              stdout: "README.md\n"
+        tool_use_id: 'srvtoolu_01abc'
+        type: 'openrouter_shell_tool_result'
+      properties:
+        content:
+          additionalProperties: {}
+          type: 'object'
+        tool_use_id:
+          type: 'string'
+        type:
+          enum:
+            - 'openrouter_shell_tool_result'
+          type: 'string'
+      required:
+        - 'type'
+        - 'tool_use_id'
+        - 'content'
       type: 'object'
     ORAnthropicStopReason:
       enum:
@@ -20325,6 +20440,7 @@ components:
           - 'top_p'
           - 'max_tokens'
         supports_implicit_caching: true
+        supports_voice_cloning: false
         tag: 'openai'
         throughput_last_30m:
           p50: 45.2
@@ -20425,6 +20541,10 @@ components:
             $ref: '#/components/schemas/Parameter'
           type: 'array'
         supports_implicit_caching:
+          type: 'boolean'
+        supports_voice_cloning:
+          default: false
+          description: 'Whether this TTS endpoint accepts inline reference audio (`input_references`) for stateless voice cloning. Requests carrying reference audio are only routed to endpoints where this is true.'
           type: 'boolean'
         tag:
           type: 'string'
@@ -21858,6 +21978,68 @@ components:
       oneOf:
         - $ref: '#/components/schemas/ContainerAutoEnvironment'
         - $ref: '#/components/schemas/ContainerReferenceEnvironment'
+    SpeechInputReference:
+      description: 'Reference content part for stateless voice cloning'
+      discriminator:
+        mapping:
+          input_audio: '#/components/schemas/SpeechInputReferenceAudio'
+          text: '#/components/schemas/SpeechInputReferenceText'
+        propertyName: 'type'
+      oneOf:
+        - $ref: '#/components/schemas/SpeechInputReferenceAudio'
+        - $ref: '#/components/schemas/SpeechInputReferenceText'
+    SpeechInputReferenceAudio:
+      description: 'Reference audio input for stateless voice cloning'
+      example:
+        input_audio:
+          data: 'data:audio/wav;base64,UklGRuQXDABXQVZF...'
+        type: 'input_audio'
+      properties:
+        input_audio:
+          $ref: '#/components/schemas/SpeechInputReferenceAudioInput'
+        type:
+          enum:
+            - 'input_audio'
+          type: 'string'
+      required:
+        - 'type'
+        - 'input_audio'
+      type: 'object'
+    SpeechInputReferenceAudioInput:
+      description: 'Reference audio input object'
+      properties:
+        data:
+          description: 'Base64-encoded reference audio (optionally a data URI). Supported audio formats are provider-specific. Limited to 20 MiB of base64 (15 MiB of decoded audio).'
+          example: 'data:audio/wav;base64,UklGRuQXDABXQVZF...'
+          maxLength: 20971520
+          minLength: 1
+          type: 'string'
+        format:
+          description: 'Audio format of the reference audio (e.g., wav, mp3). Optional; most providers detect the format from the audio bytes.'
+          example: 'wav'
+          type: 'string'
+      required:
+        - 'data'
+      type: 'object'
+    SpeechInputReferenceText:
+      description: 'Transcript of the accompanying reference audio'
+      example:
+        text: 'I used to rule the world.'
+        type: 'text'
+      properties:
+        text:
+          description: 'Transcript of the accompanying reference audio.'
+          example: 'I used to rule the world.'
+          maxLength: 10000
+          type: 'string'
+        type:
+          enum:
+            - 'text'
+          type: 'string'
+      required:
+        - 'type'
+        - 'text'
+      type: 'object'
     SpeechRequest:
       description: 'Text-to-speech request input'
       example:
@@ -21871,6 +22053,17 @@ components:
           description: 'Text to synthesize'
           example: 'Hello world'
           type: 'string'
+        input_references:
+          description: 'Reference content for stateless voice cloning: one `input_audio` part carrying the voice sample, optionally accompanied by one `text` part with its transcript. Only routed to endpoints that support voice cloning.'
+          example:
+            - input_audio:
+                data: 'data:audio/wav;base64,UklGRuQXDABXQVZF...'
+              type: 'input_audio'
+            - text: 'I used to rule the world.'
+              type: 'text'
+          items:
+            $ref: '#/components/schemas/SpeechInputReference'
+          type: 'array'
         model:
           description: 'TTS model identifier'
           example: 'mistralai/voxtral-mini-tts-2603'
@@ -25537,6 +25730,9 @@ paths:
                         description: 'Dimension to filter on. Use the /meta endpoint for available dimensions.'
                         example: 'model'
                         type: 'string'
+                      include_unset:
+                        description: 'Include rows where the dimension has no value. Applies only to the `in` and `not_in` operators and dimensions that have an unset bucket.'
+                        type: 'boolean'
                       operator:
                         description: 'Filter operator'
                         example: 'eq'
@@ -28191,6 +28387,7 @@ paths:
                       - 'top_p'
                       - 'max_tokens'
                     supports_implicit_caching: true
+                    supports_voice_cloning: false
                     tag: 'openai'
                     throughput_last_30m:
                       p50: 45.2
@@ -28227,6 +28424,7 @@ paths:
                         - 'top_p'
                         - 'max_tokens'
                       supports_implicit_caching: true
+                      supports_voice_cloning: false
                       tag: 'openai'
                       throughput_last_30m:
                         p50: 45.2
