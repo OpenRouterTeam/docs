@@ -207,3 +207,17 @@ html.dark [data-component-part="update-tag"] {
 html.dark #changelog-filters-content button.bg-primary {
   color: rgb(3 8 10 / 0.9) !important;
 }
+
+/* ── Changelog: separate inline status badges from bullet text ── */
+.changelog-status-badge {
+  margin-left: 0.5rem;
+}
+
+.changelog-status-badge[data-color="gray"] {
+  border: 1px solid rgb(3 8 10 / 0.3) !important;
+}
+
+.dark .changelog-status-badge[data-color="gray"],
+html.dark .changelog-status-badge[data-color="gray"] {
+  border-color: rgb(252 252 254 / 0.4) !important;
+}
