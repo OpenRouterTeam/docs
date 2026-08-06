@@ -7,6 +7,12 @@ rss: true
 
 Entries on this page are generated automatically from [OpenAPI specification](/api_reference/overview) diffs when releases ship. Breaking changes are reviewed by a human before publication — see [API Versioning](/api_reference/versioning) for what counts as a breaking change and how deprecations are announced. Endpoint paths are shown relative to the API base URL (`https://openrouter.ai/api/v1`).
 
+{/*
+  Review convention: Keep exactly one Badge on each breaking-change bullet's first line.
+  Replace the generated red badge with a gray outlined "No action needed" badge when appropriate.
+  Do not remove or move it; regeneration restores the default badge on badge-less bullets.
+*/}
+
 {/* api-changelog:entries */}
 
 <Update label="July 29, 2026" tags={["Benchmarks"]} rss="1 modified endpoint, 1 new schema, 2 modified schemas.">
@@ -33,10 +39,10 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## Breaking changes
 
-- `FusionCallAnalysisInProgressEvent` — required `analyst_model` property added
+- `FusionCallAnalysisInProgressEvent` — required `analyst_model` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
   - **No action required for existing consumers.** `analyst_model` replaces `judge_model` in this streaming event; `judge_model` is retained as a deprecated alias that always carries the same value.
   - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
-- $.tags: responses object removed
+- $.tags: responses object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
   - **No action required.** The `responses` OpenAPI tag was renamed to `Responses` for consistent Title Case across the API Reference. This is a documentation-grouping change only: `POST /api/v1/responses` and its schemas are unchanged, SDK namespaces are unchanged (`client.responses.send()` in TypeScript and Python, `Sdk.Responses.Send()` in Go), and endpoint documentation URLs are unchanged.
 
 ## Modified endpoints
