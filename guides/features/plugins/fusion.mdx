@@ -67,7 +67,7 @@ flowchart LR
 | `preset` | _none_ | A curated OpenRouter preset slug (e.g. `general-high`) that expands into a panel + analyst, so you don't have to name models. Explicit `analysis_models` / `model` override it. See [Presets](#presets). |
 | `analysis_models` | Quality preset (`~anthropic/claude-opus-latest`, `~openai/gpt-latest`, `~google/gemini-pro-latest`) | Models that form the panel. Each runs in parallel with `openrouter:web_search` and `openrouter:web_fetch`. 1–8 models allowed. |
 | `model` | First model in the Quality preset (`~anthropic/claude-opus-latest`) | The analyst model that produces the structured analysis. With `model: "openrouter/fusion"`, this also becomes the model that writes your final answer; when you attach the plugin to your own model instead, the analyst defaults to that model. |
-| `max_tool_calls` | `8` | Max tool-calling steps each panel model and the analyst may take in their `openrouter:web_search` / `openrouter:web_fetch` loop before they must return text. Range 1–16. |
+| `max_tool_calls` | `4` | Max tool-calling steps each panel model and the analyst may take in their `openrouter:web_search` / `openrouter:web_fetch` loop before they must return text. Range 1–16. |
 | `enabled` | `true` | Set to `false` to bypass fusion for a single request. |
 
 When you send `model: "openrouter/fusion"` without a plugin config, the defaults match the **Quality** preset on the [Fusion lab](https://openrouter.ai/fusion/).
