@@ -426,7 +426,7 @@ Descriptors may carry an optional `default` and, for numeric types, a `unit`. An
 
 Pricing uses **arrays nested on the modality that owns them**. Each pricing entry has a `type` (the billing kind), a `unit` (the billing basis), and a `cost_usd` string. The `unit` is the base billing unit, not a commitment to a flat price: per-image and per-token prices can scale with parameters declared by the owning modality.
 
-Each pricing scope accepts the units it can bill in: input entries take `token`, `image`, `second`, or `character`; output entries additionally take `request`; root `request` entries are always per `request` and `web_search` entries per `search`. Other combinations are rejected at validation time.
+Each pricing scope accepts the units it can bill in. Input entries take `token`, `image`, `second`, or `character`. Output entries take those units plus `request`. Root `request` entries are always per `request` and `web_search` entries per `search`. Other combinations are rejected at validation time.
 
 A document that validates is a valid declaration, not a guarantee that every declared SKU is billed today: OpenRouter bills the SKUs its pipeline supports and records the rest, and billing for newly declared SKU shapes lands as support for them does. Declare what you charge; do not tailor the document to what OpenRouter currently bills.
 
