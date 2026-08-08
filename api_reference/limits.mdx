@@ -120,8 +120,8 @@ type Key = {
 
 Credit limits govern how much you can spend. They come from two places:
 
-1. **Account balance** — your available credits across the account. If your account has a negative credit balance, you may see <StatusCode code={HTTPStatus.S402_Payment_Required} /> errors, including for free models. Adding credits to put your balance above zero allows you to use those models again.
-2. **Per-key credit limits** — an optional spending cap configured on an individual API key. The `limit`, `limit_reset`, and `limit_remaining` fields in the `GET /api/v1/key` response above describe this cap and how much of it remains.
+1. **Account balance**, your available credits across the account. If your account has a negative credit balance, you may see <StatusCode code={HTTPStatus.S402_Payment_Required} /> errors, including for free models. Adding credits to put your balance above zero allows you to use those models again.
+2. **Per-key credit limits**, an optional spending cap configured on an individual API key. The `limit`, `limit_reset`, and `limit_remaining` fields in the `GET /api/v1/key` response above describe this cap and how much of it remains.
 
 ### Handling 402 errors
 
@@ -162,8 +162,8 @@ Requests rejected with <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> f
 
 A <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> error can come from two places:
 
-1. **OpenRouter** — you hit one of the platform limits above (free-model requests per minute or per day, or DDoS protection).
-2. **The upstream provider** — the provider serving your request is rate limiting or at capacity. In this case `error.metadata.provider_code` carries the provider's original error code when available, and [fallback routing](/guides/routing/provider-selection) retries other providers for the same model automatically before the error reaches you. You can also specify [fallback models](/guides/routing/model-fallbacks) to try a different model when all providers for the first are exhausted.
+1. **OpenRouter**, when you hit one of the platform limits above (free-model requests per minute or per day, or DDoS protection).
+2. **The upstream provider**, when the provider serving your request is rate limiting or at capacity. In this case `error.metadata.provider_code` carries the provider's original error code when available, and [fallback routing](/guides/routing/provider-selection) retries other providers for the same model automatically before the error reaches you. You can also specify [fallback models](/guides/routing/model-fallbacks) to try a different model when all providers for the first are exhausted.
 
 <Note>
   Successful inference responses do not include `X-RateLimit-*` headers. When

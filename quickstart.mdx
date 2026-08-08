@@ -18,7 +18,7 @@ icon: rocket
 
 import {LlmsOnly} from "/snippets/LlmsOnly.jsx";
 
-OpenRouter provides a unified API that gives you access to hundreds of AI models through a single endpoint, while automatically handling fallbacks and selecting the most cost-effective options.
+OpenRouter gives you access to hundreds of AI models through a single API endpoint. It handles fallbacks automatically and picks the most cost-effective option for each request.
 
 There are three ways to integrate with OpenRouter, depending on how much control you want:
 
@@ -343,7 +343,7 @@ For information about using third-party SDKs and frameworks with OpenRouter, ple
 
 ## Building with an AI assistant
 
-If you write code with an AI coding tool (Claude Code, Cursor, Codex, and others), connect the [OpenRouter MCP server](/guides/overview/mcp-server). It's a remote server hosted by OpenRouter (nothing to install) that lets your assistant pull live OpenRouter data (which models exist, what they cost, your credit balance, usage rankings) and search these docs while you build, so its suggestions reflect current data instead of stale training knowledge. Add one URL to your MCP client and approve an OAuth login:
+If you write code with an AI coding tool (Claude Code, Cursor, Codex, and others), connect the [OpenRouter MCP server](/guides/overview/mcp-server). It's a remote server hosted by OpenRouter, so there's nothing to install. Your assistant can pull live OpenRouter data (which models exist, what they cost, your credit balance, usage rankings) and search these docs while you build. That way its suggestions reflect current data instead of stale training knowledge. Add one URL to your MCP client and approve an OAuth login:
 
 ```bash
 https://mcp.openrouter.ai/mcp

@@ -139,10 +139,10 @@ When manual tool calls are left unresolved at the end of a round, the loop pause
 
 HITL tools extend manual-tool semantics with two sync-or-async hooks that let you decide per call whether to respond programmatically or pause for a human:
 
-- `onToolCalled` — fires when the model invokes the tool. Return a value to feed the model directly (like a regular `execute`), or return `null` to pause the loop like a manual tool. The caller resumes later by supplying a `function_call_output` item.
-- `onResponseReceived` — optional. Fires on a later turn when an incoming `function_call_output` matches a prior call of this tool (by `callId → function_call.name`). It receives the caller-supplied raw result and returns the value sent to the model. Throwing surfaces as a tool error to the model.
+- `onToolCalled` fires when the model invokes the tool. Return a value to feed the model directly (like a regular `execute`), or return `null` to pause the loop like a manual tool. The caller resumes later by supplying a `function_call_output` item.
+- `onResponseReceived` is optional. It fires on a later turn when an incoming `function_call_output` matches a prior call of this tool (by `callId → function_call.name`). It receives the caller-supplied raw result and returns the value sent to the model. Throwing surfaces as a tool error to the model.
 
-An `outputSchema` is required for HITL tools — it validates both the `onToolCalled` return value (when non-null) and the value delivered via `function_call_output` (whether transformed by `onResponseReceived` or passed through directly).
+An `outputSchema` is required for HITL tools. It validates both the `onToolCalled` return value (when non-null) and the value delivered via `function_call_output` (whether transformed by `onResponseReceived` or passed through directly).
 
 ```typescript expandable lines
 const approvePaymentTool = tool({
@@ -429,7 +429,7 @@ context store. For per-turn mutations, use
 
 Tools can update their own context using `setContext()`.
 Changes persist across turns via the shared store and
-are visible immediately — `context.local` is a live
+are visible immediately. `context.local` is a live
 getter that always reads the latest values:
 
 ```typescript expandable lines
