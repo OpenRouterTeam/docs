@@ -45,7 +45,7 @@ The `X-OpenRouter-Title` header sets or modifies your app's display name
 in rankings and analytics. `X-Title` is still supported for backwards compatibility. This header alone does not create an app page. It must be paired with `HTTP-Referer`.
 
 ### X-OpenRouter-Categories
-The `X-OpenRouter-Categories` header assigns your app to one or more marketplace categories. Pass a comma-separated list of up to {MAX_CATEGORIES_PER_REQUEST} categories per request. Categories must be lowercase, hyphen-separated, and each category is limited to 30 characters. Only recognized categories from the list below are accepted; unrecognized ones are silently ignored. Categories are merged with any existing ones (up to {MAX_CATEGORIES_PER_APP} total).
+The `X-OpenRouter-Categories` header assigns your app to one or more marketplace categories. Pass a comma-separated list of up to {MAX_CATEGORIES_PER_REQUEST} categories per request. Categories must be lowercase, hyphen-separated, and each category is limited to 30 characters. Only recognized categories from the list below are accepted; OpenRouter drops unrecognized ones without an error. Categories are merged with any existing ones (up to {MAX_CATEGORIES_PER_APP} total).
 
 #### Category groups
 
@@ -81,7 +81,7 @@ Categories are organized into groups for the [marketplace](https://openrouter.ai
 #### Custom categories
 
 Only recognized categories from the list above are accepted.
-Unrecognized values are silently dropped. If you have a use case
+OpenRouter drops unrecognized values without an error. If you have a use case
 that doesn't fit the existing categories, reach out to us and
 we may add new categories in the future.
 
@@ -268,7 +268,7 @@ Once your app is tracked, you can access detailed analytics at `openrouter.ai/ap
 ## Best practices
 
 ### URL requirements
-- **Always include `HTTP-Referer`** — this is the minimum requirement for app attribution
+- **Always include `HTTP-Referer`.** It's the minimum requirement for app attribution.
 - Use your app's primary domain (e.g., `https://myapp.com`)
 - Avoid using subdomains unless they represent distinct apps
 - For localhost development, always include `X-OpenRouter-Title` as well
