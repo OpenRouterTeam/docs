@@ -29,7 +29,7 @@ For complete details on organization setup and management, see the [Organization
 
 Workspaces let you organize your projects into separate environments, each with its own API keys, routing defaults, guardrails, and observability integrations. Use them to isolate teams, projects, or deployment stages (e.g. staging vs. production) under a single organization.
 
-Your existing setup starts in a **Default workspace** — all organization members are automatically added to it. If you only need one environment, keep working as usual; nothing changes.
+Your existing setup starts in a **Default workspace**, and all organization members are automatically added to it. If you only need one environment, keep working as usual; nothing changes.
 
 ### Creating workspaces
 
@@ -43,15 +43,15 @@ Only organization admins can create and delete workspaces. You can also create a
 
 Each workspace has independent settings for:
 
-- **API Keys** — Every key lives in a workspace. Members create keys in any workspace they belong to; admins can create system keys owned by the workspace.
-- **Guardrails** — Each workspace has its own guardrail, inheriting account-level policies with the ability to add stricter rules.
-- **BYOK** — Bring your own provider keys per workspace, or share provider keys across multiple workspaces.
-- **Routing** — Configure provider routing per workspace to optimize for cost, latency, throughput, or tool-calling quality.
-- **Presets** — Organize shortcuts for system prompts, model and provider configurations, and request parameters.
-- **Plugins** — Configure default plugin behavior for API requests in each workspace.
-- **Observability** — Connect different observability integrations per workspace, or send traces from all workspaces to the same platform.
-- **Members** — Control which team members have access to each workspace.
-- **[Budgets](/guides/features/workspaces/workspace-budgets)** — Set daily, weekly, monthly, or lifetime spending limits per workspace.
+- **API Keys**: Every key lives in a workspace. Members create keys in any workspace they belong to; admins can create system keys owned by the workspace.
+- **Guardrails**: Each workspace has its own guardrail, inheriting account-level policies with the ability to add stricter rules.
+- **BYOK**: Bring your own provider keys per workspace, or share provider keys across multiple workspaces.
+- **Routing**: Configure provider routing per workspace to optimize for cost, latency, throughput, or tool-calling quality.
+- **Presets**: Organize shortcuts for system prompts, model and provider configurations, and request parameters.
+- **Plugins**: Configure default plugin behavior for API requests in each workspace.
+- **Observability**: Connect different observability integrations per workspace, or send traces from all workspaces to the same platform.
+- **Members**: Control which team members have access to each workspace.
+- **[Budgets](/guides/features/workspaces/workspace-budgets)**: Set daily, weekly, monthly, or lifetime spending limits per workspace.
 
 Account-level settings like billing, activity, logs, management keys, and privacy policies apply globally across all workspaces.
 
@@ -93,7 +93,7 @@ Employees who use coding agent CLIs can run them through [Ori Harness](/guides/o
 curl -fsSL https://openrouter.ai/labs/ori/install.sh | bash
 ```
 
-Then sign in with OAuth on your company OpenRouter organization—there are no API keys to distribute. Employees can run `ori claude`, `ori codex`, `ori hermes`, or `ori opencode`; your organization's allowlists, budgets, and workspace permissions apply to every agent, with usage on one bill.
+Then sign in with OAuth on your company OpenRouter organization, and there are no API keys to distribute. Employees can run `ori claude`, `ori codex`, `ori hermes`, or `ori opencode`; your organization's allowlists, budgets, and workspace permissions apply to every agent, with usage on one bill.
 
 ### Zero Data Retention (ZDR)
 
@@ -113,7 +113,7 @@ See [Data Collection](/guides/privacy/data-collection) and [Provider Logging](/g
 
 Presets let you separate your LLM configuration from your code. Create named configurations that encapsulate model selection, provider routing, system prompts, and generation parameters, then reference them in API requests using `@preset/your-preset-slug`.
 
-This enables rapid iteration — switch models, adjust prompts, or change provider preferences without deploying code changes.
+This enables rapid iteration: switch models, adjust prompts, or change provider preferences without deploying code changes.
 
 ### Creating presets
 
