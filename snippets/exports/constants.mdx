@@ -132,11 +132,11 @@ export const GROQ_CACHE_READ_MULTIPLIER = '0.5';
 
 export const MOONSHOT_CACHE_READ_MULTIPLIER = '0.25';
 
-export const BYOK_FEE_MONTHLY_REQUEST_THRESHOLD = '1M';
+export const BYOK_PAYG_MONTHLY_LIST_PRICE_THRESHOLD_USD = '$25,000';
 
-export const openRouterBYOKFee = {
-  fraction: '5',
-};
+export const BYOK_ENTERPRISE_MONTHLY_LIST_PRICE_THRESHOLD_USD = '$200,000';
+
+export const BYOK_FEE_PERCENTAGE = '5';
 
 export const getTotalFeeString = (type, value) => {
   if (type === 'stripe') return '5.5% ($0.80 minimum)';
