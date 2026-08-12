@@ -2908,7 +2908,7 @@ components:
             total_requests: 2109
             total_tokens: '9876543'
         meta:
-          as_of: '2026-05-12T02:00:00Z'
+          as_of: '2026-05-12T02:00:00.000Z'
           end_date: '2026-05-11'
           start_date: '2026-04-12'
           version: 'v1'
@@ -2936,13 +2936,15 @@ components:
         id: 'auto-beta-router'
       properties:
         allowed_models:
-          description: 'List of model patterns to filter which models the auto-beta-router can route between. Supports wildcards (e.g., "anthropic/*" matches all Anthropic models). When not specified, every model ranked for the classified task type is a candidate, falling back to a default model set when rankings are unavailable.'
+          description: 'List of model patterns to filter which models the auto-beta-router can route between. Supports wildcards (e.g., "anthropic/*" matches all Anthropic models). Up to 1024 patterns, each at most 1024 characters, with 65536 total characters across all patterns. When not specified, every model ranked for the classified task type is a candidate, falling back to a default model set when rankings are unavailable.'
           example:
             - 'anthropic/*'
             - 'openai/gpt-4o'
             - 'google/*'
           items:
+            maxLength: 1024
             type: 'string'
+          maxItems: 1024
           type: 'array'
         cost_quality_tradeoff:
           deprecated: true
@@ -2965,12 +2967,14 @@ components:
           description: 'Set to false to disable the auto-beta-router plugin for this request. Defaults to true.'
           type: 'boolean'
         excluded_models:
-          description: 'List of model patterns to exclude from auto-beta-router selection. Supports wildcards (e.g., "meta-llama/*" excludes all Llama models). Applied after allowed_models, so an excluded pattern always wins over an allowed one.'
+          description: 'List of model patterns to exclude from auto-beta-router selection. Supports wildcards (e.g., "meta-llama/*" excludes all Llama models). Up to 1024 patterns, each at most 1024 characters, with 65536 total characters across all patterns. Applied after allowed_models, so an excluded pattern always wins over an allowed one.'
           example:
             - 'openai/gpt-4o'
             - 'meta-llama/*'
           items:
+            maxLength: 1024
             type: 'string'
+          maxItems: 1024
           type: 'array'
         id:
           enum:
@@ -2992,13 +2996,15 @@ components:
         pin_model: false
       properties:
         allowed_models:
-          description: 'List of model patterns to filter which models the auto-router can route between. Supports wildcards (e.g., "anthropic/*" matches all Anthropic models). When not specified, every model ranked for the classified task type is a candidate, falling back to a default model set when rankings are unavailable.'
+          description: 'List of model patterns to filter which models the auto-router can route between. Supports wildcards (e.g., "anthropic/*" matches all Anthropic models). Up to 1024 patterns, each at most 1024 characters, with 65536 total characters across all patterns. When not specified, every model ranked for the classified task type is a candidate, falling back to a default model set when rankings are unavailable.'
           example:
             - 'anthropic/*'
             - 'openai/gpt-4o'
             - 'google/*'
           items:
+            maxLength: 1024
             type: 'string'
+          maxItems: 1024
           type: 'array'
         cost_quality_tradeoff:
           deprecated: true
@@ -3021,12 +3027,14 @@ components:
           description: 'Set to false to disable the auto-router plugin for this request. Defaults to true.'
           type: 'boolean'
         excluded_models:
-          description: 'List of model patterns to exclude from auto-router selection. Supports wildcards (e.g., "meta-llama/*" excludes all Llama models). Applied after allowed_models, so an excluded pattern always wins over an allowed one.'
+          description: 'List of model patterns to exclude from auto-router selection. Supports wildcards (e.g., "meta-llama/*" excludes all Llama models). Up to 1024 patterns, each at most 1024 characters, with 65536 total characters across all patterns. Applied after allowed_models, so an excluded pattern always wins over an allowed one.'
           example:
             - 'openai/gpt-4o'
             - 'meta-llama/*'
           items:
+            maxLength: 1024
             type: 'string'
+          maxItems: 1024
           type: 'array'
         id:
           enum:
@@ -4464,6 +4472,7 @@ components:
         - 'coreweave'
         - 'crusoe'
         - 'darkbloom'
+        - 'databricks'
         - 'decart'
         - 'deepgram'
         - 'deepinfra'
@@ -9073,8 +9082,9 @@ components:
         - 'title'
       type: 'object'
     GenerationContentData:
-      description: 'Stored prompt and completion content'
+      description: 'Stored prompt and completion content, plus the failure error when one was stored'
       example:
+        error: null
         input:
           messages:
             - content: 'What is the meaning of life?'
@@ -9083,6 +9093,8 @@ components:
           completion: 'The meaning of life is a philosophical question...'
           reasoning: null
       properties:
+        error:
+          $ref: '#/components/schemas/GenerationContentError'
         input:
           anyOf:
             - properties:
@@ -9125,11 +9137,98 @@ components:
       required:
         - 'input'
         - 'output'
+        - 'error'
+      type: 'object'
+    GenerationContentError:
+      description: 'The stored failure for this generation, or null when it succeeded'
+      example:
+        message: 'Timed out waiting for the provider'
+        previous_errors:
+          - code: 429
+            message: 'Provider returned error'
+            provider_name: 'Google'
+            raw: '{"error":{"code":429,"message":"Resource exhausted"}}'
+        provider_name: 'Vertex'
+        raw: '{"error":{"code":504,"message":"Deadline exceeded"}}'
+        status: 504
+      properties:
+        message:
+          description: 'Error message returned to the client'
+          example: 'Timed out waiting for the provider'
+          type:
+            - 'string'
+            - 'null'
+        previous_errors:
+          description: 'Every upstream attempt that failed before the returned error, in attempt order'
+          items:
+            $ref: '#/components/schemas/GenerationContentErrorAttempt'
+          type: 'array'
+        provider_name:
+          description: 'Provider whose error was returned to the client, when known'
+          example: 'Vertex'
+          type:
+            - 'string'
+            - 'null'
+        raw:
+          description: 'Raw error body behind the returned error, when stored'
+          example: '{"error":{"code":504,"message":"Deadline exceeded"}}'
+          type:
+            - 'string'
+            - 'null'
+        status:
+          description: 'HTTP status returned to the client'
+          example: 504
+          type:
+            - 'integer'
+            - 'null'
+      required:
+        - 'status'
+        - 'message'
+        - 'provider_name'
+        - 'raw'
+        - 'previous_errors'
+      type:
+        - 'object'
+        - 'null'
+    GenerationContentErrorAttempt:
+      description: 'A single failed upstream attempt recorded for the generation'
+      example:
+        code: 429
+        message: 'Provider returned error'
+        provider_name: 'Google'
+        raw: '{"error":{"code":429,"message":"Resource exhausted"}}'
+      properties:
+        code:
+          description: 'HTTP status returned by this attempt'
+          example: 429
+          type: 'integer'
+        message:
+          description: 'Error message returned by this attempt'
+          example: 'Provider returned error'
+          type: 'string'
+        provider_name:
+          description: 'Provider that served this attempt, when known'
+          example: 'Google'
+          type:
+            - 'string'
+            - 'null'
+        raw:
+          description: 'Raw error body returned by the provider, when stored'
+          example: '{"error":{"code":429,"message":"Resource exhausted"}}'
+          type:
+            - 'string'
+            - 'null'
+      required:
+        - 'code'
+        - 'message'
+        - 'provider_name'
+        - 'raw'
       type: 'object'
     GenerationContentResponse:
       description: 'Stored prompt and completion content for a generation'
       example:
         data:
+          error: null
           input:
             messages:
               - content: 'What is the meaning of life?'
@@ -13392,14 +13491,12 @@ components:
                       $ref: '#/components/schemas/AnthropicSpeed'
                   type: 'object'
               example:
-                cache_creation:
-                  ephemeral_1h_input_tokens: 0
-                  ephemeral_5m_input_tokens: 7381
-                cache_creation_input_tokens: 7381
-                cache_read_input_tokens: 0
+                cache_creation: null
+                cache_creation_input_tokens: null
+                cache_read_input_tokens: null
                 inference_geo: null
                 input_tokens: 100
-                output_tokens: 1
+                output_tokens: 50
                 output_tokens_details: null
                 server_tool_use: null
                 service_tier: 'standard'
@@ -13565,6 +13662,7 @@ components:
                 - 'Crucible'
                 - 'Crusoe'
                 - 'Darkbloom'
+                - 'Databricks'
                 - 'Decart'
                 - 'Deepgram'
                 - 'DeepInfra'
@@ -13665,12 +13763,14 @@ components:
                       $ref: '#/components/schemas/AnthropicSpeed'
                   type: 'object'
               example:
-                cache_creation: null
-                cache_creation_input_tokens: null
-                cache_read_input_tokens: null
+                cache_creation:
+                  ephemeral_1h_input_tokens: 0
+                  ephemeral_5m_input_tokens: 7381
+                cache_creation_input_tokens: 7381
+                cache_read_input_tokens: 0
                 inference_geo: null
                 input_tokens: 100
-                output_tokens: 50
+                output_tokens: 1
                 output_tokens_details: null
                 server_tool_use: null
                 service_tier: 'standard'
@@ -20167,6 +20267,7 @@ components:
         - 'Crucible'
         - 'Crusoe'
         - 'Darkbloom'
+        - 'Databricks'
         - 'Decart'
         - 'Deepgram'
         - 'DeepInfra'
@@ -20344,6 +20445,9 @@ components:
           additionalProperties: {}
           type: 'object'
         darkbloom:
+          additionalProperties: {}
+          type: 'object'
+        databricks:
           additionalProperties: {}
           type: 'object'
         decart:
@@ -20891,6 +20995,7 @@ components:
             - 'Crucible'
             - 'Crusoe'
             - 'Darkbloom'
+            - 'Databricks'
             - 'Decart'
             - 'Deepgram'
             - 'DeepInfra'
@@ -21321,14 +21426,14 @@ components:
       type: 'object'
     RankingsDailyMeta:
       example:
-        as_of: '2026-05-12T02:00:00Z'
+        as_of: '2026-05-12T02:00:00.000Z'
         end_date: '2026-05-11'
         start_date: '2026-04-12'
         version: 'v1'
       properties:
         as_of:
           description: 'ISO-8601 timestamp of when the response was generated. Reflects data-freshness because the underlying materialized view continuously ingests upstream events.'
-          example: '2026-05-12T02:00:00Z'
+          example: '2026-05-12T02:00:00.000Z'
           type: 'string'
         end_date:
           description: 'Resolved end of the date window (UTC, inclusive).'
@@ -21359,7 +21464,7 @@ components:
             model_permaslug: 'anthropic/claude-3.5-sonnet-20241022'
             total_tokens: '9876543'
         meta:
-          as_of: '2026-05-12T02:00:00Z'
+          as_of: '2026-05-12T02:00:00.000Z'
           end_date: '2026-05-11'
           start_date: '2026-04-12'
           version: 'v1'
@@ -24305,22 +24410,129 @@ components:
       properties:
         data:
           items:
-            discriminator:
-              mapping:
-                artificial-analysis: '#/components/schemas/UnifiedBenchmarksAAItem'
-                design-arena: '#/components/schemas/UnifiedBenchmarksDAItem'
-                openrouter: '#/components/schemas/UnifiedBenchmarksORItem'
-              propertyName: 'source'
             oneOf:
               - $ref: '#/components/schemas/UnifiedBenchmarksAAItem'
               - $ref: '#/components/schemas/UnifiedBenchmarksDAItem'
               - $ref: '#/components/schemas/UnifiedBenchmarksORItem'
+              - $ref: '#/components/schemas/UnifiedBenchmarksSearchItem'
           type: 'array'
         meta:
           $ref: '#/components/schemas/UnifiedBenchmarksMeta'
       required:
         - 'data'
         - 'meta'
+      type: 'object'
+    UnifiedBenchmarksSearchItem:
+      properties:
+        avg_cost_per_task:
+          description: 'Average cost per task in USD, or null if unavailable.'
+          example: 0.031
+          format: 'double'
+          type:
+            - 'number'
+            - 'null'
+        avg_latency_per_task_ms:
+          description: 'Average wall-clock latency per task in milliseconds, or null if unavailable.'
+          example: 45210
+          format: 'double'
+          type:
+            - 'number'
+            - 'null'
+        benchmark_type:
+          description: 'OpenRouter search benchmark.'
+          enum:
+            - 'search_browsecomp'
+            - 'search_hle'
+            - 'search_dsqa'
+            - 'search_widesearch'
+          example: 'search_browsecomp'
+          type: 'string'
+        display_name:
+          description: 'Human-readable model name.'
+          example: 'GPT-4o'
+          type: 'string'
+        last_run_timestamp:
+          description: 'Timestamp of the newest qualifying run in the published configuration''s lane.'
+          example: '2026-07-28T13:38:18Z'
+          type: 'string'
+        model_permaslug:
+          description: 'Stable OpenRouter model identifier.'
+          example: 'openai/gpt-4o'
+          type: 'string'
+        primary_metric:
+          description: 'Identifies the meaning of `primary_score`: `f1_by_item` for WideSearch, `accuracy` for all other search benchmarks.'
+          enum:
+            - 'accuracy'
+            - 'f1_by_item'
+          example: 'accuracy'
+          type: 'string'
+        primary_score:
+          description: 'The benchmark''s headline score from 0 to 1. Its meaning is identified by `primary_metric`: item-weighted F1 for WideSearch or strict accuracy for the other search benchmarks. Higher is better.'
+          example: 0.72
+          format: 'double'
+          type: 'number'
+        run_config:
+          $ref: '#/components/schemas/UnifiedBenchmarksSearchRunConfig'
+        search_engine:
+          description: 'Search engine the published configuration used.'
+          example: 'exa'
+          type: 'string'
+        search_surface:
+          description: 'Request surface the published configuration went through.'
+          enum:
+            - 'server-tool'
+            - 'plugin'
+          example: 'server-tool'
+          type: 'string'
+        source:
+          description: 'Benchmark source discriminator.'
+          enum:
+            - 'openrouter'
+          type: 'string'
+        total_tasks:
+          description: 'Tasks evaluated across the published configuration''s runs.'
+          example: 100
+          type: 'integer'
+      required:
+        - 'source'
+        - 'model_permaslug'
+        - 'display_name'
+        - 'benchmark_type'
+        - 'primary_metric'
+        - 'primary_score'
+        - 'total_tasks'
+        - 'avg_cost_per_task'
+        - 'avg_latency_per_task_ms'
+        - 'search_engine'
+        - 'search_surface'
+        - 'last_run_timestamp'
+      type: 'object'
+    UnifiedBenchmarksSearchRunConfig:
+      description: 'Published lane configuration, included only when include_run_config=true. Only the agent turn count, reasoning effort, and temperature are exposed; other harness settings are intentionally not part of the public contract.'
+      properties:
+        max_agent_turns:
+          description: 'Agent-turn count for the published lane, or null for plugin lanes.'
+          example: 25
+          type:
+            - 'integer'
+            - 'null'
+        reasoning_effort:
+          description: 'Reasoning effort configured for the published lane, or null when omitted.'
+          example: 'high'
+          type:
+            - 'string'
+            - 'null'
+        temperature:
+          description: 'Sampling temperature configured for the published lane, or null when omitted.'
+          example: 0.2
+          format: 'double'
+          type:
+            - 'number'
+            - 'null'
+      required:
+        - 'max_agent_turns'
+        - 'reasoning_effort'
+        - 'temperature'
       type: 'object'
     UnprocessableEntityResponse:
       description: 'Unprocessable Entity - Semantic validation failure'
@@ -25512,7 +25724,7 @@ components:
       example: 'auto'
       type: 'string'
     WebSearchMode:
-      description: 'Engine-native search mode. Exa supports instant, fast, auto (default), deep-lite, deep, and deep-reasoning. Parallel supports turbo (default), basic, and advanced. Modes unsupported by the selected engine are ignored.'
+      description: 'Engine-native search mode. Exa supports instant, fast, auto (default), deep-lite, deep, and deep-reasoning. Parallel supports turbo, basic (default), and advanced. Modes unsupported by the selected engine are ignored.'
       enum:
         - 'instant'
         - 'fast'
@@ -27158,7 +27370,7 @@ paths:
       x-speakeasy-name-override: 'createAuthCode'
   /benchmarks:
     get:
-      description: 'Unified benchmark endpoint that aggregates scores from multiple benchmark sources (Artificial Analysis, Design Arena, and OpenRouter''s own tau-bench and GPQA evals). Filter by source to reproduce the exact shapes from the legacy per-source endpoints, or use task_type to find models suited for specific workloads. Authenticate with any valid OpenRouter API key. Rate-limited to 30 requests/minute per key and 500 requests/day per account.'
+      description: 'Unified benchmark endpoint that aggregates scores from multiple benchmark sources (Artificial Analysis, Design Arena, and OpenRouter''s own tau-bench, GPQA, and web-search evals). Filter by source to reproduce the exact shapes from the legacy per-source endpoints, or use task_type to find models suited for specific workloads. Use task_type=search (or a search_* benchmark_type) for OpenRouter''s search benchmarks, which publish each model''s highest-scoring eligible evaluation configuration with same-configuration runs combined by task-weighted mean. Authenticate with any valid OpenRouter API key. Rate-limited to 30 requests/minute per key and 500 requests/day per account.'
       operationId: 'getBenchmarks'
       parameters:
         - description: 'Benchmark source to query. Determines the shape of the returned items. When omitted, returns results from all sources.'
@@ -27173,17 +27385,61 @@ paths:
               - 'openrouter'
             example: 'artificial-analysis'
             type: 'string'
-        - description: 'Filter results by task type. For Artificial Analysis, maps to the corresponding index. For Design Arena, maps to the matching category.'
+        - description: 'Filter results by task type. For Artificial Analysis, maps to the corresponding index. For Design Arena, maps to the matching category. `search` returns OpenRouter search benchmark results only.'
           in: 'query'
           name: 'task_type'
           required: false
           schema:
-            description: 'Filter results by task type. For Artificial Analysis, maps to the corresponding index. For Design Arena, maps to the matching category.'
+            description: 'Filter results by task type. For Artificial Analysis, maps to the corresponding index. For Design Arena, maps to the matching category. `search` returns OpenRouter search benchmark results only.'
             enum:
               - 'coding'
               - 'intelligence'
               - 'agentic'
+              - 'search'
             example: 'coding'
+            type: 'string'
+        - description: 'Return results for one exact OpenRouter benchmark. A `search_*` value narrows the response to search results only; a classic value narrows the OpenRouter items and leaves other sources'' items as they are.'
+          in: 'query'
+          name: 'benchmark_type'
+          required: false
+          schema:
+            description: 'Return results for one exact OpenRouter benchmark. A `search_*` value narrows the response to search results only; a classic value narrows the OpenRouter items and leaves other sources'' items as they are.'
+            enum:
+              - 'gpqa_diamond'
+              - 'tau_bench_verified_airline'
+              - 'search_browsecomp'
+              - 'search_hle'
+              - 'search_dsqa'
+              - 'search_widesearch'
+            example: 'search_widesearch'
+            type: 'string'
+        - description: 'Search benchmarks only: include the published lane configuration whitelist in each search item. Defaults to false. The whitelist is limited to agent turn count, reasoning effort, and temperature so future harness configuration changes do not change the public contract.'
+          in: 'query'
+          name: 'include_run_config'
+          required: false
+          schema:
+            default: false
+            description: 'Search benchmarks only: include the published lane configuration whitelist in each search item. Defaults to false. The whitelist is limited to agent turn count, reasoning effort, and temperature so future harness configuration changes do not change the public contract.'
+            example: true
+            type: 'boolean'
+        - description: 'OpenRouter search benchmarks only: filter by the search engine used.'
+          in: 'query'
+          name: 'search_engine'
+          required: false
+          schema:
+            description: 'OpenRouter search benchmarks only: filter by the search engine used.'
+            example: 'exa'
+            type: 'string'
+        - description: 'OpenRouter search benchmarks only: filter by the request surface the lane ran on.'
+          in: 'query'
+          name: 'search_surface'
+          required: false
+          schema:
+            description: 'OpenRouter search benchmarks only: filter by the request surface the lane ran on.'
+            enum:
+              - 'server-tool'
+              - 'plugin'
+            example: 'server-tool'
             type: 'string'
         - description: 'Design Arena only: arena to query. Defaults to `models` when source is `design-arena`.'
           in: 'query'
@@ -27361,6 +27617,7 @@ paths:
               - 'coreweave'
               - 'crusoe'
               - 'darkbloom'
+              - 'databricks'
               - 'decart'
               - 'deepgram'
               - 'deepinfra'
@@ -29959,16 +30216,26 @@ paths:
             application/json:
               example:
                 data:
+                  error:
+                    message: 'Timed out waiting for the provider'
+                    previous_errors:
+                      - code: 429
+                        message: 'Provider returned error'
+                        provider_name: 'Google'
+                        raw: '{"error":{"code":429,"message":"Resource exhausted"}}'
+                    provider_name: 'Vertex'
+                    raw: '{"error":{"code":504,"message":"Deadline exceeded"}}'
+                    status: 504
                   input:
                     messages:
                       - content: 'What is the meaning of life?'
                         role: 'user'
                   output:
-                    completion: 'The meaning of life is a philosophical question...'
+                    completion: null
                     reasoning: null
               schema:
                 $ref: '#/components/schemas/GenerationContentResponse'
-          description: 'Returns the stored prompt and completion content'
+          description: 'Returns the stored prompt and completion content, plus the failure error when the generation failed'
         '401':
           content:
             application/json:
@@ -30049,7 +30316,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProviderOverloadedResponse'
           description: 'Provider Overloaded - Provider is temporarily overloaded'
-      summary: 'Get stored prompt and completion content for a generation'
+      summary: 'Get stored prompt, completion, and error content for a generation'
       tags:
         - 'Generations'
   /generation/feedback:
@@ -37457,7 +37724,7 @@ paths:
       x-speakeasy-name-override: 'create'
   /workspaces/{id}:
     delete:
-      description: 'Delete an existing workspace. The default workspace cannot be deleted. Workspaces with active API keys cannot be deleted; remove the keys first. [Management key](/docs/guides/overview/auth/management-api-keys) required.'
+      description: 'Delete an existing workspace. Workspaces with active API keys cannot be deleted; remove the keys first. Deleting the default workspace is currently limited to internal OpenRouter administrators while the capability rolls out; other callers receive a 403. When permitted, it requires `confirm_default_settings_deletion=true` and additionally disables the account’s unscoped inference API keys; management (provisioning) keys are retained. Deleting any workspace permanently deletes its budgets and guardrails and disables its classifiers and broadcast destinations. [Management key](/docs/guides/overview/auth/management-api-keys) required.'
       operationId: 'deleteWorkspace'
       parameters:
         - description: 'The workspace ID (UUID) or slug'
@@ -37469,6 +37736,18 @@ paths:
             example: 'production'
             minLength: 1
             type: 'string'
+        - description: 'Required to delete the default workspace (currently limited to internal OpenRouter administrators while the capability rolls out). Deleting it permanently disables the account’s unscoped inference API keys (management/provisioning keys are retained) and its budgets, guardrails, classifiers, and broadcast destinations. Ignored for non-default workspaces.'
+          in: 'query'
+          name: 'confirm_default_settings_deletion'
+          required: false
+          schema:
+            description: 'Required to delete the default workspace (currently limited to internal OpenRouter administrators while the capability rolls out). Deleting it permanently disables the account’s unscoped inference API keys (management/provisioning keys are retained) and its budgets, guardrails, classifiers, and broadcast destinations. Ignored for non-default workspaces.'
+            enum:
+              - 'true'
+              - 'false'
+            example: 'false'
+            type: 'string'
+            x-openrouter-type: 'boolean'
       responses:
         '200':
           content:
