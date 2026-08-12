@@ -1475,7 +1475,7 @@ You can allow only specific providers for a request by setting the `only` field 
 
     You can allow providers for all account requests in your [privacy settings](https://openrouter.ai/settings/privacy). This configuration applies to all API requests and chatroom messages.
 
-    Note that when you allow providers for a specific request, the list of allowed providers is merged with your account-wide allowed providers.
+    Note that when you allow providers for a specific request, both restrictions apply: your account-wide allowed providers act as the ceiling, and the request's `only` list narrows within it. If no provider satisfies both, the request fails with a 404.
 
 </Tip>
 
