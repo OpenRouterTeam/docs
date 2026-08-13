@@ -502,7 +502,7 @@ For streaming requests, any partial preview images delivered before the stream e
 |---|---|---|---|
 | `model` | string | Yes | Model slug (e.g. `bytedance-seed/seedream-4.5`) |
 | `prompt` | string | Yes | Text description of the desired image |
-| `n` | integer | No | Number of images to generate (1-10) |
+| `n` | integer | No | Upper bound on images to generate (1-10); providers may return fewer, and single-image providers reject `n > 1` |
 | `resolution` | string | No | Resolution tier (`512`, `1K`, `2K`, `4K`) |
 | `aspect_ratio` | string | No | Aspect ratio (`1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `1:4`, `4:1`, etc.) |
 | `size` | string | No | Convenience shorthand &mdash; a tier or explicit pixels (`"2048x2048"`) |
