@@ -208,7 +208,7 @@ Warm-up times usually range from a few seconds to a few minutes, depending on th
 
 If you encounter persistent no-content issues, consider implementing a simple retry mechanism or trying again with a different provider or model that has more recent activity.
 
-Additionally, be aware that in some cases, you may still be charged for the prompt processing cost by the upstream provider, even if no content is generated.
+In some cases, you may still be charged for the prompt processing cost by the upstream provider, even if no content is generated.
 
 ## Streaming error formats
 
@@ -459,11 +459,14 @@ The Anthropic Messages skin maps internal types to Anthropic-native error type s
 | Internal `error_type` | Anthropic `error.type` |
 |---|---|
 | `authentication` | `authentication_error` |
+| `permission_denied` | `permission_error` |
+| `payment_required` | `billing_error` |
+| `not_found`, `image_not_found` | `not_found_error` |
 | `rate_limit_exceeded` | `rate_limit_error` |
-| `context_length_exceeded`, `content_policy_violation`, `invalid_request` | `invalid_request_error` |
 | `provider_overloaded` | `overloaded_error` |
-| `provider_unavailable`, `timeout`, `server` | `api_error` |
-| All others | `api_error` |
+| `timeout` | `timeout_error` |
+| `context_length_exceeded`, `content_policy_violation`, `invalid_request`, ... | `invalid_request_error` |
+| `provider_unavailable`, `server`, `unmapped`, ... | `api_error` |
 
 Because the native `error.type` is lossy (many internal types collapse to `api_error`), the canonical `error_type` is added inside the `error` object alongside it. This holds for both the non-streaming error envelope and mid-stream SSE `error` events.
 
