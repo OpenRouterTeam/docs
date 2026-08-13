@@ -38,7 +38,7 @@ returns the combined output and exit code.
 `400` error.
 
 For **sandboxed** commands on those APIs, use
-[Shell](/guides/features/server-tools/shell) — it runs server-side in the same
+[Shell](/guides/features/server-tools/shell), which runs server-side in the same
 container infrastructure and is available on the Responses API. For
 **client-side** execution, send a normal function tool and run the command
 yourself.
@@ -215,14 +215,14 @@ session. When the model emits `{ "restart": true }`, OpenRouter provisions a
 fresh sandbox container, so commands run after a restart start from a clean
 state. The reset applies for the remainder of the current agentic turn. To keep
 a container alive across separate API requests in a conversation, send a stable
-`session_id` on each request — the sandbox is keyed by it.
+`session_id` on each request; the sandbox is keyed by it.
 
 ## Execution engine
 
 The `engine` parameter controls where commands run:
 
-- `openrouter` — run commands server-side in the OpenRouter sandbox.
-- `auto` (default) / `native` — native passthrough: the tool call is returned to
+- `openrouter`: run commands server-side in the OpenRouter sandbox.
+- `auto` (default) / `native`: native passthrough. The tool call is returned to
   your application to run client-side, and OpenRouter does not execute the
   commands. The native `bash_20250124` tool always uses this behavior, since it
   has no `engine` field.
@@ -254,7 +254,7 @@ returned on `stderr` so the model can read and react to it.
 
 Running shell commands is powerful and is sandboxed by design:
 
-- Commands execute in an isolated container — not on OpenRouter
+- Commands execute in an isolated container, not on OpenRouter
   infrastructure or your machine. With `container_auto` the container is
   ephemeral; with `container_reference` it persists across requests.
 - Containers are scoped per account, so they are never shared across tenants.
@@ -265,9 +265,9 @@ Running shell commands is powerful and is sandboxed by design:
 
 ## Next Steps
 
-- [Server Tools Overview](/guides/features/server-tools) — Learn about
+- [Server Tools Overview](/guides/features/server-tools). Learn about
   server tools
-- [Web Fetch](/guides/features/server-tools/web-fetch) — Fetch content
+- [Web Fetch](/guides/features/server-tools/web-fetch). Fetch content
   from URLs
-- [Tool Calling](/guides/features/tool-calling) — Learn about user-defined
+- [Tool Calling](/guides/features/tool-calling). Learn about user-defined
   tool calling
