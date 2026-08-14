@@ -119,18 +119,22 @@ export const UptimeChart = ({ permaslug }) => {
     return <div className="bg-muted h-80 w-full animate-pulse rounded-lg" />;
   }
 
-  if (typeof uptime.availability !== "number") {
+  const hourly = Array.isArray(uptime.hourly) ? uptime.hourly : [];
+  const buckets = Array.isArray(uptime.buckets) ? uptime.buckets : [];
+  const hasAvailabilityData =
+    typeof uptime.availability === "number" ||
+    hourly.some((point) => typeof point.availability === "number") ||
+    buckets.some((bucket) => typeof bucket.availability === "number");
+  if (!hasAvailabilityData) {
     return <p>Not enough uptime data to display yet.</p>;
   }
 
-  const hourly = Array.isArray(uptime.hourly) ? uptime.hourly : [];
-  const buckets = Array.isArray(uptime.buckets) ? uptime.buckets : [];
   const chartId = permaslug.replace(/[^a-zA-Z0-9_-]/g, "-");
   const hasAvailabilityWithoutRouting = buckets.some(
     (bucket) => typeof bucket.availabilityWithoutRouting === "number",
   );
   const hourlyBarWidth = hourly.length === 0 ? 0 : 100 / hourly.length;
-  const recentPlotLeft = 64;
+  const recentPlotLeft = 80;
   const recentPlotWidth = 720;
   const recentViewBoxWidth = recentPlotLeft + recentPlotWidth;
   const recentDomain = getRecentDomain(buckets, [
@@ -160,9 +164,11 @@ export const UptimeChart = ({ permaslug }) => {
     <div className="w-full space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="text-muted-foreground text-sm">Availability over the last 3 days</p>
-        <p className="text-lg font-semibold tabular-nums">
-          Availability {formatPercent(uptime.availability)} · Uptime {formatPercent(uptime.uptime)}
-        </p>
+        {typeof uptime.availability === "number" ? (
+          <p className="text-lg font-semibold tabular-nums">
+            Availability {formatPercent(uptime.availability)}
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-2">
@@ -283,7 +289,7 @@ export const UptimeChart = ({ permaslug }) => {
               className="mr-1 inline-block size-2 rounded-full bg-green-500"
               aria-hidden="true"
             />
-            Availability
+            OpenRouter Availability
           </span>
           {hasAvailabilityWithoutRouting && (
             <span>
@@ -323,8 +329,8 @@ export const UptimeChart = ({ permaslug }) => {
       </div>
       <p className="text-muted-foreground text-xs">
         When an error occurs in an upstream provider, we can recover by routing to another healthy
-        provider, if your request filters allow it. You can access uptime data programmatically
-        through{" "}
+        provider, if your request filters allow it. You can access per-provider uptime data
+        programmatically through the{" "}
         <a href="https://openrouter.ai/docs/api/api-reference/endpoints/list-endpoints">
           Endpoints API
         </a>
