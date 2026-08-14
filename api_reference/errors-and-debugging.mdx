@@ -94,7 +94,7 @@ type ModerationErrorMetadata = {
 
 ## Guardrail errors
 
-On inference endpoints (`/chat/completions`, `/responses`, `/messages`), a request can be blocked before it reaches a provider — for example by a content filter or prompt-injection detector configured via [guardrails](/guides/features/guardrails). When this happens, the response is a `403` with a message describing the block reason:
+On inference endpoints (`/chat/completions`, `/responses`, `/messages`), a request can be blocked before it reaches a provider — for example by a content filter or prompt-injection detector configured via [guardrails](/guides/features/guardrails). When this happens, the response is a `403` with a message describing the block reason. The OpenRouter-shaped body below applies to `/chat/completions` and `/responses`; on `/messages` the block is returned as an Anthropic `permission_error` envelope (see [Anthropic Messages](#anthropic-messages-apiv1messages) below), with `openrouter_metadata` still carried at the top level when opted in:
 
 ```json lines
 {
@@ -470,7 +470,7 @@ The Anthropic Messages skin maps internal types to Anthropic-native error type s
 
 Because the native `error.type` is lossy (many internal types collapse to `api_error`), the canonical `error_type` is added inside the `error` object alongside it. This holds for both the non-streaming error envelope and mid-stream SSE `error` events.
 
-Non-streaming error envelope:
+Non-streaming error envelope (pre-Router errors such as authentication failures carry a `null` `request_id`; post-Router errors carry the `gen-` generation ID):
 
 ```json lines
 {
@@ -479,7 +479,8 @@ Non-streaming error envelope:
     "type": "authentication_error",
     "message": "Invalid credentials",
     "error_type": "authentication"
-  }
+  },
+  "request_id": null
 }
 ```
 
