@@ -14,23 +14,18 @@ export const PromptInjectionPatternsTables = () => {
     "patterns": [
       {
         "name": "ignore_previous_instructions",
-        "regex": "/(?<!\\b(?:not|never|cannot|\\w+n['’]t)[ \\t])(?<!\\bun)ignor(?:e[sd]?|ing)\\s+(all\\s+)?(previous|prior)\\s+((?:safety|security|system|operational|internal|core|original|initial|existing|given|stated|provided|defined|specified|established)\\s+)?(instructions?|rules?|guidelines?|constraints?|directives?)/i",
+        "regex": "/ignore\\s+(all\\s+)?(previous|prior)\\s+((?:safety|security|system|operational|internal|core|original|initial|existing|given|stated|provided|defined|specified|established)\\s+)?(instructions?|rules?|guidelines?|constraints?|directives?)/i",
         "description": "Attempts to discard prior instructions, optionally scoped to safety/system/etc."
       },
       {
         "name": "disregard_instructions",
-        "regex": "/(?<!\\b(?:not|never|cannot|\\w+n['’]t)[ \\t])(?<!\\bun)disregard(?:s|ed|ing)?\\s+(all\\s+)?(previous|prior|above)\\s+(instructions?|rules?|guidelines?|constraints?|directives?)/i",
+        "regex": "/disregard\\s+(all\\s+)?(previous|prior|above)\\s+(instructions?|rules?|guidelines?|constraints?|directives?)/i",
         "description": "Variants of \"disregard your instructions/rules/guidelines/constraints/directives\"."
       },
       {
         "name": "forget_instructions",
-        "regex": "/(?<!\\b(?:not|never|cannot|\\w+n['’]t)[ \\t])(?<!\\bun)(?:forget(?:s|ting)?|forgot(?:ten)?)\\s+(all\\s+)?(previous|prior|above)\\s+(instructions?|rules?|guidelines?|constraints?|directives?)/i",
+        "regex": "/forget\\s+(all\\s+)?(previous|prior|above)\\s+(instructions?|rules?|guidelines?|constraints?|directives?)/i",
         "description": "Attempts to erase prior instructions/rules/guidelines/constraints/directives."
-      },
-      {
-        "name": "delete_instructions",
-        "regex": "/(?<!\\b(?:not|never|cannot|\\w+n['’]t)[ \\t])(?<!\\bun)delet(?:e[sd]?|ing)\\s+(all\\s+)?(previous|prior|above)\\s+(instructions?|rules?|guidelines?|constraints?|directives?)/i",
-        "description": "Attempts to delete prior instructions/rules/guidelines/constraints/directives."
       },
       {
         "name": "new_instructions",
@@ -44,7 +39,7 @@ export const PromptInjectionPatternsTables = () => {
       },
       {
         "name": "supersede_instructions",
-        "regex": "/(?<!\\b(?:not|never|cannot|\\w+n['’]t)[ \\t])(?<!\\bun)supersedes?\\s+(all\\s+)?(prior|previous)\\s+(instructions?|rules?|guidelines?|constraints?|directives?)/i",
+        "regex": "/supersedes?\\s+(all\\s+)?(prior|previous)\\s+(instructions?|rules?|guidelines?|constraints?|directives?)/i",
         "description": "\"Supersedes prior instructions\" override."
       },
       {
@@ -86,7 +81,7 @@ export const PromptInjectionPatternsTables = () => {
       },
       {
         "name": "override_instructions",
-        "regex": "/(?<!\\b(?:not|never|cannot|\\w+n['’]t)[ \\t])(?<!\\bun)(?:overrid(?:e[sn]?|ing|den)|overrode)\\s+(your\\s+)?(instructions?|rules?|guidelines?|constraints?|directives?)/i",
+        "regex": "/override\\s+(your\\s+)?(instructions?|rules?|guidelines?|constraints?|directives?)/i",
         "description": "Attempts to override instructions/rules/guidelines/constraints/directives."
       }
     ]
@@ -180,7 +175,7 @@ export const PromptInjectionPatternsTables = () => {
       },
       {
         "name": "ignore_safety",
-        "regex": "/(?<!\\b(?:not|never|cannot|\\w+n['’]t)[ \\t])(?<!\\bun)(ignore|disregard)\\s+(all\\s+)?(your\\s+)?(safety|security|ethical|content)\\s+(guidelines?|rules?|restrictions?|measures?|filters?|polic(?:y|ies)|protocols?)/i",
+        "regex": "/(ignore|disregard)\\s+(all\\s+)?(your\\s+)?(safety|security|ethical|content)\\s+(guidelines?|rules?|restrictions?|measures?|filters?|polic(?:y|ies)|protocols?)/i",
         "description": "Attempts to ignore or disregard safety/security/ethical/content guidelines, rules, or restrictions."
       }
     ]
