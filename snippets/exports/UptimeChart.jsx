@@ -161,7 +161,7 @@ export const UptimeChart = ({ permaslug }) => {
     : [];
 
   return (
-    <div className="w-full space-y-6 p-4 sm:p-6">
+    <div className="flex w-full flex-col gap-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="text-muted-foreground text-sm">Availability over the last 3 days</p>
         {typeof uptime.availability === "number" ? (
@@ -171,7 +171,7 @@ export const UptimeChart = ({ permaslug }) => {
         ) : null}
       </div>
 
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <h3 className="text-sm font-medium">Hourly availability</h3>
         <svg
           viewBox="0 0 720 48"
@@ -200,7 +200,7 @@ export const UptimeChart = ({ permaslug }) => {
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <h3 className="text-sm font-medium">Availability over the last 24 hours</h3>
         <svg
           viewBox={`0 0 ${recentViewBoxWidth} 160`}
