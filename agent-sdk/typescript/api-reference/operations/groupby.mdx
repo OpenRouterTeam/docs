@@ -1,0 +1,43 @@
+---
+title: GroupBy - TypeScript SDK
+sidebarTitle: GroupBy
+description: GroupBy type definition
+seoTitle: GroupBy Type | OpenRouter TypeScript SDK
+  https://openrouter.ai/docs/sdks/typescript/api-reference/operations/groupby
+'og:site_name': OpenRouter Documentation
+'og:title': GroupBy Type | OpenRouter TypeScript SDK
+'og:description': >-
+  GroupBy type reference for the OpenRouter TypeScript SDK. Complete type
+  definition and usage examples.
+'og:image': >-
+  https://openrouter.ai/dynamic-og?title=GroupBy%20-%20TypeScript%20SDK&description=GroupBy%20type%20definition
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary_large_image
+'twitter:site': '@OpenRouterAI'
+noindex: false
+nofollow: false
+---
+
+{/* banner:start */}
+<Warning>
+The TypeScript SDK and docs are currently in beta.
+Report issues on [GitHub](https://github.com/OpenRouterTeam/typescript-sdk/issues).
+</Warning>
+{/* banner:end */}
+
+Set to 'workspace' to split each row per workspace and include `workspace_id` on every item. Omitted by default, in which case rows are aggregated across workspaces (by date, model, and endpoint) and `workspace_id` is not returned — preserving the historical response shape.
+
+## Example Usage
+
+```typescript lines
+import { GroupBy } from "@openrouter/sdk/models/operations";
+
+let value: GroupBy = "workspace";
+```
+
+## Values
+
+```typescript lines
+"workspace"
+```
