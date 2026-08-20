@@ -155,7 +155,7 @@ To _always_ prioritize low latency, and not apply any load balancing, set `sort`
 
 ## Nitro Shortcut
 
-You can append `:nitro` to any model slug as a shortcut to sort by throughput. This is exactly equivalent to setting `provider.sort` to `"throughput"`.
+You can append `:nitro` to any model slug as a shortcut to sort by throughput. In addition to the throughput sort, `:nitro` makes [priority service tier](/guides/features/service-tiers) endpoints eligible for the request, so it is a superset of setting `provider.sort` to `"throughput"` (which only sorts). See the [Nitro variant docs](/guides/routing/model-variants/nitro) for details.
 
 <CodeGroup>
 
@@ -209,7 +209,7 @@ response = requests.post('https://openrouter.ai/api/v1/chat/completions', header
 
 ## Floor Price Shortcut
 
-You can append `:floor` to any model slug as a shortcut to sort by price. This is exactly equivalent to setting `provider.sort` to `"price"`.
+You can append `:floor` to any model slug as a shortcut to sort by price. In addition to the price sort, `:floor` makes [flex service tier](/guides/features/service-tiers) endpoints eligible for the request, so it is a superset of setting `provider.sort` to `"price"` (which only sorts). See the [Floor variant docs](/guides/routing/model-variants/floor) for details.
 
 <CodeGroup>
 
