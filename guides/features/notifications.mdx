@@ -19,7 +19,8 @@ Notifications flag when an OpenRouter account needs attention, such as a credit 
 or a workspace nearly out of budget. Each account chooses which alerts are on, what triggers them, and
 who receives them.
 
-Go to [Settings → Notifications](https://openrouter.ai/settings/notifications).
+Go to [Settings → Notifications](https://openrouter.ai/settings/notifications). The API key spend
+limit alert is the exception — it belongs to a single key, so it is set on that key's own page.
 
 <Note>
   **Workspace budget limit** and **API key spend limit** are in Enterprise
@@ -33,7 +34,8 @@ Go to [Settings → Notifications](https://openrouter.ai/settings/notifications)
 
 - **Low balance alert.** The credit balance drops below a chosen amount.
 - **Workspace budget limit.** A workspace hits a share of its budget.
-- **API key spend limit.** An API key hits a share of its spend limit.
+- **API key spend limit.** An API key hits a share of its spend limit. Set per key on the key's page,
+  not on the Notifications page.
 
 **Models**
 
@@ -49,6 +51,19 @@ Go to [Settings → Notifications](https://openrouter.ai/settings/notifications)
 
 Any alert can be changed or switched off later. Switching one off stops its messages and keeps its
 settings.
+
+### The API key spend limit alert
+
+This one lives with the key rather than on the Notifications page.
+
+1. Go to [Settings → API Keys](https://openrouter.ai/settings/keys) and click a key to open it.
+2. Give the key a credit limit if it does not have one. Until it has one there is no limit to alert
+   on, and the **Notifications** section says as much.
+3. Under **Notifications**, turn the alert on.
+4. Set the percentages that trigger it and who receives it.
+5. Save.
+
+Each key carries its own setting, so a fleet of per-service keys is configured key by key.
 
 ## What triggers an alert
 
@@ -88,7 +103,8 @@ address.
 - **Custom Webhook.** Goes to an endpoint under your control for downstream systems to act on. Paste
   an `https://` URL into the **Custom Webhook** card and save.
 
-Slack and custom webhook delivery are part of the Enterprise private preview.
+Slack and custom webhook delivery are part of the Enterprise private preview. The API key spend limit
+alert is email-only for now.
 
 Once a destination is saved:
 
