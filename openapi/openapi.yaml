@@ -4529,6 +4529,7 @@ components:
         - 'ionstream'
         - 'krea'
         - 'liquid'
+        - 'makora'
         - 'mancer'
         - 'mara'
         - 'meta'
@@ -13690,6 +13691,7 @@ components:
                 - 'Inferact vLLM'
                 - 'Inflection'
                 - 'Liquid'
+                - 'Makora'
                 - 'Mara'
                 - 'Mancer 2'
                 - 'Meta'
@@ -20379,6 +20381,7 @@ components:
         - 'Inferact vLLM'
         - 'Inflection'
         - 'Liquid'
+        - 'Makora'
         - 'Mara'
         - 'Mancer 2'
         - 'Meta'
@@ -20652,6 +20655,9 @@ components:
           additionalProperties: {}
           type: 'object'
         lynn-private:
+          additionalProperties: {}
+          type: 'object'
+        makora:
           additionalProperties: {}
           type: 'object'
         mancer:
@@ -21113,6 +21119,7 @@ components:
             - 'Inferact vLLM'
             - 'Inflection'
             - 'Liquid'
+            - 'Makora'
             - 'Mara'
             - 'Mancer 2'
             - 'Meta'
@@ -21781,6 +21788,7 @@ components:
         - 'openai-responses-v1'
         - 'azure-openai-responses-v1'
         - 'bedrock-openai-responses-v1'
+        - 'bedrock-xai-responses-v1'
         - 'xai-responses-v1'
         - 'meta-responses-v1'
         - 'anthropic-claude-v1'
@@ -27907,6 +27915,7 @@ paths:
               - 'ionstream'
               - 'krea'
               - 'liquid'
+              - 'makora'
               - 'mancer'
               - 'mara'
               - 'meta'
@@ -28230,7 +28239,7 @@ paths:
         - 'BYOK'
       x-speakeasy-name-override: 'get'
     patch:
-      description: 'Update an existing bring-your-own-key (BYOK) provider credential by its `id`. Include the `key` field to rotate the raw provider API key in-place (the previous key material is overwritten). [Management key](/docs/guides/overview/auth/management-api-keys) required.'
+      description: 'Update an existing bring-your-own-key (BYOK) provider credential by its `id`. Include the `key` field to rotate the raw provider API key in-place (the previous key material is overwritten). Use `allowed_api_key_hashes` to restrict the credential to specific OpenRouter API keys (`null` clears the restriction). [Management key](/docs/guides/overview/auth/management-api-keys) required.'
       operationId: 'updateBYOKKey'
       parameters:
         - description: 'The BYOK credential ID (UUID).'
