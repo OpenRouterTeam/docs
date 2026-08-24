@@ -160,10 +160,33 @@ Or equivalently, base as the normal price, with a discount override during off-p
 }
 ```
 
+**Weekly schedules** add `utc_days` — an array of UTC weekday names (`"monday"`, `"tuesday"`, `"wednesday"`, `"thursday"`, `"friday"`, `"saturday"`, `"sunday"`). It scopes the entry to those days, evaluated at the request instant in UTC. Combined with `utc_start`/`utc_end` it scopes the window; conditions in one entry AND together. A weekday-only peak window (base pricing all weekend) looks like this:
+
+```json lines
+{
+  "pricing": {
+    "prompt": "0.00000028", // base (off-peak) pricing per 1 token
+    "completion": "0.0000011",
+    "overrides": [
+      {
+        "utc_days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+        "utc_start": 30, // peak window: 00:30–16:30 UTC, weekdays only
+        "utc_end": 1630,
+        "prompt": "0.00000056",
+        "completion": "0.0000022"
+      }
+    ]
+  }
+}
+```
+
 Limitations:
 
 - Up to 2 long-context tiers, or up to 2 peak windows (all peak windows must share the same prices).
 - Long-context and time-based conditions cannot be combined on the same endpoint. Overrides mixing both condition kinds are ignored.
+- All peak windows must carry the same `utc_days` set (or none). Day-scoped entries without a `utc_start`/`utc_end` window — i.e. a whole day priced differently from base — are not billable yet.
+- Declarations beyond these shapes are accepted by the schema but produce translation warnings and are not billed.
+- Your base pricing must be your cheapest (off-peak) rate. Unsupported schedule declarations fall back to the base pricing, so a base price that is the cheapest rate guarantees users are never overcharged while your declaration is reviewed.
 
 <Note>
   A legacy format — `pricing` as an array of tiers with `min_context` breakpoints — remains supported
