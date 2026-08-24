@@ -373,124 +373,106 @@
         "tab": "Client SDKs",
         "icon": "cube",
         "pages": [
-          "client-sdks/overview",
-          "client-sdks/usage-for-agents",
           {
-            "group": "TypeScript SDK",
-            "icon": "code",
+            "group": "Client SDKs",
+            "icon": "cube",
             "pages": [
+              "client-sdks/overview",
+              "client-sdks/usage-for-agents",
               {
-                "sourceRef": "OpenRouterTeam/typescript-sdk"
-              }
-            ]
-          },
-          {
-            "group": "Python SDK",
-            "icon": "code",
-            "pages": [
+                "group": "TypeScript SDK",
+                "icon": "code",
+                "expanded": true,
+                "pages": [
+                  {
+                    "sourceRef": "OpenRouterTeam/typescript-sdk"
+                  }
+                ]
+              },
               {
-                "sourceRef": "OpenRouterTeam/python-sdk"
-              }
-            ]
-          },
-          {
-            "group": "Go SDK",
-            "icon": "code",
-            "pages": [
+                "group": "Python SDK",
+                "icon": "code",
+                "expanded": true,
+                "pages": [
+                  {
+                    "sourceRef": "OpenRouterTeam/python-sdk"
+                  }
+                ]
+              },
               {
-                "sourceRef": "OpenRouterTeam/go-sdk"
-              }
+                "group": "Go SDK",
+                "icon": "code",
+                "expanded": true,
+                "pages": [
+                  {
+                    "sourceRef": "OpenRouterTeam/go-sdk"
+                  }
+                ]
+              },
+              {
+                "group": "DevTools",
+                "icon": "stars",
+                "expanded": true,
+                "pages": [
+                  "client-sdks/dev-tools/devtools"
+                ]
+              },
+              "client-sdks/agent-migration"
             ]
-          },
-          {
-            "group": "DevTools",
-            "icon": "stars",
-            "pages": [
-              "client-sdks/dev-tools/devtools"
-            ]
-          },
-          "client-sdks/agent-migration"
+          }
         ]
       },
       {
         "tab": "Agent SDK",
         "icon": "cube",
         "pages": [
-          "agent-sdk/overview",
-          "agent-sdk/usage-for-agents",
           {
-            "group": "TypeScript SDK",
-            "icon": "code",
+            "group": "Agent SDK",
+            "icon": "cube",
             "pages": [
-              "agent-sdk/typescript/overview",
+              "agent-sdk/overview",
+              "agent-sdk/usage-for-agents",
               {
-                "group": "API Reference",
-                "icon": "code",
+                "group": "Call Model",
+                "icon": "comment-nodes",
+                "expanded": true,
                 "pages": [
-                  "agent-sdk/typescript/api-reference/analytics",
-                  "agent-sdk/typescript/api-reference/apikeys",
-                  "agent-sdk/typescript/api-reference/chat",
-                  "agent-sdk/typescript/api-reference/credits",
-                  "agent-sdk/typescript/api-reference/embeddings",
-                  "agent-sdk/typescript/api-reference/endpoints",
-                  "agent-sdk/typescript/api-reference/generations",
-                  "agent-sdk/typescript/api-reference/guardrails",
+                  "agent-sdk/call-model/overview",
+                  "agent-sdk/call-model/items",
+                  "agent-sdk/call-model/api-reference",
+                  "agent-sdk/call-model/dynamic-parameters",
+                  "agent-sdk/call-model/next-turn-params",
+                  "agent-sdk/call-model/stop-conditions",
+                  "agent-sdk/call-model/streaming",
+                  "agent-sdk/call-model/text-generation",
+                  "agent-sdk/call-model/message-formats",
+                  "agent-sdk/call-model/tools",
+                  "agent-sdk/call-model/async-tools",
+                  "agent-sdk/call-model/mcp-tools",
+                  "agent-sdk/call-model/lifecycle-hooks",
+                  "agent-sdk/call-model/doom-loop-detection",
+                  "agent-sdk/call-model/tool-approval-state",
                   {
-                    "group": "Models",
-                    "icon": "cube",
+                    "group": "Examples",
+                    "icon": "code",
                     "pages": [
-                      "agent-sdk/typescript/api-reference/models"
+                      "agent-sdk/call-model/examples/weather-tool",
+                      "agent-sdk/call-model/examples/skills-loader"
                     ]
-                  },
-                  "agent-sdk/typescript/api-reference/oauth",
-                  "agent-sdk/typescript/api-reference/organization",
-                  "agent-sdk/typescript/api-reference/providers",
-                  "agent-sdk/typescript/api-reference/rerank",
-                  "agent-sdk/typescript/api-reference/responses",
-                  "agent-sdk/typescript/api-reference/tts",
-                  "agent-sdk/typescript/api-reference/videogeneration",
-                  "agent-sdk/typescript/api-reference/workspaces"
+                  }
                 ]
-              }
-            ]
-          },
-          {
-            "group": "Call Model",
-            "icon": "comment-nodes",
-            "pages": [
-              "agent-sdk/call-model/overview",
-              "agent-sdk/call-model/items",
-              "agent-sdk/call-model/api-reference",
-              "agent-sdk/call-model/dynamic-parameters",
-              "agent-sdk/call-model/next-turn-params",
-              "agent-sdk/call-model/stop-conditions",
-              "agent-sdk/call-model/streaming",
-              "agent-sdk/call-model/text-generation",
-              "agent-sdk/call-model/message-formats",
-              "agent-sdk/call-model/tools",
-              "agent-sdk/call-model/async-tools",
-              "agent-sdk/call-model/mcp-tools",
-              "agent-sdk/call-model/lifecycle-hooks",
-              "agent-sdk/call-model/doom-loop-detection",
-              "agent-sdk/call-model/tool-approval-state",
+              },
               {
-                "group": "Examples",
-                "icon": "code",
+                "group": "DevTools",
+                "icon": "stars",
+                "expanded": true,
                 "pages": [
-                  "agent-sdk/call-model/examples/weather-tool",
-                  "agent-sdk/call-model/examples/skills-loader"
+                  "agent-sdk/dev-tools/devtools"
                 ]
-              }
+              },
+              "agent-sdk/agent-migration"
             ]
-          },
-          {
-            "group": "DevTools",
-            "icon": "stars",
-            "pages": [
-              "agent-sdk/dev-tools/devtools"
-            ]
-          },
-          "agent-sdk/agent-migration"
+          }
         ]
       },
       {
@@ -596,6 +578,82 @@
     ]
   },
   "redirects": [
+    {
+      "source": "/agent-sdk/typescript/overview",
+      "destination": "/client-sdks/typescript/overview"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/analytics",
+      "destination": "/client-sdks/typescript/sdks/analytics/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/apikeys",
+      "destination": "/client-sdks/typescript/sdks/apikeys/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/chat",
+      "destination": "/client-sdks/typescript/sdks/chat/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/credits",
+      "destination": "/client-sdks/typescript/sdks/credits/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/embeddings",
+      "destination": "/client-sdks/typescript/sdks/embeddings/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/endpoints",
+      "destination": "/client-sdks/typescript/sdks/endpoints/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/generations",
+      "destination": "/client-sdks/typescript/sdks/generations/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/guardrails",
+      "destination": "/client-sdks/typescript/sdks/guardrails/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/models",
+      "destination": "/client-sdks/typescript/sdks/models/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/oauth",
+      "destination": "/client-sdks/typescript/sdks/oauth/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/organization",
+      "destination": "/client-sdks/typescript/sdks/organization/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/providers",
+      "destination": "/client-sdks/typescript/sdks/providers/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/rerank",
+      "destination": "/client-sdks/typescript/sdks/rerank/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/responses",
+      "destination": "/client-sdks/typescript/sdks/responses/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/tts",
+      "destination": "/client-sdks/typescript/sdks/tts/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/videogeneration",
+      "destination": "/client-sdks/typescript/sdks/videogeneration/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/api-reference/workspaces",
+      "destination": "/client-sdks/typescript/sdks/workspaces/README"
+    },
+    {
+      "source": "/agent-sdk/typescript/:slug*",
+      "destination": "/client-sdks/typescript/overview"
+    },
     {
       "source": "/api/reference/overview",
       "destination": "/api_reference/overview"
