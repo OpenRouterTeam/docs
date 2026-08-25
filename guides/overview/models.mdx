@@ -316,6 +316,8 @@ New condition fields may be added to the override grammar over time. Consumers s
 }
 ```
 
+Input and output tokens share the model's context window, so `max_completion_tokens` is a ceiling for `max_tokens`, not a guaranteed output size. The effective maximum output for a request is limited by the context remaining after input tokens.
+
 #### Benchmarks Object
 
 Present only on models that have been evaluated in third-party benchmarks. Currently includes [Design Arena](https://designarena.org) rankings.
