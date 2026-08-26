@@ -22,6 +22,11 @@ import { API_KEY_REF } from '/snippets/exports/constants.mdx';
 **Beta**
 
 Server tools are currently in beta. The API and behavior may change.
+
+Sandboxed execution (`engine: "openrouter"`) is available on the global
+endpoint (`openrouter.ai`) only. Requests through the
+[in-region endpoints](/guides/privacy/provider-logging#enterprise-in-region-routing)
+(`eu.openrouter.ai`, `us.openrouter.ai`) are rejected.
 </Note>
 
 The `openrouter:bash` server tool gives a model the ability to run shell
@@ -34,9 +39,8 @@ returns the combined output and exit code.
 <Note>
 **Messages API only**
 
-`openrouter:bash` is only available on the Anthropic Messages API, on every
-`engine`. Requesting it on the Chat Completions or Responses API returns a
-`400` error.
+`openrouter:bash` is only available on the Anthropic Messages API. Requesting
+it on the Chat Completions or Responses API returns a `400` error.
 
 For **sandboxed** commands on those APIs, use
 [Shell](/guides/features/server-tools/shell), which runs server-side in the same
@@ -59,7 +63,8 @@ yourself.
 
 Server-side execution is opt-in: set `engine: "openrouter"` on the tool (see
 [Execution engine](#execution-engine)). With the default `engine` (`auto`), the
-tool call is returned to your application to run client-side instead.
+tool is a local, human-in-the-loop tool instead: the call is returned to your
+application to run client-side, and nothing executes on OpenRouter's servers.
 
 ## Quick Start
 
@@ -260,13 +265,14 @@ a container alive across separate API requests in a conversation, send a stable
 The `engine` parameter controls where commands run:
 
 - `openrouter`: run commands server-side in the OpenRouter sandbox.
-- `auto` (default) / `native`: native passthrough. The tool call is returned to
-  your application to run client-side, and OpenRouter does not execute the
-  commands. The native `bash_20250124` tool always uses this behavior, since it
+- `auto` (default) / `native`: local, human-in-the-loop execution. The tool
+  call is returned to your application, which runs the commands itself and
+  sends the results back on the next request — no commands are executed on any
+  server. The native `bash_20250124` tool always uses this behavior, since it
   has no `engine` field.
 
 This lets you opt into OpenRouter's sandboxed execution with `openrouter`, while
-the default leaves command execution to your own application.
+the default leaves command execution entirely to your own application.
 
 `engine` selects where commands run, not which APIs accept the tool: every
 engine, `openrouter` included, is Messages-API-only. For sandboxed commands on

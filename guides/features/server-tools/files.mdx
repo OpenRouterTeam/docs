@@ -26,6 +26,12 @@ import { Template } from "/snippets/exports/Template.jsx";
 **Beta**
 
 Server tools are currently in beta. The API and behavior may change.
+
+The files tool and the Files API are available on the global endpoint
+(`openrouter.ai`) only. Requests through the
+[in-region endpoints](/guides/privacy/provider-logging#enterprise-in-region-routing)
+(`eu.openrouter.ai`, `us.openrouter.ai`) are rejected; the Files API returns a
+`403` there.
 </Note>
 
 The `openrouter:files` server tool lets a model read, write, edit, and list text files in your workspace via the OpenRouter Files API. When the model needs file access (reading an uploaded document, saving output, or applying a targeted edit), it calls the tool and OpenRouter executes the operation server-side.

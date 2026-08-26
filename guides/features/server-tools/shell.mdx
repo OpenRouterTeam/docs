@@ -25,12 +25,17 @@ import { Template } from "/snippets/exports/Template.jsx";
 **Beta**
 
 Server tools are currently in beta. The API and behavior may change.
+
+The shell tool is available on the global endpoint (`openrouter.ai`) only.
+Requests through the
+[in-region endpoints](/guides/privacy/provider-logging#enterprise-in-region-routing)
+(`eu.openrouter.ai`, `us.openrouter.ai`) are rejected.
 </Note>
 
 <Warning>
 **Responses and Messages APIs only**
 
-The shell server tool is available through the [Responses API](/api_reference/responses/overview) and the [Messages API](/api_reference/messages/overview). Requesting it on the Chat Completions API returns a `400` error.
+The shell server tool is available through the [Responses API](/api_reference/responses/overview) and the [Messages API](/api/api-reference/anthropic-messages/create-a-message). Requesting it on the Chat Completions API returns a `400` error.
 
 The two APIs surface a shell run differently. On the Responses API the call becomes an `openrouter:shell` output item (or a native `shell_call` when you send OpenAI's tool shape). On the Messages API it becomes a `server_tool_use` content block named `openrouter:shell`, paired with an `openrouter_shell_tool_result` block carrying each command's output. Anthropic defines no native shell result block, so this OpenRouter-namespaced one is where the output arrives.
 </Warning>
