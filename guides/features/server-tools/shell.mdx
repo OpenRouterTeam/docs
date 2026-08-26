@@ -131,7 +131,7 @@ The shell tool accepts optional `parameters` to choose its execution engine and 
 |-----------|------|---------|-------------|
 | `engine` | string | `auto` | Which shell engine to use: `openrouter` runs commands server-side in the OpenRouter sandbox; `auto` keeps the provider's native hosted shell when available (OpenAI) and routes to the OpenRouter sandbox on other providers |
 | `environment` | object | `container_auto` | Execution environment. Use `{ "type": "container_auto" }` for an OpenRouter-managed ephemeral container, or `{ "type": "container_reference", "container_id": "..." }` to reuse an existing container. `local` environments are not supported |
-| `sleep_after_seconds` | integer | `900` | How long the container stays warm after its last command before sleeping. Idle-based: each command renews the timer. Capped at 2592000 (30 days) |
+| `sleep_after_seconds` | integer | `900` | How long the container stays warm after its last command before sleeping. Idle-based: each command renews the timer. Capped at 14400 (4 hours) |
 
 Defaults and caps reflect current server-enforced limits and may change while the tool is in beta.
 
