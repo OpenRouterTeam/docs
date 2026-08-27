@@ -31,11 +31,14 @@ Consistency comes from three things, not from a central directory:
 1. The fixed filename `queries.ts`.
 2. Workspace-unique `createQueryKeys` namespaces (the namespace is the cache
    partition — two domains reusing a namespace would collide).
-3. A future lint rule: `createQueryKeys` / `queryOptions` / `useAPIMutation`
-   may only be called in files named `queries.ts`.
+3. The `openrouter/query-primitives-in-owner-files` lint rule:
+   `createQueryKeys`, `queryOptions`, `infiniteQueryOptions`, and
+   `useAPIMutation` may only be called in canonical owner modules:
+   `queries.ts`/`*-queries.ts`, `query-keys.ts` for split keys, and
+   `mutations.ts`/`*-mutations.ts` for client-only mutation owners.
 
-Split into `keys.ts` + per-resource files only when a domain outgrows one
-file. When split, **keys stay in one shared file** — invalidation must be
+Split into `query-keys.ts` + per-resource files only when a domain outgrows
+one file. When split, **keys stay in one shared file** — invalidation must be
 able to see every key the domain uses.
 
 ## Keys come from `createQueryKeys`
@@ -43,15 +46,16 @@ able to see every key the domain uses.
 `createQueryKeys` is the only sanctioned way to define keys — never write a
 key array literal at a call site or in `queries.ts`. Hand-written `as const`
 arrays are equivalent in power, but a second convention doubles what
-reviewers (and the future lint rule) must check.
+reviewers and the ownership lint rule must check.
 
 ## Options factories are the primitive, hooks are sugar
 
-Every resource exports a `queryOptions` factory named `<thing>Options` — no
-`use` prefix, so it's callable in `useQuery`, `useQueries`,
-`useSuspenseQuery`, `queryClient.prefetchQuery`, and server components.
-Component code consumes factories through TanStack's own hooks — the layer
-never wraps or re-exports them.
+Every resource exports a `queryOptions` factory named `<thing>Options`; paged
+resources export an `infiniteQueryOptions` factory with the same naming rule.
+Use no `use` prefix, so a factory is callable in `useQuery`, `useInfiniteQuery`,
+`useQueries`, `useSuspenseQuery`, `queryClient.prefetchQuery`, and server
+components. Component code consumes factories through TanStack's own hooks —
+the layer never wraps or re-exports them.
 
 Add a `use`-prefixed hook **in the same file** only when it adds a `select`
 transform, an error-monitor side effect, or multi-query composition. Never a
@@ -64,10 +68,14 @@ a wrapper hook. The cache keeps the raw server response as the single source
 of truth; `select`-derived views stay render-optimized via structural
 sharing.
 
-## Destructure at call sites
+## Consume query results without spreading
 
 Destructure the query/mutation result and rename to domain-meaningful names
-— don't keep an object around and reach into `.mutate` / `.isPending`:
+— don't keep an object around and reach into `.mutate` / `.isPending`, spread
+the result (`{ ...query }`), or use rest destructuring (`const { data, ...meta }
+= query`). Query result objects use tracked properties; rest/spread reads every
+property and makes the component rerender for changes it does not consume.
+The official `@tanstack/query/no-rest-destructuring` rule enforces this:
 
 ```tsx
 const { mutate: deleteGuardrail, isPending: isDeleting } =
@@ -85,6 +93,23 @@ const handleDelete = async (id: string): Promise<void> => {
 
 `mutate` and `reset` are stable references, so destructuring them is safe.
 
+## Reuse canonical options for prefetching
+
+Server and client prefetches must start from the same exported options factory
+as the consuming hook. Do not reconstruct the query key, stale behavior, or
+other options at the prefetch site. If an RSC needs a server-only transport,
+spread the canonical options and override only `queryFn`:
+
+```ts
+const options = modelStatsOptions({ modelId, entityId });
+await queryClient.prefetchQuery({
+  ...options,
+  queryFn: ({ signal }) => fetchModelStatsOnServer({ modelId, signal }),
+});
+```
+
+The factory remains the single owner of cache identity and query policy.
+
 ## Mutations
 
 - `mutationFn` is Result-native: pass a server action or
@@ -101,6 +126,12 @@ const handleDelete = async (id: string): Promise<void> => {
   `isPending` cover the refetch of affected queries.
 - Server actions keep calling `revalidatePath`/`revalidateTag` — that's the
   server-side RSC cache, orthogonal to the client cache invalidated here.
+- Use direct `useMutation` only when `useAPIMutation` cannot express advanced
+  optimistic concurrency that needs all of cancellation, snapshot rollback,
+  and last-writer reconciliation. Keep that exception in the domain's
+  `queries.ts`, document why it is required, and still use canonical keys.
+  Ordinary optimistic UI, callbacks, or custom invalidation are not reasons to
+  bypass `useAPIMutation`.
 
 ## Caching gotchas
 
@@ -112,10 +143,13 @@ hard rule:
   inputs share one cache entry and silently serve each other's data. The
   options-factory pattern enforces this structurally: the factory's
   parameters feed both the key and the fetch.
-- **Entity scope lives in the key.** Cookie-authed routes return different
-  data per workspace/org for the same URL. The workspace/org id must be a
-  key segment (see `guardrailKeys.list(workspaceId)`) or switching entities
-  shows the previous entity's data until a refetch lands.
+- **Entity scope lives in the key and gates the read.** Every cookie-authed
+  read can return different data per workspace/org even when the URL and
+  explicit request parameters are unchanged. Include the current entity id as
+  a key segment (see `guardrailKeys.list(workspaceId)`) and do not execute the
+  read before that id resolves. Use a non-null component boundary or
+  `skipToken`; otherwise entity switching can show or cache another entity's
+  data until a refetch lands.
 - **After a mutation, invalidate — don't expect a refetch.** `staleTime` is
   30s; a remount or navigation inside that window renders cached data with
   no request. Declaring `invalidates` on the mutation is the only reliable
@@ -214,3 +248,19 @@ export function widgetDetailOptions(id: string | null) {
 
 `enabled:` remains fine for plain boolean conditions (a feature flag,
 "tab is visible") that don't involve coercing a nullable key input.
+
+## Official TanStack Query lint rules
+
+The repository enables the official TanStack Query rules as errors, including
+dependency-complete query keys, stable clients and hook dependencies, result
+destructuring, void-returning query functions, and canonical mutation/infinite
+option ordering.
+
+`@tanstack/query/exhaustive-deps` requires every value read by `queryFn` that
+can change the response to appear in `queryKey`. Do not silence it by hiding a
+value behind another closure or by adding a broad allowlist entry. The central
+allowlist in `oxlint.config.ts` is only for named injected test seams whose
+identity cannot change result semantics, and deterministic aliases already
+fully represented by primitive key inputs. Any addition needs a commentable,
+case-by-case proof; entity ids, filters, pagination inputs, and request bodies
+are never allowlist candidates.
