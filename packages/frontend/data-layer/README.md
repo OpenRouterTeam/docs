@@ -66,8 +66,8 @@ them up. The rest of this file is reference documentation.
 
 ### Before (legacy `useAPISWR` + server action + manual `mutate()`)
 
-Previously, `GuardrailsPageContent.tsx` read with `useAPISWR` and threaded a
-`mutate` callback into every mutation site:
+Before the migration, `GuardrailsPageContent.tsx` read with `useAPISWR` and
+threaded a `mutate` callback into every mutation site:
 
 ```tsx
 const { data, isLoading, error, mutate } = useAPISWR<GuardrailsView>(
@@ -90,8 +90,8 @@ const handleDeleteConfirm = async (): Promise<void> => {
 };
 ```
 
-The failure mode of this pattern at its worst is the cross-page predicate
-hack in `SkillDetailContent.tsx` — deleting a skill has to reverse-engineer
+The failure mode of this pattern at its worst was the cross-page predicate
+hack in `SkillDetailContent.tsx` — deleting a skill had to reverse-engineer
 SWR's internal cache-key shape to invalidate the list page's cache:
 
 ```ts
