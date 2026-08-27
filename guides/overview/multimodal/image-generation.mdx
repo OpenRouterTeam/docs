@@ -513,6 +513,7 @@ For streaming requests, any partial preview images delivered before the stream e
 | `seed` | integer | No | Seed for deterministic generation (where supported) |
 | `stream` | boolean | No | Stream partial images via SSE |
 | `input_references` | array | No | Reference images for image-to-image generation |
+| `user` | string | No | Stable identifier for your end-user; folded into a hashed upstream identity and never sent raw (see [User Tracking](/cookbook/administration/user-tracking)) |
 | `provider.only` | string[] | No | Allow only these provider slugs |
 | `provider.order` | string[] | No | Try provider slugs in this order |
 | `provider.ignore` | string[] | No | Exclude these provider slugs |
