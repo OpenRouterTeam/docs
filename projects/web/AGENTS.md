@@ -184,6 +184,17 @@ adding an FAQ section, and consider it for relevant new pages going forward.
 - **Data reads use TanStack Query via the shared data layer**
   (`packages/frontend/data-layer/AGENTS.md`). Do not add SWR usage.
 
+## Shared data layer
+
+Before defining or consuming TanStack Query reads, mutations, keys, options
+factories, prefetches, or cache updates, read and follow both canonical files:
+
+- [`../../packages/frontend/data-layer/AGENTS.md`](../../packages/frontend/data-layer/AGENTS.md)
+  for implementation conventions and rationale.
+- [`../../packages/frontend/data-layer/REVIEW.md`](../../packages/frontend/data-layer/REVIEW.md)
+  for the review checklist enforced across Web, Mission Control, and shared
+  frontend packages.
+
 ## DOM tests
 
 - Run `bun run --cwd projects/web test::dom` for web DOM tests.

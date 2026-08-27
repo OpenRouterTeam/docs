@@ -126,6 +126,7 @@ export function guardrailsViewOptions(workspaceId: string) {
     queryFn: ({ signal }) =>
       fetchAPIQuery<GuardrailsView>("/api/frontend/v1/private/guardrails", {
         searchParams: { workspace_id: workspaceId },
+        schema: GuardrailsViewSchema,
         signal,
       }),
   });
@@ -173,6 +174,8 @@ for the full mutation and call-site conventions.
 ```ts
 import type { Widget } from "./types";
 
+import { WidgetSchema } from "./schemas";
+
 import { fetchAPIQuery } from "@openrouter-monorepo/frontend/data-layer/fetch-api-query";
 import { createQueryKeys } from "@openrouter-monorepo/frontend/data-layer/query-keys";
 import { useAPIMutation } from "@openrouter-monorepo/frontend/data-layer/use-api-mutation";
@@ -191,6 +194,7 @@ export function widgetListOptions(workspaceId: string) {
     queryFn: ({ signal }) =>
       fetchAPIQuery<Widget[]>("/api/frontend/v1/private/widgets", {
         searchParams: { workspace_id: workspaceId },
+        schema: WidgetSchema.array(),
         signal,
       }),
   });
@@ -201,6 +205,7 @@ export function widgetDetailOptions(id: string) {
     queryKey: widgetKeys.detail(id),
     queryFn: ({ signal }) =>
       fetchAPIQuery<Widget>(`/api/frontend/v1/private/widgets/${id}`, {
+        schema: WidgetSchema,
         signal,
       }),
   });
@@ -237,5 +242,3 @@ to feed it into `ErrorT`-shaped consumers like `useGlobalErrorMonitor`.
 - **Devtools**: `@tanstack/react-query-devtools` is not bundled. Adding it
   requires a lazy dev-only import that stays out of production bundles; do
   it in a follow-up when the provider is actually mounted.
-- **Lint rule**: restrict `createQueryKeys` / `queryOptions` /
-  `useAPIMutation` calls to files named `queries.ts`.
