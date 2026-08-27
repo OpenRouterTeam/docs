@@ -11,9 +11,9 @@ The ProRes MOV and OpenEXR ZIP profiles are deliberately excluded, see
 
 ## Sources and authentication
 
-- API reference: [https://docs.dev.runwayml.com/api/](https://docs.dev.runwayml.com/api/)
-- OpenAPI document: [https://docs.dev.runwayml.com/openapi.json](https://docs.dev.runwayml.com/openapi.json)
-- Pricing guide: [https://docs.dev.runwayml.com/guides/pricing/](https://docs.dev.runwayml.com/guides/pricing/)
+- API reference: <https://docs.dev.runwayml.com/api/>
+- OpenAPI document: <https://docs.dev.runwayml.com/openapi.json>
+- Pricing guide: <https://docs.dev.runwayml.com/guides/pricing/>
 - Base URL: `https://api.dev.runwayml.com`
 - Auth: `Authorization: Bearer <RUNWAY_API_KEY>`, plus `X-Runway-Version: 2024-11-06`
 - `X-Runway-On-Behalf-Of` is **mandatory for task creation** on our account. Submitting without
