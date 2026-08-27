@@ -31,6 +31,11 @@ bun run test:mutation --in-place packages/mcp/src/json-rpc.ts
 bun run test:mutation --in-place --incremental packages/mcp/src/json-rpc.ts
 ```
 
+The harness selects tests by the mutated source file's basename; indirect
+coverage in another colocated test (for example, `registry.test.ts` covering
+`vercel.ts`) is not included automatically. Use a direct Stryker config with
+the relevant test command when those assertions need to be measured.
+
 When the worktree changes are unstaged, the default diff scope sees only
 committed files and may report no mutable source files; pass the changed paths
 explicitly (including newly added files) or stage the intended files first.
@@ -38,6 +43,9 @@ explicitly (including newly added files) or stage the intended files first.
 `--in-place` is required in this monorepo: without it Stryker mutates a
 sandbox copy that loses the workspace links the tests import. It edits
 your checkout and restores it afterwards, so commit or stash first.
+The harness only accepts mutable sources inside workspace package
+directories; for targets under `.agents/skills/`, run Stryker directly
+with an in-place config and a command-runner test command.
 
 Reports land in `reports/mutation/` (git-ignored); the HTML report
 shows survivors inline. The directory is excluded from ls-lint
