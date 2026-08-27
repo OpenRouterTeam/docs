@@ -93,7 +93,11 @@ suite, so a file-scoped mutation run can fail its initial test run
 before producing a score. Treat that as a harness limitation and use a
 disposable in-place checkout for a manually narrowed `bun test
 index.test.ts` command; do not change production tests to accommodate
-the mutation runner.
+the mutation runner. For a small diff inside `index.ts`, a direct
+Stryker run with a line-scoped mutate glob
+(`"mutate": ["packages/router/index.ts:<start>-<end>"]`) and a
+command that targets the colocated test file keeps the run fast and
+the survivor list relevant.
 
 `packages/batch` can likewise fail its package-wide initial suite on unrelated
 baseline Mistral tests. When mutating a batch parser, run Stryker directly with
