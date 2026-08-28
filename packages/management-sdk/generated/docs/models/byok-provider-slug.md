@@ -1,0 +1,19 @@
+# BYOKProviderSlug
+
+The upstream provider this credential authenticates against, as a lowercase slug (e.g. `openai`, `anthropic`, `amazon-bedrock`).
+
+## Example Usage
+
+```typescript
+import { BYOKProviderSlug } from "@openrouter-monorepo/management-sdk-generated/models";
+
+let value: BYOKProviderSlug = "openai";
+
+// Open enum: unrecognized values are captured as Unrecognized<string>
+```
+
+## Values
+
+```typescript
+"ai21" | "aion-labs" | "akashml" | "alibaba" | "amazon-bedrock" | "amazon-nova" | "ambient" | "anthropic" | "arcee-ai" | "atlas-cloud" | "avian" | "azure" | "baidu" | "baseten" | "black-forest-labs" | "byteplus" | "cerebras" | "chutes" | "cirrascale" | "clarifai" | "cloudflare" | "cohere" | "coreweave" | "cosine" | "crusoe" | "darkbloom" | "databricks" | "decart" | "deepgram" | "deepinfra" | "deepseek" | "dekallm" | "digitalocean" | "featherless" | "fireworks" | "fish-audio" | "friendli" | "gmicloud" | "google-ai-studio" | "google-vertex" | "groq" | "heygen" | "inception" | "inceptron" | "inferact-vllm" | "inference-net" | "infermatic" | "inflection" | "io-net" | "ionstream" | "krea" | "liquid" | "makora" | "mancer" | "mara" | "meta" | "minimax" | "mistral" | "modal" | "modelrun" | "modular" | "moonshotai" | "morph" | "ncompass" | "nebius" | "nex-agi" | "nextbit" | "novita" | "nvidia" | "ollama" | "open-inference" | "openai" | "parasail" | "perceptron" | "perplexity" | "phala" | "poolside" | "quiver" | "recraft" | "reka" | "relace" | "runway" | "sail-research" | "sakana" | "sakana-ai" | "sambanova" | "seed" | "siliconflow" | "sourceful" | "stepfun" | "streamlake" | "switchpoint" | "tencent" | "tenstorrent" | "thinkingmachines" | "together" | "upstage" | "venice" | "wafer" | "wandb" | "wandb-legacy" | "xai" | "xiaomi" | "z-ai" | Unrecognized<string>
+```
