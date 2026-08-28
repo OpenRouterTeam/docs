@@ -316,7 +316,9 @@ type Response = {
 
   // Usage data is always returned for non-streaming.
   // When streaming, usage is returned exactly once in the final chunk
-  // before the [DONE] message, with an empty choices array.
+  // before the [DONE] message. Unlike OpenAI's spec, this chunk contains
+  // a non-empty choices array: a choice with a content-free delta that
+  // repeats the finish_reason of the stream.
   usage?: ResponseUsage;
 };
 ```
