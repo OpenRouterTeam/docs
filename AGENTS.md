@@ -134,8 +134,9 @@ These rules apply to all code running in hot inference paths
   [Writing Kysely Queries skill](./.agents/skills/writing-kysely-queries/SKILL.md)
   for patterns, helpers, and gotchas.
 - **Frontend server actions and RSC entrypoints must not import the database
-  at runtime.** Use a private `cfw-frontend-api` REST route and consume it
-  through TanStack Query in the shared data layer. See
+  at runtime.** Use a REST route on the worker matching the frontend —
+  `cfw-frontend-api` for the web app, `cfw-internal` for Mission Control —
+  and consume it through TanStack Query in the shared data layer. See
   [`packages/frontend/data-layer/AGENTS.md`](packages/frontend/data-layer/AGENTS.md)
   and [`packages/frontend/data-layer/README.md`](packages/frontend/data-layer/README.md).
 - **Do not mention "Supabase".** The database is Postgres; we
@@ -156,9 +157,10 @@ mitigate startup-time increases that degrade inference
 performance. Place new routes in the appropriate worker:
 
 - **`cfw-public-api`** — Publicly documented routes
-- **`cfw-frontend-api`** — Routes supporting the web app
-- **`cfw-internal`** — OpenRouter internal use only (pinned to
-  us-central1)
+- **`cfw-frontend-api`** — Routes serving the user-facing web app
+  (`projects/web`) only
+- **`cfw-internal`** — OpenRouter internal use only, including all
+  Mission-Control-only routes (pinned to us-central1)
 
 A unit test in `services/cfw-api/src/app.test.ts` enforces this
 by failing if unrecognized route prefixes appear. **Do not add
@@ -208,19 +210,21 @@ Stripe resources. It is a floor, not the boundary of the rule.
 
 ## Feature Instrumentation
 
-Ship a new feature's measurement in the same PR as the feature.
-Frontend features capture a PostHog event from the `PostHogEvent`
-enum in `packages/enums/posthog.ts`. Server-side features emit
-Datadog metrics via `getStatsd()` from
-`@openrouter-monorepo/instrumentation/statsd`. Every feature needs
-at least an adoption counter and a success/failure outcome with a
-low-cardinality failure reason, and its PR description names the
-metrics and events it adds. A feature that emits a failure signal
-also ships a Terraform Datadog monitor or dashboard in
-`configs/terraform-monitors/`, routed to a low-signal Slack
-channel (default `@slack-OpenRouter-test-slack-messages`) unless
-the PR author names another. See
-`.claude/rules/feature-instrumentation.md`.
+Instrument with discretion, and keep what you emit high signal
+and actionable: a metric earns its place when you know who
+reads the number and what they do with it. Reviewers do not ask
+for instrumentation, and its absence does not block a PR.
+
+When you do instrument, frontend features capture a
+`PostHogEvent` from `packages/enums/posthog.ts` and server-side
+features emit via `getStatsd()` from
+`@openrouter-monorepo/instrumentation/statsd`. Keep tag values
+low cardinality: never a user ID, API key, prompt, URL, or raw
+error string, and never let emission throw or add an `await` to
+a request-serving path.
+
+Monitors are not part of shipping a feature. Read
+`configs/terraform-monitors/AGENTS.md` before adding one.
 
 ## Async
 
