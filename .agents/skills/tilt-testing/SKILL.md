@@ -526,7 +526,7 @@ Key image locations in the repo:
 Some frontend features depend on Clerk-authenticated API endpoints (e.g.,
 `/api/internal/v1/api-keys`, `/api/internal/v1/organization/members`) that
 may not return data locally due to Clerk auth limitations. When this happens,
-you can temporarily mock the SWR hooks to test UI behavior with controlled data.
+you can temporarily mock the data-fetching hooks to test UI behavior with controlled data.
 
 ### When to use hook mocking
 
@@ -537,7 +537,7 @@ you can temporarily mock the SWR hooks to test UI behavior with controlled data.
 
 ### How to mock
 
-1. **Identify the hooks**: Find the SWR hooks that fetch the data (e.g.,
+1. **Identify the hooks**: Find the hooks that fetch the data (e.g.,
    `useSlimAPIKeys` in `packages/frontend/hooks/use-api-keys.ts`,
    `useListOrgUsers` in `projects/web/features/orgs/api/list-org-users/use-list-org-users.ts`)
 
