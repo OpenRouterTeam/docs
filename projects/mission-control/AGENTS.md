@@ -1,3 +1,9 @@
+## Route placement
+
+Mission Control server actions call `cfw-internal` via `cfwInternalFetch`
+(`utils/helpers/cfw-internal-fetch.ts`). Do not add private `cfw-frontend-api`
+routes for MC-only data — `cfw-frontend-api` serves the web app only.
+
 ## Shared data layer
 
 Mission Control uses the same TanStack Query data-layer contract as Web and
