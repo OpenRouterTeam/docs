@@ -3,9 +3,10 @@
 An abuse rule is a dynamic allow or restrict rule. Track A evaluates enabled
 rules in memory for each request against configuration published through KV.
 The inference path never reads these rules from Postgres. A match has
-request-scoped effects only: a synthetic restriction and an asynchronous
-`rule_hit` signal to ClickHouse `user_signals`. Nothing is ever written to or
-removed from the account.
+request-scoped effects only: a synthetic restriction, an asynchronous
+`rule_hit` signal to ClickHouse `user_signals`, and matched rule ids
+persisted on the generation record (capped at 8 per request). Nothing is
+ever written to or removed from the account.
 
 Live publication parsing fails open. `invalidPublication` marks a damaged
 publication envelope, while `droppedRuleCount` reports malformed rows salvaged

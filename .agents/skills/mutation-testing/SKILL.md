@@ -107,6 +107,14 @@ Stryker run with a line-scoped mutate glob
 command that targets the colocated test file keeps the run fast and
 the survivor list relevant.
 
+`packages/provider-monitors` is refused outright by the harness: its `test`
+script is a bash wrapper the runner cannot narrow, and the package has more
+test files than `MAX_FALLBACK_TEST_FILES`, so file-scoped targets report
+`refusing-sources-nothing-could-measure`. Run Stryker directly with an
+in-place config whose command runner is
+`cd packages/provider-monitors && bun test <colocated test file>` and a
+line-scoped mutate glob for the diff.
+
 `packages/batch` can likewise fail its package-wide initial suite on unrelated
 baseline Mistral tests. When mutating a batch parser, run Stryker directly with
 an in-place config whose command targets the colocated test file, then classify
