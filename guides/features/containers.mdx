@@ -281,19 +281,6 @@ By default, a container has no outbound internet access. The
 and [bash network policy](/guides/features/server-tools/bash#network-policy)
 sections.
 
-## Limits
-
-| Limit                          | Value                                    |
-| ------------------------------ | ---------------------------------------- |
-| Commands per tool call         | 100                                      |
-| Characters per command         | 16,384                                   |
-| Command timeout (`timeout_ms`) | Default 120,000 ms, maximum 300,000 ms   |
-| Output per stream (`max_output_length`) | Default 16,384, maximum 65,536 characters |
-| Idle sleep (`sleep_after_seconds`) | Default 900 s, maximum 14,400 s      |
-| Attached workspace files       | 20                                       |
-| Reported changed files         | 10 per command                           |
-| Server tool calls per request  | 30                                       |
-
 ## Next steps
 
 - [Shell](/guides/features/server-tools/shell): The shell server tool
