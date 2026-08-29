@@ -140,8 +140,6 @@ measures against — widen it when a ring's spend concentrates elsewhere.
   own provider key bills the holder upstream while OpenRouter records only the
   BYOK fee, so rank and report BYOK exposure alongside the query's usd columns
   rather than ranking on them alone.
-- **`analytics.bad_asn_list` is not a proxy signal.** It matches ordinary AWS,
-  Azure, Hetzner, and DigitalOcean traffic. Corroborating only.
 - **User agent is empty on a material share of rows and ASN is missing on a
   small one**, so every share this query reports is a slight underestimate.
 - **Reference the account-level CTE exactly once.** ClickHouse inlines a CTE
