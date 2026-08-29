@@ -252,6 +252,12 @@ local fake provider:
 4. Warm the KV cache (`rm -rf services/cfw-api/.wrangler/state/v3/kv`,
    then `cd services/cfw-api && bun run test:cron`) — requires the local
    ClickHouse container (see stage-endpoint skill) or the warm cron fails.
+   If the warm logs show `Unknown table expression identifier ... _mv`, the
+   ClickHouse container is missing migrations — run
+   `cd packages/clickhouse && bun run ch:migrate`, then re-run `test:cron`.
+   If step 2's UPDATE hits 0 rows, the Postgres seed data is stale/empty
+   even though `db:start` says "Skipping seed.sql (already applied)" —
+   run `bun run db:reset` first, then redo steps 2–3.
 5. Call with `Authorization: Bearer sk-or-v1-unlimitedkey` and
    `"model": "openrouter/fake"`.
 
@@ -286,9 +292,34 @@ Gotchas when synthesizing upstream logprobs or changing endpoint capabilities:
       binding in `cfw-api/wrangler.toml` as a workaround.
    - If every model returns 400 "not a valid model ID", the
      local database is unseeded — run `bun run db:seed` first.
+   - For generation-row verification in lean Tilt mode, start
+     `usage-record` with its local Postgres pool variables populated;
+     the default resource can boot without them and then drops rows.
+     Trigger `dataflow`, `insert-generations-clickhouse`, and
+     `dev-fs-logs` before sending requests when those resources are
+     manual or disabled.
 3. Ensure `tests/e2e/.env.local` has a valid
     `OPENROUTER_API_KEY`. If not, source it from Infisical or
     the stored secret.
+
+### Testing billing routes on local cfw-frontend-api (stripe-credit-purchase)
+
+`POST /api/frontend/v1/private/stripe-credit-purchase` needs more than a
+signed-in dev Clerk session before the handler's guards even run:
+
+- A freshly minted Clerk user 403s with `no_active_workspace`; use the
+  seeded `dev+clerk_test@openrouter.ai` user instead.
+- The user's `users.stripe_customer_id` must point at a test-mode Stripe
+  customer that has a **name and a US billing address**, or the route
+  returns `Customer not found` (500), `Customer name is required` (400),
+  or `Billing address is invalid` (400) before the purchase logic.
+- The handler calls the `usage-record` service binding and throws if the
+  worker is absent; start it with its Postgres pool variable and a free
+  inspector port, e.g.
+  `WRANGLER_INSPECTOR_PORT=9230 PG_US_CENTRAL1_POOL_DB_URL=postgres://postgres:postgres@localhost:54322/postgres bun run dev usage-record`.
+
+A successful call returns `200 {"data":{"clientSecret":"pi_..."}}` and logs
+`Credit purchase initiated` and `Top Up: triggered` in the worker stdout.
 
 ### Testing workspace-scoped policy (e.g. `disabled_server_tools`)
 
