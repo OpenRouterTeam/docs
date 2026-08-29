@@ -122,10 +122,11 @@ const app = createPrivateRouteApp();
 export const <domain>Routes = app;
 ```
 
-`createPrivateRouteApp` wires restricted CORS +
-`Cache-Control: private, no-store` + Clerk middleware. Then mount the
-leaf in its domain's `index.ts` — `app.ts` only composes domain routers
-(see `services/cfw-frontend-api/src/routes/AGENTS.md`):
+`createPrivateRouteApp` returns an inert leaf router — `app.ts` owns the
+private namespace middleware once at `/api/frontend/v1/private/*`
+(restricted CORS + `Cache-Control: private, no-store` + Clerk). Then
+mount the leaf in its domain's `index.ts` — `app.ts` only composes
+domain routers (see `services/cfw-frontend-api/src/routes/AGENTS.md`):
 
 ```ts
 .route('/private/<domain>', <domain>Routes)

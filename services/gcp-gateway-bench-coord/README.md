@@ -13,8 +13,10 @@ Single-region deploy (us-central1). Scaled to zero, max 4 instances.
 ### `POST /run-benchmark`
 
 Request body is a pass-through OpenAI chat completions body (must
-contain `model` and `messages`; everything else passes through to the
-gateways unmodified). The optional `routing` field controls the routing
+contain `model` and `messages`; everything else is forwarded to the
+gateways — arms that use the Anthropic Messages API translate OpenAI
+fields to the Anthropic wire format first). The optional `routing`
+field controls the routing
 preference (`default`, `price`, `throughput`, `latency`):
 
 ```json
