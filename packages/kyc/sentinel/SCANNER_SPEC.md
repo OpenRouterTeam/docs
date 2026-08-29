@@ -333,8 +333,8 @@ also governs enactment, and none of it relaxes because enforcement is faster:
   holds. A cluster that does not clear it is not enactable.
 - At least **two independent corroborating signals** on the cluster itself. A
   single shared attribute — card fingerprint, BIN, IP hash, email domain,
-  ASN — is a lead, never proof, and never sufficient to enact, and a bad-ASN hit
-  is corroborating only. A shared JA3 or JA4 is not even a lead: see
+  ASN — is a lead, never proof, and never sufficient to enact. A shared JA3 or
+  JA4 is not even a lead: see
   [Signal sources](#signal-sources-clickhouse--infradevice-fingerprints-do-exist)
   for why the keys that look most like rings are the least informative.
 - For any card-derived cluster, run the per-fingerprint signup time-span check
@@ -587,19 +587,9 @@ Do NOT conclude "no IP/ASN/device in `analytics.*`". They live in staging, not i
   `analytics.stg_users.signup_asn` (~94% coverage on recent cohorts) and
   `onboarding_cf_asn`; `analytics.stg_generations.asn` / `asn_organization`
   (per-request ASN); `analytics.stg_credits.cf_asn` (payment-time ASN).
-- **Always cross-reference ASN against `analytics.bad_asn_list`** (columns:
-  `asn UInt32`, `entity String`). Membership means a cloud / managed-hosting /
-  colo provider (AWS, Microsoft, OVH, M247, DataCamp, Alibaba, Choopa/Vultr).
-  Real end users almost never originate from these ASNs; bot farms, VPNs, and
-  scripted rings do — so a bad-ASN hit is both a fraud-positive infra signal AND
-  a cross-account link. Pattern:
-  `asn IN (SELECT asn FROM analytics.bad_asn_list)`, or INNER JOIN on `asn` to
-  name the provider. Corroborating, not proof on its own — weight it alongside
-  shared-fingerprint linkage; don't auto-propose on it alone.
 - **Known limits:** a salted `ip_hash` gives equality only — no subnet/CIDR
   clustering. The country fields below provide no city-level or
-  residential-vs-VPN/Tor classification; the bad-ASN flag remains the
-  infra-level fallback for that distinction. Use the
+  residential-vs-VPN/Tor classification. Use the
   [network-geo vs card-issuer-geo signal](#network-geo-vs-card-issuer-geo) for
   country-level comparison; flag the remaining resolution gaps when infra
   reasoning needs more than exact-match or country. The Datadog CF bot score +
@@ -685,7 +675,7 @@ spans all succeeded charges rather than the one under adjudication. A mismatch i
 can never justify a filing on its own. Among accounts with both sides
 populated, roughly 28–31% already differ, so the useful shape is cluster-level:
 one issuer country across many unrelated network countries (or the reverse),
-especially when stacked with bad-ASN or shared-fingerprint linkage. Missing
+especially when stacked with shared-fingerprint linkage. Missing
 network data is unknown rather than clean.
 
 Do not cite nonexistent fields: `payment_method_details_card_country`,
