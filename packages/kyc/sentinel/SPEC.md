@@ -435,6 +435,14 @@ Enacting an `account_ban` user target also applies a global account ban that
 sets the legacy `users.banned` flag and bans the user in Clerk; undo lifts it
 again once no other active `account_ban` restriction remains.
 
+Because of that Clerk ban, `account_ban` is the remedy of last resort rather
+than the default one. An account-wide stop on inference is `inference_block`,
+which cuts every inference request and leaves the user's UI, billing, and
+support access intact. Reserve `account_ban` for cases where locking the user
+out of the OpenRouter UI is the point, and expect a human to make that call:
+the agent path refuses `account_ban` outright, and admits `inference_block`
+only for targets an administrator has approved.
+
 Once a candidate target has a `restriction_id`, it reports `already_active`
 without checking whether that exact restriction was later revoked. An enacted
 target can be undone — Mission Control calls an administrator-gated internal

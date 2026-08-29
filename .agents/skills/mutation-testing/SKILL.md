@@ -35,6 +35,8 @@ The harness selects tests by the mutated source file's basename; indirect
 coverage in another colocated test (for example, `registry.test.ts` covering
 `vercel.ts`) is not included automatically. Use a direct Stryker config with
 the relevant test command when those assertions need to be measured.
+Nested route sources can likewise be refused when their regression test lives
+in a parent directory; point a direct in-place config at that parent-level test.
 
 When the worktree changes are unstaged, the default diff scope sees only
 committed files and may report no mutable source files; pass the changed paths
