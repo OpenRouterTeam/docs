@@ -179,6 +179,38 @@ ClickHouse still owns what the CLI cannot answer — spend, cohorts,
 fingerprints, and the enforcement state of accounts that are not in a case —
 with the lag stated alongside any such figure.
 
+### Redundancy sweeps: same-kind status hides stronger coverage
+
+A target's `currentRestrictionStatus` and `existingRestrictionId` reflect only a
+restriction matching the target's own `proposedKind`, so a user carrying an
+active `account_ban` still reads as `none` on a case proposing
+`inference_block`. Never conclude from `none` that a target is unrestricted.
+To compare coverage across kinds, fetch `targets` for the enacted cases that
+carry the stronger restrictions and union their active targets, treating
+`account_ban` as stronger than `inference_block` and both as stronger than
+`frontier_us_models`. Enacted targets appear as `status: approved` with a
+non-null `restrictionId`, not as a distinct `enacted` status, so filter on
+`restrictionId` plus `currentRestrictionStatus === 'active'` and a null
+`restrictionRevokedAt`.
+
+Archive only when every pending target is covered by an active restriction at
+least as restrictive as the proposal. Full target overlap with a weaker
+restriction is an upgrade decision for a human, not redundancy.
+
+Re-read `targets` immediately before archiving. Restrictions land continuously
+while a sweep runs, so a snapshot taken minutes earlier can misstate coverage in
+either direction. After archiving, verify by absence: archived cases drop out of
+the default `list` output entirely rather than appearing with a non-null
+`archivedAt`.
+
+For coverage of accounts outside any case, `analytics.stg_restrictions` keys the
+account on `entity_id`, has no `user_id` column, and is versioned by
+`_peerdb_version` with `_peerdb_is_deleted`. Deduplicate with
+`argMax(..., _peerdb_version) GROUP BY id`, alias the projections to names that
+differ from the source columns, and filter those aliases in an outer query,
+since ClickHouse rejects both aliases shadowing a source column and aggregate
+aliases filtered in their own scope.
+
 ### Skip archived and already-resolved suggestions
 
 Use the unfiltered `list` output to avoid re-filing or reporting suggestions
