@@ -12,6 +12,7 @@ layer provides the shared plumbing only:
 | Module                  | Provides                                                                                                                |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `query-client.ts`       | `DEFAULT_QUERY_OPTIONS`, SSR-safe `getQueryClient()`                                                                    |
+| `server-query-client.ts` | `getServerQueryClient()` — per-request server client for RSC prefetching + `<HydrationBoundary>` (see `AGENTS.md`)     |
 | `fetch-api-query.ts`    | `fetchAPIQuery` — the shared `queryFn` body (URL serialization, envelope unwrap, abort signal, optional Zod validation) |
 | `api-query-error.ts`    | `APIQueryError` (thrown at the TanStack boundary), `extractErrorT`                                                      |
 | `query-keys.ts`         | `createQueryKeys` — namespaced key factories                                                                            |

@@ -110,6 +110,82 @@ await queryClient.prefetchQuery({
 
 The factory remains the single owner of cache identity and query policy.
 
+## Server prefetching and hydration
+
+Bridging server-fetched data to client `useQuery` consumers uses the
+TanStack "Advanced Server Rendering" pattern
+(<https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr>),
+never `initialData`. `initialData` never overwrites an existing cache entry
+(so `router.refresh()` cannot update the client cache), requires prop
+drilling to the consuming component, and loses the server `dataUpdatedAt`.
+Dehydrated state carries `dataUpdatedAt` and overwrites older entries.
+
+The per-request server client is `getServerQueryClient()` from
+`server-query-client.ts` — a React `cache()`-wrapped `makeQueryClient`, so
+every prefetch site in one request shares one client and requests never
+share state. Do not call `makeQueryClient()` directly in RSC code, except
+for the multi-boundary case below.
+
+```tsx
+import { getServerQueryClient } from '@openrouter-monorepo/frontend/data-layer/server-query-client';
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
+
+export default async function Page() {
+  const queryClient = getServerQueryClient();
+  await queryClient.prefetchQuery({
+    ...widgetListOptions(workspaceId),
+    // Only when the RSC needs a server-only transport — see
+    // "Reuse canonical options for prefetching" above.
+    queryFn: () => fetchWidgetsOnServer(workspaceId),
+  });
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <WidgetList />
+    </HydrationBoundary>
+  );
+}
+```
+
+The client component under the boundary calls plain
+`useQuery(widgetListOptions(workspaceId))` — no seed props. During SSR the
+hydrated cache serves the data, so the first-pass HTML contains real rows;
+on the client the same entry is available before the first render, so there
+is no loading flash.
+
+Two conventions on top of the TanStack pattern:
+
+- **Keys and policy come from the canonical options factory**, exactly as
+  for any other prefetch. Seeding with already-fetched data uses
+  `queryClient.setQueryData(<thing>Options(...).queryKey, data, ...)`.
+- **Seeds keep the default `updatedAt` (the render-time timestamp).** On a
+  statically prerendered (ISR) route that timestamp is the generation time,
+  frozen into the payload with the data. Hydration only replaces an existing
+  cache entry when the incoming `dataUpdatedAt` is newer, so a newer server
+  payload (a `router.refresh()` or a newer ISR generation) overwrites the
+  cached entry while an older payload never clobbers fresher client data.
+  Never seed with `updatedAt: 0` — a zero timestamp is older than every
+  cache entry, so later server payloads can never replace what the client
+  already holds and `router.refresh()` becomes a no-op for that query.
+- **Bounded/partial projections seed with `partialSeedUpdatedAt()`.** When a
+  seed is a trimmed projection of what the canonical client query returns
+  (e.g. an SSR row cap), a render-time `updatedAt` would leave it fresh under
+  `staleTime`, suppressing the client's fetch of the complete dataset — or a
+  fresh generation could overwrite complete client data with partial rows.
+  `partialSeedUpdatedAt()` (in `server-query-client.ts`) backdates the seed by
+  the default `staleTime`, keeping it stale on mount so the client always
+  fetches the authoritative full dataset, while newer generations still carry
+  newer timestamps than older ones.
+
+`dehydrate` only includes successful queries, so a failed server prefetch
+degrades to the client-side fetch instead of hydrating an error.
+
+Call `dehydrate(getServerQueryClient())` at most once per page: the
+request-scoped client accumulates every seed site's queries, so each
+`dehydrate` serializes the full accumulated set into its boundary, and a
+second boundary on the same route would duplicate the first site's state
+into its HTML. If a page genuinely needs independent boundaries, give each
+site its own `makeQueryClient()` instead of the shared client.
+
 ## Mutations
 
 - `mutationFn` is Result-native: pass a server action or
