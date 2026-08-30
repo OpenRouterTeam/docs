@@ -149,10 +149,8 @@ the reference's serving of these weights", not canonical correctness.
   special-casing known audit prompts.
 - TODO(anomaly-platform): standardize a `token_ids` response field with
   providers to eliminate re-tokenization noise entirely.
-- TODO(anomaly-platform): import offline-generated snapshots from a locally
-  controlled vLLM reference (gold standard) instead of trusting a serving
-  provider; expand the probe suite toward ~300 prompts x ~35 tokens for
-  snapshot sweeps.
+- TODO(anomaly-platform): expand the probe suite toward ~300 prompts x
+  ~35 tokens for snapshot sweeps.
 - TODO(anomaly-platform): Postgres-backed store once run volume justifies
   indexed queries.
 - TODO(anomaly-platform): broaden the snapshot detector's model list beyond
