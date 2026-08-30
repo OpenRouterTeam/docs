@@ -167,6 +167,19 @@ by failing if unrecognized route prefixes appear. **Do not add
 entries to the allowlist in that test** — move the route to the
 correct worker instead.
 
+## Worker Response Caching
+
+Prefer [Workers Cache](https://developers.cloudflare.com/workers/cache/)
+over the older Cache API (`caches.default` / `caches.open()`) for
+caching a worker's own responses. Workers Cache runs _before_ the
+worker, so a hit costs no worker execution at all, while a Cache API hit
+only happens once the worker is already running. Enable it per worker
+with `[cache] enabled = true` in `wrangler.toml` and control it with
+`Cache-Control` directives on the response. No zone-level cache
+configuration (Cache Rules, Page Rules, cache level) applies to it, and
+its cache key includes the full query string, so query-parameter
+normalization has to happen in the worker.
+
 ## Code Structure
 
 - Use early returns (guard clauses) instead of nested
