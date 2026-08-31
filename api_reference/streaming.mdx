@@ -40,10 +40,16 @@ const openRouter = new OpenRouter({
 const question = 'How would you build the tallest building ever?';
 
 const stream = await openRouter.chat.send({
-  model: '{{MODEL}}',
-  messages: [{ role: 'user', content: question }],
-  stream: true,
+  chatRequest: {
+    model: '{{MODEL}}',
+    messages: [{ role: 'user', content: question }],
+    stream: true,
+  },
 });
+
+if (!(stream instanceof ReadableStream)) {
+  throw new Error('Expected a streaming response');
+}
 
 for await (const chunk of stream) {
   const content = chunk.choices?.[0]?.delta?.content;
@@ -317,12 +323,18 @@ const controller = new AbortController();
 
 try {
   const stream = await openRouter.chat.send({
-    model: '{{MODEL}}',
-    messages: [{ role: 'user', content: 'Write a story' }],
-    stream: true,
+    chatRequest: {
+      model: '{{MODEL}}',
+      messages: [{ role: 'user', content: 'Write a story' }],
+      stream: true,
+    },
   }, {
     signal: controller.signal,
   });
+
+  if (!(stream instanceof ReadableStream)) {
+    throw new Error('Expected a streaming response');
+  }
 
   for await (const chunk of stream) {
     const content = chunk.choices?.[0]?.delta?.content;
@@ -477,10 +489,16 @@ const openRouter = new OpenRouter({
 async function streamWithErrorHandling(prompt: string) {
   try {
     const stream = await openRouter.chat.send({
-      model: '{{MODEL}}',
-      messages: [{ role: 'user', content: prompt }],
-      stream: true,
+      chatRequest: {
+        model: '{{MODEL}}',
+        messages: [{ role: 'user', content: prompt }],
+        stream: true,
+      },
     });
+
+    if (!(stream instanceof ReadableStream)) {
+      throw new Error('Expected a streaming response');
+    }
 
     for await (const chunk of stream) {
       // Check for errors in chunk

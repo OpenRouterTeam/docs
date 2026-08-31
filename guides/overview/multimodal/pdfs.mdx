@@ -107,35 +107,37 @@ const openRouter = new OpenRouter({
 });
 
 const result = await openRouter.chat.send({
-  model: '{{MODEL}}',
-  messages: [
-    {
-      role: 'user',
-      content: [
-        {
-          type: 'text',
-          text: 'What are the main points in this document?',
-        },
-        {
-          type: 'file',
-          file: {
-            filename: 'document.pdf',
-            fileData: 'https://bitcoin.org/bitcoin.pdf',
+  chatRequest: {
+    model: '{{MODEL}}',
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'What are the main points in this document?',
           },
-        },
-      ],
-    },
-  ],
-  // Optional: Configure PDF processing engine
-  plugins: [
-    {
-      id: 'file-parser',
-      pdf: {
-        engine: '{{ENGINE}}',
+          {
+            type: 'file',
+            file: {
+              filename: 'document.pdf',
+              fileData: 'https://bitcoin.org/bitcoin.pdf',
+            },
+          },
+        ],
       },
-    },
-  ],
-  stream: false,
+    ],
+    // Optional: Configure PDF processing engine
+    plugins: [
+      {
+        id: 'file-parser',
+        pdf: {
+          engine: '{{ENGINE}}',
+        },
+      },
+    ],
+    stream: false,
+  },
 });
 
 console.log(result);
