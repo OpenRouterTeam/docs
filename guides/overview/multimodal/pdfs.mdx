@@ -21,6 +21,7 @@ import {
   API_KEY_REF,
   DEFAULT_PDF_ENGINE,
   MISTRAL_OCR_USER_COST_PER_1K_PAGE_DOLLARS as MISTRAL_OCR_COST,
+  MISTRAL_OCR_US_USER_COST_PER_1K_PAGE_DOLLARS as MISTRAL_OCR_US_COST,
   PDFParserEngine,
 } from '/snippets/exports/constants.mdx';
 
@@ -62,6 +63,9 @@ OpenRouter provides several PDF processing engines:
 
 1. <code>"{PDFParserEngine.MistralOCR}"</code>: Best for scanned documents or
    PDFs with images (${MISTRAL_OCR_COST} per 1,000 pages).
+   Requests pinned to the US data region use Mistral's US regional endpoint and
+   the US rate (${MISTRAL_OCR_US_COST} per 1,000 pages), which includes Mistral's
+   10% regional upcharge.
 2. <code>"{PDFParserEngine.CloudflareAI}"</code>: Converts PDFs to markdown
    using Cloudflare Workers AI (Free).
 3. <code>"{PDFParserEngine.Native}"</code>: Only available for models that
