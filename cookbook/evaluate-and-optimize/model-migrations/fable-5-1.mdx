@@ -1,0 +1,174 @@
+---
+title: Claude Fable 5.1 Migration Guide
+description: Migrate to Claude Fable 5.1 — prefix-locked thinking, ephemeral system messages, per-turn effort, forced tool use rejected, and mid-thinking display updates
+seoTitle: 'Claude Fable 5.1 Migration Guide | OpenRouter'
+og:site_name: OpenRouter Documentation
+og:title: 'Claude Fable 5.1 Migration Guide'
+og:description: 'Learn what changed in Claude Fable 5.1 — prefix-locked thinking, ephemeral mid-conversation system messages, per-turn effort changes, forced tool use rejection, and mid-thinking display updates.'
+og:image: https://openrouter.ai/dynamic-og?title=Claude%20Fable%205.1%20Migration%20Guide&description=Prefix-locked%20thinking%2C%20ephemeral%20system%20messages%2C%20per-turn%20effort%2C%20and%20forced%20tool%20use%20rejection
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: arrow-right-arrow-left
+---
+
+## What's New
+
+Claude Fable 5.1 ships as [`anthropic/claude-fable-5.1`](https://openrouter.ai/anthropic/claude-fable-5.1). Existing Fable 5 prompts should work out of the box, but five API changes matter for migration:
+
+1. **Prefix-locked thinking** — thinking blocks are bound to the transcript prefix that produced them; editing history can 400
+2. **Ephemeral mid-conversation system messages (beta)** — one-turn reminders via `clear_at` that never invalidate the prompt cache
+3. **Per-turn effort changes (beta)** — raise or lower effort mid-conversation without a cache bust
+4. **Forced tool use is rejected** — `tool_choice: {"type": "any"}` or a named tool returns a 400
+5. **Mid-thinking display updates** — request real-time progress summaries during long tool-using turns
+
+The new request controls are available on OpenRouter's [Messages API](/api/api-reference/anthropic-messages/create-a-message) (`/api/v1/messages`) only. You do **not** need to send the Anthropic beta headers for any of them: OpenRouter detects requests that use each feature, attaches the corresponding beta for you, and routes those requests only to providers that support it.
+
+## Prefix-Locked Thinking
+
+Fable 5.1 ties each thinking block to the conversation that produced it. The transcript's signature combines the system prompt, the tool list, and every message before the current turn. If you replay a thinking block whose prefix no longer matches — because you injected or removed a reminder, summarized older turns in place, or changed the system prompt mid-session — the API returns a permanent 400 `invalid_request_error`:
+
+```text
+messages.1.content.0: Invalid signature in thinking block.
+The block is bound to a different conversation.
+```
+
+Retrying the same request will not clear it. Two recoveries:
+
+- Strip all thinking blocks from history and retry once (their text and tool calls can stay)
+- Retry with `thinking.block_binding.prefix_mismatch_behavior: "drop_block"` — the API discards mismatched blocks for you
+
+```json lines
+// Messages API — drop mismatched thinking blocks instead of returning 400
+{
+  "model": "anthropic/claude-fable-5.1",
+  "max_tokens": 4096,
+  "thinking": {
+    "type": "adaptive",
+    "block_binding": { "prefix_mismatch_behavior": "drop_block" }
+  },
+  "messages": ["...full history with thinking blocks replayed verbatim..."]
+}
+```
+
+When a block is dropped, the response reports it in `input_transformations` so the removal is observable.
+
+If your harness sends conversation history back exactly as it received it, nothing changes. History edits were already prompt-cache busts — everything after the edit turns from cache reads into cache writes — so a harness optimized for caching is usually already compatible.
+
+### Compaction
+
+Simple compaction is fully compatible: summarize the conversation into a single message, start the next request with that summary plus the new user turn, and replay nothing else — no earlier turns and no earlier thinking blocks. This resets the prompt cache but carries nothing tied to the old transcript.
+
+Two common schemes break under prefix-locked thinking:
+
+- **Keep-tail compaction** (summarize older turns, retain recent turns verbatim) fails on the retained turns: their thinking blocks were created against the full history. Strip thinking blocks from the retained turns, or set `drop_block`.
+- **Background (async) compaction** (swap a summary in while the conversation continues) fails the same way for every turn newer than the swap point. Set `drop_block` on the first request after the swap, or compact synchronously.
+
+### Auditing Your Harness
+
+Capture the exact requests your harness sends over a few normal turns, including a compaction or tool change if your product has them. For each pair of consecutive requests, compare the system prompt, the tool list, and the shared message prefix — they should be byte-identical up to the appended turns. Prefer the mid-conversation system message APIs below over custom transcript edits.
+
+## Ephemeral Mid-Conversation System Messages (Beta)
+
+Previously, a one-turn reminder ("the user can't see that tool output") meant injecting a message into history and deleting it on the next request — an edit that invalidates the prompt cache and, with prefix-locked thinking, every thinking block after it. Now a mid-conversation system message can be marked ephemeral with `clear_at`: it carries system-prompt authority for the next turn, then automatically stops rendering to the model. The message stays in your transcript — keep sending it back verbatim — so the prefix is unchanged, the cache stays warm, and after it clears it costs no tokens.
+
+```json lines
+// Messages API
+{
+  "model": "anthropic/claude-fable-5.1",
+  "max_tokens": 4096,
+  "messages": [
+    { "role": "user", "content": "Run the analysis script." },
+    { "role": "assistant", "content": "Running it now: ..." },
+    {
+      "role": "system",
+      "clear_at": "next_user_message",
+      "content": "Results have landed in your inbox; check it before running more code."
+    },
+    { "role": "user", "content": "What did we get?" }
+  ]
+}
+```
+
+## Per-Turn Effort Changes (Beta)
+
+Effort previously applied to the whole conversation as a top-level parameter. Now a system message with an `output_config` can change effort per turn — up for a hard step, back down for routine ones — without invalidating the prompt cache:
+
+```json lines
+// Messages API
+{
+  "model": "anthropic/claude-fable-5.1",
+  "max_tokens": 4096,
+  "output_config": { "effort": "high" },
+  "messages": [
+    { "role": "user", "content": "Plan the migration." },
+    { "role": "assistant", "content": "Here's the plan: ..." },
+    { "role": "system", "content": [], "output_config": { "effort": "low" } },
+    { "role": "user", "content": "Now rename the config file." }
+  ]
+}
+```
+
+## Forced Tool Use Is Rejected
+
+On models with thinking always enabled, forcing a tool call makes the model skip its thinking entirely and squeeze its working-out into the tool arguments. Starting with Fable 5.1, requests with `tool_choice` set to `{"type": "any"}` or a named tool return a 400. `{"type": "auto"}` (the default) and `{"type": "none"}` are unaffected.
+
+To migrate:
+
+- **Steering toward a tool**: use `tool_choice: {"type": "auto"}` and state the expectation in the prompt (e.g. "Use the get_weather tool to answer"). Fable 5.1 follows explicit tool instructions reliably, and thinking first improves argument quality.
+- **Extracting structured data**: if you were forcing a tool call to get JSON back, use [structured outputs](/guides/features/structured-outputs) instead, which constrain the response format without skipping thinking.
+
+```json lines
+// Messages API — steer with auto + prompt instead of forcing
+{
+  "model": "anthropic/claude-fable-5.1",
+  "max_tokens": 4096,
+  "tools": [{ "name": "get_weather", "description": "...", "input_schema": {} }],
+  "tool_choice": { "type": "auto" },
+  "messages": [
+    { "role": "user", "content": "Use the get_weather tool to check Tokyo, then summarize." }
+  ]
+}
+```
+
+## Mid-Thinking Display Updates
+
+During long tool-using turns, Claude writes short notes between tool calls — what it just found, what it's doing next. On previous models this text was not returned, which is why long agentic turns could look silent for minutes. Request these mid-turn progress summaries in the thinking blocks between tool calls via the `display` field:
+
+```json lines
+// Messages API
+{
+  "model": "anthropic/claude-fable-5.1",
+  "max_tokens": 4096,
+  "thinking": { "type": "adaptive", "display": "updates" },
+  "tools": ["..."],
+  "messages": [{ "role": "user", "content": "Review the PRs open against our billing service." }]
+}
+```
+
+## Migration Checklist
+
+1. Swap the slug to `anthropic/claude-fable-5.1`.
+2. Audit your harness for transcript edits: consecutive requests should be byte-identical up to the appended turns. Replace per-turn reminder injection with `clear_at` ephemeral system messages, and whole-conversation effort switching with per-message `output_config`.
+3. If you use keep-tail or async compaction, strip replayed thinking blocks or set `thinking.block_binding.prefix_mismatch_behavior: "drop_block"`. Simple compaction (summary + fresh user turn, nothing replayed) needs no changes.
+4. Replace forced tool use (`tool_choice: {"type": "any"}` or a named tool) with `{"type": "auto"}` plus prompt instructions, or structured outputs for JSON extraction.
+5. If your product shows progress during long agentic turns, request `thinking: { "type": "adaptive", "display": "updates" }`.
+
+## Breaking Changes
+
+| Behavior | Fable 5 | Fable 5.1 |
+| --- | --- | --- |
+| Replaying thinking blocks after a history edit | Allowed | Rejected (400) unless `drop_block` is set |
+| `tool_choice: {"type": "any"}` or named tool | Allowed | Rejected upstream (400) |
+| Effort changes | Whole-conversation only | Per-turn via system `output_config` |
+
+## Resources
+
+- [Claude Opus 5 Migration Guide](/cookbook/evaluate-and-optimize/model-migrations/opus-5) — mid-conversation tool changes, which Fable 5.1 also supports
+- [Reasoning Tokens](/guides/best-practices/reasoning-tokens)
+- [Structured Outputs](/guides/features/structured-outputs)
+- [OpenRouter Messages API](/api/api-reference/anthropic-messages/create-a-message)
+- [Anthropic model migration guide](https://platform.claude.com/docs/en/about-claude/models/migration-guide)
