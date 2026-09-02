@@ -301,7 +301,10 @@ permanent, takes `{}` params, and stops every inference request while leaving th
 user able to sign in, read their dashboard, and see what happened.
 `account_ban` is only correct when locking the user out of the OpenRouter UI is
 itself the goal, and a scanner never decides that on its own: name the reason the
-UI lockout is needed and leave it to a human.
+UI lockout is needed and leave it to a human. A filed case whose remedy should
+have been account-wide is escalated by changing its targets' proposed kind, not
+by a second case — a review-key operation, so name the case link, the target ids,
+and the kind on the case.
 
 Neither kind is a scanner's to enact unilaterally. `account_ban` is not
 agent-enactable, and the global ban application refuses the agent path outright
@@ -629,10 +632,18 @@ commercial-host explanation is excluded.
   heuristics platform-wide to state their specificity. A heuristic that returns
   tens of thousands of unrestricted accounts is not filable, and reporting that
   is the finding.
-- **The remedy for an operator-owned family is registration-side.** File it as a
-  separate domain-target case, propose-only, stating that it does not ask for
-  existing accounts on those domains to be restricted; account-scoped frontier
-  blocks remain a separate case adjudicated per account.
+- **The remedy for an operator-owned family is registration-side, and it is the
+  preferred one.** Once a domain is established as operator-owned (no unrelated
+  users on it), file the domain-target case first and treat it as the primary
+  remedy: domain enactment fans out to the domain's existing accounts and the
+  signup webhook applies the same restriction to every later signup on that
+  domain, which per-account cases never do. Only a domain `account_ban` adds
+  the Clerk blocklist identifier and refuses registration outright; other kinds
+  let the account register already restricted. Domain targets are propose-only
+  for the run (the agent gate refuses non-`user` targets and `inference_block`),
+  so a human approves and enacts them. Add an account-scoped case only for
+  members whose own evidence is needed on the record or who sit outside the
+  domain; do not re-file the same domain's accounts wave after wave.
 
 Procedure, DNS-over-HTTPS resolution (`dig` is not installed), and the control
 queries are in
@@ -839,21 +850,37 @@ Scanner-specific rules on top of the skill's schema:
 
 - **File only the account-scoped `frontier_us_models` block** from the [KYC
   section](#anthropic-usage--kyc-based-prioritization) — one target per user, no
-  `proposedTarget`, `{}` params (the ingest schema rejects a `proposedTarget` on
+  `proposedTarget`, `{}` params (the ingest schema rejects a non-empty
+  `proposedTarget` on
   an unscoped kind) — never per-author `author_ban`s and never an `account_ban`.
   A case that genuinely needs account-wide enforcement is filed as an
   `inference_block` for a human to approve, per
-  [Propose and enact](#read-only-propose-only).
+  [Propose and enact](#read-only-propose-only). The other exception is the
+  operator-owned mail-domain case from
+  [Mail-domain provenance](#mail-domain-provenance--grouping-by-relay-or-domain-family):
+  `targetType: "domain"`, one target per domain, `proposedKind: "inference_block"`
+  with `{}` params (`frontier_us_models` rejects domain targets), for a human to
+  approve.
 - **`ruleKey` naming:** use one stable key for each ring or pattern across runs,
   with no run number, timestamp, or per-wave suffix. Name the durable pattern
-  and remedy, such as `autobuy_bin450306_sg_debit_datacenter_frontier_block`;
-  later runs and re-mint variants of the same ring re-post that key and upsert
-  newly found members into it. Do not create a new key merely because the
-  target set or the run changed. If a ring already has an
-  `*_anthropic_block_*` case, file the frontier block under its own stable
-  frontier key and reference the old case by link in the thread, leaving that
-  anthropic case untouched. An account whose case a human denied stays
-  off-limits under every `ruleKey`, per the rejection rule below.<a id="archived-stable-key"></a>
+  the key identifies and not the remedy proposed for it, such as
+  `autobuy_bin450306_sg_debit_datacenter`; later runs and re-mint variants of the
+  same ring re-post that key and upsert newly found members into it. The remedy
+  is a property of the targets and can change on a live case, so a key that
+  names one goes stale the moment the proposal does. A different remedy for
+  accounts that are already pending targets of a live case is therefore a change
+  to that case, not a new key: report the case link, the target ids, and the kind
+  that fits, and leave the proposed-kind change to a human, per
+  [Changing the proposed kind](../../../.agents/skills/sentinel-ban-candidates/SKILL.md#changing-the-proposed-kind-not-filing-a-second-case).
+  A new stable key is for a ring with no prior filing at all. Keys
+  already in the queue that name a remedy (`*_frontier_block`,
+  `*_anthropic_block_*`) keep their names — renaming one forks the deduplication
+  namespace and files a duplicate case. Archived cases are absent from `list` and
+  ingest is not a lookup — posting a key that has no case files one — so a bare
+  key is only for a ring with no prior filing at all. A ring an earlier run filed
+  under a remedy-suffixed key keeps that key, read from that run's case link or
+  report thread rather than discovered by posting. An account whose case a human denied
+  stays off-limits under every `ruleKey`, per the rejection rule below.<a id="archived-stable-key"></a>
 - **Archived stable key:** an archived case remains in the deduplication
   namespace. Its archived-key response returns HTTP 200 with `suggestionId`,
   `created: false`, `targetsUpserted: 0`, `targetsAlreadyRestricted: 0`, and
@@ -886,8 +913,9 @@ Scanner-specific rules on top of the skill's schema:
   key or another case, and link sibling cases in the Slack report. If every
   legacy case is all-denied, do not re-file the ring. A legacy canonical case
   leaves the list when it is adjudicated and archived at the end of its normal
-  life; the ring's next detection then mints the bare stable key. This is the
-  single tolerated run-suffix exception.
+  life; that archived case still holds the ring in the deduplication namespace, so
+  the next detection follows [Archived stable key](#archived-stable-key) rather
+  than minting a bare key. This is the single tolerated run-suffix exception.
 - **Dedup:** a suggestion is identified by `source` + `ruleKey` + `targetType`;
   re-posting the same triple upserts targets, each deduped by `targetValue`.
   Use the unfiltered `list` first to dedup against the full queue, including
@@ -1214,12 +1242,12 @@ stale instructions or degraded execution, so the status must not read as clean.
 
   *NEW — 12 new / 12 total targets*
   <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/00000000-0000-4000-8000-000000000001|Open Sentinel case>
-  `autobuy_synthetic_quest_bin436797_hk_tw_frontier_block`
+  `autobuy_synthetic_quest_bin436797_hk_tw`
   Synthetic `.quest` ring · $3,608 live last 1h · $4,935 Anthropic/24h · restricted $0
 
   *UPDATED — 2 new / 7 total targets · pending review*
   <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/00000000-0000-4000-8000-000000000002|Open Sentinel case>
-  `autobuy_bin450306_sg_debit_datacenter_frontier_block`
+  `autobuy_bin450306_sg_debit_datacenter`
   Enacted for `user_3Gk2vT9qLxWbNpD41sZaYcEfMhR` · $0 live last 1h · $21,125 Anthropic/24h · restricted $21,125
 
   *Context*
@@ -1230,7 +1258,7 @@ stale instructions or degraded execution, so the status must not read as clean.
 
   *Also tracked*
   • Watchlist hold: one coherent identity remains below the action gate
-  • Bypass sweep: 1 unrestricted entity, already filed as `autobuy_org_entity_bypass_bin493724_frontier_block` <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/00000000-0000-4000-8000-000000000003|case>
+  • Bypass sweep: 1 unrestricted entity, already filed as `autobuy_org_entity_bypass_bin493724` <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/00000000-0000-4000-8000-000000000003|case>
   • Sweep complete: no new method drift
   ```
 
@@ -1517,7 +1545,7 @@ Only these differ between scanners; everything above is shared.
   `analytics.fact_daily_generations_activity`, which carries no prompt or
   completion bytes and no residency dimension, so its totals include
   EU-attributed dollars and
-  [.claude/rules/regional-routing.md](../../../.claude/rules/regional-routing.md)
+  `packages/routing/AGENTS.md`
   — scoped to "prompt/completion data" — does not reach them. The
   identifier-bearing drilldown is where this file's global-only scoping bites:
   it drops any entity whose `data_region` is anything other than `global` over

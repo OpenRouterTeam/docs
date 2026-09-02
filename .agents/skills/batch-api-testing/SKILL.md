@@ -2,9 +2,10 @@
 name: batch-api-testing
 description: >-
   Write and audit tests for the Batch API — colocated bun:test unit tests in
-  packages/batch and services/batch-api, the vitest e2e happy path in
-  tests/e2e/api/batches against the local Tilt batch stack + fake provider,
-  and the test-quality audit pass. Sub-skill of batch-api-development.
+  packages/batch and services/batch-api, driving the live local Tilt stack +
+  fake provider by hand (launch, readiness, ingress submit, persisted-row
+  evidence), the vitest e2e happy path in tests/e2e/api/batches, and the
+  test-quality audit pass. Sub-skill of batch-api-development.
 user-invocable: true
 ---
 
@@ -41,11 +42,126 @@ unit test.
   golden vector (job ID, custom_id, startedAt, billed generation ID). See
   `packages/batch/skins/chat-completions/sync-parity.test.ts` and the
   `*.golden.test.ts` files under `packages/batch/adapters/openai/`.
+- Assert a replayed finalize emits byte-identical generation IDs — the
+  replay test in `services/batch-api/src/finalize/emit-batch-generations.test.ts`
+  is the pattern; any change to emission or identity derivation keeps that
+  coverage.
 - Fixture-shape guards: a small test that Zod-validates each committed
   JSONL fixture line keeps fixtures honest — see
   `services/batch-api/src/openai-batch-smoke-fixture.test.ts`.
 
 Run: `bun test packages/batch services/batch-api services/cfw-batch-api`.
+
+## Driving the live local stack
+
+Ad-hoc verification of a submit/routing/finalize change runs against the same
+Tilt stack the e2e suite uses. No real provider traffic, no production data.
+
+### Launch
+
+The batch resources are **manual-trigger in the lean profile** — they never
+come up on their own:
+
+```bash
+bun run dev:up                       # lean Tilt stack (does the Infisical bootstrap)
+tilt trigger fake-gcs
+tilt trigger fake-gcs-init
+tilt trigger fake-provider
+tilt trigger gcp-batch-api
+tilt trigger cfw-batch-api
+tilt trigger dataflow-async-jobs     # writes async_jobs rows into the Spanner emulator
+tilt trigger redis
+tilt trigger serverless-redis-http   # without it every submit 429s
+tilt trigger dev-fs-logs             # request evidence under services/dev-fs-logs/.logs/
+
+# shell env the readiness/drive commands below expect
+export SRH_TOKEN=$(rg -o 'SRH_TOKEN: (\S+)' -r '$1' dev/docker-compose.upstash-redis.yaml)
+export OPENROUTER_API_KEY=sk-or-v1-unlimitedkey   # seeded key, public-caller flows
+```
+
+| Surface                              | URL                                               |
+| ------------------------------------ | ------------------------------------------------- |
+| Batch ingress (`cfw-batch-api`)      | `http://127.0.0.1:8800`                           |
+| Batch service (`gcp-batch-api`)      | `http://127.0.0.1:8686`                           |
+| Serverless Redis HTTP (rate limiter) | `http://127.0.0.1:8079`                           |
+| Spanner emulator REST                | `http://localhost:9020`                           |
+| Pub/Sub emulator                     | `http://localhost:8086`                           |
+| Fake GCS                             | `http://localhost:4443`                           |
+| Postgres                             | `localhost:54322` (container `openrouter-web_db`) |
+
+### Readiness
+
+All five must pass before driving anything:
+
+```bash
+curl -sf -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8800/health    # 200
+curl -sf -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8686/healthz   # 200
+curl -s -X POST http://127.0.0.1:8079/pipeline \
+  -H "Authorization: Bearer $SRH_TOKEN" \
+  -H 'Content-Type: application/json' -d '[["PING"]]'                     # [{"result":"PONG"}]
+docker exec -i openrouter-web_db psql -U postgres -d postgres -c 'select 1' >/dev/null
+curl -s http://localhost:8086/v1/projects/openrouter-dev/subscriptions \
+  | grep -c 'topics/usage-record-async-jobs'                              # 1
+```
+
+Failure modes that look like product bugs:
+
+- `429` with `limit_source: openrouter_limiter_unavailable` — the rate limiter
+  cannot reach Redis. `tilt trigger redis serverless-redis-http`. If compose
+  refuses because it references a container that no longer exists, start the
+  pair standalone on the `dev_default` network (`redis:7.4.9-alpine` and
+  `hiett/serverless-redis-http:0.0.10` with the local `SRH_TOKEN`, published on
+  8079).
+- `Model does not have a :batch endpoint` for a model you just staged —
+  private-endpoint grants are cached per API key on first use. Stage and grant
+  every endpoint **before** the first request of the run.
+- Spanner returns 0 rows forever — `dataflow-async-jobs` is the consumer that
+  inserts `async_jobs`, and messages published before its subscription exists
+  are dropped. The resource going green is not the signal: the pipeline creates
+  `usage-record-async-jobs-dataflow` well after the container starts, so gate
+  traffic on the subscription probe above, not on the trigger.
+
+### Drive
+
+Submit through the **real ingress**, never by calling the accept function
+directly — auth, header verification, internal-token signing and rate limiting
+only exist there:
+
+```bash
+curl -sS -X POST http://127.0.0.1:8800/api/beta/batches \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"endpoint":"/v1/chat/completions","model":"openai/gpt-5-nano",
+       "requests":[{"custom_id":"req-1","body":{"messages":[{"role":"user","content":"Say hello."}]}}]}'
+```
+
+Internal-only behavior needs a key whose entity is in `INTERNAL_ENTITY_IDS`
+(`packages/routing/helpers/constants.ts`); create that key locally in
+`api_keys` — never edit seed files.
+
+### Evidence
+
+A `202` is not a pass. For every driven scenario capture the ingress status and
+body, and the persisted job row that downstream stages actually read:
+
+```bash
+SESSION=$(curl -s -X POST \
+  'http://localhost:9020/v1/projects/openrouter-dev/instances/dev/databases/usage/sessions' \
+  -H 'Content-Type: application/json' -d '{}' | python3 -c 'import json,sys;print(json.load(sys.stdin)["name"])')
+curl -s -X POST "http://localhost:9020/v1/$SESSION:executeSql" \
+  -H 'Content-Type: application/json' \
+  -d '{"sql":"SELECT CAST(endpoint_id AS STRING), model, provider_name, status FROM async_jobs WHERE job_id = @job_id",
+       "params":{"job_id":"<batch id>"},"paramTypes":{"job_id":{"code":"STRING"}}}'
+```
+
+Write captures outside the repo (`/tmp/`), sanitized: no keys, bearer tokens,
+entity ids, or prompt/completion text.
+
+### Cleanup
+
+Revert every local DB mutation the run made (endpoint flags, provider settings,
+temporary keys) in the same session, and re-select the row to prove the revert
+landed. `git status --short` must show no repo changes from verification.
 
 ## E2E happy path
 
@@ -60,9 +176,9 @@ upstream (`services/fake-provider`).
 
 Requirements and conventions:
 
-- Stack: `tilt up cfw-batch-api dataflow-async-jobs` (ingress on `:8800`,
-  gcp-batch-api on `:8686`, Pub/Sub emulator `:8086`, Spanner emulator
-  `:9020`, fake-gcs `:4443`). Validate readiness per
+- Stack: bring it up and health-check it per
+  [Driving the live local stack](#driving-the-live-local-stack) above, and
+  validate resource readiness per
   [`tilt-testing`](../tilt-testing/SKILL.md). The BYOK e2e additionally
   needs the auth service (`tilt trigger valkey && tilt trigger auth`) —
   finalize resolves the key owner through it — plus
@@ -73,7 +189,14 @@ Requirements and conventions:
 - Stale local state fails admission: the 200k in-flight cap counts
   `pending` rows from prior runs (clear `async_jobs` in the Spanner
   emulator) and the per-minute row rate limit lives in local redis
-  (`docker exec dev-redis-1 redis-cli flushall`).
+  (`docker exec dev-redis-1 redis-cli flushall`). The targeted Tilt resource
+  list may leave Redis disabled; enable both `redis` and
+  `serverless-redis-http` and wait for them before flushing.
+- After a local Postgres reset, seeded exposed Google `variant=batch` endpoint
+  rows can make `stageVertexBatchEndpoint` fail on the endpoint immutability
+  trigger (`is_private is immutable`). Remove the matching local seeded
+  endpoint rows and their dependent pricing/access rows before the run, or
+  update the fixture helper to duplicate exposed endpoints.
 - Probe the stack at collection time and `describe.skipIf` with a `[WARN]`
   naming the unreachable services — the suite must stay green in
   environments that only boot cfw-api (`findUnavailableBatchServices` in
@@ -106,6 +229,26 @@ missing or negative usage, unsupported parameters/modalities, credential
 misconfiguration, empty/paginated results, unordered ids, policy blocks,
 unknown block reasons, and mixed success/failure rows. Mixed jobs bill only
 successful rows; failed rows emit zero usage and zero cost.
+
+Two matrix rows are easy to miss and mandatory:
+
+- **Malformed-row identity**: a syntactically invalid result line that
+  still contains a complete request identifier must produce a
+  non-billable canonical error row with that identifier preserved (a
+  synthetic id only when no identifier is recoverable), and the
+  surrounding valid rows must still finalize and bill.
+- **Missing platform credential**: a registered provider with an absent
+  platform key must surface as a retryable error, not an
+  unsupported-provider skip that strands active batches.
+
+For new-provider stacks, also run the billing-continuity probe required
+by the [`batch-api-development`](../batch-api-development/SKILL.md)
+terminal contract: captured native rows persisted as the raw output
+artifact and read back through the real `transformBatchResponse` →
+`emitBatchGenerations`, asserting billed cost (direct provider cost
+where reported, token fallback otherwise), BYOK fee attribution, and
+that provider-only cost fields are absent from public rows and emitted
+generation payloads.
 
 ## Intent-test traceability (new-provider stacks)
 
