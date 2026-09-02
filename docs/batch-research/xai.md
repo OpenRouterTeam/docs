@@ -117,6 +117,13 @@ Per-request states (`GET …/requests`):
 There is no `finalizing`/`cancelling` intermediate: cancel is immediate
 and synchronous in observation (live `13`→`15`).
 
+> **Corrected by A1 below — do not implement this table's cancellation
+> mapping as written.** A later capture round observed the cancel counters
+> revert: a cancelled batch read `num_cancelled: 5` and then, seconds later,
+> `num_success: 5` with all five result rows readable. `cancel_time != null`
+> is therefore not a durable terminal signal, and readable rows must outrank
+> both cancellation and expiry. See §A1 and §A6 (tracked as ECO-3744).
+
 ## 5. Output / error shapes
 
 `GET …/results` returns pages of:
@@ -132,6 +139,17 @@ and synchronous in observation (live `13`→`15`).
   `model`, `choices[].message{content, reasoning_content?, tool_calls?,
   refusal}`, `finish_reason`, `usage`, `system_fingerprint`,
   `service_tier`) — live `09`/`10`/`21`/`31`, committed fixtures.
+- Native search (`tools: [{"type": "web_search"}]`, optionally `x_search`):
+  the completion body is still `chat.completion`, but xAI flattens the whole
+  server-side run into `choices` — an assistant turn carrying the
+  `web_search`/`x_search` `tool_calls` with `finish_reason: ""`, one
+  `role: "tool"` turn per executed call, then the assistant answer — plus a
+  top-level `citations` array of bare URLs (no titles) and a
+  `usage.cost_in_usd_ticks` that already includes the search fees. Only the
+  final turn is servable; the intermediate turns are not chat-wire shaped.
+  Live capture: `fixtures/live-web-search-results.json`
+  (2026-08-31, `grok-4.3`, `fixtures/scripts/collect-xai-batch-web-search.ts`),
+  which is what ECO-3670 fixed the parser against.
 - Error: `batch_result` is `{"error": "<string>"}` — a bare string, no
   structured code (live `16`: `{"error": "Batch cancelled"}`). Mixed
   batches interleave both variants keyed by `batch_request_id`.
@@ -327,3 +345,134 @@ files (200 MB), rate-limit responses (not induced), processing-time
 per-line failure with `num_error > 0` (could not trigger; error-line
 shape evidenced by the cancelled-result capture and REST ref
 `batch_result.error`).
+
+---
+
+## Addendum — second live capture round (2026-08-29, inline mode)
+
+A second independent research pass ran 74 live transcripts against
+`api.x.ai` on `grok-4.3` in **inline** mode (create-then-add, no Files
+API), covering the scenarios the first pass could not trigger. Claims are
+tagged **[capture]** (observed live), **[docs]**, or **[unconfirmed]**.
+Raw transcripts are uncommitted; every JSON/text block below is verbatim.
+
+### A1. Counters are not monotonic — cancel can revert
+
+The first pass recorded cancel as "immediate and synchronous". It is not.
+A cancel of a five-request batch returned
+`{num_pending: 0, num_success: 0, num_cancelled: 5}`; **20 seconds later
+the same batch read `{num_success: 5, num_cancelled: 0}` and served all
+five result rows** — the in-flight work had already landed and the
+counter reverted. **[capture]**
+
+Consequences for §4's derivation, in order of severity:
+
+1. `cancel_time != null` must **not** outrank readable rows. A batch with
+   `num_success + num_error > 0` has results the caller paid for, and
+   `process-completed-batch` materializes only for `completed`, so
+   returning `cancelled` there discards billable output permanently. The
+   currently shipped `deriveXaiBatchStatus`
+   (`packages/batch/adapters/xai/status.ts`) returns `cancelled` on
+   `cancel_time` alone and is exposed to exactly this loss.
+2. `num_pending == 0` is not terminality. Treat a snapshot as *settled*
+   only when `num_pending == 0 && num_cancelled == 0`; any
+   `num_cancelled > 0` snapshot is `cancelling` until it has repeated
+   unchanged for a stabilization window. The observed flip took under
+   20 s; xAI documents no bound, so the window is a guess
+   (**[unconfirmed]**) and is a sign-off decision.
+3. Expiry must not outrank readable rows either. `expire_time` is
+   date-only — a scheduling deadline, not an instant — and only a failed
+   results read proves deletion, which `pollBatch` cannot attempt. Map an
+   expiry-day batch that has rows to `completed` and let the results fetch
+   classify a 404 as permanent expiry loss.
+4. A cancelled batch with `num_requests == 0` is stable by construction:
+   after a cancel, further adds are rejected 403 **[capture]**, so no
+   counter can move again. It maps to `cancelled`, not `expired`.
+
+### A2. Execution-time per-line failure — the `num_error > 0` gap
+
+The first pass could not trigger a processing-time failure. Two inputs do,
+both admitted successfully and failing while running: a negative
+`max_tokens`, and an unfetchable public image URL. A five-line mixed job
+reached `{num_requests: 5, num_pending: 0, num_success: 3, num_error: 2,
+num_cancelled: 0}` with rows for both outcomes in one stream. **[capture]**
+
+```json
+{"batch_request_id": "mixed_003",
+ "batch_result": {"error": "Maximum number of tokens max_tokens must be positive but max_tokens = -5"}}
+```
+
+This confirms the error envelope is a bare string with no code, no HTTP
+status, and **no usage** — so finalization bills nothing for a failed row;
+whether xAI charges for it is not observable **[unconfirmed]**. Results
+were readable mid-flight: a `num_pending: 3` snapshot already returned 2
+error rows and 1 success row. **[capture]**
+
+Admission is atomic and separate from execution: one unsupported model or
+one duplicate `batch_request_id` rejects the **whole** add call (400/412),
+admitting zero requests — which is why a probe built from obviously
+invalid lines tests nothing. **[capture]**
+
+### A3. Remote URL inputs (matrix row 14)
+
+Both supported natively on the chat wire, fetched server-side by xAI.
+
+- **Images** — `image_url.url`. A public PNG was admitted; a 404 URL
+  failed at execution time with a provider-side fetch error, which proves
+  xAI does the fetch: `Failed to download the provided image
+  (image_download_error=image_fetch_http_error): the image host returned
+  HTTP status 404 … [WKE=invalid_image]`. **[capture]** Caveat: the
+  *valid* image request never completed (see A4), so
+  `batchAdapterSupportsImageUrls` should stay unsupported until a valid
+  image probe finishes.
+- **Files/PDFs** — the field is `file.url`, **not** OpenAI's
+  `file.file_url`; `file_url` is rejected per line with `FileContent must
+  set one of file_id, url, or inline data`. A public PDF completed and
+  billed `image_tokens` (pages are rasterized). `file_id` and inline data
+  are the other accepted forms. **[capture]**
+
+### A4. A request can sit `pending` with no deadline
+
+Two probes (`temperature: 99`, and the valid image URL) were still
+`pending` after 25 minutes with no error row and no per-request deadline
+field anywhere in the API. xAI documents no per-request timeout
+**[unconfirmed]**, so a poll loop can hang until batch expiry and the
+adapter needs its own deadline. Highest-priority follow-up.
+
+### A5. Retention, as observed inline
+
+Inline batches involve no Files API object: request lines live in the
+batch record and share its `expire_time` (date-only, observed
+2026-08-29 → 2026-09-28). Every response carries
+`x-zero-data-retention: false` and `x-data-retention: general`.
+**[capture]** No delete call exists, and what a post-`expire_time` read
+returns is **[unconfirmed]**.
+
+### A6. TODO — fold into the delete-endpoint work
+
+The A1 lifecycle correction is not applied to
+`packages/batch/adapters/xai/status.ts` in this note's PR, and is to be
+addressed when the batch delete endpoint is implemented, since both
+changes turn on when a batch's data is considered gone. Tracked as
+ECO-3744:
+
+- `deriveXaiBatchStatus` returns `cancelled` on `cancel_time` alone, so a
+  cancel that loses the race against in-flight work finalizes a batch
+  whose rows were readable and billable.
+- The ordering to implement: readable rows outrank cancellation and
+  expiry; `num_cancelled > 0` stays `cancelling` until stable; `cancelled`
+  only when cancellation is stable with no readable rows; a cancelled
+  `num_requests == 0` batch is stable by construction.
+- The stabilization window is an open decision (N identical polls versus a
+  grace period from `cancel_time`); xAI documents no bound, and the
+  observed flip took under 20 s.
+- Regression cases to add with the fix: the cancelled-to-success
+  transition, and a mixed pending/rows snapshot.
+
+### A7. Still deferred after both passes
+
+Expiry behavior (needs a 30-day-old batch); multi-page result traversal
+(no probe exceeded one page); the A1 stabilization threshold; whether a
+genuinely pending request yields a `cancelled` result row or only a
+counter; `batch_request_id` uniqueness across add calls; billing for
+failed lines; rate limits.

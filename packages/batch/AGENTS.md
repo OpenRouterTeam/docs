@@ -67,9 +67,39 @@ serializers, and predicates rather than parallel-implementing them.
     `pricing_versions` row at the batch price). The KV warm cron
     force-disables endpoints whose pricing strategy has no `pricing_json`.
 
+## Provider research notes are the source of truth for provider behavior
+
+`docs/batch-research/<provider>.md` is the committed research contract for
+each provider. Read it before writing or changing that provider's adapter,
+and treat it as normative over the provider's own prose docs: every claim is
+tagged `[capture]` (observed live), `[docs]`, or `[unconfirmed]`, and the
+notes record where the two disagree.
+
+The nuances the notes carry are the ones that silently lose paid results if
+an adapter ignores them:
+
+- whether the provider exposes a batch **status string** at all or the
+  lifecycle must be synthesized from counters, and whether those counters
+  are monotonic — where they are not, one poll snapshot is not terminal;
+- how a **failed sub-request of a completed batch** is reported: a separate
+  error file, a discriminated inline row, or counters with no row, and what
+  the error envelope actually contains;
+- whether **results stay readable** on failed, cancelled, or expired jobs;
+- native **remote URL** support (public image versus file/PDF URLs) and the
+  exact field names, which the capability switches in
+  `adapters/image-url-support.ts` and `adapters/file-url-support.ts` encode;
+- per-artifact **retention** and expiry, which bound finalization.
+
+When a change contradicts a note, update the note in the same PR — a note
+that disagrees with the shipped adapter is worse than no note. When live
+behavior is captured that the note lists as unconfirmed or deferred, record
+it there too. `.agents/skills/research-batch-provider/SKILL.md` owns how the
+notes are produced, including the gotchas learned from live runs.
+
 ## Adding a new provider adapter
 
-Extend `adapters/base.ts` (`BaseBatchAdapter`). The base owns the
+Start from the provider's research note (above). Extend `adapters/base.ts`
+(`BaseBatchAdapter`). The base owns the
 provider-agnostic lifecycle — GCS persistence, ingest-mode guards, upstream
 status validation, the identity results transform — so a concrete adapter
 implements only the true provider seams:
@@ -84,8 +114,13 @@ implements only the true provider seams:
    provider-native payload), `uploadNativeInput` (file mode only),
    `submitNativeBatch`, `pollBatch`, `fetchNativeResults`, plus the pure
    per-line `fromInternalRequest` / `toInternalResponse`.
-3. Override `transformBatchResponse` only when the provider's native results
-   are not already the canonical batch-output JSONL (Vertex predictions).
+3. Override `transformBatchResponse` whenever the provider's native result
+   rows are not already the canonical batch-output JSONL (`id`,
+   `response.status_code`, `response.body`, `error`), as Vertex, xAI, and
+   Fireworks require. The raw artifact stores native rows and finalization
+   normalizes them on read through this method before billing, so leaving
+   it as identity serves results correctly but bills zero. `parseResult`
+   normalizing the same row does not cover billing.
 4. Register in `services/batch-api/src/adapters/adapter-factory.ts` and read
    its warning: OpenAI-compatible sync adapters' `transformRequest`
    overrides are NOT reproduced by the OpenAI batch serializer — each such
@@ -95,9 +130,8 @@ implements only the true provider seams:
 
 Each provider adapter owns its own `fromInternalRequest` and lowers the
 internal request independently — there is no shared
-`Record<BatchEndpointFamily, serializer>` grid. This was a deliberate
-choice made when the Vertex Gemini adapter landed: Gemini's wire format
-differs enough from OpenAI's (e.g. Gemini embeddings wire ≠ OpenAI
+`Record<BatchEndpointFamily, serializer>` grid. This is deliberate:
+provider wire formats differ enough (e.g. Gemini embeddings wire ≠ OpenAI
 embeddings wire) that a shared abstraction would add ceremony without
 clarity. `vertexGeminiInternalRequestToBatchInput` lives alongside
 `openAiInternalRequestToBatchInput` and
