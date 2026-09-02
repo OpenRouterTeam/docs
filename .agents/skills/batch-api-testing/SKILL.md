@@ -248,7 +248,12 @@ artifact and read back through the real `transformBatchResponse` →
 `emitBatchGenerations`, asserting billed cost (direct provider cost
 where reported, token fallback otherwise), BYOK fee attribution, and
 that provider-only cost fields are absent from public rows and emitted
-generation payloads.
+generation payloads. Commit the probe as a test in
+`services/batch-api/src/finalize/finalize-batch-job.test.ts` that
+drives the real adapter's `transformBatchResponse`/`parseResult`/
+`parseUsage` over the provider's live output fixture (the xAI billing
+cases there are the template). An adapter whose only output tests call
+`parseResult` directly has no billing coverage.
 
 ## Intent-test traceability (new-provider stacks)
 
