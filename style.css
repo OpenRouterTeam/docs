@@ -200,6 +200,31 @@ html.dark [data-component-part="update-tag"] {
   color: rgb(252 252 254 / 0.6);
 }
 
+/* ── Navbar CTA: drop the chevron, pair label and background per theme ──
+ * Mintlify renders the primary CTA with a trailing chevron, a text-white
+ * label, and a bg-primary-dark fill in both themes (primary-dark maps to
+ * docs.json colors.dark = Volt). Per DESIGN.md the pairings are white on
+ * Grape in light mode and Ink on Volt in dark mode, which is exactly what
+ * --primary already resolves to (Grape from docs.json, Volt via the
+ * dark-mode swap above). */
+#topbar-cta-button svg {
+  display: none;
+}
+
+/* Mintlify pads the CTA pl-3/pr-2 to hug the chevron; even it out. */
+#topbar-cta-button a {
+  padding-right: 0.75rem;
+}
+
+#topbar-cta-button .bg-primary-dark {
+  background-color: rgb(var(--primary));
+}
+
+.dark #topbar-cta-button .text-white,
+html.dark #topbar-cta-button .text-white {
+  color: rgb(3 8 10);
+}
+
 /* ── Changelog: selected filter pill readability ──
  * Mintlify renders the active filter as bg-primary + text-white/90. In dark
  * mode our primary is Volt (#C8FF00), so switch the text to Ink per DESIGN.md. */
