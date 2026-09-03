@@ -252,6 +252,65 @@ Design discipline:
 - **Derive with opacity.** All tints use the opacity scale below. No custom hex outside the six brand colors and the status colors — **except third-party vendor/provider logos** (see exception below).
 - **Two type families**: Plus Jakarta Sans for the interface, Gordita for brand voice (page title + display stats in-product; display type on marketing surfaces). See Typography.
 
+## Working with this document
+
+This file is the complete rule set for product UI. The primitives in `packages/frontend/components/ui/` implement it, and `theme.css` in that directory is the runtime home of the tokens below. Read the rules, use the primitives, and take names from the public surface. `theme.css` is where a value lives, not a place to copy one from. Migration material lives next to the primitives: [`RADIX_TO_SEMANTIC_MAP.md`](packages/frontend/components/ui/RADIX_TO_SEMANTIC_MAP.md) for legacy Radix utilities and [`DESIGN_PORTING.md`](packages/frontend/components/ui/DESIGN_PORTING.md) for installing the token system in a host repo and for pages from the all-Gordita era. Legacy components that have not been rebranded yet sit in the same `components/ui/` tree as the rebrand primitives.
+
+### Priority order
+
+When two rules conflict, the earlier one wins.
+
+1. **Meaning.** Status colors, number formatting, labels, and states must be true to the data: a no-data cell is `text-faint`, a failure is `negative`, an aligned digit column is `tabular-nums`, a destructive action confirms. A wrong signal is worse than an off-brand one.
+2. **Existing primitives and tokens.** Use a rebrand primitive when one covers the need, and only the names in the public surface below. Never invent a variant, a hex value, a font size, a z-index, or a spacing step.
+3. **Usable in both themes and by keyboard.** Focus ring on every control, AA contrast in light and dark, semantic markup, shape-preserving loading, the same component reads correctly with the accent swapped.
+4. **Hierarchy.** One focal point per view, tier-based typography, parent-owned spacing, borders for structure in light mode.
+5. **Brand expression.** The accent, the two Gordita moments, the chart palette, per the rules below. Brand never overrides 1 to 4.
+
+### Public surface
+
+The names an agent may write. The set is complete: if a need has no name here, use the nearest token by role and say so in the PR rather than adding a value.
+
+- **Colors.** The semantic Tailwind utilities (`bg-background`, `text-foreground`, `bg-card`, `bg-popover`, `bg-muted`, `text-muted-foreground`, `border-border`, `border-input`, `bg-primary`, `text-primary-foreground`, `bg-accent`, `text-accent-foreground`, `bg-destructive`), the extended surfaces (`surface`, `card-hover`, `selected-bg`, `input-bg`, `text-faint`, `accent-subtle`, `accent-border`, `accent-hover`, `doc-surface`, `text-prose-body`), the status tokens (`positive`, `negative`, `warning`, `info`, `promo`, each with `-bg` and `-text`), the chart palette (`chart-1` to `chart-20` and the `chart-*` role tokens), the `tier-*` tokens, and the fixed `chart-N` slots assigned under Entity identity and Modality identity. Tints come from the opacity scale on these names, never from a new hex. Tailwind's own palette (`text-green-500`, `bg-slate-100`) and the legacy Radix steps (`text-slate-11`) are not part of the surface for new code.
+- **Type.** The nine tiers `hero`, `display`, `title`, `heading`, `section`, `prose`, `body`, `button`, `overline` (as `text-[length:var(--text-*)]` or the matching utility), the leadings `tight`, `snug`, `body`, `prose`, and the family classes `font-brand` and `font-mono` under the rules in Typography. No arbitrary `text-[13px]`.
+- **Shape and space.** `rounded-sm` to `rounded-xl` plus `rounded-full`, the Tailwind spacing scale at even values, and the z-index utilities generated from `packages/theme/index.css` (`z-above`, `z-sticky`, `z-overlay`, `z-fixed`, `z-modal`, `z-alert`, `z-notification`, `z-popover`, `z-popover-overlay`, `z-popover-tooltip`). The icon sizes `icon-xs` to `icon-lg` and the content widths `content` and `wide` in Layout are role names, not classes: write them as the Tailwind size they resolve to (`size-3` to `size-6`, `max-w-5xl` and `max-w-7xl`).
+- **States.** `--focus-border`, `--focus-shadow`, `--error-border`, `--error-shadow`, `opacity-50` for disabled, `card-hover` for hover, `selected-bg` for selected.
+
+Two rules follow. **No synonyms**: `text-faint` is not `text-foreground/70`, `card-hover` is not `bg-muted/50`, and a status is not its `chart-*` lookalike. **No literals**: reference the var in a `calc`, never its current value (`var(--leading-snug)`, not `1.35`), and never carry a token's hex into TSX, SVG, or inline styles when the token can be referenced.
+
+### Generated-design reflexes to reject
+
+These are the patterns that generated UI produces by default. Each is named so a reviewer can point at it. The rule that governs each lives in the linked section.
+
+- **Accent on repeated data.** Colored table cells, per-row values, dense link lists, chart fills in the accent. Repeated data is `foreground`, status, or `chart-*` (Accent usage, Links).
+- **Accent as selection.** Accent-tinted selected cards, filled-accent toggle buttons, accent selection bars. Selection is `selected-bg` plus a visible control (Selection states).
+- **Hover painted as active.** Accent on hover, or hover reusing the selected treatment. Hover is neutral `card-hover` everywhere (Hover row).
+- **Mono for anything that is not code.** Model slugs, IDs, hashes, numbers, timestamps in `font-mono`. Only code, inline code, masked secrets, and `kbd` are mono (Numbers, Code & secrets).
+- **Spinner over blank.** A full-page or region spinner where a skeleton fits (Loading & skeleton).
+- **Off-palette color.** A raw hex, a Tailwind palette class, a Radix step in new code, a fourth status hue for "neutral", or a brand color used as a chart series (Colors, Status & health).
+- **Off-scale sizes.** `text-[13px]`, `text-[15px]`, odd pixel padding, 11px chart ticks. Snap to the nearest tier by role, and use the dense-data exemption only where it applies (Typography, Layout).
+- **Gordita creep.** `font-brand` on section headers, buttons, table cells, or body copy. Two roles only: the page title and display-size stats (Typography).
+- **Weight as state.** A nav item, tab, or segment that goes bold when active. State is color and background at the Nav weight (Nav weight).
+- **Shadows for depth.** Shadows on resting cards, buttons, or banners. Elevation between surfaces is hierarchy and borders (Elevation & Depth).
+- **Filled Ink or Cloud button.** A high-contrast neutral button that competes with primary (Buttons).
+- **Tinted callouts.** An accent-tinted banner, a colored card for information without status, a tinted CTA card. Non-status callouts are neutral, promo is Royal (Banner / toast, CTA card).
+- **Bumped menu rows.** Dropdown, select, or command rows taller than the standard row height (Hover row).
+- **Invented z-index.** A `z-50` or `z-[999]` outside the ladder, or page floaters hoisted to `z-modal` (Layout).
+- **Authored capitals.** Title Case labels, ALL CAPS overlines, a capitalized second word in a button (Capitalization).
+- **Token values as literals.** A leading, size, or color written as the number it happens to be today (Public surface).
+
+### Review before handoff
+
+Check in this order and fix what fails before asking for review.
+
+1. **Both themes.** Toggle dark mode. The accent is Grape in light and Volt in dark and nothing else changed hue. Muted and status text still read on their surfaces.
+2. **Keyboard.** Tab through every control. Each shows the neutral focus ring, dialogs trap focus, Enter submits forms, `Escape` closes overlays.
+3. **States.** Loading is a skeleton in the final layout, empty and error states follow the empty-state composition, destructive actions confirm with a named button, disabled is `opacity-50`.
+4. **One focal point.** One primary button, one accent moment, one page title in Gordita. Everything repeated is neutral.
+5. **Tokens only.** No hex, no Tailwind palette class, no Radix step, no arbitrary font size, no invented z-index, no literal token value in a `calc`.
+6. **Copy.** Sentence case, no authored caps, labels named for the action (`Delete workspace`, not `OK`).
+7. **Layout.** Page gutters `px-4` to `px-6`, content width from the scale, dense-data exemption applied deliberately and nowhere else, reflow at `md` before anything shrinks, banner-aware sticky offsets.
+8. **Reflexes.** Read the list above once more against the diff.
+
 ## Colors
 
 ### The six brand colors
@@ -443,45 +502,11 @@ Status as **inline text** (e.g. an uptime % or a state label in a dense table) u
 
 **The status text split (light).** A status color can't be vibrant *and* pass AA as text — so in light mode every status is **two tokens**: the **display value** (`positive` `#00BF6F` · `negative` `#FF2D55` · `warning` `#E5A000` · `info` `#035ADE`) for everything **non-text** — tint backgrounds, badge/bar fills, borders, and icons that sit next to a text label — and the **text value** (`positive-text` `#007544` · `negative-text` `#BF0024` · `warning-text` `#8A6000` · `info-text` `#0352C9`) wherever status renders as **text** (badge labels, inline status text, banner CTAs, deltas) *or* stands alone as the only signal (a bare status glyph with no label). The `-text` values are derived to pass **≥4.5:1 on status tints up to a `/25` wash as well as on `background`/`card`** — one text token works everywhere a status speaks, including inside its own tint. This is what keeps light-mode status washes as lively as dark mode's: the tint derives from the vibrant display hue, only the letters darken. **The display hex is the same in both themes**; in dark the `-text` token *brightens* instead (`#34DFAA` / `#FF2D55` / `#FFAB00` / `#4D8DFF`) — so the `-text` tokens are always the safe reach for status text in either theme, and dark keeps its glow where it's read.
 
-### Mapping legacy Radix steps
-
-Prod expresses neutrals and status as fine-grained Radix 12-step ramps (`slate-1..12`, `green/red/amber-9..11`, etc.). The rebrand expresses the same intent with **far fewer, semantic tokens** — so collapse a ramp onto the nearest token by *role*, don't recreate the ramp. Generalize these to any equivalent step:
-
-| Prod (Radix) | Rebrand token |
-|--------------|---------------|
-| `slate-12` (primary text) | `foreground` |
-| `slate-11` (secondary text) | `muted-foreground` (light `b0` / dark `a0`) |
-| `slate-9 / -10` (faint text, icons) | `text-faint` (`70`) |
-| `slate-3 / -4 / -5` (subtle fill) | `muted` (`08`) |
-| `slate-6 / -7` (border) | `border` (`14`) |
-| `green-9..11` | `positive` |
-| `red-9..12` | `negative` |
-| `amber-9..11` / `yellow-9` | `warning` |
-| `blue` / `violet-11` (info *status* text) | `info` (Royal) |
-| `link` / `link-hover` (and any colored link) | the Links pattern — neutral at rest + hover promotion, **not** Royal (see Links) |
-| `*-9` color *fills* in charts | the `chart-*` palette |
-
-If a step falls between two tokens, pick by intent (is this primary text, secondary, or faint?), not by hex proximity. Off-palette families prod sometimes uses raw (`teal`, `lime`, `sky`, `indigo`) have **no** rebrand equivalent and should resolve to the nearest brand/status/chart token — never carried over literally.
+**Legacy Radix steps** (`slate-11`, `green-9`, and the rest) collapse onto these tokens by *role*, not by hex proximity. The step-by-step map lives in [`packages/frontend/components/ui/RADIX_TO_SEMANTIC_MAP.md`](packages/frontend/components/ui/RADIX_TO_SEMANTIC_MAP.md).
 
 **Statuses are never opaque fills.** There are deliberately no `positive-foreground`/`warning-foreground` tokens: status renders as tint bg (`*-bg` at `14`) + status-colored text, or plain status text — never `bg-positive text-white`. A host repo's `success/-foreground` pairs map to `positive` + the tint treatment (`success → positive`, `error/danger → negative`, `info → info`).
 
 **Inverted micro-surfaces are allowed.** A `foreground`-on-`background` inversion (a tooltip value pill, a dark chip in a light tooltip) is a neutral emphasis device, not a brand-color violation — the Ink/Cloud ban applies to **buttons**. Keep inversions to micro-surfaces; a whole inverted card is a theme, not an emphasis.
-
-## Porting to a host repo (openrouter-web)
-
-The rules above are host-agnostic; this section is the mechanics of installing them in a repo with an existing token system. Written against openrouter-web (`packages/theme/index.css`, hsl-channel tokens, Tailwind `@theme`), but the traps generalize.
-
-**1. Tokens are complete CSS colors — kill the `hsl(var())` wrappers.** Every rebrand token is a full color value, most with alpha baked in (`--border: #03080A14`). Host systems that store bare HSL channels (`--background: 0 0% 100%`) and wrap consumption in `hsl(var(--…))` **cannot hold these values** — `hsl(#03080A14)` is invalid and fails silently. Porting means: token *values* replace the channel triplets, and every `hsl(var(` wrapper goes — in the theme CSS **and** in TS/SVG props (`grep -r "hsl(var(" --include="*.ts*"` before swapping; prod's chart axis props are a known instance).
-
-**2. Chart end-state: keep the TS constants; add the CSS tokens beside them.** Prod's `defaultColors` and `OVERVIEW_CHART_COLORS` are hex-identical to `chart-1..20` and the role tokens by construction — so in the host repo, **the TS constants remain the source of truth for SVG props** (zero chart-code churn; a `useChartColors`-style hook is only needed where a value is theme-*dependent*, i.e. the status/neutral keys). Add the `--chart-*` CSS custom properties alongside for className/CSS contexts (identity chips, legend dots). Do **not** port the sandbox hook wholesale or rewrite working chart imports — that's motion, not migration.
-
-**3. Theme scoping: the invariant, not the mechanism.** The requirement is that the token custom properties **and** the font variable classes are in scope at `document.body` (portals mount there). The sandbox satisfies it with a `.rebrand-theme` wrapper + a `PortalTheme` shim; a host adopting the system app-wide should instead define tokens at `:root`/`.dark` and put font variable classes on `<body>` — openrouter-web already does the latter (`app/layout.tsx`), in which case **no portal shim is needed**.
-
-**4. The utility layer.** The recipes assume these custom properties exist (canonical source: `packages/frontend/components/v2/theme.css` in this repo; the design-sandbox `rebrand.css` mirrors it): `--text-{hero,display,title,section,heading,prose,body,button,overline}`, `--radius-{sm,md,lg,xl,full}`, `--focus-border`/`--focus-shadow`/`--error-border`/`--error-shadow`, and the extended surface tokens (`--surface`, `--card-hover`, `--selected-bg`, `--input-bg`, `--text-faint`, `--accent-{subtle,border,hover}`, `--doc-surface`, `--text-prose-body`, status `--*-bg` pairs, status `--*-text` tokens). Port the names as-is — renaming forks the recipes.
-
-**5. Fonts.** Jakarta: `next/font/google` `Plus_Jakarta_Sans` (variable — no `weight` option). Gordita: a **licensed** commercial face — the woff2 set is not in the host repo and must be procured/copied (sandbox has weights 100–950 under `public/fonts/gordita/`); until it's available, `.font-brand` falling back to Jakarta 700 is the sanctioned degraded state (the system stays coherent, just quieter).
-
-**6. `tabular-nums` at the theme root.** Set `font-variant-numeric: tabular-nums` on the theme root (`body` when adopted app-wide) rather than per-column: prod already does the equivalent on `<main>`, but portals render outside `<main>` — numeric tooltips and popovers silently lose digit alignment. Root-level placement covers them; Jakarta's proportional defaults make this load-bearing (see Numbers).
 
 ## Typography
 
@@ -548,12 +573,6 @@ Sentence case is the choice because Title Case has no decidable rule (every styl
 ```
 
 Everything not in the two Gordita roles needs **no font class at all** — writing `font-brand` is the exception, not a habit.
-
-**Migrating a page from the single-font (all-Gordita) era** — the checklist:
-1. Do nothing for body/UI text — the theme default already flipped it to Jakarta.
-2. Add `font-brand` to the page `h1` and to display-size stat values. Nothing else (marketing surfaces excepted — see above).
-3. Delete every `font-mono` that isn't a code block, inline code, or masked secret. Where the deleted mono sat on an aligned digit column, add `tabular-nums` in its place — mono was silently providing the alignment.
-4. Chart code: replace `chartN` keys from the old `useChartColors()` shape with `categorical[N-1]`, and move metric-bound series (cost, requests, token kinds) to their semantic role keys.
 
 | Token | Size | Weight | Leading | Family | Use |
 |-------|------|--------|---------|--------|-----|
@@ -638,11 +657,11 @@ Missing retained evidence is a production-risk state, never neutral metadata. Sh
 
 Long operational forms are organized as bounded requirement groups, not loose fields separated only by whitespace. A multi-input requirement shows its input count in the group header and gives every input its own panel so operators can scan its structure before reading details. Do not number independent inputs as “Part X of Y”; make the field name the strongest text in each panel and put supporting field guidance in a label-adjacent info popover with a descriptive accessible name. Keep production-risk warnings and required acknowledgments inline—the popover pattern is for explanatory field guidance, not safety gates. Sequential ranges may use “Step” labels and directional connectors because their order is meaningful.
 
-**Z-index** is a small named ladder — don't invent values: `base` (0) → `sticky` (10, sticky headers/rails) → `overlay` (20, dropdowns/popovers/tooltips) → `modal` (30, dialogs/sheets + scrim) → `toast` (40).
+**Z-index** is a small named ladder defined in `packages/theme/index.css` — don't invent values: `z-above` (1, just above siblings) → `z-sticky` (49, sticky headers/rails, sheet backdrops) → `z-overlay` (50, page-launched dropdowns/popovers/tooltips, non-modal panes) → `z-fixed` (60, floating buttons that clear overlays) → `z-modal` (100, dialogs/sheets + scrim) → `z-alert` (105, confirmation dialogs above modals) → `z-notification` (110, toasts) → `z-popover` (1000, `FloatingPopover`) → `z-popover-overlay` (1001) → `z-popover-tooltip` (1002).
 
-**Nested overlays.** A floater (dropdown, popover, select, tooltip) opened from *inside* a modal or sheet joins the **modal layer** (`z-modal`), stacking above its parent by DOM order; the `overlay` tier applies to floaters launched from the page. Never blanket-hoist page-level floaters to `z-modal` to solve in-modal stacking — the hoist breaks the ladder everywhere else.
+**Nested overlays.** A floater (dropdown, popover, select, tooltip) opened from *inside* a modal or sheet joins the **modal layer** (`z-modal`), and one opened from inside an alert dialog joins `z-alert`, stacking above its parent by DOM order; the `z-overlay` tier applies to floaters launched from the page. The rebrand primitives do this through the floating-layer context, so don't hand-hoist. Never blanket-hoist page-level floaters to `z-modal` to solve in-modal stacking — the hoist breaks the ladder everywhere else.
 
-**Non-modal detail pane.** A sheet whose page must stay interactive behind it (inspector/detail panes over a table or log list) runs **scrimless — no dim at all**: any scrim, however light, signals "blocked." It keeps the opaque `popover` surface, its border and `shadow-lg`, and sits at **`overlay`** (not `modal` — nothing is blocked); it must carry its own close affordance since there's no scrim to click away.
+**Non-modal detail pane.** A sheet whose page must stay interactive behind it (inspector/detail panes over a table or log list) runs **scrimless — no dim at all**: any scrim, however light, signals "blocked." It keeps the opaque `popover` surface, its border and `shadow-lg`, and sits at **`z-overlay`** (not `z-modal` — nothing is blocked); it must carry its own close affordance since there's no scrim to click away.
 
 ## Elevation & Depth
 
@@ -763,7 +782,7 @@ A **Chip** is the removable/interactive cousin of a badge — a neutral `muted` 
 
 **Row states.** Hover: `card-hover` bg (the neutral hover, same as every hover surface and action row — see Hover row). Selected: `selected-bg` (`08` light / `0a` dark) — the row's checkbox/control carries the explicit selected signal per **Selection states**; no accent bar or other ornament. Disabled/dimmed: `opacity-50`. Header row: `muted-foreground`, `overline` or `body` size. Dense tables use the dense-data exemption (10/14px cell padding, 28/32px rows).
 
-**Numbers.** Always `tabular-nums` for any aligned/column numeric value, right-aligned in tables. This is **load-bearing, not cosmetic**: Jakarta's default digits are strongly proportional (a `1` is roughly half the width of a `0`), so an unaligned digit column looks visibly ragged — the font ships full `tnum` and the utility activates it. Numbers, IDs, hashes, and model slugs render in **Jakarta — never mono** (mono is reserved for code & secrets below). Abbreviate large counts (`1.2M`, `128K`); render a unit suffix in `muted-foreground` (`24 ` + `tok`), value in `foreground`.
+**Numbers.** Always `tabular-nums` for any aligned/column numeric value, right-aligned in tables. This is **load-bearing, not cosmetic**: Jakarta's default digits are strongly proportional (a `1` is roughly half the width of a `0`), so an unaligned digit column looks visibly ragged — the font ships full `tnum` and the utility activates it. The theme root (`<body>`) also carries `tabular-nums` so portals (tooltips, popovers) inherit aligned digits; the per-element utility stays on aligned columns regardless. Numbers, IDs, hashes, and model slugs render in **Jakarta — never mono** (mono is reserved for code & secrets below). Abbreviate large counts (`1.2M`, `128K`); render a unit suffix in `muted-foreground` (`24 ` + `tok`), value in `foreground`.
 
 **Truncation & empty.** Single-line values `truncate` (with a tooltip when overflowed); multi-line `line-clamp-2`. An empty/placeholder value is `text-faint`, often italic (`No description`) — never a blank cell.
 
@@ -817,7 +836,7 @@ Background: status color at `14` (the `-bg` tokens). Border: status color at `30
 
 **Neutral banner** — the **default** for any banner with no status meaning (orientation, onboarding, "how this page works", info-without-status): `muted` bg + standard `border`, same anatomy as a status banner — leading `icon-sm` in `muted-foreground`, optional `font-medium` title in `foreground`, `body` copy in `muted-foreground`, and the **same underlined link CTA as every other banner** — just in `foreground` instead of a status color (never accent). When in doubt about a banner's flavor, it's neutral.
 
-**Toasts** are the transient form: an opaque `popover` surface (they float — see surfaces), bottom-right stack on desktop / top on mobile, `z-toast`. Auto-dismiss ~5s (longer if they carry an action); errors persist until dismissed. Enter/exit at `base` (200ms).
+**Toasts** are the transient form: an opaque `popover` surface (they float — see surfaces), bottom-right stack on desktop / top on mobile, `z-notification`. Auto-dismiss ~5s (longer if they carry an action); errors persist until dismissed. Enter/exit at `base` (200ms).
 
 **Callout flavor.** A non-status callout defaults to **neutral** (the neutral banner above). The only colored exception is **promotional**: announcing a launch, upgrade, or "New" uses **Royal** (`promo`). There is **no accent-tinted callout** — accent tint on a surface is the *selected-state* treatment, so painting it on a banner reads as selection, not information. Status banners always win — promo applies only when there's no positive/negative/warning/info meaning to convey; everything else is neutral.
 
