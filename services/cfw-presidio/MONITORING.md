@@ -276,7 +276,7 @@ Cloudflare Containers do not expose infrastructure metrics (CPU, memory, disk I/
 
 | Parameter | Value |
 |-----------|-------|
-| Analyzer pool size (per hub) | EU 100/125, NAW 50/100, NAE 22/40, APAC 5/10 (warm/width) |
+| Analyzer pool size (per hub) | EU 100/140, NAW 50/100, NAE 22/40, APAC 5/10 (warm/width) |
 | Anonymizer pool size (per hub) | EU 6/12, NAW 5/10, NAE 3/6, APAC 2/4 (warm/width) |
 | Sleep timeout | 10 minutes |
 | Max instances (wrangler) | 300 per type |
@@ -295,7 +295,7 @@ request is ever dropped by the mapping:
 
 | Hub | Coverage | Analyzer warm/width | Anonymizer warm/width |
 |-----|----------|--------------------:|----------------------:|
-| `EU` | Europe, Middle East, Africa | 100 / 125 | 6 / 12 |
+| `EU` | Europe, Middle East, Africa | 100 / 140 | 6 / 12 |
 | `NAW` | North America West | 50 / 100 | 5 / 10 |
 | `NAE` | North America East, Latin America (default hub) | 22 / 40 | 3 / 6 |
 | `APAC` | Asia Pacific, South Asia, Oceania | 5 / 10 | 2 / 4 |
@@ -313,7 +313,7 @@ unchanged (223ms mean service time, 1 worker, 70% utilization). Hub pooling
 multiplexes demand that per-colo pools could not share: on the same 2-day
 5-minute dataset, per-colo pools sized to their own peaks need 340-426 warm
 instances while the pooled hub demand needs 146. The warm floor is 177
-analyzer + 16 anonymizer instances; total addressable width is 275 analyzer +
+analyzer + 16 anonymizer instances; total addressable width is 290 analyzer +
 32 anonymizer, under the 300-per-type `max_instances` ceiling even if every
 hub bursts to full width simultaneously (a colocated test in
 `pool-sizing.test.ts` enforces `sum(width) <= max_instances - 10`).
@@ -321,12 +321,15 @@ hub bursts to full width simultaneously (a colocated test in
 A deploy is bounded more tightly than the table itself. Routing opens the new
 widths as soon as it lands, while indices the new table no longer addresses
 keep serving until the 10-minute sleep timeout reclaims them, so the deploy
-window peaks at the per-hub maximum of the old and new widths and one deploy
-can add no more total width than the 10-instance reserve. That is why EU
-rises to 125 rather than the 140 its measured peak asks for: from the
-previously deployed 116/53/105/16, EU 140 would peak at 314 during the
-transition. The remaining EU width needs a second deploy once the abandoned
-indices are gone, or a higher `max_instances`.
+window peaks at the per-hub maximum of the old and new widths, which must
+stay within `max_instances`. The 10-instance reserve is the headroom those
+abandoned indices may occupy, so a deploy that shrinks any hub can add at most
+that much elsewhere, while an add-only deploy is bounded by the ceiling
+directly. That is why EU
+reached the 140 its measured peak asks for over two deploys: from the
+previously deployed 116/53/105/16, EU 140 would have peaked at 314 during
+the transition, so the first deploy stopped at 125 and a second deploy, after
+the abandoned indices were reclaimed, took EU to 140 (transition peak 290).
 `getPresidioPoolTransitionBudget` computes that peak and a colocated test
 asserts it against the previously deployed widths.
 

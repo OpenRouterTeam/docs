@@ -23,8 +23,10 @@ chat-template drift.
 Based on Adam Karvonen's Token-DiFR (arXiv:2511.20621,
 [token-difr](https://github.com/adamkarvonen/token-difr)). At temperature 0,
 inference is nearly deterministic, so each generated token can be checked
-against the reference model's argmax using prompt logprobs (`echo: true` on an
-OpenAI-compatible completions API — Nebius exposes this). Each token is a
+against the reference model's argmax using prompt logprobs (`echo: true` +
+`logprobs: N` on an OpenAI-compatible completions API, or vLLM's
+`prompt_logprobs` — providers such as Parasail serve some models behind each,
+so the registry's `logprobsMode: 'auto'` detects per request). Each token is a
 data point: ~10k tokens gives a match-rate stable to ±0.1% between runs for
 under $0.02, making per-endpoint sweeps economically feasible at high
 frequency.
@@ -35,7 +37,8 @@ Flow (`src/run-probe.ts`):
 2. The conversation is rendered with the model's chat template
    (`@openrouter-monorepo/chat-templates`) and concatenated with the completion
    (reasoning traces re-wrapped in `<think>` tags, mirroring token-difr).
-3. `reference-client.ts` fetches echoed prompt logprobs from the reference.
+3. `reference-client.ts` fetches prompt logprobs over the full text from the
+   reference (echo or vLLM `prompt_logprobs`, normalized to one shape).
 4. `score.ts` scores the completion span: exact-match rate, avg claimed-token
    probability, avg margin, and mismatch-position clustering
    (prefix-concentrated mismatches ⇒ likely template/system-prompt difference,
@@ -68,7 +71,7 @@ detector (no probabilities, margins, or ranks; everything after the first
 divergence is discarded): use it to detect change, then escalate anomalies to
 the logprob-reference detector for diagnosis.
 
-Snapshots persist in GCS (`src/snapshot-store.ts`) under `anomaly-snapshots/…`,
+Snapshots persist in GCS (`src/snapshot-store.ts`) under `anomaly/snapshots/…`,
 one current snapshot per model; rebuilding replaces it and resets baselines.
 
 ## Triage ladder (root-causing a low score)
@@ -147,6 +150,15 @@ the reference's serving of these weights", not canonical correctness.
   the shared store; per-endpoint time-series baselines and alerting.
 - TODO(anomaly-platform): rotate/randomize probe prompts to resist providers
   special-casing known audit prompts.
+- TODO(anomaly-platform): replace `EchoLogprobs`' parallel arrays with
+  per-position records whose candidates keep token identity
+  (`{ text: string | null, logprob, rank }`), so undecoded vLLM candidates
+  need no synthetic placeholder keys, distinct token IDs that decode to the
+  same string stop merging, and per-conversation `inconclusive` outcomes
+  become possible instead of aborting a run on completion-span
+  tokenization misalignment (deferred from the vLLM `prompt_logprobs` PR
+  review; matters once a sentencepiece-style byte-fallback reference joins
+  the registry).
 - TODO(anomaly-platform): standardize a `token_ids` response field with
   providers to eliminate re-tokenization noise entirely.
 - TODO(anomaly-platform): expand the probe suite toward ~300 prompts x
