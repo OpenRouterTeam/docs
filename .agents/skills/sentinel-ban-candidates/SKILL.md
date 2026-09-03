@@ -152,7 +152,7 @@ are illustrative placeholders, not live data:
 ```bash
 # Pending suggestions — returns JSON rows like:
 # {"id":"00000000-0000-4000-8000-000000000000","source":"autobuy-scanner",
-#  "ruleKey":"autobuy_example_bin000000_exampleauthor_block_r000",
+#  "ruleKey":"autobuy_example_bin000000",
 #  "confidence":0.8,"targetType":"user","targetCount":1,"pendingCount":1,
 #  "archivedAt":null,"enactedCount":0,"enactableCount":1}
 bun run sentinel:ban-candidates list pending_review
@@ -259,7 +259,7 @@ account-scoped frontier block per user (placeholder values):
 ```json
 {
   "source": "autobuy-scanner",
-  "ruleKey": "autobuy_example_bin000000_frontier_block",
+  "ruleKey": "autobuy_example_bin000000",
   "description": "Fresh minters on ring BIN 000000, ~100% Anthropic spend via uniform autobuys",
   "confidence": 0.9,
   "urgency": "yellow",
@@ -303,6 +303,74 @@ batch. For example, if a case is red and the new batch alone would be yellow,
 keep sending red unless the overall case has genuinely de-escalated. Archived
 suggestions are frozen and skip this refresh.
 
+### Changing the proposed kind, not filing a second case
+
+A target's `proposedKind` is part of its deduplication identity, so re-posting
+an account with a different kind adds a second target beside the first instead
+of replacing it. When the accounts are already targets of a live case and only
+the remedy is wrong, that is a change to the existing case: change the proposed
+kind in place rather than filing a parallel case or minting a new `ruleKey` for
+the same accounts. Because the remedy can change under a live key, a new
+`ruleKey` names the pattern it identifies and not the kind proposed for it —
+`autobuy_example_bin000000`, not `autobuy_example_bin000000_frontier_block`. A
+ring an earlier run filed under a remedy-suffixed key keeps that key, taken from
+that run's case link; posting a key is not a way to look one up, because a key
+with no case gets one.
+
+The change goes through the review-key route
+`POST /api/v1/internal/sentinel/ban-candidates/proposed-kind/batch` with
+`{suggestionId, targetIds, proposedKind, proposedTarget, proposedParams,
+proposedExpiresAt, actingClerkUserId}`, which answers
+`{updated, conflicted, skipped, unknown}`. Mission Control's case workspace wraps it: an
+administrator selects the pending targets, picks the new kind, and the page
+batches the request behind their Clerk session. No CLI command wraps it, and
+ingest-key (agent-signed) requests are rejected with 403, so a detection agent
+that concludes a different kind fits names the case link, the target ids, and the
+kind it wants in the case thread and leaves the case as filed.
+
+The body is a replacement, not a patch: `proposedParams` overwrites the stored
+params, so a kind that requires params carries them on every change —
+`rate_limit` needs `rpm` or `rpd`, `spend_cap` needs `limit_usd` — and sending
+none for those is a 400, not a default. `proposedTarget` and `proposedExpiresAt`
+are written unconditionally, so omitting either clears what the target held — an
+expiry only a rate-limit kind can carry in the first place. `actingClerkUserId`
+is optional and falls back to `ACTING_SYSTEM`; the write leaves no row on the
+case, so the `ban_candidate_proposed_kind_change_summary` log line is the only
+record of who swapped the remedy, and it lives under log retention. Always send
+it.
+
+Every restriction kind the ingest accepts is a valid destination,
+`inference_block` included; the body takes the same kind, target, and expiry
+rules as ingest and the same params parsing, but ingest additionally requires a
+positive spend-cap limit while the change route accepts `limit_usd: 0` so
+Mission Control can freeze spending. A scoped kind (`provider_ban`, `model_ban`,
+`author_ban`, the scoped rate limits, `spend_cap`) needs the `proposedTarget`
+slug it scopes to and an account-wide kind must not carry a non-empty
+`proposedTarget`. Scoped targets are checked against real data: models must be
+exact model permaslugs, authors existing author slugs, providers known provider
+names, and spend caps `daily`, `weekly`, or `monthly`; unknown values return 400
+before anything is written. Mission Control's dialog offers the account-wide
+kinds plus `spend_cap` with its `daily`, `weekly`, or `monthly` period; a scoped
+ban or scoped rate limit needs a slug the dialog has no field for, so it is a
+hand-signed request.
+The request never fails closed on the target set: it answers 200 and classifies
+every id it did not update. `conflicted` counts ids the case does not hold as
+pending — missing, belonging to another case, or no longer `pending_review`,
+which here usually means `already_restricted`, the status ingest reports as
+`targetsAlreadyRestricted`, rather than an approval or a denial. `skipped` counts
+ids that are still pending but lost the destination identity (`suggestion_id`,
+`target_value`, `proposed_kind`, `proposed_target`): another target for the same
+account already holds that kind and slug, or two ids in the request are the same
+account and only one of them can take it — a case holding `user_X` twice from an
+earlier re-post answers `{updated: 1, skipped: 1}` with no sibling under the
+destination kind to find. Resending clears neither. Read
+`targets <suggestionId>`, report the sibling and its status, and leave retiring
+the redundant target to a human: a denial is terminal and takes the account
+off-limits under every `ruleKey`. Changing the kind leaves the targets
+`pending_review`; it is neither an approval nor an enactment.
+If the post-write target reload fails, `unknown` counts the non-updated ids whose
+final state could not be verified; reload the case before acting on them.
+
 ### Slack reporting contract
 
 - Ingest owns the per-case top-level alert and Mission Control case link. Do not
@@ -322,6 +390,36 @@ suggestions are frozen and skip this refresh.
   referencing `packages/kyc/sentinel/SCANNER_SPEC.md`, which owns this contract.
   If a change alters what a wrapper itself must say, update each prompt
   manually.
+
+## Model-lab distillation classification
+
+Run this when a model lab reports an account for distillation or the `[Abuse] reasoning_extraction refusal burst` monitor (`configs/terraform-monitors/monitoring/reasoning_extraction_refusal_burst.tf`, pages `#alerts-tns`) picks one up from prompt-refusal data. It classifies each flagged entity into a routing outcome, files the account-level restriction outcomes as one Sentinel case, and researches contacts for the outreach outcomes.
+
+### Inputs per entity
+
+- **Abuse rate** — refusals in the reported or observed window divided by total generations in the same window. Refusal counts come from Datadog `content_block` logs (`@extra.refusal_category`, grouped by `@extra.entity_id`); denominators from ClickHouse `default.generations` (`content_block_refusal_category` persists on generations too, but only since 2026-09-01). Raw refusal count is never sufficient: large legitimate orgs produce high absolute counts at rates near zero.
+- **Account metadata** — email and domain class (freemail vs professional), account age, lifetime purchases, max daily spend, billing and traffic country, current restriction state. Read from `analytics.dim_users` / `stg_users`, `stg_credits`, and `default.generations`.
+- **Relationship data** — HubSpot contact, lifecycle stage, and owner via the ClickHouse sync (`analytics.stg_hubspot_contacts`), matching on Clerk ID or exact email first, professional domain as fallback. The sync lags live HubSpot, so state the source when reporting owners.
+
+### Decision script
+
+Steps 1–3 are ordered exit gates: the first match routes the entity to an outreach outcome. An entity that passes all three gates gets the most severe of steps 4–6 whose condition matches (compromised keys or restriction evasion always route to step 6, a 50%+ rate to step 5, even when a step 4 condition like freemail also matches).
+
+1. **Enterprise (CSM, AE, or partnership relationship)** — notify GTM and prepare information to be sent to the customer.
+2. **Active HubSpot lead, or account older than 30 days with >$50k lifetime spend or >$5k/day** — notify GTM to gauge the relationship depth.
+3. **Professional (non-freemail) email, reasonably believed to have end customers, and no China/HK connection** — prepare information to notify the customer directly.
+4. **Author ban** (scoped `author_ban` for the reporting lab) if the abuse rate is below 50% in the window — a lab-sourced report actions any nonzero rate; for monitor-derived (self-observed) cases use a 30% floor — or the account uses a freemail address (icloud, gmail, yahoo, hotmail).
+5. **Frontier ban** (`frontier_us_models`) if the abuse rate is 50%+, the account is implicated in distillation by multiple labs, or the account is implicated in other lab-reported abuse (cyber, CBRN, scams).
+6. **Inference block** (`inference_block`) if the account's keys are believed compromised, or it has 2+ strong connections to an account previously author- or frontier-banned for distillation (restriction evasion).
+
+Known ambiguities, resolved as follows unless the requester says otherwise: steps 1–3 are exit gates, so a step 1–3 match routes to outreach without a ban — flag any step 1–3 account with a 50%+ rate to the requester explicitly. "End customers" in step 3 is proxied by a professional email domain. Step 2 reads as HubSpot contact exists, OR (age > 30d AND (lifetime > $50k OR daily > $5k)). Step 6b needs a link analysis over shared IP/JA3/card fingerprints against the previously banned population. An entity that matches no step (e.g. a monitor-derived case below the 30% floor whose professional email fails step 3 on the China/HK gate, with no compromise or evasion signals) gets no proposal — report it to the requester as unrouted.
+
+### Filing and outreach
+
+- File all step 4–6 outcomes from one run as **one case** (one `ruleKey` naming the detection, `targetType: user`), each target carrying its own `proposedKind` — `author_ban` with `proposedTarget` set to the reporting lab's author slug, `frontier_us_models` with `{}` params, `inference_block` unscoped. Everything stays `pending_review`. A step 6a target trips the [compromised-key gate](../../../packages/kyc/sentinel/SCANNER_SPEC.md#compromised-key-gate): file it for visibility but never `review ... approved` or `enact` it, and escalate to a human for key revocation and holder notification.
+- Skip targets already covered: an account already in a live case for the same conduct, or carrying an equal-or-stronger active restriction (check with `list`/`targets`, not ClickHouse).
+- Per-target evidence carries at least the abuse rate, refusal count, window, and the script step that matched.
+- Step 1–3 outcomes get no case. Research who to contact instead: HubSpot owner (name and email) where a contact exists, otherwise the account's own email from `dim_users`, and report an account with no email as having no verified notification path. Deliver the contact list to the requester; outreach itself is a human/GTM action.
 
 ## Pre-spend signup-burst detection
 
@@ -750,9 +848,11 @@ Each target contains:
   or `monthly` period.
 - Pick the scoped kind, not `rate_limit` plus a target: `rate_limit` is
   account-wide by contract and rejects a non-empty `proposedTarget` with
-  `Invalid proposed target for proposedKind=rate_limit`. Throttling one author
+  `proposedTarget must be empty for proposedKind=rate_limit`. Throttling one author
   is `author_rate_limit`, not a scoped flavor of `rate_limit`.
-- `forced_moderation` proposals are unscoped: omit `proposedTarget`. The active
+- `forced_moderation` proposals may omit `proposedTarget` for account-wide
+  moderation or provide a known exact-case provider name for provider-scoped
+  moderation. The active
   restriction is enforced at request time by the moderation plugin for sync
   chat/completions and chat-shaped batch traffic, overriding BYOK and
   `disable_moderation`. Embeddings, image, and video surfaces do not run the
@@ -778,14 +878,16 @@ Each target contains:
   `provider_ban`, `author_ban`, `model_rate_limit`, `provider_rate_limit`,
   `author_rate_limit`, and `spend_cap`. Provider kinds take the exact display-cased
   `endpoint.provider_name` value — for example, `OpenAI` or `Google AI Studio` —
-  not the lowercase provider slug. A wrong provider target is accepted and can
-  be enacted, but silently never matches. Model kinds take the dated
+  not the lowercase provider slug. Model kinds take the dated
   `endpoint.model.permaslug`, not the model slug; for example, the current seed
   pairs `anthropic/claude-opus-5` with permaslug
-  `anthropic/claude-opus-5-20260723` (321 of 929 seeded rows differ). A wrong
-  model target likewise silently never matches. Author kinds take an author
-  slug. Spend-cap targets must be exactly `daily`, `weekly`, or `monthly`.
-  Omit `proposedTarget` for other account-scoped kinds.
+  `anthropic/claude-opus-5-20260723` (321 of 929 seeded rows differ). Author
+  kinds take an author slug. Spend-cap targets must be exactly `daily`, `weekly`,
+  or `monthly`. The change route checks scoped targets against real data and
+  returns 400 for unknown values before writing. `forced_moderation` may omit
+  `proposedTarget` for account-wide moderation or use a known exact-case provider
+  name for provider-scoped moderation. Omit `proposedTarget` for other
+  account-scoped kinds.
 - `proposedExpiresAt` — optional ISO-8601 datetime for the restriction window.
   The enacted restriction receives this value as `expires_at`; omit it or use
   `null` for a permanent restriction. This applies to `rate_limit`,
