@@ -197,6 +197,17 @@ Requirements and conventions:
   trigger (`is_private is immutable`). Remove the matching local seeded
   endpoint rows and their dependent pricing/access rows before the run, or
   update the fixture helper to duplicate exposed endpoints.
+- The vitest suite resolves its key from `OPENROUTER_API_KEY` first
+  (`tests/e2e/utils/config.ts`) and then looks that key up in local
+  Postgres. An unrelated key exported in the shell (agent environments
+  inject one) fails every helper with `E2E API key not found in local
+  Postgres.`; run with `env -u OPENROUTER_API_KEY bun run test:e2e ...`
+  or export the seeded key.
+- A seeded `:batch` endpoint row that the staging helper reuses keeps its
+  seeded flags. The seeded Anthropic `claude-haiku-4.5:batch` row is
+  `is_byok_only=true`, so the public-key suite gets a 400 `does not have a
+  :batch endpoint`. Flip the flag for the run, refresh the model caches on
+  both `cfw-batch-api` and `gcp-batch-api`, and restore it afterwards.
 - Probe the stack at collection time and `describe.skipIf` with a `[WARN]`
   naming the unreachable services — the suite must stay green in
   environments that only boot cfw-api (`findUnavailableBatchServices` in
