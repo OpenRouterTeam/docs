@@ -283,6 +283,14 @@ Gotchas when synthesizing upstream logprobs or changing endpoint capabilities:
 - `tsx --watch` on fake-provider may not reload reliably; restart the
   process (in a dedicated shell) after patching and verify with a direct
   curl to :3002 before testing through the router.
+- To force the supersize/DO-hydration path on a chat request, send
+  `x-offload-large-fields: 1`; a large multimodal body alone does not
+  route through the Durable Object. Confirm with a `process-stream-json:*`
+  log line in the run's `dev-fs-logs` artifact.
+- Restoring source files with git after a temporary bypass does not
+  trigger a wrangler rebuild. Touch `services/cfw-api/src/index.ts` and
+  wait for the reload before capturing a "before" or control run, or the
+  worker still serves the patched code.
 
 ### Setup
 
@@ -301,6 +309,12 @@ Gotchas when synthesizing upstream logprobs or changing endpoint capabilities:
 3. Ensure `tests/e2e/.env.local` has a valid
     `OPENROUTER_API_KEY`. If not, source it from Infisical or
     the stored secret.
+4. Expect `api/messages/multimodal/file` (PDF-by-URL) to time out
+   against a local worker even on plain main: the offloaded document
+   payload goes through the supersize/DO-hydration path, the Anthropic
+   attempt can 500 with `DO_HYDRATION_ERROR`, and the fallback stalls
+   while the worker streams keepalive whitespace. Reproduce on a main
+   checkout before treating it as a branch regression.
 
 ### Testing billing routes on local cfw-frontend-api (stripe-credit-purchase)
 
@@ -363,6 +377,11 @@ cd tests/e2e && bun run test:e2e api/batches
    ls services/dev-fs-logs/.logs/
    ```
    Collect sample log files to verify request/response behavior.
+   dev-fs-logs writes one `gen-<id>/` directory per inference
+   generation only. A change on a non-inference route (auth
+   middleware, `/api/v1/credits`, key management) leaves `.logs/`
+   empty; use the wrangler request log from `bun run dev cfw-api`
+   as the evidence instead and say so in the PR (PR #39640).
 
 ### Report
 
