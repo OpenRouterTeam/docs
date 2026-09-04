@@ -46,7 +46,7 @@ able to see every key the domain uses.
 `createQueryKeys` is the only sanctioned way to define keys — never write a
 key array literal at a call site or in `queries.ts`. Hand-written `as const`
 arrays are equivalent in power, but a second convention doubles what
-reviewers and the ownership lint rule must check.
+reviewers must check.
 
 ## Options factories are the primitive, hooks are sugar
 
@@ -104,11 +104,30 @@ spread the canonical options and override only `queryFn`:
 const options = modelStatsOptions({ modelId, entityId });
 await queryClient.prefetchQuery({
   ...options,
-  queryFn: ({ signal }) => fetchModelStatsOnServer({ modelId, signal }),
+  queryFn: () => fetchServerAPIQuery(modelStatsRoute(modelId), { schema: ModelStatsSchema }),
 });
 ```
 
 The factory remains the single owner of cache identity and query policy.
+
+The server-only transport is `fetchServerAPIQuery` from
+`fetch-server-api-query.ts` — the RSC counterpart to `fetchAPIQuery`. It
+builds the same request path (route + `searchParams`), reads through
+`fetchInternalJsonApi` so the request's cookie is forwarded, unwraps the
+`{ data }` envelope, validates against the schema, and throws `APIQueryError`
+on any failure. Write the override as a one-liner against it:
+
+```ts
+queryFn: () =>
+  fetchServerAPIQuery(`${WIDGETS_ROUTE}/${encodeURIComponent(id)}`, {
+    searchParams: { workspace_id: workspaceId },
+    schema: WidgetSchema,
+  }),
+```
+
+Do not hand-write the `fetchInternalJsonApi` → `isErr` → `throw` unwrap in a
+route module; that is the helper's job, and a per-route copy is where the
+schema check or the throw gets dropped.
 
 ## Server prefetching and hydration
 
@@ -136,7 +155,11 @@ export default async function Page() {
     ...widgetListOptions(workspaceId),
     // Only when the RSC needs a server-only transport — see
     // "Reuse canonical options for prefetching" above.
-    queryFn: () => fetchWidgetsOnServer(workspaceId),
+    queryFn: () =>
+      fetchServerAPIQuery(WIDGETS_ROUTE, {
+        searchParams: { workspace_id: workspaceId },
+        schema: WidgetListSchema,
+      }),
   });
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
@@ -155,8 +178,11 @@ is no loading flash.
 Two conventions on top of the TanStack pattern:
 
 - **Keys and policy come from the canonical options factory**, exactly as
-  for any other prefetch. Seeding with already-fetched data uses
-  `queryClient.setQueryData(<thing>Options(...).queryKey, data, ...)`.
+  for any other prefetch. `prefetchQuery` is the default way to populate the
+  server client. `queryClient.setQueryData(<thing>Options(...).queryKey,
+  data, ...)` is for data the RSC already holds for another reason (it
+  rendered from it, or a parent loader fetched it) — not a substitute for
+  `prefetchQuery` when the only consumer is the client query.
 - **Seeds keep the default `updatedAt` (the render-time timestamp).** On a
   statically prerendered (ISR) route that timestamp is the generation time,
   frozen into the payload with the data. Hydration only replaces an existing
@@ -179,6 +205,22 @@ Two conventions on top of the TanStack pattern:
 `dehydrate` only includes successful queries, so a failed server prefetch
 degrades to the client-side fetch instead of hydrating an error.
 
+Server prefetching covers direct loads and server-rendered navigations. It
+does not run for a client-side transition into the route, so a list → detail
+flow may additionally prefetch on intent:
+
+```tsx
+const queryClient = useQueryClient();
+const prefetch = () => queryClient.prefetchQuery(widgetDetailOptions({ id, workspaceId }));
+<Link href={href} onMouseEnter={prefetch} onFocus={prefetch}>…</Link>
+```
+
+This reads the canonical factory with the client transport, so it hits the
+same key the detail page hydrates. It is optional — add it where the RUM
+evidence shows client navigations, not by default — and it is distinct from
+`next/link`'s own prefetch, which fetches the route's RSC payload, not query
+data.
+
 Call `dehydrate(getServerQueryClient())` at most once per page: the
 request-scoped client accumulates every seed site's queries, so each
 `dehydrate` serializes the full accumulated set into its boundary, and a
@@ -196,8 +238,15 @@ site its own `makeQueryClient()` instead of the shared client.
   callback style (`mutate(vars, { onSuccess, onError })`) is deliberately not
   exposed — it's dropped on mid-flight unmount, losing success toasts and
   tracking.
-- `invalidates` is **required** (pass `[]` explicitly for the rare mutation
-  that affects no cached reads). Reference keys from the same `queries.ts`.
+- `invalidates` is **required**: a non-empty list of keys from the same
+  `queries.ts`, or an `Invalidation` reason naming who owns the cache effect
+  instead. `Invalidation.NONE` means no TanStack read caches what the
+  mutation writes; `CALLER_OWNED` means the call site refreshes non-TanStack
+  data itself (`router.refresh()`, `entity.revalidate()`); `HOOK_OWNED` means
+  the owning hook patches or refreshes the cache itself; `BACKGROUND_ONLY`
+  means every affected read is in `backgroundInvalidates`. An empty list does
+  not typecheck, so a read that should have been invalidated cannot hide
+  behind `[]`.
 - Invalidation is awaited before `mutate` resolves: both the awaited call and
   `isPending` cover the refetch of affected queries.
 - Server actions keep calling `revalidatePath`/`revalidateTag` — that's the
@@ -208,6 +257,44 @@ site its own `makeQueryClient()` instead of the shared client.
   `queries.ts`, document why it is required, and still use canonical keys.
   Ordinary optimistic UI, callbacks, or custom invalidation are not reasons to
   bypass `useAPIMutation`.
+
+## Cache policy tiers
+
+`staleTime` and `gcTime` overrides pick a named tier from `query-policy.ts`,
+never a raw number or a per-file constant. The tier names the reason a read
+deviates from the default, so a reviewer can check the reason instead of
+guessing what a bare millisecond count was for.
+
+| Tier                   | Value    | Use when                                                                                                                                                                              |
+| ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `StaleTime.ALWAYS`     | `0`      | The value can become wrong without a mutation from this tab: money, quota, eligibility, externally reconciled settings, or a dialog that must recompute on open.                     |
+| `StaleTime.COALESCE_MOUNTS` | `2000` | Stale on any user-visible revisit, but mounts within a couple of seconds of the last fetch share it: staggered rows, a `HydrationBoundary` handoff, a rerender storm. SWR's old dedupe window. |
+| `StaleTime.DEFAULT`    | `30_000` | Ordinary display reads. This is the `QueryClient` default, so never restate it (or `retry: false`, `refetchOnWindowFocus: true`, or any other TanStack default) at a call site.       |
+| `StaleTime.CATALOG`    | `60_000` | Catalog-shaped lists and metrics that a mutation from this tab never edits.                                                                                                             |
+| `StaleTime.REFERENCE`  | `300_000`| Slow-moving reference data: suggestions, abuse-rule reference lists, signal snapshots read on every route.                                                                              |
+| `StaleTime.NEVER`      | `Infinity`| Immutable payloads, snapshot-keyed reads whose key changes when the data does, or side-effecting reads (audit-logged prompt bodies) that must run at most once per session.           |
+| `GcTime.ON_UNMOUNT`    | `0`      | The payload must not outlive its observer (invoice links, transfer eligibility, one-shot previews), or ownership hands back to server-rendered state.                                  |
+
+Two distinctions decide the tier:
+
+- **Freshness is not retention.** `staleTime` says when a cached value is
+  refetched; `gcTime` says how long an unobserved entry is kept. `GcTime.ON_UNMOUNT`
+  never substitutes for `StaleTime.ALWAYS` — a read that must be current on
+  open needs `ALWAYS` whether or not its entry is retained.
+- **Stale is not loading.** `StaleTime.ALWAYS` still renders the cached value
+  while the refetch is in flight. Choose it for freshness, not to force a
+  spinner.
+
+A read that fits no tier is a signal that the read is unusual; state why in a
+comment at the option and prefer the nearest tier over a new number.
+
+The one standing exception is a `staleTime` that mirrors a server-side cache
+TTL (a route's `Cache-Control` or a server action's `revalidate`). That number
+is owned by the server, not by this policy, so it stays a per-file constant
+named for the read, with a comment citing the server TTL it mirrors, even when
+it happens to equal a tier. Retuning a tier must not silently desynchronize it
+from the server, and retuning the server must not require touching
+`query-policy.ts`.
 
 ## Caching gotchas
 
@@ -227,13 +314,13 @@ hard rule:
   `skipToken`; otherwise entity switching can show or cache another entity's
   data until a refetch lands.
 - **After a mutation, invalidate — don't expect a refetch.** `staleTime` is
-  30s; a remount or navigation inside that window renders cached data with
-  no request. Declaring `invalidates` on the mutation is the only reliable
-  way to make dependent reads refetch.
+  `StaleTime.DEFAULT` (30s); a remount or navigation inside that window
+  renders cached data with no request. Declaring `invalidates` on the
+  mutation is the only reliable way to make dependent reads refetch.
 - **`data` can be stale while `isPending` is false.** Stale-while-revalidate
   shows the cached value first and refetches in the background. Don't gate
   correctness-sensitive UI (billing amounts, quota checks) on cached reads —
-  refetch explicitly or lower `staleTime` for that query.
+  give that query `StaleTime.ALWAYS` or refetch explicitly.
 - **Never write to `data`.** Cached results are shared across every consumer
   of the key and compared by structural sharing; in-place mutation corrupts
   other components and defeats change detection. Derive with `select`,
@@ -287,7 +374,7 @@ called conditionally. It also scales: one gate covers every query in
 the subtree, instead of N per-query `enabled` conditions that can
 drift. Companion trick: `key={contextEntityId ?? 'unresolved-entity'}`
 on the gated subtree so entity switches remount and reset local state
-(`NotificationsGate.tsx` in the same directory).
+(`NotificationsEntityBoundary.tsx` in the same directory).
 
 ### Case B: genuinely nullable input
 
