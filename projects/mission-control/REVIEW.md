@@ -2,10 +2,11 @@
 
 - Keep model-management surfaces on the consolidated models table and preserve
   shared modality filtering semantics across input and output selectors.
-- Provider detail pages must resolve private-only providers straight from
-  Postgres in SSR (via the admin slug query), since the public
-  `/api/frontend/v1/all-providers` cache excludes them; do not silently fall
-  back to a public-only dataset.
+- Provider detail pages must resolve private-only providers through the admin
+  slug query, since the public `/api/frontend/v1/all-providers` cache excludes
+  them; do not silently fall back to a public-only dataset. Route that read
+  per the root database-access rule (`cfw-internal`, not a direct database
+  import in the RSC).
 
 ## Shared data layer (TanStack Query)
 
@@ -26,10 +27,7 @@ within a 300-second Mission Control Cloud Run request budget. Break the work
 into small batch pages and only terminate the loop when a page comes back empty
 — stopping on a short page undercounts when the backend caps page sizes.
 
-*Source: [PR #27091](https://github.com/OpenRouterTeam/openrouter-web/pull/27091)
-and [PR #27107](https://github.com/OpenRouterTeam/openrouter-web/pull/27107) —
-the batched preview first shipped with a short-page termination check that
-missed rows, fixed by terminating only on an empty page.*
+*Source: [PR #27107](https://github.com/OpenRouterTeam/openrouter-web/pull/27107)*
 
 ## Clear busy flags in `finally`
 

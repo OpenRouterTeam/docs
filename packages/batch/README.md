@@ -43,6 +43,7 @@ Consumers should import these subpaths only:
 | `@openrouter-monorepo/batch/adapters` | `BatchAdapter`, `BatchObjectStore`, factory types |
 | `@openrouter-monorepo/batch/adapters/openai` | OpenAI batch adapter entry point |
 | `@openrouter-monorepo/batch/adapters/anthropic` | Anthropic Message Batches adapter entry point |
+| `@openrouter-monorepo/batch/adapters/google-ai-studio` | Google AI Studio Gemini batch adapter entry point |
 | `@openrouter-monorepo/batch/adapters/stub` | Test stub adapter entry point |
 | `@openrouter-monorepo/batch/adapters/vertex` | Vertex Gemini batch adapter entry point |
 | `@openrouter-monorepo/batch/skins` | Endpoint skin registry |

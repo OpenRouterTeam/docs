@@ -119,7 +119,7 @@ This does not survive re-provisioning, which re-mints a local key.
 | `cookie mint failed` | `INTERN_SLACK_INSTALL_SIGNING_KEY` unset (needs ≥32 chars). |
 | Clerk `host_invalid` at the OAuth callback | Web's dev proxy followed the worker's Clerk handshake 307 server-side, re-sending `host: localhost:<port>`. Fixed by `redirect: 'manual'` in `devCorsProxyRequest`. If it recurs, count your tunnels first. |
 | `enqueue failed … config_missing` | `INTERN_PROVISIONER_ENQUEUE_SECRET` differs between frontend-api and the provisioner. It lives under the *provisioner's* Infisical path, which frontend-api cannot read. |
-| `missing/invalid secrets: [...]` | The provisioner is starting without its Infisical bridge — check its `package.json` still has `x` + `dev`, and `scripts/dev.ts` still calls `writeDevVars()`. |
+| `missing/invalid secrets: [...]` | The provisioner is starting without its Infisical bridge — check its `package.json` still has `x` + `dev`, and `services/cfw-intern-provisioner/scripts/dev.ts` still calls `writeDevVars()`. |
 | `INTERN_GCP_SERVICE_ACCOUNT_JSON must be valid JSON` | The stored value ends with a newline; `serializeDevVar` escapes it to a literal `\n` that `JSON.parse` rejects. Fixed by trimming in `writeDevVars`. |
 | `ORI_ADAPTER_UNAUTHORIZED` in Slack | Expected. See *The intern's own key*. |
 | `402 Insufficient credits` from a local call | Your local `credits` table is empty: `INSERT INTO credits (created_at, amount, clerk_user_id, note) VALUES (now(), 100, '<clerk_user_id>', 'local testing');` |

@@ -4,6 +4,13 @@ Mission Control server actions call `cfw-internal` via `cfwInternalFetch`
 (`utils/helpers/cfw-internal-fetch.ts`). Do not add private `cfw-frontend-api`
 routes for MC-only data — `cfw-frontend-api` serves the web app only.
 
+## Frontend conventions
+
+Shared frontend guidelines — design tokens, state ownership, layout, and
+native-`<form>` submission for text-entry surfaces — live in
+[`../../packages/frontend/AGENTS.md`](../../packages/frontend/AGENTS.md) and
+apply here.
+
 ## Shared data layer
 
 Mission Control uses the same TanStack Query data-layer contract as Web and

@@ -22,14 +22,19 @@ upstream first and come back here.
 Run from the repo root on the branch you will open the PR from.
 
 ```bash
-scripts/subtree-pull-bench-harness.sh          # latest main
-scripts/subtree-pull-bench-harness.sh <branch> # a specific upstream branch
+scripts/subtree-pull-bench-harness.sh # latest main; takes no arguments
 ```
 
 The script performs the squashed subtree pull and rewrites
 `scripts/bench-harness-subtree.sha`, the expected tree SHA the integrity check
 compares against. Commit that file with the pull. A pull whose recorded SHA is
 missing or stale fails CI.
+
+Only upstream `main` can be vendored: the record carries `ref=main`, and the
+integrity check rejects any other ref and verifies the recorded upstream commit
+is reachable from harness `main` (blobless fetch into a scratch repo, required
+in CI, best-effort offline). An unmerged harness branch cannot be snapshotted
+here ahead of merge, so land the harness change first.
 
 ## 2. Register the benchmark with Temporal
 

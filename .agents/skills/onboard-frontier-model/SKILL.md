@@ -82,6 +82,10 @@ onboardings: #23456 (fable), #22274 (Opus 4.8), #21568 (Gemini 3.5 Flash),
   slug (e.g. `claude-5-fable` → `claude-fable-5`, bare `gpt-5.6` →
   `openai/gpt-5.6-sol`) and record `{ aliases, target }` or `null`. Include
   both author-prefixed and bare forms where the lab accepts a bare id.
+  For OpenAI tiered families the bare family id (`gpt-5.6`) is OpenAI's
+  default tier (sol), not the newest or largest one — a new tier above sol
+  gets `null`, and the bare alias stays unassigned until OpenAI's native id
+  is confirmed (#39750 review).
   One-off/legacy aliases still live in `packages/models/id/alias.ts`
   (`DEV_rawSlugAliasMap`).
 - [ ] Provider-mirrored numbering: do not add or remove numeric padding in the
@@ -229,7 +233,14 @@ The enum grep misses surfaces keyed on the dated permaslug string or an endpoint
 - [ ] Responses-API pricing schema if new SKUs ship with the model
   (image output token tables, cached-token SKUs, service tiers).
 - [ ] Pro variant reachable via `reasoning.mode`? Pair standard→pro in the
-  openai-reasoning-mode-router plugin's sibling map (#27592).
+  openai-reasoning-mode-router plugin's sibling map (#27592). The plugin's
+  `index.test.ts` iterates that map, so add the new pair's models and
+  endpoints to its `modelsCache` / `endpointsCache` fixtures or the swap
+  case fails with a missing endpoint.
+- [ ] Exhaustive per-model tests that must name the new enum entries:
+  `packages/models/id/openai.test.ts` (prompt-cache breakpoint
+  classification) and `packages/rate-limit/new-account-rate-limit.test.ts`
+  (the RPM allowlist cases).
 - [ ] Azure `getAzureAPIKey` (`packages/providers/configs/azure.ts`) only
   needs a new permaslug case when the model is served from a resource other
   than the Foundry East account (that one is matched by base URL host). The

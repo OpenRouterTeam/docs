@@ -38,8 +38,7 @@ When adding or changing a page:
 
   `createMetadata` derives `og:url` from the canonical; omitting it renders
   no `<link rel=canonical>` and points `og:url` at the site root. For dynamic
-  routes, build the canonical from the route params (see
-  `app/(marketplace)/[maker-id]/[slug]/model-page-metadata.ts`). Add the page to
+  routes, build the canonical from the route params. Add the page to
   `projects/web/app/sitemap.ts` if it should be discovered via the sitemap.
 
   If the canonical is set inside a shared metadata helper rather than in the
@@ -194,6 +193,13 @@ factories, prefetches, or cache updates, read and follow both canonical files:
 - [`../../packages/frontend/data-layer/REVIEW.md`](../../packages/frontend/data-layer/REVIEW.md)
   for the review checklist enforced across Web, Mission Control, and shared
   frontend packages.
+
+## Frontend conventions
+
+Shared frontend guidelines — design tokens, state ownership, layout, and
+native-`<form>` submission for text-entry surfaces — live in
+[`../../packages/frontend/AGENTS.md`](../../packages/frontend/AGENTS.md) and
+apply here.
 
 ## DOM tests
 

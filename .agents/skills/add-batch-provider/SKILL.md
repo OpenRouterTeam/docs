@@ -90,11 +90,11 @@ parallel composition abstraction.
 | `ingestMode` (field)                         | `<provider>-batch-adapter.ts`                         | Declare `BatchIngestMode.File` for Files API uploads or `BatchIngestMode.Inline` when submit references persisted input directly. This field describes input delivery only. |
 | `resultMode` (field)                         | `<provider>-batch-adapter.ts`                         | Declare `BatchResultMode.FileHandle` when fetching requires `output_file_id` or `error_file_id`, or `BatchResultMode.BatchId` when fetching uses `upstream_batch_id` and both handles may remain null. |
 | `transformBatchRequest`                      | `transform.ts`                                        | pure client-JSON → provider-native JSONL, streaming (`AsyncIterable`), never buffers the batch. The service persists the client-wire `{custom_id, body}` copy (`input_file`) for render-context recovery separately from this lowered output (`input_file_lowered`) |
-| `uploadNativeInput` (optional, protected)    | `file-uploader.ts`                                    | multipart **stream** upload for file-based providers; inline providers omit it and the base class rejects accidental upload dispatch                  |
+| `uploadNativeInput` (optional, protected)    | `file-uploader.ts`                                    | multipart **stream** upload for file-based providers; inline providers omit it and the base class rejects accidental upload dispatch. Bound uploaded-input retention: set the provider's expiry field on upload (or implement deletion) so inputs do not accrue paid storage forever                  |
 | `submitNativeBatch`                          | `batch-submitter.ts`                                  | create the upstream job from `BatchSubmitParams`; inline providers may reference `input_uri` directly                                                  |
 | `pollBatch`                                  | `batch-poller.ts`                                     | exhaustive upstream-status `switch` (`satisfies never` default); persist every terminal result/error handle and honor backoff hints                    |
 | `fetchNativeResults`                         | `file-downloader.ts`                                  | return a `ReadableStream`; drain all pages/files/shards. `output_file_id` is a generic provider result handle, not necessarily a file id               |
-| `transformBatchResponse`                     | `<provider>-batch-adapter.ts`                         | override identity when provider-native result rows must be normalized before persistence                                                              |
+| `transformBatchResponse`                     | `<provider>-batch-adapter.ts`                         | override identity when provider-native result rows must be normalized into canonical output lines. If native rows are not already canonical, this override is mandatory — the raw artifact stores provider-native rows and finalization normalizes them *on read* through this method before `parseResult` and billing, so leaving it as identity bills zero even though every layer's own unit tests pass. Malformed rows degrade individually into canonical non-billable error rows; when a broken line still contains a complete `custom_id`-equivalent, extract and preserve it so the row stays correlatable |
 | `parseResult` / `parseUsage`                 | `output-parser.ts`                                    | validate one canonical result line and read billable usage. Adapter-owned; never import from `packages/batch/skins`                                   |
 | `toInternalResponse` / `fromInternalRequest` | `to-internal-response.ts`, `from-internal-request.ts` | pure line pivots; reproduce sync request shaping (reasoning effort, supported params) rather than stripping keys                                      |
 
@@ -138,6 +138,10 @@ Registration:
 - Add a constructor to `batchAdapterFactory`
   (`packages/batch/adapters/batch-adapter-factory.ts`) — keep the
   `satisfies Record<BatchAdapterName, BatchAdapterConstructor>` intact.
+- After adding any cross-package import (e.g. pricing helpers into
+  `packages/batch`), run `bun run sync-tsconfig-refs` and commit the
+  regenerated `tsconfig.build.json` — CI rejects a dirty generated state
+  after postinstall.
 
 Tests: colocated unit tests per module driven by the committed fixtures,
 plus `*.golden.test.ts` parity vectors (see
@@ -165,6 +169,15 @@ Both paths share these requirements:
 
 - Validate env eagerly at boot — missing env **throws at startup** (fail
   fast); `getAdapter` stays the `Result`-returning request-time boundary.
+- Distinguish "registered provider with missing platform credential"
+  (retryable 503 — active batches must keep polling until the key
+  arrives) from "unknown provider" (400 `AdapterNotFound`). Treating a
+  missing key as unsupported silently strands in-flight batches. Pick
+  the registration path accordingly: providers that must run without a
+  platform key (e.g. BYOK-capable) register via
+  `optional-api-key-providers.ts` (null platform adapter → 503 from
+  `getAdapter`); providers whose platform key is mandatory use
+  `apiKeyAdapterEntry` and fail fast at boot.
 - Validate platform and BYOK credential formats intentionally. Provider
   construction failures at the request boundary return a typed client error;
   they must not crash the request or silently fall back to platform auth.
@@ -172,6 +185,9 @@ Both paths share these requirements:
   GCS output run in the platform project), reject BYOK with a 400 rather
   than running a customer credential against platform-owned resources.
 - Add the env vars to the service's Infisical path and deployment config.
+  Provider keys live under `/_providers` (not `/_shared`), and the
+  Terraform folder sync resources need explicit `depends_on` references
+  to the secret resources — Terraform does not infer that ordering.
 
 Tests: registry construction tests asserting the fail-fast throw on
 missing env and successful `getAdapter` lookup.

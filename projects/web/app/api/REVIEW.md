@@ -15,13 +15,13 @@ box.
   starts. Next.js API routes run on a single-region Node server.
 - **Separation of concerns** -- Keeps the Next.js app focused on SSR/RSC and
   avoids mixing data-fetching infrastructure into the rendering layer.
-- **Consistency** -- The team is actively porting existing `app/api/` routes into
-  `cfw-frontend-api`. Adding new routes here works against that migration.
+- **Consistency** -- All frontend data routes live in `cfw-frontend-api`, so
+  callers, auth middleware, and caching have one home.
 
 ## What lives here today?
 
-The remaining routes under `app/api/` are **legacy** and are being migrated. Do
-not use them as a pattern to follow.
+Only the Statsig bootstrap routes below and a dev-only `dev/intern-chat` route
+remain under `app/api/`. Do not use them as a pattern to follow.
 
 **Exception:** `app/api/frontend/statsig-bootstrap` and
 `app/api/frontend/statsig-customer-bootstrap` are intentionally here, not in

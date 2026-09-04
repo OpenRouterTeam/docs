@@ -231,6 +231,15 @@ returns 404 `resource not found` (live).
 7. The failed-job error message referenced `input2.jsonl:1` for a row that
    was line 2 of the upload — line numbers in validation messages are not
    trustworthy.
+8. `[capture]` Some models run on a vLLM-backed deployment (`model:
+   accounts/<acct>/deployments/bij-<job>`, `system_fingerprint: "vllm-…"`,
+   observed 2026-09-03 on `meta/muse-glimmer-30b-20260810` through
+   OpenRouter). Those rows carry the vLLM OpenAI-compat shape: `message`
+   has `annotations: null`, `audio: null`, `function_call: null`, and the
+   choice/body carry `stop_reason`, `token_ids`, `prompt_logprobs`,
+   `kv_transfer_params`, `metrics` (all null). Fireworks' own engine omits
+   these keys. The output parser must accept `annotations: null`; fixture
+   `live-chat-output-vllm-null-annotations.jsonl`.
 
 ## Sync-transform reuse decision
 
@@ -315,6 +324,11 @@ error-line fixture is intentionally absent — see deferred captures.
 Tool-call / multi-turn / structured-output request lowering is exercised by
 the serializer unit tests (PR 2/5), which snapshot-lock the sync adapter's
 production serializer rather than re-capturing each shape live.
+
+`live-chat-output-vllm-null-annotations.jsonl` is the verbatim
+`output/raw_response` of a one-row OpenRouter batch job (2026-09-03,
+`meta/muse-glimmer-30b-20260810`, vLLM-backed deployment) with only the
+account id inside `model` redacted to `example-account`.
 
 ## Deferred live captures
 

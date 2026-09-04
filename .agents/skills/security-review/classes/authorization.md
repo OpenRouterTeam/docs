@@ -19,6 +19,10 @@ This class applies when a change:
   Next.js project.
 - Passes a client-supplied user-id, creator-id, or workspace-id filter into an
   analytics or list query.
+- Adds or changes a feature flag, email allowlist, or other rollout gate that
+  decides who may reach a family of server actions or routes.
+- Adds or changes an ingress, tunnel, or reverse-proxy config that decides
+  which paths reach a service.
 
 ## Rule
 
@@ -185,6 +189,42 @@ the sibling `admin-utils` actions. Admin API routes use the shared gate in
 `projects/mission-control/app/admin-utils/demo-hub/lib/internalAdminGate.ts`
 and `requireInternalAdmin.ts`; do not duplicate the predicate.
 
+### A rollout gate is not an authorization gate
+
+An allowlist or flag evaluated in layout, RSC rendering, or client code decides
+what is displayed, not who may call. Every server action and route in the gated
+family re-checks it inside its own auth wrapper. A generic context wrapper is
+not that check: `withContextSA` with `requireAdmin` proves an authenticated
+admin, which is exactly the population a rollout allowlist excludes. The check
+must fail closed on an anonymous caller, a missing primary email, an unknown
+identity, and a failed identity-resolver call, so wrap the resolver rather than
+letting it throw past the boundary.
+
+The accepted shape is one combinator that owns context, the allowlist, and
+input parsing for the whole family, plus a test that enumerates the module's
+exports and asserts each denies for a denied identity (PR
+[#38199](https://github.com/OpenRouterTeam/openrouter-web/pull/38199);
+evidence: `withDevinShellSA` in
+`projects/mission-control/app/devin/devin-shell-sa.ts` and
+`projects/mission-control/app/devin/devin-actions.denied.test.ts`). Per-action
+checks added by convention leave the next action unguarded, so a gated family
+without a structural guard is a finding even when every current action checks.
+
+### The edge forwards every path
+
+When a service's own routes are unauthenticated, the ingress or tunnel config
+in front of it is the authorization boundary, and a catch-all forward publishes
+every route to anyone who learns the hostname. Require a path allowlist holding
+only the paths with a public consumer, with the catch-all refusal last, built
+by a pure helper with a per-route test (PR
+[#38316](https://github.com/OpenRouterTeam/openrouter-web/pull/38316);
+evidence:
+`services/cfw-intern-provisioner/src/clients/tunnel-ingress-rules.ts`). Two
+further checks: a request-signature check inside the service authenticates only
+the paths that verify it and says nothing about the read routes beside them,
+and a config applied only on fresh provisioning leaves existing instances open
+until the write path re-pushes it.
+
 ### Fabricated default workspace
 
 A workspace ID must come from authenticated context or the approved
@@ -274,6 +314,9 @@ For every caller-supplied ID in the diff:
    the query, storage, or quota Durable Object call?
 4. Is query scope required by the helper signature, or do key construction,
    listing, and parsing require and preserve the same scope and namespace?
+   When adding a required scope to a helper that already takes an options
+   argument, fold `id`, the scope, and the options into one object parameter;
+   Oxlint `max-params` caps positional parameters at two.
 5. Does a cross-tenant negative test at the layer that owns the scoping
    predicate prove refusal and, when a mutation or storage write exists, that
    it was not called?
