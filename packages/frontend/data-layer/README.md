@@ -14,6 +14,7 @@ layer provides the shared plumbing only:
 | `query-client.ts`       | `DEFAULT_QUERY_OPTIONS`, SSR-safe `getQueryClient()`                                                                    |
 | `server-query-client.ts` | `getServerQueryClient()` — per-request server client for RSC prefetching + `<HydrationBoundary>` (see `AGENTS.md`)     |
 | `fetch-api-query.ts`    | `fetchAPIQuery` — the shared `queryFn` body (URL serialization, envelope unwrap, abort signal, optional Zod validation) |
+| `fetch-server-api-query.ts` | `fetchServerAPIQuery` — server-only `queryFn` body for RSC prefetches: same URL serialization, cookie-forwarding transport, Zod validation, throws `APIQueryError` |
 | `api-query-error.ts`    | `APIQueryError` (thrown at the TanStack boundary), `extractErrorT`                                                      |
 | `query-keys.ts`         | `createQueryKeys` — namespaced key factories                                                                            |
 | `use-api-mutation.ts`   | `useAPIMutation` — Result-native mutations with required invalidation                                                   |
@@ -228,7 +229,7 @@ Defined in `query-client.ts` (`DEFAULT_QUERY_OPTIONS`):
 | ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `retry`                | `false`  | `useAPISWR` returned `Err` Results as SWR _data_, so no retry machinery ever ran in this codebase. TanStack's default (3 retries, including on 4xx) would be a silent behavior change and would quadruple the load of every failing request. Opt in per-query where retries genuinely help. |
 | `refetchOnWindowFocus` | `true`   | Parity with SWR's `revalidateOnFocus` default.                                                                                                                                                                                                                                              |
-| `staleTime`            | `30_000` | Approximates SWR's serve-stale-revalidate-in-background behavior without refetching on every remount.                                                                                                                                                                                       |
+| `staleTime`            | `StaleTime.DEFAULT` (`30_000`) | Approximates SWR's serve-stale-revalidate-in-background behavior without refetching on every remount. Per-read overrides pick another tier from `query-policy.ts` — see "Cache policy tiers" in `AGENTS.md`.                                                                          |
 
 ## Error handling
 

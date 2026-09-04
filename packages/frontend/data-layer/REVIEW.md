@@ -11,6 +11,13 @@ Flags for code using the shared data layer. This file is only the checklist
   `mutations.ts`/`*-mutations.ts` for client-only mutation owners.
 - A `createQueryKeys` namespace reused across two domains — namespaces are
   the cache partition and must be workspace-unique.
+- `useQueryClient()` called outside a canonical owner module, unless the file
+  is a prefetch adapter (it only calls `prefetchQuery` with a canonical
+  options factory) or a cache lifecycle owner (it clears, resets, or
+  reconciles cache entries across an entity, workspace, or session boundary
+  and documents that scope) — every other consumer-side invalidation or
+  `setQueryData` belongs on the owning `useAPIMutation` or in an owner-exported
+  hook.
 - A hand-written key array literal (`['guardrails', ...]`) passed as a
   `queryKey` or to `invalidateQueries` — keys come from `createQueryKeys`
   only.
@@ -35,15 +42,29 @@ Flags for code using the shared data layer. This file is only the checklist
   can execute before the id resolves. Entity scope must both partition the key
   and gate the read through a non-null boundary or `skipToken`.
 - An `invalidates` that doesn't match the reads the mutation actually
-  affects. `invalidates: []` is only correct when the mutation touches no
-  cached read; use `backgroundInvalidates` when a read should refresh without
-  extending mutation pending state. Keys must come from the same domain
-  `queries.ts`.
+  affects. An `Invalidation` reason must be true: `NONE` only when no
+  TanStack read caches what the mutation writes, `CALLER_OWNED` only when the
+  call site really refreshes the affected data, `HOOK_OWNED` only when the
+  hook itself does. Use `backgroundInvalidates` (with
+  `Invalidation.BACKGROUND_ONLY` when nothing is awaited) for a read that
+  should refresh without extending mutation pending state. Keys must come
+  from the same domain `queries.ts`.
 - Post-processing of `data` (`.map`/`.filter`/reshape) at a call site or in
   a wrapper hook — transforms belong in `select`.
 - In-place mutation of `data` — cached results are shared across consumers.
 - A correctness-sensitive read (billing, quotas) relying on default
-  `staleTime` without an explicit refetch or a tighter `staleTime`.
+  `staleTime` without an explicit refetch or `StaleTime.ALWAYS`.
+- A raw number or per-file constant for `staleTime` / `gcTime` — pick a tier
+  from `query-policy.ts` (see "Cache policy tiers" in `AGENTS.md`). A read
+  that fits no tier states why at the option. The only standing exception is
+  a constant that mirrors a server-side cache TTL, with the TTL it mirrors
+  cited in a comment.
+- A call site restating a default (`staleTime: StaleTime.DEFAULT`,
+  `retry: false`, `refetchOnWindowFocus: true`, `refetchInterval: false`,
+  `refetchOnReconnect: true`, `refetchOnMount: true`) — delete it so the
+  remaining options are the real overrides.
+- `gcTime: GcTime.ON_UNMOUNT` used to make a read fresh — it controls
+  retention, not freshness. Freshness is `StaleTime.ALWAYS`.
 - A query key containing a coerced sentinel (`?? ''`, `?? 0`, a dummy
   object) paired with `enabled:` — hoist the null check to a component
   boundary, or use `skipToken` with the real `null` in the key. See
@@ -62,6 +83,13 @@ Flags for code using the shared data layer. This file is only the checklist
 - Spreading a query result or using rest destructuring (`{ data, ...meta }`).
   TanStack tracks accessed result properties; spread/rest subscribes the
   component to every property and causes unnecessary rerenders.
+- An RSC `queryFn` that hand-writes `fetchInternalJsonApi` → `isErr` →
+  `throw`, or builds its own `URLSearchParams` — the override is
+  `fetchServerAPIQuery(route, { searchParams, schema })` spread over the
+  canonical options, and the failure path is the thrown `APIQueryError`
+  that `dehydrate` drops.
+- `setQueryData` used to seed a server client from data fetched only for
+  that seed — that is `prefetchQuery` with a server `queryFn`.
 - Direct `useMutation` for ordinary mutations. The only exception is
   documented advanced optimistic concurrency requiring cancellation,
   snapshot rollback, and last-writer reconciliation; it still belongs in the
