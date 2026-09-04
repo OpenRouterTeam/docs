@@ -137,6 +137,11 @@ in both `resource_name` and `@db.query_id`, so aggregate `@duration` by
 `@db.query_id` through `POST /api/v2/spans/events/search` or the spans aggregate
 endpoint.
 
+Worker request spans are `operation_name:api`, not `hono.request`: a route query
+built on the latter returns zero spans and reads as "no traffic". The spans
+aggregate endpoint returns each compute under `attributes.compute`, singular,
+and rejects a `group_by.sort` it does not recognize with a 400.
+
 Two properties of that API cost time if unknown: paginate on
 `meta.page.after`, and treat a `null` `meta` on a response as the end of the
 results rather than an error. Retained spans are sampled, and their timestamps

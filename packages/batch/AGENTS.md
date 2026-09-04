@@ -113,7 +113,10 @@ implements only the true provider seams:
 2. Implement the abstract hooks: `transformBatchRequest` (client JSON →
    provider-native payload), `uploadNativeInput` (file mode only),
    `submitNativeBatch`, `pollBatch`, `fetchNativeResults`, plus the pure
-   per-line `fromInternalRequest` / `toInternalResponse`.
+   per-line `fromInternalRequest` / `toInternalResponse`. The file-id
+   parameter of `submitNativeBatch` / `fetchNativeResults` is typed off the
+   declared mode (`string` for file ingest / file-handle results, `null`
+   otherwise), so do not re-check it for null inside the hook.
 3. Override `transformBatchResponse` whenever the provider's native result
    rows are not already the canonical batch-output JSONL (`id`,
    `response.status_code`, `response.body`, `error`), as Vertex, xAI, and

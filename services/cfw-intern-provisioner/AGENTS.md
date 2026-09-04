@@ -110,13 +110,13 @@ Slack only accepts `https` redirect URLs and cannot reach `localhost`. The tunne
 The `xoxe-` refresh token is **single-use** and expires after 12 hours. Generate a fresh one. Do not paste the `xoxe.xoxp-` access token — the mint needs the refresh token.
 
 **The install callback dies on Clerk `host_invalid`.**
-Web's dev proxy (`devCorsProxyRequest`) forwards `/api/frontend/*` with a plain `fetch()`, which **follows redirects by default**. The worker's Clerk handshake 307 was therefore chased by the Next dev server, re-sending `host: localhost:<port>` to Clerk, which could not attribute it. Fixed with `redirect: 'manual'` so the 3xx reaches the browser that owns the handshake. If this returns, first check you are not running more than one `cloudflared`.
+First check you are not running more than one `cloudflared`. The other cause is web's dev proxy (`devCorsProxyRequest`) following the worker's Clerk handshake 307 itself and re-sending `host: localhost:<port>` to Clerk, which cannot attribute it; the proxy forwards `/api/frontend/*` with `redirect: 'manual'` so the 3xx reaches the browser that owns the handshake, and this symptom means that has regressed.
 
 **Provisioning is rejected with `missing/invalid secrets`.**
-The provisioner is starting without its Infisical bridge. See the section below — it was the only `cfw-*` worker lacking one.
+The provisioner is starting without its Infisical bridge. See the section below.
 
 **`INTERN_GCP_SERVICE_ACCOUNT_JSON must be valid JSON`.**
-The stored secret ends with a trailing newline. `serializeDevVar` escapes newlines to a literal `\n` and single-quote wraps; dotenv does not unescape single-quoted values, so the worker receives `{...}` followed by two characters `JSON.parse` rejects as trailing non-whitespace. `writeDevVars` now trims trailing whitespace. A `grep -q '^KEY='` check cannot catch this class of bug — parse the value.
+The stored secret ends with a trailing newline. `serializeDevVar` escapes newlines to a literal `\n` and single-quote wraps; dotenv does not unescape single-quoted values, so the worker receives `{...}` followed by two characters `JSON.parse` rejects as trailing non-whitespace. `writeDevVars` trims trailing whitespace for exactly this reason, so check that path first. A `grep -q '^KEY='` check cannot catch this class of bug — parse the value.
 
 **The Credential Vault page says "the vault could not be reached".**
 `secret-vault` is a separate Tilt resource and is not started by `tilt up -- web frontend-api intern-provisioner`. If you filtered resources at startup it is *disabled*, not merely stopped: `tilt enable secret-vault && tilt trigger secret-vault`, then confirm `curl localhost:8796/health` returns `ok` — `misconfigured_environment` means the worker cannot read its own secrets.
@@ -134,7 +134,7 @@ Worth understanding before adding any config here, because getting it wrong fail
 
 `wrangler dev` reads `.dev.vars`, not the shell. `scripts/dev.ts` bridges the two by writing every `process.env` entry into `.dev.vars` — which is why exporting a variable in a Tilt `serve_cmd` reaches the worker at all.
 
-**But `bun run dev` runs under `infisical run`, and Infisical's values win.** Verified 2026-08-14: exporting `SECRET_VAULT_URL=http://localhost:9999/...` and running under Infisical yielded `http://localhost:8796` — the Infisical value. `INTERN_PROVISIONER_URL` and `INTERN_SLACK_REDIRECT_BASE_URL` work only because neither is set in Infisical's dev path; adding either there would silently override the Tiltfile.
+**But `bun run dev` runs under `infisical run`, and Infisical's values win.** A shell export of a name Infisical carries (say `SECRET_VAULT_URL`) reaches the worker as the Infisical value, not the exported one. `INTERN_PROVISIONER_URL` and `INTERN_SLACK_REDIRECT_BASE_URL` work only because neither is set in Infisical's dev path; adding either there would silently override the Tiltfile.
 
 This is also why `CFW_SECRET_VAULT_PORT` is deliberately **not** in the worktree port block. Isolating it per worktree would move the vault off `8796` while `SECRET_VAULT_URL` stays pinned to `8796` by Infisical, and the Tiltfile cannot override it. Two concurrent sessions therefore still contend for `8796`; fixing that means changing the Infisical dev value, which affects everyone and belongs in its own change.
 
@@ -157,11 +157,11 @@ Never let step 1 change the value and the binding kind at once. If the precedenc
 ## This service's Infisical bridge
 
 `wrangler dev` reads `.dev.vars`, never the shell and never Infisical. Every
-`cfw-*` service closes that gap the same way, and until 2026-08-16 this one did
-not — its `package.json` had neither an `x` script nor `scripts/dev.ts`, and its
-Tilt resource ran `bunx wrangler dev` directly. It therefore started with **no
-cloud credentials and no error saying so**, and rejected every enqueue with
-`missing/invalid secrets`. Provisioning could not have worked locally.
+`cfw-*` service closes that gap the same way. Without the bridge — an `x`
+script, a `dev` script running `scripts/dev.ts`, and a Tilt resource that
+goes through it rather than running `bunx wrangler dev` directly — the worker
+starts with **no cloud credentials and no error saying so**, and rejects every
+enqueue with `missing/invalid secrets`. `bun run dev:doctor` checks for it.
 
 The chain, which must stay intact:
 
@@ -172,17 +172,16 @@ scripts/dev.ts     → writeDevVars()   # process.env → .dev.vars
                    → wrangler dev
 ```
 
-Two secrets still need help from the Tiltfile, both for reasons worth knowing:
+Two secrets must match frontend-api's, for reasons worth knowing:
 
 - **`INTERN_PROVISIONER_ENQUEUE_SECRET`** lives under *this* service's Infisical
   path, so the provisioner gets it for free — but frontend-api reads its own
   path, which carries no `INTERN_*` key, and the two values must be identical.
   The Tiltfile reads it from here and hands it to frontend-api.
 - **`PROVIDER_ENCRYPTION_KEY`** must be byte-identical to the value
-  frontend-api used to encrypt the credential this service decrypts. It was
-  missing from this service's dev folder until 2026-08-16 (the Tiltfile injected
-  it from `/services/cfw-frontend-api` as a stopgap); it is now set here
-  directly, as `env.manifest.json` always declared.
+  frontend-api used to encrypt the credential this service decrypts. It is set
+  in this service's dev folder, as `env.manifest.json` declares; keep it in
+  step with `/services/cfw-frontend-api` rather than injecting it from there.
 
 The enqueue secret is read in a `$(...)` subshell rather than interpolated into
 `serve_cmd`, because Tilt echoes commands to its log verbatim and an
@@ -190,8 +189,7 @@ interpolated secret would sit there in plaintext.
 
 Note that `validate-infisical-mapping.ts` checks manifest entries against
 Infisical, but only for paths belonging to files changed in the diff — so a
-folder nobody edits can drift from the manifest indefinitely, which is exactly
-how this one went missing.
+folder nobody edits can drift from the manifest indefinitely.
 
 ### What `env.manifest.json` deliberately omits for this path
 
@@ -202,16 +200,18 @@ Register a name here only once it is confirmed set at `/services/cfw-intern-prov
 - **Config vars with committed defaults**, not secrets, and unset in dev: `INTERN_VM_ZONE`, `INTERN_VM_MACHINE_TYPE`, `INTERN_CLOUD_SDK_IMAGE`, `INTERN_LOGS_GCS_BUCKET`, `INTERN_VAULT_NO_PROXY`, `INTERN_VAULT_PROXY_PORT`, `INTERN_SKIP_CF_TUNNEL`, `SERVICE_NAME`, `INTERN_OTEL_COLLECTOR_IMAGE`, `INTERN_OTEL_COLLECTOR_PORT`, `INTERN_DD_SITE`, `INTERN_VM_REPORT_URL`.
 - **Optional-everywhere secrets**: `INTERN_DD_API_KEY` — telemetry export is opt-in on this key and it is not yet set in any environment. Register it once it is confirmed set at this path in dev.
 - **E2E-only base-URL overrides**, documented in `env.ts` as staying unset in production: `CF_API_BASE_URL`, `GCP_COMPUTE_API_BASE_URL`, `GCP_STORAGE_API_BASE_URL`, `GCP_ARTIFACT_REGISTRY_API_BASE_URL`.
-- **Prod-only overrides — now confirmed.** Infisical **prod** reads return `403 You are not allowed to readValue on secrets` under ordinary developer credentials, so these cannot be confirmed *from Infisical* on a laptop. `npx wrangler secret list --config wrangler.toml` can: it prints the names bound on the deployed worker with no Infisical prod access at all. Run 2026-08-19, it settles the four names this list used to carry as "believed, unverified":
+- **Prod-only overrides.** Infisical **prod** reads return `403 You are not allowed to readValue on secrets` under ordinary developer credentials, so these cannot be confirmed *from Infisical* on a laptop. `npx wrangler secret list --config wrangler.toml` can: it prints the names bound on the deployed worker with no Infisical prod access at all. Re-run it before trusting this classification of the four names:
   - `INTERN_VAULT_API_KEY`, `INTERN_VAULT_TUNNEL_URL` — **bound in prod**. Genuine prod-only overrides.
   - `INTERN_CLOUDFLARED_IMAGE` — **not bound**. Production runs the committed `cloudflare/cloudflared:latest` default: a moving tag, on a non-Google registry, pulled anonymously.
-  - `INTERN_RUNTIME_IMAGE` — **no longer a secret**. #34948 moved it to `[vars]` in `wrangler.toml`; see "Moving a secret into `[vars]`" above.
+  - `INTERN_RUNTIME_IMAGE` — **not a secret**: a `[vars]` entry in `wrangler.toml` (#34948); see "Moving a secret into `[vars]`" above.
 
   Note the limit of that instrument. It answers "is this a real prod-only override?" It does **not** answer "should this be registered?" — `validate-infisical-mapping.ts` checks against **dev**, so a name bound in prod but absent from the dev path still buys the permanent false `❌`. Registration stays gated on the name existing at `/services/cfw-intern-provisioner` in dev, exactly as the paragraph above says. The two questions are easy to conflate because one command appears to answer both.
 
 Registering an absent name does **not** fail CI: `validateInfisicalMapping` logs and returns, and `scripts/lint.ts` fails a task only when its promise rejects. `INTERN_PROVISIONER_ENQUEUE_SIGNING_KEY` is registered but unset in dev today and lint is green. The cost is misleading output, not a red build.
 
-That key is unset in **production** too — the same `wrangler secret list` run above does not list it. So the enqueue signature is not merely optional in dev; it is inactive everywhere, and every request to this worker authenticates with the legacy shared secret. See "Auth on these routes" in `RUNBOOK.md` before assuming a signed path exists.
+Do not "fix" that by making the validator throw. It cannot enforce what it appears to: it reads **one** Infisical environment (`dev` by default), it is gated on the diff touching a schema file, and the `lint` job in `ci.yaml` holds no Infisical credentials at all — so the Infisical half returns `null` and is skipped outright in CI. A throw there would fire on developers' laptops for every registered-but-unset name on every path, and never once in CI. That trades honest output for a green check that verifies nothing, which is worse than the misleading output it replaces.
+
+The instrument that *can* answer "is this bound on the deployed worker" is `npx wrangler secret list --config wrangler.toml`, which reads the deployed script with no Infisical prod access at all. It is a command an operator runs, not a gate: wiring it into the deploy workflow would add a way for a production release to fail in order to enforce a security property, which is the wrong trade on a board whose goal is fewer things breaking. Add that gate once the key is actually bound, where it costs nothing.
 
 Remember the precedence rule: a Tiltfile `export` survives only for names
 Infisical does **not** carry. Adding either of the above to this service's dev

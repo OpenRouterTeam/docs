@@ -312,13 +312,87 @@ including the ~2/min `/runtime-image/current` poll. Anything that
 observes one request obtains the credential that authorises
 provisioning *and* deprovisioning.
 
-The evidence is already in the logs and is meant to be read:
-`request authenticated with the legacy shared secret` carried
+**The evidence is a metric, not a log.** It used to be a per-request
+warning: `request authenticated with the legacy shared secret` carried
 `had_signing_key: false` on 3,076 of 3,076 occurrences in the 24h to
-2026-08-19, with zero `enqueue signature rejected` alongside it. The
-exit criteria for deleting the legacy branch are listed in
+2026-08-19, with zero `enqueue signature rejected` alongside it. Over 7
+days that was 47,280 lines against a next-largest provisioner signal of
+2,018 — it buried the service's real failures and slowed an unrelated
+investigation, so it is now
+`openrouter.intern_provisioner.enqueue_auth` with an `outcome` tag
+(`src/enqueue-auth-metrics.ts`).
+
+Read it as a pair. `outcome:legacy` going to zero means the rollout
+finished only if `outcome:signature` is non-zero at the same time;
+alone, a zero legacy count is equally consistent with nothing calling
+this worker at all. `had_signing_key` still separates "the key is not
+deployed here" from "the key is deployed and callers still do not
+sign".
+
+The exit criteria for deleting the legacy branch are listed in
 `src/auth-enqueue.ts`; criterion 1 (key set in every environment) is
 unmet in production, not merely in dev.
+
+**Every caller is already written to sign.** All eight call sites in
+`cfw-frontend-api` stamp the signature headers whenever
+`INTERN_PROVISIONER_ENQUEUE_SIGNING_KEY` is set — the two enqueue
+callers inline, the rest through `buildProvisionerAuthHeaders`. So the
+only thing standing between today and a signed fleet is the bind; there
+is no caller-side code left to write.
+
+Note what is *not* a caller: the on-VM `sync-runtime-image` poller
+never had the shared secret. `buildEnvFileSection` does not write
+`INTERN_PROVISIONER_ENQUEUE_SECRET` to the VM env file, and the poller
+reports via a GCP instance identity token (`Authorization: Bearer`) on
+a separate route that does not use `authenticateEnqueue` at all. This
+matters for criterion 2: because no VM authenticates on the legacy
+path, the legacy log genuinely can reach zero once the key is bound,
+rather than being held permanently non-zero by callers nobody plans to
+migrate.
+
+### Binding the enqueue signing key
+
+The key must carry the **same value** on the signer and the verifier. A
+different value on each side verifies as `signature_mismatch` and falls
+through to the legacy secret, so the endpoint keeps working and the
+rollout quietly does not progress. Mint once per environment and write
+both paths (flags before the assignment, matching the working example in
+`tests/manual/intern-provisioner/AGENTS.md`):
+
+```bash
+KEY=$(openssl rand -base64 32)
+PID=771b7bc0-6578-41b0-886e-9fcdb66e9173
+for path in /services/cfw-frontend-api /services/cfw-intern-provisioner; do
+  infisical secrets set --path="$path" --env=dev --projectId="$PID" \
+    INTERN_PROVISIONER_ENQUEUE_SIGNING_KEY="$KEY"
+done
+```
+
+The three ways this goes wrong are distinguishable on
+`openrouter.intern_provisioner.enqueue_auth`, so check it rather than
+guessing:
+
+| What happened | What you see |
+| --- | --- |
+| Bound correctly on both sides | `outcome:signature` |
+| Bound on both, values differ | `outcome:signature_rejected` with `reason:signature_mismatch`, then `outcome:legacy` — plus an `enqueue signature rejected` log line |
+| Bound on the verifier only | `outcome:legacy` with `had_signing_key:true` |
+| Not bound anywhere | `outcome:legacy` with `had_signing_key:false` |
+
+Repeat per environment with `--env=staging` and `--env=prod`, minting a
+fresh `KEY` for each — one leaked key must not authorise another
+environment. Production writes need credentials beyond the ordinary
+developer identity, which reads prod as `403`.
+
+Infisical syncs to the Worker without a redeploy, so the binding takes
+effect on the next request rather than the next release. Confirm with
+`npx wrangler secret list --config wrangler.toml`, which reads the
+deployed worker with no Infisical prod access at all.
+
+Nothing gates a deploy on this today, deliberately: a release that
+fails because a secret is unbound trades one outage risk for another.
+Once the key is bound everywhere, a deploy-time assertion becomes free
+to add and worth adding.
 
 ### `/runtime-image/current` is the instrument, not just a UI feed
 

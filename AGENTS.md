@@ -1,17 +1,18 @@
 # AGENT GUIDELINES
 
-See `.claude/rules/` for additional, deeper-dive rule files.
+Nested `AGENTS.md` and `REVIEW.md` files carry the deeper-dive rules for
+the directory they sit in.
 
 ## Standard Workflow
 
-- **Ask clarifying questions** before starting. Don't assume
-  intent — if there are multiple valid approaches or ambiguous
-  requirements, ask. Err on the side of asking too many
-  questions rather than too few.
-- **Plan before implementing** non-trivial tasks.
-- **Read before editing.** Before and after modifying or
-  creating any file, read the entire file to understand
-  context and avoid duplication.
+- **Ask before starting when the readings diverge.** If
+  different readings of the request would lead to materially
+  different work, ask; otherwise make the routine judgment
+  call yourself and state the assumption in your summary.
+- **Check for an existing implementation before adding one.**
+  Read the file you are changing and search for an existing
+  helper before writing a new one, so the change does not
+  duplicate what is already there.
 
 ## Pull Requests
 
@@ -27,6 +28,12 @@ See `.claude/rules/` for additional, deeper-dive rule files.
   exactly one layer before creating branches.
 - Single-layer changes stay single PRs. Do not manufacture
   a stack for a small diff.
+- **Commit messages are `<type>: <short description>`** plus an
+  optional body. No `Co-Authored-By`, no generated-by footer,
+  no tool links or emoji decorations.
+- **Preserve history.** Add new commits instead of amending or
+  force-pushing a pushed branch; rebases (including `gh stack`
+  restacks) are the exception.
 
 ## Style Principles
 
@@ -37,6 +44,28 @@ See `.claude/rules/` for additional, deeper-dive rule files.
 - **Minimal Interface Design:** When defining new
   interfaces/types, write only the minimal required fields.
   Don't speculate on future needs.
+- **Type static strings as literals**, never as `string`. Use
+  scientific notation only for pricing constants (per-token prices,
+  USD amounts, and other money values). Write all other numeric
+  constants with plain digits and underscore separators (`60_000`,
+  `300_000`), and use the `bn` helper for BigNumber arithmetic.
+- **No speculative type guards.** If a property is declared
+  `T | undefined`, access it directly instead of writing
+  `'prop' in obj`. Add a guard only once tsc reports the
+  property missing.
+- **Return unknown when the answer is unknown.** Use a fallback
+  only when the substitute answers the same question as the
+  missing value; otherwise return or render unknown. Reject
+  malformed input rather than repairing it. See `REVIEW.md` →
+  Unknown Values.
+- **The default workspace is not guaranteed to exist.** Never
+  fall back to it, and never derive it with
+  `defaultWorkspaceId(entityId)` as a substitute for a resolved
+  workspace. When no workspace resolves, require an explicit
+  workspace ID or fail the operation. See
+  `packages/db/workspaces/AGENTS.md`.
+- **Import CJS-only libraries as `import * as lib from 'lib'`.**
+  Everything else is ESM.
 - **Use Result monads** (`ok()`, `err()`, `isOk()`, `isErr()`)
   instead of throwing. Import from
   `@openrouter-monorepo/type-utils/result-monad`.
@@ -51,7 +80,9 @@ See `.claude/rules/` for additional, deeper-dive rule files.
 - **One class per file.** File name matches class name. Helper
   functions at the bottom, types at the top.
 - **Extract reusable utils** into their own files for
-  testability.
+  testability. A self-contained block of 50+ new lines added to
+  an existing file belongs in its own file, exporting a function
+  that takes explicit parameters.
 - **Small, specialized dependencies.** Prefer focused libraries
   with high test coverage. Avoid large frameworks or overlap
   with existing deps. Remotion dependencies must satisfy the
@@ -61,17 +92,24 @@ See `.claude/rules/` for additional, deeper-dive rule files.
   lifecycle scripts on every dev, CI, and agent machine. Add
   one only for a genuine install-time build step (native
   compile or prebuilt-binary download) that cannot be avoided
-  — never to silence Bun's untrusted-script warning, and never
-  for telemetry, funding, or other cosmetic scripts. Hold
-  `overrides` and `patchedDependencies` changes to the same
-  bar. See `.claude/rules/dependencies.md`.
+  — never to silence Bun's untrusted-script warning
+  (`bun pm untrusted` shows what is blocked), and never for
+  telemetry, funding, or other cosmetic scripts. Read the
+  script in the resolved version, state in the PR what it
+  does, and update the `bun.lock` mirror in the same commit.
+  Hold `overrides` and `patchedDependencies` to the same bar,
+  and drop them once upstream ships the fix.
+- **Freeze versions on new dependencies**, check their size on
+  [Bundlephobia](https://bundlephobia.com/), and extract only
+  the functions needed from a large package, with an attribution
+  URL at the extraction site.
 - **One owner per piece of state.** Server state lives in
   TanStack Query, shared mutable client state in a Zustand
   store, dependency injection and subtree-scoped values in a
   React context, and everything else in component state. Never
   mirror state another layer owns, and read stores through a
   per-property selector. See
-  `.claude/rules/frontend.md` → State Management.
+  `packages/frontend/AGENTS.md` → State Management.
 - **Read the shared data-layer rules before frontend TanStack Query work.**
   Any change that defines or consumes TanStack Query reads, mutations, keys,
   options factories, prefetches, or cache updates must follow both
@@ -175,10 +213,17 @@ caching a worker's own responses. Workers Cache runs _before_ the
 worker, so a hit costs no worker execution at all, while a Cache API hit
 only happens once the worker is already running. Enable it per worker
 with `[cache] enabled = true` in `wrangler.toml` and control it with
-`Cache-Control` directives on the response. No zone-level cache
-configuration (Cache Rules, Page Rules, cache level) applies to it, and
-its cache key includes the full query string, so query-parameter
-normalization has to happen in the worker.
+`Cache-Control` directives on the response. A response with neither a
+`Cache-Control` nor an `Expires` header is still cached for a default
+heuristic TTL (for example, a `200` for two hours), so set `Cache-Control`
+explicitly (e.g. `no-store`) on responses that must not be cached.
+No zone-level cache configuration (Cache Rules, Page Rules, cache
+level) applies to it, and its cache key includes the full query
+string. Because a hit is served before the worker runs, the cached
+worker cannot normalize the key for its own incoming requests —
+collapse URL variants with a gateway entrypoint (caching disabled)
+that rewrites the URL or sets a custom `cf.cacheKey` before
+dispatching to the cached entrypoint.
 
 ## Code Structure
 
@@ -188,6 +233,14 @@ normalization has to happen in the worker.
   registries.
 - Keep functions small and single-purpose (5-20 lines).
 - Use context objects for related parameters.
+- Flatten loops with `continue` / `return` instead of
+  `else if` chains, and extract a case body that grows past a
+  few lines into a named function.
+- Order a file imports (types first), then types, helpers,
+  registries, and public API.
+- Keep docblocks terse: one line where possible, none for a
+  private helper whose name says it. Multi-line blocks are for
+  non-obvious contracts only.
 - Structure by domain, not technical responsibility. Prefer
   many small files over giant ones — see the
   [Tao of Node](https://alexkondov.com/tao-of-node/#structure-in-modules).
@@ -245,8 +298,9 @@ Monitors are not part of shipping a feature. Read
 `@openrouter-monorepo/helpers/safe-race`.
 
 Every `fetch()` response whose body is not consumed must be
-cancelled via `response.body?.cancel()`. See
-`.claude/rules/fetch-body-cancellation.md`.
+cancelled via `response.body?.cancel()`, on every path that
+does not read it — an unconsumed body leaks memory and holds a
+connection open.
 
 ## Verification
 
@@ -255,12 +309,31 @@ cancelled via `response.body?.cancel()`. See
 - Run formatting through `bun run format`, not the formatter binary on a
   hand-built file list. There is no type-aware lint mode, `bun run typecheck`
   catches type errors
+- `bun run typecheck:clean` drops every `*.tsbuildinfo` when a build needs
+  to start cold, `bun run kill-ports` clears orphaned dev-stack listeners,
+  and `bun run knip` reports unused exports and dependencies
+- All scripting is TypeScript, run through `bun run x <script>`
 
 ## Testing
 
 - Framework: `bun:test` for packages and services
-- Use `assertOk` and `assertErr` for Results
+- Use `assertOk` and `assertErr` for Results, and `assert(...)` rather
+  than an `if` to narrow an optional property
 - Do not use `any`
+- **Build fixtures real object > existing fake > typed
+  `createMockX` factory** (one owner per factory). Module mocks
+  are banned. A cast in test setup means the fixture is wrong
+- **Probe statically-invalid input with `@ts-expect-error`, not a
+  cast.** A cast claims the value is valid, so it keeps passing
+  once the type moves; `@ts-expect-error` fails the day the input
+  becomes legal
+- **Ship raw upstream fixtures with upstream-response-behavior changes.**
+  A change to adapter response transforms, skin stream or non-stream
+  handlers, or parsing of new upstream fields, events, or params includes
+  a verbatim live capture in `fixtures/<provider>/` plus a snapshot test
+  in the same PR — see `packages/router/AGENTS.md` and the
+  `create-fixtures` skill. Hand-written or hand-edited payloads are
+  not substitutes. Request-only transforms need no fixture
 - Plain functions should always be tested
 - **Never write mock-based DB tests** (Postgres or Spanner) —
   see `.agents/skills/db-integration-tests/SKILL.md`.
@@ -279,8 +352,39 @@ cancelled via `response.body?.cancel()`. See
   `waitFor` / `findBy*` / `await act(async () => {})` for async
   UI updates. Fixed `setTimeout` sleeps with a nonzero delay are
   banned in frontend tests by the
-  `openrouter/no-real-timer-sleeps` lint rule — see
-  `.claude/rules/testing.md`.
+  `openrouter/no-real-timer-sleeps` lint rule. Never mix fake
+  timers with the polling helpers in one test — they hang, and
+  Bun has no `advanceTimersByTimeAsync`. Bun fake timers are
+  process-global: a test that times out while they are on leaves
+  every later test in the process without working timers. For a
+  component that polls, inject the interval as a prop, pass a
+  ~1ms value in the test, and assert with `waitFor`/`findBy*`
+  instead of advancing fake timers through `act()`. One
+  exception: proving out-of-process work did *not* happen may
+  keep a real grace window — justify it in a comment and
+  disable the rule on that line.
+- **Everything `bun:test` mocks is process-global, and CI runs
+  many files in one process.** A `mock.module` (only where the
+  `no-module-mocks` baseline still allows one) must spread the
+  real module and override only what the file needs; a stub that
+  omits an export breaks the next file that imports it. There is
+  no undo: re-mocking with the real exports in `afterAll` is a
+  no-op, so every override stays live for the rest of the
+  process. Anything a later file may need real (a layout
+  component, `useToast`, a URL-state hook) is not mockable; use
+  a prop, a testing adapter, or the shared process-wide stub
+  (`test-utils/posthog-test-stub`). A fire-and-forget
+  chain (`waitUntil`, `void promise`) is awaited through an
+  injected seam that captures the promise, never through a
+  `setTimeout(0)` drain.
+- **Tag tests that pin a known bug.** When you knowingly write a
+  passing test that asserts pre-existing buggy behavior, put a
+  `/** @existingBuggyBehavior */` comment directly above the `it`, and
+  follow it with an `it.failing` (`it.fails` under vitest)
+  asserting the fixed behavior. The pin keeps
+  regression coverage today; the failing test turns red once the
+  bug is fixed. `openrouter/require-buggy-behavior-failing-pair`
+  enforces the pair.
 - **Test after every push, not just PR creation.** Re-run
   relevant tests after every code push that changes behavior.
 - **React to test/recording findings.** If a test or video
@@ -397,4 +501,22 @@ Key points:
 - `PascalCase` for types, interfaces, React components, classes
 - `UPPERCASE` for top-level string/number/boolean constants
 - Prefix booleans with "did", "should", "is", etc.
-- Plural names for functions returning arrays
+- Plural or `...List` names for functions returning arrays
+  (`resolveModelList`, not `resolveModel`)
+- `PascalCase` for Zod schemas (`PersonSchema`) and for literal
+  enum members
+- Whole words over abbreviations, and `CamelCase` the
+  abbreviations that remain: `Api`, `Url`, `Http`, `Json`
+- No `I` prefix on interfaces
+- `DEV_` marks temporary development code, `INTERNAL_` marks a
+  symbol that is not for external use
+
+## Markdown
+
+For `.md` and `.mdx` files and PR descriptions:
+
+- Do not hard-wrap prose — one logical line per paragraph.
+- Restart ordered-list numbering at 1 in each section, and put
+  a blank line before and after every list.
+- Use real `##` headings, not bold text as a heading.
+- Always give a fenced code block its language.

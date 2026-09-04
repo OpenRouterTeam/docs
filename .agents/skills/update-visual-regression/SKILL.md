@@ -85,6 +85,13 @@ cd tests/web-e2e
 bun run test:vr
 ```
 
+`test:vr` runs the whole `suites/visual-regression/` directory,
+so the dashboard and mission-control suites execute too and fail
+signed-out under `SKIP_AUTH=true`. Read the per-suite results,
+not the exit code: a non-zero exit whose only failures are in
+`dashboard-pages.test.ts` says nothing about public pages. Add
+`--grep`, or pass the suite file, to run public pages alone.
+
 **Dashboard pages (needs Clerk credentials from Infisical):**
 
 ```bash
@@ -287,6 +294,7 @@ When a page is removed:
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
+| `test:vr` exits non-zero with failures only in `dashboard-pages.test.ts` | Authenticated pages ran signed-out under `SKIP_AUTH=true` | Expected. Judge public-page results on their own, and use `test:vr:dashboard` (Infisical Clerk creds) for those pages. |
 | Snapshot diff on pages you did not change | Font subpixel rendering, CI runner differences | Widen threshold or add CSS mask. Verify the diff is not a real regression. |
 | `waitForVisualStability` timeout | Page has persistent `.animate-pulse` skeletons | Increase `skeletonTimeoutMs` in the test, or increase `settleMs`. |
 | Test times out entirely | Slow page load (e.g. `/docs`, `/rankings`) | Add `test.setTimeout(120_000)` before `goto()`. |

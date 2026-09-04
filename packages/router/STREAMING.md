@@ -173,10 +173,21 @@ CloudflareClientCancelationDetector.cancel()          [cloudflare.ts]
 
 > **`canAbort = false`:** When `endpoint.can_abort` is false,
 > `StreamBreaker` does not propagate the downstream abort upstream.
-> The adapter continues streaming into the void. This is intentional
-> — some providers bill for the full generation regardless of
-> cancellation, so aborting mid-stream accomplishes nothing. The
-> request eventually ends via timeout.
+> This is intentional — some providers bill for the full generation
+> regardless of cancellation, so aborting mid-stream has no effect on
+> cost. Instead the pipe *detaches*: `tryPipeThrough` resolves at
+> the cancellation so router teardown (usage wait, cancelled-usage
+> backstop, settlement) runs immediately, the adapter's stream-observed
+> statistics are frozen when teardown observes the detach, and the
+> upstream keeps draining in the background through
+> `StreamBreaker.drainAfterDetach`, which the router hands to
+> `waitUntil` so the drain survives request-context reclamation.
+> Chunk observation (metering) stops at detach. The frozen snapshot is
+> an upper bound on delivered output: it can include a bounded number
+> of chunks that the adapter processed but that were still in flight
+> to the client at the disconnect (the same contract as the
+> pre-existing cancelled-usage backstop). The bulk of the drained but
+> never delivered generation is excluded.
 
 ### Path 2 — Upstream timeout
 

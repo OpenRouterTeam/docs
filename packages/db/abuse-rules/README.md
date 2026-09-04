@@ -72,6 +72,14 @@ or measurement field never matches, including under `neq`.
   header. Filter values are capped at 256 characters (longer values are
   rejected on save), so full browser user-agent strings cannot be matched;
   target short, distinctive client strings (e.g. `MyApp/1.0`) instead.
+  `cf_bot_score` is the request's Cloudflare bot-management score (1-99,
+  1-29 likely automated), read from the `cf-bot-score` managed-transform
+  header and stringified verbatim. It is absent when the header is missing
+  or non-integer, so bot-score filters never match (and never restrict)
+  requests without a score. Match exact score values with `in` (e.g.
+  `["1"]` for definitely-automated traffic); combine with other
+  independent signals such as `app_referer`, `user_agent`, `model_author`,
+  and young-account user fields rather than gating on the score alone.
 - `user_field` compares allowlisted fields fetched from the authenticated
   user or analytics object. Operators and value types are constrained per
   field category: numeric fields (`account_age_ms`, `balance`,

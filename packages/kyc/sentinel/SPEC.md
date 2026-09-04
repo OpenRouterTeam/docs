@@ -411,6 +411,32 @@ Mission Control adds a stronger boundary for its user interface:
 
 The claimed identity is threaded into the durable restriction actor.
 
+### Proposed-kind change
+
+The proposed-kind endpoint replaces the proposed remedy — kind, scope slug,
+params, and expiry — on pending targets of one case, so a case whose evidence
+still holds but whose remedy is wrong is corrected in place instead of being
+re-filed under a second key. Unlike review and enactment, only the review key
+authorizes it: an ingest-key (agent) caller is refused, and the acting identity
+lives only in the summary log line. The change leaves every target
+`pending_review`, so a human still reviews and enacts the new remedy.
+Scoped targets are checked against real data: models must be exact model
+permaslugs, authors existing author slugs, providers known provider names, and
+spend caps `daily`, `weekly`, or `monthly`; unknown values return 400 before
+anything is written.
+`forced_moderation` may omit its target for account-wide moderation or use a
+known exact-case provider name for provider-scoped moderation.
+
+The proposed-kind response includes `updated`, `conflicted`, `skipped`, and
+`unknown`. `unknown` means the post-write target reload failed, so reload the
+case before acting on those targets.
+
+Targets it does not update come back classified rather than as an error: as
+`conflicted` when the case no longer holds the id as pending, and as `skipped`
+when the id is still pending but another target of the same account already holds
+the destination kind and slug, including a duplicate same-account id in the
+request that loses the in-batch collision.
+
 ### Enactment
 
 The enact endpoint accepts approved target IDs and creates `system` restrictions.

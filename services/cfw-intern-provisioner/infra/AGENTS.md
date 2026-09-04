@@ -5,12 +5,9 @@
 Nothing in this directory manages a live resource. The intern stack
 that actually exists was built by hand in **`ext-interns-spawner-000`**.
 
-As of 2026-08-21 the `.tf` files at least *describe* that project: every
-intern resource carries `provider = google.interns`, whose project is
-`var.interns_project_id` (default `ext-interns-spawner-000`). Before
-that they described a stack in `openrouter-core` and declared a service
-account that did not exist anywhere, which is the older and more
-confusing version of this warning that earlier readers hit.
+The `.tf` files at least *describe* that project: every intern resource
+carries `provider = google.interns`, whose project is
+`var.interns_project_id` (default `ext-interns-spawner-000`).
 
 Two resources deliberately stay on the default `openrouter-core`
 provider and are not bugs: `module.tfstate-bucket` (state belongs with
@@ -120,30 +117,6 @@ drift this root introduced.
 
 Verified 2026-08-19 with `gcloud` as `david.bowman@openrouter.ai`.
 
-Kept as the record of *why* the providers were repointed on 2026-08-21.
-The first item below is now historical: the SA this root declares is no
-longer the `openrouter-core` one. Everything after it still describes
-the live project and is current.
-
-**The SA this root used to declare did not exist.**
-
-```
-$ gcloud iam service-accounts describe intern-vm@openrouter-core.iam.gserviceaccount.com
-ERROR: NOT_FOUND: Unknown service account
-```
-
-That is genuine absence, not a permissions mask. The control case is a
-service account that certainly does exist in the same project:
-
-```
-$ gcloud iam service-accounts describe terraform-apply@openrouter-core.iam.gserviceaccount.com
-ERROR: PERMISSION_DENIED: Permission 'iam.serviceAccounts.get' denied on
-       resource '//iam.googleapis.com/projects/-/serviceAccounts/116042835977352959732'
-```
-
-GCP resolved the existing account to a numeric id and *then* denied.
-For `intern-vm@openrouter-core` it could not resolve the name at all.
-
 **The state bucket does not exist**, so no apply has ever run:
 
 ```
@@ -151,7 +124,7 @@ $ gcloud storage buckets describe gs://tfstate-cfw-intern-provisioner-infra-open
 ERROR: gs://tfstate-cfw-intern-provisioner-infra-openrouter-ai not found: 404.
 ```
 
-Same control: `gs://tfstate-mission-control-infra-openrouter-ai` returns
+Control: `gs://tfstate-mission-control-infra-openrouter-ai` returns
 `storage.buckets.get denied` — resolvable but restricted. This one is a
 clean 404.
 
@@ -163,11 +136,6 @@ this root already declares `provisioner_sa_email` with no default, so a
 dispatch fails on the missing variable rather than applying. Nothing
 has ever produced a plan diff here, which is why the project mismatch
 went unnoticed.
-
-**The whole directory landed in one commit** — `8520c18db31`, merged as
-[#34552](https://github.com/OpenRouterTeam/openrouter-web/pull/34552),
-whose title is an unrelated synapse feature. It was never reviewed as
-infrastructure.
 
 ## Where the SA email actually comes from
 
@@ -232,20 +200,13 @@ not completely. The gaps are real operational bugs:
   all. Operator break-glass SSH over IAP, which `firewall.tf` opens the
   path for, is not granted to the engineering group. Individual owners
   (`roles/owner`) can still get in.
-- **`intern-provisioning-logs` did not exist**, while `src/env.ts`
-  defaults `INTERN_LOGS_GCS_BUCKET` to exactly that name. This was
-  chased down: it was a live outage, not a cosmetic gap. Every
-  provisioning-log append had been 404ing — 397 warnings in the 30 days
-  to 2026-08-21, 100% of appends — so the `/interns` dashboard rendered
-  an empty sequence while runs reported success (ORI-1291). The bucket
-  was created by hand on 2026-08-21 and appends resumed in the same
-  minute. It is **not** in Terraform state; see the import block at the
-  top of `intern-provisioning-logs-bucket.tf` before applying this root.
-
-  The row above was the one drift finding that turned out to be
-  customer-visible. The audit called it "adjacent to this file's scope
-  and not chased down" — worth remembering that a drift row reading as
-  a tidy-up can be an outage nobody has noticed yet.
+- **`intern-provisioning-logs` is hand-made and unmanaged.** `src/env.ts`
+  defaults `INTERN_LOGS_GCS_BUCKET` to that name, and without the bucket
+  every provisioning-log append 404s while runs still report success,
+  so the `/interns` dashboard renders an empty sequence (ORI-1291). The
+  bucket exists but is **not** in Terraform state; see the import block
+  at the top of `intern-provisioning-logs-bucket.tf` before applying
+  this root, and never resolve an "already exists" by deleting it.
 
 ### Tracking
 
@@ -253,51 +214,31 @@ Searched Linear 2026-08-19, including closed and cancelled issues. The
 three drift rows above are in three different states, which is worth
 knowing before filing anything:
 
-- **`monitoring.metricWriter`** —
-  [ORI-541](https://linear.app/openrouter/issue/ORI-541/intern-vm-service-account-missing-roleslogginglogwriter-cloud-logging)
-  is the closest ticket and it was **cancelled on 2026-08-14** without
-  being worked (Backlog → Canceled, never started). It covered the
-  sibling role, `logging.logWriter`, and its proposed fix was verbatim:
-  "Grant `roles/logging.logWriter` to the intern VM service account,
-  ideally in the provisioner's Terraform
-  (`services/cfw-intern-provisioner/infra/`) so it's persistent and
-  reviewed, rather than a one-off `gcloud` grant." The role was granted
-  by hand — it is bound live — and the Terraform half never happened.
-  That Terraform half is this directory. So ORI-541 was cancelled with
-  its stated remedy unimplemented, and its sibling role is still
-  unbound. **Not reopened from a docs PR; needs a human decision.**
+- **`monitoring.metricWriter`** — untracked. The closest ticket,
+  [ORI-541](https://linear.app/openrouter/issue/ORI-541/intern-vm-service-account-missing-roleslogginglogwriter-cloud-logging),
+  covered only the sibling `logging.logWriter` (granted by hand, never
+  in Terraform) and is cancelled. Whether to reopen it or file a new
+  ticket needs a human decision.
 - **IAP roles for `engineering@`** — no ticket anywhere, open or
   closed. Currently untracked.
-- **`intern-provisioning-logs` bucket** — **resolved 2026-08-21.** It
-  was not merely "a candidate root cause" for
-  [ORI-1291](https://linear.app/openrouter/issue/ORI-1291/fix-the-dropped-provisioning-log-appends-so-the-dashboard-shows-the)
-  but the whole of it: Datadog showed 397 consecutive
-  `GCS put failed: 404 The specified bucket does not exist` warnings,
-  every boundary of every run. Creating the bucket fixed it with no
-  deploy, because the already-deployed worker writes fine once the
-  bucket is there. #35768 shipped the visibility half (a
-  `bucket_missing` outcome, a StatsD counter, a 503 instead of a
-  misleading 404, and two monitors). The remaining half of ORI-1222 is
-  the health probe, tracked separately.
+- **`intern-provisioning-logs` bucket** — resolved
+  ([ORI-1291](https://linear.app/openrouter/issue/ORI-1291/fix-the-dropped-provisioning-log-appends-so-the-dashboard-shows-the)).
+  The bucket exists, appends succeed, and a missing bucket surfaces as a
+  `bucket_missing` outcome, a StatsD counter, a 503, and two monitors.
+  The health probe half of ORI-1222 is still open, tracked separately.
 
 The cross-tenant metadata surface `iam.tf` used to document is
 [PLA-845](https://linear.app/openrouter/issue/PLA-845/isolate-intern-vm-metadata-permissions-per-tenant),
 addressed in code — see the PLA-845 section below for the manual
 revokes it still needs.
 
-### PLA-845: intern VMs hold no compute-API permission in code
+### Intern VMs hold no compute-API permission in code (PLA-845)
 
-[ORI-1308](https://linear.app/openrouter/issue/ORI-1308) deleted
-`google_project_iam_member.intern-vm-self-cleanup` from `iam.tf` and
-moved the grant into a runtime binder that wrote a per-instance
-conditional binding at VM-create time. That binder is gone:
-per-instance conditions cannot isolate a SHARED principal, and every
-intern VM attaches the same `intern-vm` SA, so intern A satisfied
-intern B's condition and could read and overwrite B's instance
-metadata.
-
-PLA-845 removed the VM's need for the permission instead of trying to
-scope it:
+Per-instance IAM conditions cannot isolate a SHARED principal: every
+intern VM attaches the same `intern-vm` SA, so a conditional grant to
+one intern is satisfied by every other, and any intern could read and
+overwrite another's instance metadata. PLA-845 therefore removed the
+VM's need for the permission instead of trying to scope it:
 
 - the binder module and the `internVmSelfCleanup` custom role are gone
   from code, and so is the `intern-vm` actAs-on-self binding;
@@ -367,17 +308,18 @@ thing. The exposure is the two hand-made VMs.
 
 ## The open question
 
-Which project owns the intern stack, and does this root adopt it?
+Does this root adopt the intern stack, or go away?
 
-This is not answerable from the repo, and it was deliberately not
-guessed at in the change that added this file. Retargeting the provider
-to `ext-interns-spawner-000` is a one-line edit that does not work:
+That is not answerable from the repo. Pointing the providers at
+`ext-interns-spawner-000` was the easy part; three things still stand
+between this directory and a real apply:
 
-1. **Every resource already exists.** An apply would fail on
+1. **Every resource already exists.** A bare apply fails on
    `already exists` for the SA, the provisioner actAs binding,
-   the VPC, the subnet, the router, the NAT, and both firewall rules.
-   Adoption means `terraform import` for each, plus decisions about the
-   five unmanaged firewall rules and the two PoC VMs.
+   the VPC, the subnet, the router, the NAT, both firewall rules and
+   both buckets. Adoption means the `terraform import` set above, plus
+   decisions about the five unmanaged firewall rules and the two PoC
+   VMs.
 2. **No state bucket.** `module "tfstate-bucket"` would have to be
    applied with local state first, as a bootstrap.
 3. **No identity can apply it.** Per the bootstrap note in
@@ -387,23 +329,19 @@ to `ext-interns-spawner-000` is a one-line edit that does not work:
    `ext-interns-spawner-000`". Creating service accounts, custom roles,
    and project IAM bindings there needs grants that do not exist yet.
 
-Note that `ci/infra/gcp-ori-runtime-image.tf` — added the day after this
-directory — already describes the interns project as one "no Terraform
-in this repo manages", and treats
+`ci/infra/gcp-ori-runtime-image.tf` describes the interns project as one
+"no Terraform in this repo manages", and treats
 `intern-vm@ext-interns-spawner-000` + its `artifactregistry.reader`
-binding as hand-made siblings it deliberately does not adopt. That file
-and this one currently disagree about who manages the intern SA. This
-directory is the one that is wrong.
+binding as hand-made siblings it deliberately does not adopt. Until
+this root is applied, that file is right and this one is aspirational.
 
-Three ways out, in rough order of how much they cost:
+Two ways out, in rough order of how much they cost:
 
-- **Adopt.** Point this root at `ext-interns-spawner-000`, import the
-  existing resources, provision an apply identity, close the drift rows
-  above. Highest value, needs a project owner and a rollout plan.
+- **Adopt.** Import the existing resources, provision an apply
+  identity, close the drift rows above. Highest value, needs a project
+  owner and a rollout plan.
 - **Delete.** If the intern stack is going to stay hand-managed, drop
   this directory rather than leave a security-shaped file that controls
   nothing. Cheapest, loses the written rationale.
-- **Leave and label.** What the change adding this file did — the root
-  stays unapplied but no longer misrepresents itself.
 
 Until one is chosen, treat every `.tf` file here as a design document.

@@ -176,6 +176,14 @@ and saying so is the finding.
   agent path; file it and hand it to a human. Where the remedy is meant to stop
   inference rather than lock the user out of the UI, the kind to propose is
   `inference_block`, not `account_ban`.
+- When this case already holds those accounts as pending targets and only the
+  proposed kind is wrong, the change belongs on that case rather than in a
+  second case for the same accounts: report its case link, the target ids, and
+  the kind that fits, and leave the change to a human — it is a review-key
+  operation the agent path cannot sign. See
+  [Changing the proposed kind](../sentinel-ban-candidates/SKILL.md#changing-the-proposed-kind-not-filing-a-second-case).
+  Every kind the ingest accepts is a valid destination for that change,
+  `inference_block` included.
 - The root-cause control for an operator-owned family is registration-side, not
   account-side: file it as a separate domain-target case, propose-only, and say
   in the case that it does not ask for the existing accounts to be restricted.

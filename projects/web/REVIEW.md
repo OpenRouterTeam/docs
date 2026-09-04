@@ -31,9 +31,7 @@ stored for the full TTL — return the fail-open value without caching it, so th
 next request retries. Also keep the `wrap()` fail-open behavior: an error path
 should degrade to the empty status, not surface as a server-action error.
 
-*Source: [PR #27126](https://github.com/OpenRouterTeam/openrouter-web/pull/27126)
-— reviewers flagged that a thrown invoice fetch escaped the old `wrap()`
-fail-open path and that a failed Sequence lookup was cached for 15 minutes.*
+*Source: [PR #27126](https://github.com/OpenRouterTeam/openrouter-web/pull/27126)*
 
 ## Shared data layer (TanStack Query)
 

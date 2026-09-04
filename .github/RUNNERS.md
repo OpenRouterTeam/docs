@@ -50,19 +50,22 @@ runs-on: ${{ (vars.USE_GITHUB_RUNNERS == 'true' || vars.CI_RUNNER_PROVIDER == 'g
 
 Size-class label mapping:
 
-| GitHub-hosted      | Blacksmith                      | WarpBuild                  |
-| ------------------ | ------------------------------- | -------------------------- |
-| `ubuntu-latest-md` | `blacksmith-2vcpu-ubuntu-2404`  | `warp-ubuntu-2404-x64-2x`  |
-| `ubuntu-latest-md` | `blacksmith-4vcpu-ubuntu-2404`  | `warp-ubuntu-2404-x64-4x`  |
-| `ubuntu-latest-md` | `blacksmith-8vcpu-ubuntu-2404`  | `warp-ubuntu-2404-x64-8x`  |
-| `ubuntu-latest-xl` | `blacksmith-16vcpu-ubuntu-2404` | `warp-ubuntu-2404-x64-16x` |
-| `ubuntu-latest-xl` | `blacksmith-32vcpu-ubuntu-2404` | `warp-ubuntu-2404-x64-32x` |
+| GitHub-hosted      | Blacksmith                       | WarpBuild                     |
+| ------------------ | -------------------------------- | ----------------------------- |
+| `ubuntu-latest-md` | `blacksmith-2vcpu-ubuntu-2404`   | `warp-ubuntu-2404-x64-2x`     |
+| `ubuntu-latest-md` | `blacksmith-4vcpu-ubuntu-2404`   | `warp-ubuntu-2404-x64-4x`     |
+| `ubuntu-latest-md` | `blacksmith-8vcpu-ubuntu-2404`   | `warp-ubuntu-2404-x64-8x`     |
+| `ubuntu-latest-xl` | `blacksmith-16vcpu-ubuntu-2404`  | `warp-ubuntu-2404-x64-16x`    |
+| `ubuntu-latest-xl` | `blacksmith-32vcpu-ubuntu-2404`  | `warp-ubuntu-2404-x64-32x`    |
+| `macos-latest`     | `blacksmith-12vcpu-macos-latest` | `warp-macos-latest-arm64-12x` |
 
-macOS has no WarpBuild equivalent of `blacksmith-12vcpu-macos-latest` (WarpBuild macOS is a fixed M4 Pro 6-vCPU/14 GB size), so macOS jobs keep their current expression until WarpBuild offers a comparable size.
+The macOS row covers the `visual-regression-pr` job only. `warp-macos-latest-arm64-12x` is WarpBuild's M4 Pro runner (12 vCPU, 44 GB), the same size as the Blacksmith label. The two labels do not run the same macOS major: WarpBuild's `latest` alias tracks GitHub's `macos-latest` (macOS 15 today), while `blacksmith-12vcpu-macos-latest` runs a newer major (macOS 26 as of August 2026). A provider flip therefore moves the job across a macOS major, and the `darwin` snapshot baselines may need a refresh after the flip. The job uses `actions/cache` directly, so its cache entries follow the backend rule described under GitHub-hosted fallback below.
 
 `runs-on` sites are converted to the canonical expression incrementally, workflow by workflow, starting with the WarpBuild pilot workflows, because each converted site also changes checkout and cache action selection. Until a site is converted, it honors only `USE_GITHUB_RUNNERS`.
 
-GitHub-hosted fallback jobs use `ubuntu-latest-md` (16-core) for 2/4/8-vCPU Blacksmith jobs, `ubuntu-latest-xl` (64-core) for 16/32-vCPU jobs, and `macos-latest` for the macOS job. They have cold-ish caches and skip Blacksmith sticky disks. Note: `actions/cache` entries live in Blacksmith's cache backend on Blacksmith runners and GitHub's backend on GitHub-hosted runners — cross-backend state (e.g. the release-freeze marker) does not carry across a toggle, and a freeze set on one backend reads as thawed on the other.
+Composite setup actions cannot read the `vars` context, so they detect the fleet from `RUNNER_NAME` (`warp-*` is WarpBuild) through the shared `.github/scripts/detect-fleet.sh` and export `IS_WARPBUILD` to the job environment. `setup-environment-blacksmith` mounts sticky disks only on Blacksmith runners and caches the bun store and turbo cache through WarpCache on WarpBuild runners, so a workflow that calls it and passes `sticky-disks-enabled: ${{ vars.USE_STICKY_DISKS }}` needs only its `runs-on` expression converted. `use-sticky-disks: "false"` disables the WarpCache steps as well, so artifact-producing workflows stay cold on every fleet.
+
+GitHub-hosted fallback jobs use `ubuntu-latest-md` (16-core) for 2/4/8-vCPU Blacksmith jobs, `ubuntu-latest-xl` (64-core) for 16/32-vCPU jobs, and `macos-latest` for the macOS job. They have cold-ish caches and skip Blacksmith sticky disks. Note: `actions/cache` entries live in Blacksmith's cache backend on Blacksmith runners and GitHub's backend on GitHub-hosted and WarpBuild runners — cross-backend state does not carry across a toggle. The release-freeze marker is the one piece of cross-run state that must survive a flip, so `check-freeze` (`release.yaml`) and `toggle-freeze` (`release-freeze.yaml`) are pinned to GitHub-hosted `ubuntu-latest` and ignore both variables. Provider-aware jobs cache through `.github/actions/fleet-cache`, which uses WarpCache on WarpBuild runners (7-day retention) and `actions/cache` on every other fleet.
 
 Delete the variable to restore the Blacksmith default:
 
@@ -125,9 +128,9 @@ Grouping follows the runner label, so GitHub-hosted fallback labels can alert as
 
 This signal has an important blind spot: abandoned waits are invisible because cancelled jobs have a distinct status and are excluded from the alert query. A severe outage therefore appears as fewer sampled jobs rather than a higher average. Historical data showed fifteen-minute pool means below one minute on ordinary recent days, while the July outage reached thousands of seconds. The **Runner Health** section of the **CI Health** Datadog dashboard pairs pickup latency with job volume by runner class so that abandonment remains visible. The alert links directly to this dashboard.
 
-Response is observe-only — nothing flips `USE_GITHUB_RUNNERS` or re-runs stuck runs automatically. Runner labels are fixed at queue time, so flipping the variable never moves jobs that are already queued: recovery requires cancel + re-run. A flip mid-release-freeze reads as thawed on the other cache backend (see note above).
+Response is observe-only — nothing flips `USE_GITHUB_RUNNERS` or re-runs stuck runs automatically. Runner labels are fixed at queue time, so flipping the variable never moves jobs that are already queued: recovery requires cancel + re-run. The release-freeze jobs are pinned to GitHub-hosted runners, so a flip does not change what `check-freeze` reads.
 
-Every job using the `setup-environment*` composites writes `Runner fleet: Blacksmith|GitHub-hosted|Self-hosted (non-Blacksmith)` (the last covers non-Blacksmith self-hosted pools like arc-runners) to its run summary, and `slack-failure-alert` messages carry a `(runner: …)` suffix naming the fleet of the job that sent the alert, so each run and failure alert self-reports which fleet it used. Callers alerting from a different job than the one they report on (dedicated notifier jobs) can suppress the suffix with `include-runner-fleet: "false"`.
+Every job using the `setup-environment*` composites writes `Runner fleet: Blacksmith|WarpBuild|GitHub-hosted|Self-hosted (non-Blacksmith)` (the last covers other self-hosted pools like arc-runners, which use the plain `setup-environment`; `setup-environment-blacksmith` treats every non-WarpBuild self-hosted runner as Blacksmith and is not supported on those pools) to its run summary, and `slack-failure-alert` messages carry a `(runner: …)` suffix naming the fleet of the job that sent the alert, so each run and failure alert self-reports which fleet it used. Callers alerting from a different job than the one they report on (dedicated notifier jobs) can suppress the suffix with `include-runner-fleet: "false"`.
 
 ## Rollout and fallback runbook
 
@@ -172,8 +175,9 @@ A flip changes only jobs enqueued after it. Jobs already queued keep the label t
    `validate-runner-provider` job fails on a mistyped value.
 3. Expect one cold cache. Bun and Turbo caches are per backend (Blacksmith
    sticky disks, WarpCache, or `actions/cache`), so the first run after a flip
-   installs from scratch, and a release freeze recorded on one backend does
-   not carry over. Do not read the first run's timing as steady state.
+   installs from scratch. Do not read the first run's timing as steady state.
+   An active release freeze is unaffected: `check-freeze` and
+   `toggle-freeze` always run GitHub-hosted, so the marker has one backend.
 4. Expect lagging PR branches to stay on the old fleet. `pull_request` runs
    use the workflow files on the PR branch, so a branch that has not merged
    `main` since the last `runs-on` change keeps its old fleet even though

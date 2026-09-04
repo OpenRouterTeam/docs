@@ -22,9 +22,9 @@ prompt invokes this skill; keep them in sync when the procedure changes.
 
 ## Cadence & delivery
 
-- **Schedule:** weekly, Monday 13:00 UTC, via the Devin automation **Weekly
-  notifications report**, covering the last 7 complete UTC days against the 7
-  before them.
+- **Schedule:** weekly, Monday 9:00 America/New_York, via the Devin
+  automation **Weekly notifications report**, covering the last 7 complete UTC
+  days against the 7 before them.
 - **Slack footprint:** one head message and exactly one thread reply in
   `#analytics-insights` (`C0BS9CC9PQD`), with no attachments.
 - **Manual runs:** accept an end-date override (`--end`, exclusive UTC boundary)
@@ -141,8 +141,10 @@ prompt invokes this skill; keep them in sync when the procedure changes.
    channel message:
 
    1. A bold title line, rendered exactly as this template:
-      `**:bar_chart: Notifications · <Mon D>–<Mon D>, <YYYY>**`
-      Nothing else goes on that line: no `weekly`, no `(UTC)`, and no
+      `*:bar_chart: Notifications · <Mon D>–<Mon D>, <YYYY>*`
+      One asterisk each side: Slack mrkdwn bold is `*bold*`, and a `**bold**`
+      line posts as literal asterisks — the posting path does not translate
+      Markdown. Nothing else goes on that line: no `weekly`, no `(UTC)`, and no
       `vs <prior window>` suffix. The prior window is named in the thread
       reply's title instead.
    2. A one-line KPI strip, rendered exactly as this template:
@@ -154,26 +156,37 @@ prompt invokes this skill; keep them in sync when the procedure changes.
       write the strip as prose without the emoji.
    3. The policy/destination table in a triple-backtick block, plain
       space-separated columns with a hyphen rule under the header, no box-drawing
-      characters. Left-align the two label columns, right-align the four number
-      columns, pad each column to its widest cell, and separate columns by two
-      spaces. Keep the header words short so the widest line stays at or under
-      ~72 characters, since a wider block wraps in Slack on a narrow view. Alert
-      events are per policy and repeat across that policy's destination rows.
+      characters. Left-align the label columns, right-align the number columns,
+      pad each column to its widest cell, and separate columns by two spaces.
+      Keep the header words short so the widest line stays at or under ~72
+      characters, since a wider block wraps in Slack on a narrow view.
+
+      Group the rows by policy and never repeat a value down a group: the policy
+      name and its alert-event count are printed once, on the group's first row,
+      and left blank on the rest. Alert events sit next to the policy because
+      they are a per-policy figure, not a per-destination one — printing the same
+      number against every destination reads as if each destination had its own
+      events.
 
       ```
-      policy                dest     active users  events  delivered  failed
-      --------------------  -------  ------------  ------  ---------  ------
-      api-key-budget-limit  email               4       1          1       0
-      budget-limit          webhook             2       4          0       0
-      model-deprecated      email           2,922       0          0       0
+      policy                events  dest     active users  delivered  failed
+      --------------------  ------  -------  ------------  ---------  ------
+      api-key-budget-limit       1  email               4          1       0
+                                    slack               0          0       0
+      budget-limit               4  email               8          4       0
+                                    webhook             2          0       0
+      model-deprecated           0  email           2,922          0       0
       ```
-   4. One closing sentence naming the single thing that actually changed this
+   4. One line defining the columns, so a reader who has never seen the report
+      knows what it counts, rendered exactly as this template:
+      ``What these count: `alert events` is alerts the policy produced, `delivered` and `failed` are per-destination send attempts for them, and `active users` is how many entities have that policy enabled with a destination that could receive it right now.``
+   5. One closing sentence naming the single thing that actually changed this
       week and ending with `detail in the thread`.
 
    The session's next message is the thread reply:
 
    1. A bold line:
-      `**Detail · Notifications, <this window> vs <prior window>**`.
+      `*Detail · Notifications, <this window> vs <prior window>*`.
    2. Hyphen bullets for week-over-week movement per policy and destination.
    3. A triple-backtick block for the failure breakdown by policy, channel and
       `failure_reason`, omitting entries with no data.
@@ -182,9 +195,11 @@ prompt invokes this skill; keep them in sync when the procedure changes.
       whenever failures could not be filtered at the attempt level.
    5. If the head message needs correction, state it plainly in the reply.
 
-   Use `**double asterisk**` for bold, never single asterisks. Do not use
-   headers, Markdown tables or attachments. Keep the head message under ~2000
-   characters and the reply under ~4000 characters.
+   Slack mrkdwn only: `*bold*` with one asterisk each side, `_italic_`,
+   backticks for inline code, hyphen bullets, `<url|label>` links. Double
+   asterisks, `#` headers and Markdown tables all post as literal characters —
+   Jacky flagged exactly that on the first run. No attachments. Keep the head
+   message under ~2000 characters and the reply under ~4000 characters.
 
 ## Specifications
 
@@ -193,7 +208,11 @@ prompt invokes this skill; keep them in sync when the procedure changes.
 - One row per policy and destination.
 - The head-message table uses plain space-separated columns, and its widest line
   stays at or under ~72 characters. The active-users column header reads
-  `active users`, never `active`.
+  `active users`, never `active`. Column order is policy, events, dest, active
+  users, delivered, failed, with the policy and events cells blank on a group's
+  continuation rows.
+- The head message defines its columns in one line under the table. A reader who
+  has never seen the report should not have to ask what a column counts.
 - Counts of four or more digits carry a thousands separator (`2,922`, never
   `2922`), in the KPI strip and in the table.
 - A row is absent when alert events, delivered, failed and known active users are
@@ -201,11 +220,13 @@ prompt invokes this skill; keep them in sync when the procedure changes.
 - Delivered and failed are per endpoint. Never present them as a count of alerts
   or of users notified.
 - A destination row's active users and its alert-event figure can describe
-  different entities: the event figure is per policy and repeats across the
-  policy's rows. Zero deliveries on a row with active users is therefore not a
-  delivery gap on its own. Before reporting one, query that policy's
-  `alert-delivery:event-outcome` lines and read `eligible_endpoint_count` per
-  event: it is per event, so `notifications.json` does not carry it.
+  different entities: active users and delivery outcomes are per destination,
+  while the event figure covers the whole policy group even though the table
+  prints it once, on the group's first row. Zero deliveries on a row with active
+  users is therefore not a delivery gap on its own. Before reporting one, query
+  that policy's `alert-delivery:event-outcome` lines and read
+  `eligible_endpoint_count` per event: it is per event, so
+  `notifications.json` does not carry it.
 - Every reported metric carries its week-over-week change or states why it has
   none.
 
@@ -248,8 +269,9 @@ prompt invokes this skill; keep them in sync when the procedure changes.
 - No endpoint-to-tenant inventory in the warehouse, so the report says what
   happened to deliveries, not how many destinations exist.
 - **Render the head templates literally.** Fill only the bracketed slots in the
-  title and KPI strip. Rewording either into prose, or dropping a thousands
-  separator, is drift from this spec.
+  title, KPI strip and column-definition line. Rewording any of them into prose,
+  dropping a thousands separator, or bolding with double asterisks is drift from
+  this spec.
 
 ## Advice and pointers
 

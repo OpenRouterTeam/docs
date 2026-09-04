@@ -18,9 +18,10 @@ repo. Import mappings, component APIs, and conventions are
 specific to this monorepo. Running it in other repos may
 produce inaccurate results.
 
-Follow all rules in `.claude/rules/`, especially
-`error-handling.md`, `type-safety.md`, `frontend.md`,
-`logging.md`, and `async.md`.
+Follow root `AGENTS.md` and the nested `AGENTS.md` for the
+directory you are editing, especially
+`packages/frontend/AGENTS.md` and
+`packages/instrumentation/AGENTS.md`.
 
 You receive three inputs from the command:
 
@@ -141,7 +142,7 @@ verify the target file exists by reading it.
 - `@/projects/*` / `@/features/*`
   search `packages/frontend/` or `projects/web/`
 - `lucide-react` -- no change
-- `@heroicons/react/*` -- migrate to `lucide-react` equivalents (see `.claude/rules/frontend.md`)
+- `@heroicons/react/*` -- migrate to `lucide-react` equivalents (see `packages/frontend/AGENTS.md`)
 - `next/link`, `next/image`, `next/navigation` -- no change
 - `@/shared/hooks/*`
   search `packages/frontend/hooks/`
@@ -201,7 +202,7 @@ Perform the migration file by file:
 Preserve the visual design from the sandbox while adapting
 to production conventions. The goal is visual parity.
 
-Follow `.claude/rules/frontend.md` for colors, icons, and
+Follow `packages/frontend/AGENTS.md` for colors, icons, and
 spacing conventions.
 
 ### Container Classes

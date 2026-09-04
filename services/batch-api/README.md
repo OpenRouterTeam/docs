@@ -457,3 +457,59 @@ needed. Keep the new services during rollback; remove them only in a later
 Terraform apply after traffic and queues are confirmed drained. The Terraform
 `moved` blocks preserve the original `batch-api` service and URL across the
 singleton-to-role-map state transition.
+
+## Memory-Growth Attribution Runbook (finalize)
+
+Two instrumentation sources attribute per-instance memory growth to a
+runtime cause (ECO-3659):
+
+- Periodic runtime gauges (every 15s, from `startRuntimeMetricsReporter`):
+  `openrouter.runtime.node.mem.rss` / `.heap_used` / `.heap_total` /
+  `.external` / `.array_buffers` / `.heap_limit`. The OTLP exporter maps
+  the resource attributes to Datadog tags `service` (`K_SERVICE`) and
+  `version` (`K_REVISION`); the reporter itself adds a per-process
+  `instance_id` tag for the per-instance dimension.
+- Finalize phase logs: `batch_api.finalize.phase_started` carries absolute
+  `rss_bytes`, `heap_used_bytes`, `heap_total_bytes`, `external_bytes`,
+  `array_buffers_bytes`; `batch_api.finalize.phase_completed` carries the
+  same absolutes plus signed `*_delta_bytes` for the phase.
+
+### How to read it
+
+Group by Cloud Run revision and instance, and look for **repeated
+per-instance patterns over instance age** — never a single phase delta or
+the fleet-wide p99. Any one delta is noisy (GC can run mid-phase and
+concurrent requests share the process); the signal is the same phase
+producing the same signed drift on the same instance many times.
+
+Metrics — plot each gauge with `avg by {instance_id, version}` over 12-24h
+of instance age:
+
+    avg:openrouter.runtime.node.mem.heap_used{service:batch-api-finalize} by {instance_id,version}
+    avg:openrouter.runtime.node.mem.rss{service:batch-api-finalize} by {instance_id,version}
+    avg:openrouter.runtime.node.mem.external{service:batch-api-finalize} by {instance_id,version}
+    avg:openrouter.runtime.node.mem.array_buffers{service:batch-api-finalize} by {instance_id,version}
+
+Logs — aggregate completion deltas per phase and revision (the phase
+logs carry no per-instance field, so log-based attribution is per
+revision only):
+
+    service:batch-api-finalize "batch_api.finalize.phase_completed"
+
+grouped by `@data.jsonPayload.extra.phase` and `version`, with measures on
+`@data.jsonPayload.extra.heap_used_delta_bytes` (and the other
+`*_delta_bytes` fields).
+
+### Interpretation
+
+| Per-instance pattern over hours | Attribution |
+| --- | --- |
+| `heap_used` baseline (post-GC floor) rises | Retained JS references — find the phase whose `heap_used_delta_bytes` is persistently positive |
+| RSS / `heap_total` rise while `heap_used` keeps recovering to a flat floor | JSC heap high-water retention — the runtime keeps grown heap pages; not a reference leak |
+| `external` / `array_buffers` rise | Buffer or stream retention — look at phases moving payload bytes (`provider_result_persist`, `result_materialization`, `generation_emission`) |
+| RSS rises alone (heap, external, array buffers all flat) | Unclassified Bun/JSC or native allocator memory — outside JS-visible accounting |
+
+Correlate a suspect phase's repeated deltas with its workload (finalization
+count and line counts from `batch_api.finalize.completed`) before concluding:
+a leak scales with work processed on that instance; a high-water ratchet
+scales with the largest single batch seen.

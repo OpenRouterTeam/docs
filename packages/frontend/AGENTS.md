@@ -111,9 +111,11 @@ and `projects/web/features/presets/ui/PresetEditor/PresetEditorForm.tsx`.
 - Do not change server actions, data-layer hooks, or the shared `Form`/
   `Controlled*` primitives for a single form's migration.
 - Every submit path has a colocated `*.dom.test.tsx`: a schema error blocks
-  submit, a valid submit calls the action with parsed values. Mock `./actions`
-  and `next/navigation` with `mock.module`; wrap in `QueryClientProvider` if
-  the form renders a query consumer.
+  submit, a valid submit calls the action with parsed values. Render through
+  `renderWithProviders` from `packages/frontend/test-utils/render-with-providers`,
+  which supplies a query client and Next's real navigation contexts (assert on
+  the returned `router.push`), so `next/navigation` is never module-mocked. If
+  `./actions` must still be mocked, spread the real module into the factory.
 
 ## State Management
 

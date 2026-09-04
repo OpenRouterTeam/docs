@@ -33,17 +33,16 @@ both intern modules is a presence check (`> N`) with
 false page — but the window is real and it is the whole reason the tag
 change and its consumers must ship together.
 
-Two past cutovers hit this and are worth knowing about:
+Two rules follow from that window:
 
-- An earlier version of this stack had `[Intern Provisioner] No
-  Workflow Starts`, an absence check (`< 1` over 15m) with
-  `require_full_window = false`. Pointed at a service with no producer
-  it sat permanently in alert. It has since been replaced by a
-  metric-based stuck-queued monitor. **Do not add an absence check on a
-  log query in these modules** without solving the ordering first.
-- `frontend-api` moved from `service:api` to `service:cfw-frontend-api`.
-  Pre-cutover logs stayed on `service:api` forever, which is why the
-  enqueue monitors still query the `(api OR cfw-frontend-api)` union.
+- **Do not add an absence check (`< 1` over a window) on a log query in
+  these modules** without solving the ordering first. Pointed at a
+  service with no producer yet, an absence check sits permanently in
+  alert; stuck-queue detection reads DB-state metrics instead.
+- Logs keep the service they were submitted under, so a monitor that
+  must see lines from both sides of a cutover queries the union — the
+  enqueue monitor reads `service:(api OR cfw-frontend-api)` because
+  `frontend-api` lines older than its cutover are on `service:api`.
 
 ### A rename has two stages, not one
 
@@ -54,8 +53,8 @@ Both are deploys. Neither is a terraform boundary.
 2. **The GKE `telemetry-pipeline` consumer redeploy** moves the
    remaining slice — roughly 1% of logs go through Pub/Sub rather than
    direct submit, and that slice only picks up the new service once the
-   consumer is running #34823's `packages/queues` change. Until then it
-   lands on `service:api`.
+   consumer is running a `packages/queues` build that carries the
+   mapping (#34823). Until then it lands on the old service.
 
 So there is a window where the same worker's logs are split across two
 services. **Logs are never relabelled retroactively.** Widen when
@@ -77,33 +76,31 @@ as a bug until the consumer has rolled.
 
 Cloudflare does not set the Datadog service from the worker's `name`.
 The shared `instrumentation` tail worker ships every worker's logs, so
-after #34823 it resolves the service per tail event from the event's
-`scriptName` (`logServiceForScriptName`,
-`packages/instrumentation/log-service.ts`) and stamps it at submit time
-on both the direct and queued paths. The allowlist is three names, each
-mapped to `cfw-${scriptName}` so a worker's logs share the service its
-APM spans already carry — `intern-provisioner` to
-`cfw-intern-provisioner`, `secret-vault` to `cfw-secret-vault`,
-`frontend-api` to `cfw-frontend-api` — and everything else stays `api`.
+it resolves the service per tail event from the event's `scriptName`
+(`logServiceForScriptName`, `packages/instrumentation/log-service.ts`)
+and stamps it at submit time on both the direct and queued paths.
+`LOG_SERVICE_BY_SCRIPT_NAME` in that file is the allowlist; the intern
+workers follow the `cfw-${scriptName}` convention so their logs share
+the service their APM spans already carry — `intern-provisioner` to
+`cfw-intern-provisioner`, `secret-vault` to `cfw-secret-vault` — and
+any script not in the map stays `api`. Read the map for the current
+list rather than trusting a count written here.
 
 That map keys on the literal script name, so renaming either worker in
 its `wrangler.toml` silently drops it back to `service:api`.
 
-Moving these workers off `service:api` narrows anything that queried
-the whole service. Every `datadog_monitor` and `datadog_dashboard`
-lives in `configs/terraform-monitors`. For the intern workers nothing
-depended on it: every broad `service:api` query there is pinned to
-router, guardrail, or managed-skill event names neither intern worker
-emits. `frontend-api` was different — it is the web app's API worker,
-and the coordinated-abuse, intern-enqueue, startup-application, and
-errors-across-services queries read its log lines, so those were
-widened to `service:(api OR cfw-frontend-api)` rather than repointed.
-The errors-across-services one is the easiest to miss: its worker
+Moving a worker off `service:api` narrows anything that queried the
+whole service. Every `datadog_monitor` and `datadog_dashboard` lives in
+`configs/terraform-monitors`, so before adding a script name to the
+map, find every `service:api` query there that reads that worker's log
+lines and widen it to `service:(api OR <new service>)` rather than
+repointing it — pre-cutover lines stay on `service:api`. A query pinned
+to event names the worker never emits needs no change. The
+errors-across-services dashboard is the easiest to miss: its worker
 bucket is a `service:api` local that feeds both a per-`@script_name`
 breakdown and, by negation, the "everything else" catch-all, so a
 worker that leaves the bucket does not go blank — it quietly moves to
-the catch-all. Re-run that check before moving a fourth worker off
-`service:api`.
+the catch-all. Check it every time.
 
 ### The intern VMs
 
@@ -155,9 +152,9 @@ Each of the three producers has a service of its own, so the service
 tag identifies the component and no `@script_name` qualifier is needed
 to disambiguate within the intern stack.
 
-`service:interns` used to cover all three. It now means the intern VMs
-and nothing else — so a pre-split query that reads `service:interns`
-and expects worker logs returns nothing, silently.
+`service:interns` means the intern VMs and nothing else. A saved query
+that reads `service:interns` and expects worker logs returns nothing,
+silently.
 
 ## Two Datadog facts you will otherwise rediscover the hard way
 
@@ -171,20 +168,18 @@ Both are already documented, with the measurements behind them, under
    `analyze_datadog_logs` fails **silently** on the display path —
    correct row counts, blank values, no error.
 
-Do not restate them here. Two notes on how the intern services
-interact with them:
+Do not restate them here. How the intern services relate to them:
 
-- They only partly retire the first. Each intern worker has its own
-  service, which closes the "until it ships" caveat that file records
-  against ORI-1188, but every other worker is still `service:api` and
-  `@script_name` remains the general answer there.
-- It does not touch the second at all. `@extra.X` is how the monitors
-  and dashboards here are written, and the silent-failure behaviour is
-  unchanged.
+- The first holds for every worker outside `LOG_SERVICE_BY_SCRIPT_NAME`.
+  The intern workers are in the map and carry their own service, so
+  within the intern stack the service facet is enough; elsewhere
+  `@script_name` is still the discriminator.
+- The second applies unchanged. `@extra.X` is how the monitors and
+  dashboards here are written.
 
 ## Where the enqueue monitors point, and why
 
-Two of the five provisioner monitors deliberately query
+The Enqueue Failed provisioner monitor deliberately queries
 `service:(api OR cfw-frontend-api) @script_name:frontend-api` rather
 than `service:cfw-intern-provisioner`. That is not drift. Enqueue happens in the
 `frontend-api` worker, which has its own service (`cfw-frontend-api`,
@@ -212,14 +207,19 @@ Provisioner
 |---|---|
 | Workflow Failed | any `workflow failed` in 10m, grouped by `@extra.failed_step` |
 | Enqueue Failed | any enqueue/reprovision/destroy enqueue failure in 10m |
-| Enqueue Accepted Gate | at least one enqueue accepted in 15m (gate, not a page) |
-| No Workflow Starts | fewer than one workflow start in 15m (absence check) |
-| Interns Stuck in Queued | composite: enqueue accepted **and** no workflow start |
+| Interns Stuck in Queued | `openrouter.interns.provisioning_queued_stuck` at least 1 over 15m |
+| Destroy Sweep Stuck Or Failing | any stuck-teardown, sweep-failed, or dispatch-failed line in 1h |
+| Teardown Abandoned An Unreleasable Resource | any `destroy_orphan{outcome:abandoned}` in 1d, by `step` |
+| Vault Root CA Bundle Is Invalid | any `intern_vault.ca_distribution{outcome:invalid_bundle}` in 15m |
+| Slack Rejected An Intern Icon We Accepted | any `icon_slack_push{outcome:slack_rejected}` in 1d |
+| Intern Came Up Degraded | any `health_probe_outcome{outcome:degraded}` in 1d |
+| Health Gate Bypassed In Production | any `health_probe_outcome{outcome:bypassed}` in 1d |
 
-The last three are one alert. The two gates exist so the composite only
-pages when something was actually enqueued and then never started, and
-the composites carry `create_before_destroy` because Datadog refuses to
-delete a monitor a composite still references.
+Stuck-in-queued reads DB state emitted by the worker's cron rather than
+comparing log streams, so it names the stuck rows instead of inferring a
+stall from two streams with different indexing latency. The header
+comment in `monitors.tf` is the authoritative list; update this table
+when it changes.
 
 Vault (`configs/terraform-monitors/monitoring/secret_vault/monitors.tf`),
 all scoped `service:cfw-secret-vault`:
@@ -230,7 +230,7 @@ all scoped `service:cfw-secret-vault`:
 | Agent Auth Failures | more than 5 in 15m |
 | Rate Limit Exceeded | more than 20 in 15m, by `@extra.route` |
 | Secret Decryption Failures | any in 15m |
-| Secret Resolution Failures | any in 15m |
+| Secret Resolution Failures | more than 5 in 30m |
 | Smuggled Credential Rejected | any in 15m |
 | Egress Guard Blocking Destinations | more than 10 in 30m |
 | SSRF Protection Disabled | any in 1d |
@@ -260,14 +260,67 @@ has to happen first.
 The two are not equally risky:
 
 - `@extra.failed_step` sits on live provisioner logs. It is fine.
-- `@extra.route` has produced **zero logs in 30 days**, so the facet
-  does not exist yet and the vault's rate-limit monitor is the one that
-  can fail at apply. It also stays untestable until a rate limit
-  actually trips, so a green apply is not evidence the alert works.
+- `@extra.route` is only emitted when a vault rate limit trips, so the
+  facet may not exist and the vault's rate-limit monitor is the one that
+  can fail at apply. Check the facet list before applying. It also
+  stays untestable until a rate limit actually trips, so a green apply
+  is not evidence the alert works.
 
 The same console-first rule applies to the dashboard template variables
-(`@extra.intern_id`, `@extra.entity_id`, `@extra.caller_user_id`),
-whose dropdowns are broken until all three exist.
+(`@extra.intern_id`, `@extra.entity_id`, `@extra.caller_user_id`,
+`@extra.intern_slug`), whose dropdowns are broken until all four exist.
+
+## Filtering by intern slug
+
+`@extra.intern_slug` is `interns.provisioning_slug` — the handle a human
+has in hand, since it is also the intern's subdomain, VM name, and repo
+slug. It exists so an investigation does not have to start with a
+slug-to-id lookup in Postgres.
+
+It is a stable key, not a display name: the column is **immutable**, and
+`renameIntern` changes `name` only, because the slug names infrastructure
+that already exists (VM, tunnel, DNS, slash command). The flip side is
+that it embeds the name the intern was CREATED with, so a renamed intern
+still appears in the dropdown under its original name. `intern_id`
+remains the default filter — it is the join key everything else uses.
+
+Where it is emitted, and where it deliberately is not:
+
+| Producer | Carries `intern_slug` |
+|---|---|
+| `cfw-frontend-api` enqueue events | yes — the route already holds the row |
+| `cfw-intern-provisioner` step + workflow lifecycle | yes — resolved once per run and snapshotted onto the step context |
+| `cfw-secret-vault`, authenticated worker paths | yes — it rides the `findInternWorkspace` statement that authorises the caller |
+| `cfw-secret-vault`, pre-auth (`tunnel_auth_failed`, `resolve_agent_token_mismatch`) | **no** — resolving it would let an unauthenticated caller drive a DB read on the hot path |
+| `cfw-secret-vault`, container data plane (`outbound_*`) | **no** — the slug is not part of the `SecretStore` contract, and `CachedSecretStore` exists to avoid a DB read per outbound request |
+| `cfw-secret-vault`, CA events (`tunnel_do_ca_*`, `intermediate_ca_*`) | **no** — emitted inside the tunnel Durable Object / `ca-manager`, which the slug is not threaded into |
+| `service:interns` (the VMs) | **no** — a GCE `LogEntry` carries no intern identity at all; see "The intern VMs" above |
+
+Those gaps are load-bearing on the dashboards, in two ways.
+
+`@extra.intern_slug:*` EXCLUDES any log line without the field. So a
+`$intern_slug` added to a widget whose events do not all emit it goes
+silently empty rather than failing. Both dashboards document their
+exclusions in their header comments; read those before widening the
+variable onto another widget.
+
+**The rule is per widget, not per query.** A multi-series widget renders
+its `request` blocks together, so scoping one series to an intern while
+its siblings stay fleet-wide makes them incomparable — one bar counts a
+single intern, the bar beside it counts the fleet, and nothing on screen
+says so. That is worse than an empty widget, because it still looks like
+an answer. Four Secret Vault widgets mix a covered event with an
+`outbound_*` or pre-auth one and therefore carry `$agent_id` alone; they
+are named in that file's header. Read the whole `widget` block before
+adding the variable to one query inside it.
+
+**A new `@extra.*` field also has a history boundary**, not just a deploy
+one. Logs are never relabelled retroactively, so once a widget filters on
+`@extra.intern_slug`, every pre-rollout line drops out of it — the widget
+under-reports for as long as its lookback window spans the deploy, and
+only reads true once the whole window is past it. Prefer landing the
+producing workers first and the dashboard filter after, rather than
+shipping both and waiting out the window.
 
 ## Known blind spots
 

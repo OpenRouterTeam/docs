@@ -89,7 +89,8 @@ sequenceDiagram
     DO-->>R: decision. The output gate holds this response<br/>until the context put is durable
     Note over DO,ST: input gate reopens. On first touch a follower can<br/>still queue behind the in-flight getAlarm
     ST-->>DO: getAlarm() resolves
-    DO->>ST: setAlarm(now + 60s). The alarm is now known scheduled,<br/>so later RPCs issue no alarm read at all
+    DO->>ST: setAlarm(now + 60s). The due timestamp is trusted<br/>for ALARM_REVALIDATION_GRACE_MS (five alarm intervals)
+    Note over DO,ST: after the grace, the next deferred arm reads<br/>getAlarm() once. A valid future alarm is adopted;<br/>a previously armed missing or overdue one is re-armed and reported<br/>initial arms on objects with no persisted state are not repairs
     Note over DO,ST: a failed arm is reported and retried once as a bare<br/>setAlarm. If that also fails, the next RPC arms again
 ```
 
@@ -100,7 +101,7 @@ stateDiagram-v2
     [*] --> Cold: no instance in memory
     Cold --> Warm: first touch, schema DDL, ledger cached, arm dispatched
     Warm --> Armed: arm lands
-    Armed --> Armed: reserve, release, heartbeat. no storage await, deferred put on changed limits
+    Armed --> Armed: reserve, release, heartbeat. due timestamp trusted for five intervals; after grace, next deferred arm revalidates and adopts a future alarm or re-arms and reports a previously armed missing/overdue alarm; initial arms on objects with no persisted state are not repairs
     Armed --> Sweeping: alarm fires, once a minute
     Cold --> Sweeping: an armed alarm fires and re-materializes the object
     Sweeping --> Armed: open holds, unsettled spend or release markers remain, so re-arm

@@ -653,7 +653,7 @@ Cache-refresh gotchas:
   cfw-api `test:cron` run has succeeded, even though the DB rows
   are seeded. Both workers persist to `.wrangler/shared-state`, so
   no extra wiring is needed — just run cfw-api's cron once.
-- Every worker's `scripts/dev.ts` defaults `WRANGLER_INSPECTOR_PORT`
+- Every `services/<worker>/scripts/dev.ts` defaults `WRANGLER_INSPECTOR_PORT`
   to 9229, so the second worker you start dies with
   `Address already in use (127.0.0.1:9229)`. Give it its own:
   `WRANGLER_INSPECTOR_PORT=9339 bun run dev cfw-api`. The flag

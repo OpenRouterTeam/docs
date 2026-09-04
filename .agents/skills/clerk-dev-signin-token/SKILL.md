@@ -114,6 +114,15 @@ already-created session fails with "Session already exists".
 - Settings pages that read `/api/frontend/v1/private/*` (e.g.
   `/settings/notifications`) 404 with `bun run dev web` alone — start
   `bun run dev web cfw-frontend-api` so the worker serves those routes.
+- A `--fresh` user's `/api/frontend/v1/private/*` routes return **403**
+  (not the expected 404 "Customer not found" for e.g. `/private/stripe`)
+  until Clerk's `user.created` webhook has inserted the `users` row in local
+  Postgres. Under Tilt, enable/trigger the `clerk-webhook` (smee) resource
+  before minting, or nudge a sync afterwards with a harmless Clerk
+  `user.updated` (metadata) call, and confirm `POST /api/webhooks/clerk - 200`
+  plus `SELECT clerk_user_id FROM users WHERE clerk_user_id = '<user_id>'`.
+  To test the no-Stripe-customer state, do not add a billing address —
+  `users.stripe_customer_id` must stay NULL.
 - Do not use this for `openrouter.ai` / the prod Clerk tenant; use the
   `/tests/e2e` credentials there.
 - Simplest manual login: `dev+clerk_test@openrouter.ai`, email code

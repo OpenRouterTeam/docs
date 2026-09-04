@@ -32,6 +32,39 @@ load-bearing claims live.
   fixtures and `tests/manual/` cases.
 - Keep live batches small and cheap: minimum lines per case, cheapest
   batch-enabled model, cancel throwaway batches promptly.
+- Confirm the OpenRouter slug has a `:batch` endpoint row before building
+  the matrix (submit returns HTTP 400 `does not have a :batch endpoint`
+  otherwise); the cheapest sync slug often has none, and the public API has
+  no cancel route. Native cancel cases run on the provider side; to exercise
+  OpenRouter's `cancelled` status transition, submit a BYOK job through
+  OpenRouter and cancel the same upstream batch with the customer key at the
+  provider. `expired` needs the full completion window, so record it as
+  UNTESTED rather than unreachable.
+- Reaching a terminal status is not the same as reading its results back.
+  Before proposing a procedure that checks result rendering on `cancelled`
+  or `expired`, confirm the finalizer actually downloads artifacts for that
+  status (`resolveFinalizationArtifacts` in
+  `services/batch-api/src/finalize/`). Where it does not but the provider
+  writes result files for that status, that is a verified `BUG` (paid
+  results the customer never sees), not an UNTESTED case or COVERAGE GAP,
+  and it holds the provider at `NOT SAFE`. Make artifact materialization
+  the first step of the future validation procedure.
+- Only statuses observed in a capture go in the "live capture" lifecycle
+  claim; a documented-but-unobserved status (e.g. `finalizing`) is listed
+  as no live evidence, even when its poller handling is trivial.
+- When an offline repro suggests a bug is conditional on some feature of
+  the body (a `reasoning` item, an extra tool, an ordering), re-run the
+  repro with that feature removed before writing the condition into the
+  report.
+- A "no fixtures needed" statement is only true if every shape the report
+  reasons about is committed. A bug found on a shape with no committed
+  fixture must be listed as a coverage gap, and the redacted body should be
+  captured verbatim for the fix PR while the transcripts still exist.
+- A `:batch` variant listed in `/api/v1/models` is not proof it is
+  submittable: probe one line per candidate slug first (a 400 `does not
+  have a :batch endpoint` for a listed slug is itself a finding).
+- Run the direct and OpenRouter sides of a case on the same underlying
+  model; a behavior difference across models is unattributable.
 - There is no public `POST /batches/:id/cancel` route (`packages/batch/routes/`),
   so cancel cases are native-only; a 404 from OpenRouter is the expected surface, not a `BUG`.
 - Use existing credentials only (Infisical / provisioned secrets). Never

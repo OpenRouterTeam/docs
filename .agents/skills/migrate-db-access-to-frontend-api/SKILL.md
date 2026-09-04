@@ -242,7 +242,7 @@ that the old `errSA` path used to log via `inspectErrorT`.
 New file:
 `services/cfw-frontend-api/integration/<domain>.test.ts`.
 Follow the cfw integration conventions
-(`.claude/rules/knowledge/coding/when-writing-integration-tests-for-cfw-services.md`):
+(`services/cfw-api/integration/AGENTS.md`):
 `SELF.fetch` from `cloudflare:test`, real Postgres, production
 Zod schemas for assertions, status **and** body checks,
 `Date.now()` nonce for IDs, `createTestUser` helpers.

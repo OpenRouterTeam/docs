@@ -551,10 +551,14 @@ none has an OpenRouter batch family.
   10), so the row and its `custom_id` are served; only the reason is lost.
   `packages/batch/adapters/mistral/fixtures/` has no error-file row and
   every parser test uses hand-built object bodies, which is why this was
-  not caught. Smallest fix: `JSON.parse` a string `response.body` through
-  a Zod `z.string()` guard before `parseMistralError`, plus a fixture test
-  on a captured error row asserting the provider `message` and `type`
-  survive.
+  not caught. **Fixed** (2026-09-04): `MistralResultLineSchema` decodes a
+  string `response.body` with `decodeMaybeJson` before the parser sees it, and
+  `fixtures/live-error-file-line-string-body.json` is a captured error row
+  asserting the provider `message` and `type` survive. Upload-time 422
+  bodies carry `errors[] = [{message, line_number}]` alongside the generic
+  `detail` (**live capture** `fixtures/live-upload-422-line-errors.json`);
+  `handleMistralErrorResponse` appends the first entry as
+  `Line <n>: <message>` so the customer can find the bad request.
 - **D2. `CANCELLED` with a full `output_file` is not finalized.** Mistral
   can return `CANCELLED` with all requests completed and an `output_file`
   when cancellation races completion (**live capture**

@@ -99,7 +99,17 @@ to eyeball a run and back to `TSVWithNames` to parse it.
 
 Follow `sentinel-ban-candidates` for the ingest. One target per account,
 `proposedKind: "frontier_us_models"`, no `proposedTarget`, `{}` params, no
-expiry. The query's output columns are the per-target evidence: signal,
+expiry. This scanner's own live case proposes that kind for every target it
+files, so the only way one of its pending targets carries a different remedy is a
+human having changed the proposal after the filing. Those accounts stay in that
+case: report the case link, the target ids, and the frontier block, and leave
+reverting the remedy to a human rather than filing them again — see
+[Changing the proposed kind](../sentinel-ban-candidates/SKILL.md#changing-the-proposed-kind-not-filing-a-second-case).
+An account pending under another investigation's case is not this scanner's to
+narrow: the change replaces the remedy, so report the proxy-shaped evidence in
+that case's thread and leave its proposal alone.
+
+The query's output columns are the per-target evidence: signal,
 signal-matched frontier usage, total usage (the denominator behind every
 `*_pct`), signal share, request counts, egress ASN and country, top user agents,
 key and IP-hash and model counts, active span, first and last seen, signup date

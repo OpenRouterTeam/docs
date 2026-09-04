@@ -17,7 +17,7 @@ before running different types of tests.
 The dev stack is orchestrated by Tilt (see `Tiltfile` at repo root). Some
 resources are **manual-trigger** (`auto_init=False`, `TRIGGER_MODE_MANUAL`) and
 will never become ready unless explicitly triggered. The Tiltfile currently
-defines 69 resource declarations: `local_resource`, `dc_resource`, and
+defines 71 resource declarations: `local_resource`, `dc_resource`, and
 `local_resource_with_skip` calls.
 
 ```bash
@@ -401,7 +401,6 @@ will **not** report ready unless explicitly triggered with
 | `clickhouse-reset` | local_resource | Destructively resets local ClickHouse migrations and data. | Resetting ClickHouse after migration or schema changes. |
 | `auth` | local_resource | Auth service (`services/auth`) on port 8802. Depends on postgres-seed, spanner-init, and valkey. | Testing auth flows, token validation, or services that call the auth API. |
 | `post-generation-checks` | local_resource | Pub/Sub worker for post-generation checks. | Testing post-generation validation or Pub/Sub queue processing. |
-| `notification-checks` | local_resource | Pub/Sub worker for notification checks. | Testing notification-check processing. |
 | `alert-evaluator` | local_resource | Alert evaluator worker consuming local alert events. | Testing alert evaluation and rule execution. |
 | `alert-delivery` | local_resource | Alert delivery worker for sending evaluated alerts. | Testing alert delivery and downstream notification behavior. |
 | `custom-classifier` | local_resource | GCP queue worker for custom classifiers. | Testing custom-classifier jobs or Pub/Sub classification tags. |
@@ -411,6 +410,8 @@ will **not** report ready unless explicitly triggered with
 | `presidio-analyzer` | dc_resource | Microsoft Presidio PII analyzer. | Testing PII detection in prompts or responses. |
 | `presidio-anonymizer` | dc_resource | Microsoft Presidio PII anonymizer. | Testing PII redaction and anonymization pipelines. |
 | `presidio` | local_resource | Worker proxy for the local Presidio analyzer and anonymizer. | Testing PII detection/redaction through the worker interface. |
+| `coop-hma-runtime` | local_resource | Runs `ensure-env` and `validate-config`, then serves the complete self-hosted HMA and Coop Compose project; Tilt never reads its secret file. | Testing known-bank image matching or human review. Scylla alone requests 4 GiB, so the group stays manual. |
+| `coop-hma-bootstrap` | local_resource | Seeds the benign HMA bank, bootstraps Coop through its official API, runs separate direct HMA and HMA-to-Coop transport smokes, then runs full benign pipeline acceptance. | Bootstrap the local dependencies and verify their transport and pipeline contracts. Use its **start + run smokes + pipeline acceptance** button so Tilt starts all dependencies first. |
 | `stripe-webhook` | local_resource | Forwards Stripe webhooks to the local web app via `stripe listen`. | Testing Stripe payments, subscriptions, or webhook handling. |
 | `docs` | local_resource | Local documentation site. Manual unless selected with the Tilt resource filter. | Working on or manually testing the documentation site. |
 | `mcp` | local_resource | Local MCP worker and explorer endpoint. | Developing or testing MCP tools and resources. |
@@ -449,16 +450,16 @@ will **not** report ready unless explicitly triggered with
 | `gcp-batch-api` | local_resource | Local batch API service using the fake provider and emulators. **Disabled in lean mode.** | Testing batch API ingress and processing. |
 | `cfw-batch-api` | local_resource | Local Cloudflare batch API ingress. **Disabled in lean mode.** | Testing the batch API worker boundary. |
 
-Full profile has 31 manual resources:
+Full profile has 32 manual resources:
 
 ```text
-postgres-reset ch-ui clickhouse-reset auth post-generation-checks notification-checks alert-evaluator alert-delivery custom-classifier insert-generations-clickhouse otel-collector valkey presidio-analyzer presidio-anonymizer presidio stripe-webhook docs mcp bleep internal tts-api stt-api kv-cache fusion intern-provisioner temporal bench-worker gateway-bench-runner gateway-bench-coord gcp-data-deletions local-intern
+postgres-reset ch-ui clickhouse-reset auth post-generation-checks alert-evaluator alert-delivery custom-classifier insert-generations-clickhouse otel-collector valkey presidio-analyzer presidio-anonymizer presidio coop-hma-runtime coop-hma-bootstrap stripe-webhook docs mcp bleep internal tts-api stt-api kv-cache fusion intern-provisioner temporal bench-worker gateway-bench-runner gateway-bench-coord gcp-data-deletions local-intern
 ```
 
 Lean profile:
 
 ```text
-postgres-reset ch-ui clickhouse-reset auth post-generation-checks notification-checks alert-evaluator alert-delivery custom-classifier insert-generations-clickhouse dataflow dataflow-async-jobs otel-collector minio-s3 minio-init valkey presidio-analyzer presidio-anonymizer presidio dev-fs-logs clerk-webhook sequence-webhook stripe-webhook mission-control docs cfw-sandbox video-api embeddings-api rerank-api workflow-api files-api image-api public-api mcp bleep internal tts-api stt-api kv-cache fusion fake-gcs fake-gcs-init fake-provider gcp-batch-api cfw-batch-api intern-provisioner temporal bench-worker gateway-bench-runner gcp-data-deletions local-intern
+postgres-reset ch-ui clickhouse-reset auth post-generation-checks alert-evaluator alert-delivery custom-classifier insert-generations-clickhouse dataflow dataflow-async-jobs otel-collector minio-s3 minio-init valkey presidio-analyzer presidio-anonymizer presidio coop-hma-runtime coop-hma-bootstrap dev-fs-logs clerk-webhook sequence-webhook stripe-webhook mission-control docs cfw-sandbox video-api embeddings-api rerank-api workflow-api files-api image-api public-api mcp bleep internal tts-api stt-api kv-cache fusion fake-gcs fake-gcs-init fake-provider gcp-batch-api cfw-batch-api intern-provisioner temporal bench-worker gateway-bench-runner gcp-data-deletions local-intern
 ```
 
 The 21 resources that are auto-init in full but manual in lean are:
@@ -483,6 +484,22 @@ tilt wait --for=condition=Ready uiresource/valkey --timeout=120s
 tilt trigger auth
 tilt wait --for=condition=Ready uiresource/auth --timeout=120s
 ```
+
+For Coop + HMA, use the bootstrap resource's **start + run smokes + pipeline acceptance**
+button, or run the equivalent commands. Do not add these resources to the
+auto-init `tilt wait` list above:
+
+```bash
+tilt trigger coop-hma-runtime
+tilt trigger coop-hma-bootstrap
+tilt wait --for=condition=Ready uiresource/coop-hma-bootstrap --timeout=600s
+```
+
+The bootstrap resource keeps the rollout gates observable as distinct direct
+transport checks: `smoke-hma-transport` proves matching alone, while
+`smoke-coop-transport` repeats the confirmed benign match and submits it to the
+default Coop human-review queue. After those prerequisite checks, the resource
+runs `pipeline-acceptance` through scheduler → observer → HMA → optional Coop.
 
 ---
 
@@ -569,7 +586,7 @@ you can temporarily mock the data-fetching hooks to test UI behavior with contro
 ## 7. Infisical Authentication for Local Services
 
 In `services/cfw-api`, `cfw-video-api`, and `cfw-embeddings-api`,
-`bun run dev` invokes `scripts/dev.ts` which calls `writeDevVars()` to
+`bun run dev` invokes `services/<worker>/scripts/dev.ts` which calls `writeDevVars()` to
 pull secrets from Infisical before starting `wrangler dev`. In
 non-interactive environments (remote VMs, CI), Infisical may prompt
 for interactive login. To bypass this:
@@ -668,8 +685,8 @@ bare-metal Linux.
 ### Flannel VXLAN crash (k3d only)
 
 > **Note:** This section applies to **k3d** clusters (k3s defaults to
-> Flannel+VXLAN). `scripts/tilt-dev.ts` creates a **Kind** cluster (`or-dev`),
-> which uses kindnet (not Flannel) and is unaffected by this crash.
+> Flannel+VXLAN). The `Tiltfile` runs everything through `docker_compose`
+> and `local_resource` with no Kubernetes cluster, so it is unaffected.
 
 If you are running a k3d cluster on a Firecracker VM, k3s's Flannel CNI defaults
 to the VXLAN backend, which requires the `vxlan`, `br_netfilter`, and `overlay`
@@ -887,7 +904,7 @@ are available in your Infisical path.
 
 ### Common pitfall: do not run `wrangler dev` directly
 
-Always use `bun run dev` (which invokes `scripts/dev.ts` →
+Always use `bun run dev` (which invokes `services/<worker>/scripts/dev.ts` →
 `writeDevVars()` → `wrangler dev`). Running `wrangler dev`
 directly skips the Infisical-sourced `.dev.vars` refresh and
 the worker will start with stale or missing secrets, surfacing
