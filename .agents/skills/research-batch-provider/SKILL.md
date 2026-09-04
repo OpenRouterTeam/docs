@@ -146,9 +146,9 @@ capture matrix:
 12. **Credential shape** — platform and BYOK credential formats, including
     runtime validation, documented separately: they may differ per path.
     Vertex platform auth uses ADC/workload identity (no key material);
-    Google BYOK is rejected until batch artifact ownership is designed,
-    since jobs and GCS artifacts run in the OpenRouter platform project.
-    Record whether BYOK is even supportable, not just its key format
+    Vertex BYOK takes the customer's service-account JSON key and runs jobs
+    and GCS artifacts in the customer's project and bucket. Record where
+    each path's jobs and artifacts live, not just its key format
 13. **Artifact handles** — what poll stores for terminal result discovery.
     Treat `output_file_id` as the shared provider result-handle slot: it may
     contain a Files API id or, for Vertex, a GCS output prefix
@@ -309,9 +309,22 @@ where the whole status model is counters:
 - **Probe remote-URL field names by trying the variants.** xAI takes
   `file.url`, not OpenAI's `file.file_url`, and reports the wrong one as a
   per-line error rather than a rejection.
+- **For GCS-backed providers, test the bucket, not just the key.** Vertex
+  accepts a job whose input or output bucket is missing or unreadable and
+  fails it at execution time with no `completionStats`, so no inference is
+  observed. A writable-input but unwritable-output bucket fails later, after
+  `completionStats.successfulCount` shows inference ran; whether that run is
+  billed was not measured. Before capturing, confirm the service account's
+  project equals the configured project id and that it can write the output
+  bucket, or every output-dependent case is deferred.
 - **A request can sit `pending` with no error and no deadline.** Two xAI
   probes never resolved. Record whether the provider documents a
   per-request timeout; without one, the adapter needs its own.
+- **Run the adapter's `parseResult` on a captured error row, not a
+  hand-built one.** A provider may nest the error body as a JSON string
+  where the parser expects an object (Mistral, `docs/batch-research/mistral.md` D1).
+- **When a docs site has no fetchable OpenAPI spec, read its `/llms.txt`**
+  for the canonical page list before guessing URLs or operation anchors.
 
 ## Deferred captures
 

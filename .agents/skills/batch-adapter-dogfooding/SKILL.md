@@ -32,6 +32,8 @@ load-bearing claims live.
   fixtures and `tests/manual/` cases.
 - Keep live batches small and cheap: minimum lines per case, cheapest
   batch-enabled model, cancel throwaway batches promptly.
+- There is no public `POST /batches/:id/cancel` route (`packages/batch/routes/`),
+  so cancel cases are native-only; a 404 from OpenRouter is the expected surface, not a `BUG`.
 - Use existing credentials only (Infisical / provisioned secrets). Never
   hardcode or print keys. If a credential does not exist for a case
   (e.g. direct provider key, BYOK key), the case is `UNTESTED`.

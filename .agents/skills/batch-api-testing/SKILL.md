@@ -120,6 +120,15 @@ Failure modes that look like product bugs:
   are dropped. The resource going green is not the signal: the pipeline creates
   `usage-record-async-jobs-dataflow` well after the container starts, so gate
   traffic on the subscription probe above, not on the trigger.
+- `generations` has rows for seeds only, none for your batch — the batch
+  resource list starts `dataflow-async-jobs` but not `dataflow`
+  (`generations-stream`), so finalize publishes to `usage-record-generations`
+  with no consumer and the messages drop. `tilt trigger dataflow`, wait for a
+  subscription on that topic, then rerun. Per-line billing lands as one
+  `generations` row per output line with `status_code 200`, joined on
+  `async_job_id = <batch id>` (there is no `batch_id` column); `usage`
+  carries the per-line cost. Failed lines are skipped by design and produce
+  no row, so a mixed batch has fewer rows than lines.
 
 ### Drive
 

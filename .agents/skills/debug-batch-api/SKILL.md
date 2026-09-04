@@ -139,43 +139,53 @@ Batch objects use this layout:
 gs://$BATCH_GCS_BUCKET/<billable_entity_id>/<job_id>/<artifact>
 ```
 
-The layout is built by `buildBatchGcsUri` at
-`services/batch-api/src/storage/batch-gcs-store.ts:97-116`. The
-`BatchGcsArtifact` enum at `:16-38` defines:
+The layout is built by `buildBatchGcsUri` in
+`services/batch-api/src/storage/batch-gcs-store.ts`. The
+`BatchGcsArtifact` enum in the same file defines:
 
 - `raw_input`: verbatim client `{custom_id, body}` JSONL, persisted at
-  acceptance before validation (`:17-23`).
-- `submit_journal`: the small submit state machine's journal (`:24`).
-- `input_file`: validated client-wire JSONL used for upload (`:25`).
-- `input_file_lowered`: provider-wire JSONL after lowering (`:26-27`).
+  acceptance before validation.
+- `submit_journal`: the small submit state machine's journal.
+- `input_file`: validated client-wire JSONL used for upload.
+- `input_file_lowered`: provider-wire JSONL after lowering.
 - `output/raw_response`: untouched provider-native result JSONL, exactly as
-  fetched (`:28-30`).
+  fetched.
 - `output/results`: validated, skin-rendered `BatchResult` JSONL, written at
-  finalize and served verbatim by GET (`:31-35`).
-- `error/raw_response`: untouched provider-native failed-result JSONL
-  (`:36-37`).
+  finalize and served verbatim by GET.
+- `error/raw_response`: untouched provider-native failed-result JSONL.
 
 Compare `output/raw_response` with `output/results`: a field present only in
 the former was dropped by our parse/render transform; absent from both means
-the provider did not send it. The finalize artifact write is documented at
-`services/batch-api/src/finalize/batch-result-artifacts.ts:44-57`, and the
-materialized results write at
-`services/batch-api/src/finalize/materialize-batch-results.ts:80-90`.
+the provider did not send it. A served row whose `error.message` is
+`<Provider> returned a malformed batch result.` (`fireworks-malformed-N` ids)
+means the native row failed canonical schema validation; the finalize logs do
+not record the failing Zod path, and the adapter transform swallows it too
+(`transformBatchResponse` re-emits the same generic row). To see which field
+was rejected, pull `output/raw_response` and run the row's `response` through
+the adapter's normalizer and the canonical schema directly, e.g.
+`NonStreamCompletionResponseSchema.safeParse(normalizeReasoningContentBody(row.response))`
+from `packages/batch/adapters/openai/output-parser.ts`, and read
+`error.issues[].path`. The finalize artifact write is
+`persistBatchResults` in
+`services/batch-api/src/finalize/batch-result-artifacts.ts`, and the
+materialized results write is `materializeBatchResults` in
+`services/batch-api/src/finalize/materialize-batch-results.ts`.
 
 Production writes use bucket `customer-data-batch-api-prod` in project
-`customer-data-483518`, configured at
-`services/batch-api/infra/cloudrun.tf:203-204`. The pre-cutover
-`openrouter-batch-api-prod` bucket still contains older jobs
-(`services/batch-api/infra/cloudrun.tf:193-200`). Both use the 30-day
-artifact retention contract (`services/batch-api/infra/customer-data-bucket.tf:40-65`).
+`customer-data-483518`, configured by the `BATCH_GCS_BUCKET` env in
+`services/batch-api/infra/cloudrun.tf`. The pre-cutover
+`openrouter-batch-api-prod` bucket still contains older jobs (see the
+`BATCH_GCS_BUCKET` comment there). Both use the 30-day artifact retention
+contract (the `lifecycle_rule` on `google_storage_bucket.customer-data-batch-jobs` in
+`services/batch-api/infra/customer-data-bucket.tf`).
 
 `job_id` is the batch ID returned by submit, generated as
-`orid(ORIDType.Batch)` at `services/batch-api/src/submit/accept/submit-batch.ts:135-137`
+`orid(ORIDType.Batch)` in `services/batch-api/src/submit/accept/submit-batch.ts`
 (normally `batch-<timestamp>-<random>`).
 
 **Entity-ID gotcha:** the GCS path uses
-`user.orgId ?? user.user.clerk_user_id`, not the key creator:
-`services/cfw-batch-api/src/middlewares/auth.ts:97-103`. For an org-owned key,
+`user.orgId ?? user.user.clerk_user_id`, not the key creator
+(`billableEntityId` in `services/cfw-batch-api/src/middlewares/auth.ts`). For an org-owned key,
 the path segment is the `org_…` ID, not `creator_user_id` from
 `GET /api/v1/key`; using the creator user ID produces a nonexistent path.
 Resolve the billable entity from ClickHouse when given a generation ID:
@@ -522,6 +532,16 @@ the decision table to choose the next query.
   lowering reports a per-line shared-input key and the scan compares it the way
   it compares the upstream path, so that error names the offending `custom_id`
   rather than coming from the provider.
+- **Vertex job fails asynchronously on GCS bucket access, not at submit:**
+  Vertex accepts a job whose input or output bucket is missing or unreadable
+  and fails it during execution with no `completionStats`, so a job that
+  shows `batch_submitted_upstream` and then `batch.adapter.vertex_job_error`
+  with no per-row output may have never run inference. A writable-input but
+  unwritable-output bucket fails later, after `completionStats.successfulCount`
+  shows inference ran; whether that run is billed by Google was not measured.
+  Check the Vertex AI service agent's read grant on the input bucket and write
+  grant on `VERTEX_BATCH_OUTPUT_URI_PREFIX` before diagnosing the payload. See
+  `docs/batch-research/google-vertex.md`.
 
 ## Metrics quick reference
 
@@ -541,10 +561,32 @@ the decision table to choose the next query.
 | Identity-token error | `sum:openrouter.batch.identity_token.fetch.error{service:cfw-batch-api}.as_count()` | none |
 | Identity-token success | `sum:openrouter.batch.identity_token.fetch.success{service:cfw-batch-api}.as_count()` | none |
 | Identity-token latency | `p95:openrouter.batch.identity_token.fetch.latency_ms{service:cfw-batch-api}` | none |
+| Finalize request count | `sum:openrouter.batch_api.finalize.request{*}.as_count()` | `outcome`, `provider` |
+| Finalize request latency | `p95:openrouter.batch_api.finalize.request_duration_ms{*}` | `outcome`, `provider` |
+| Finalize phase latency | `p95:openrouter.batch_api.finalize.phase_duration_ms{*}` | `phase`, `outcome`, `provider` |
+| Generation-line outcomes | `sum:openrouter.batch_api.finalize.generation_lines{*} by {result}.as_count()` | `result` (`emitted`, `estimated`, `skipped`, `failed`, `unaccounted`), `provider` |
+| Sweep candidates | `max:openrouter.batch_api.sweep.candidates_found{*}` | none |
+| Sweep published | `sum:openrouter.batch_api.sweep.published{*}.as_count()` | none |
+| Sweep tick latency | `p95:openrouter.batch_api.sweep.duration_ms{*}` | none |
+| Sweep mark-polled | `sum:openrouter.batch_api.sweep.mark_polled{*}.as_count()` | `outcome`, `location` on error |
 
-No batch-specific metric currently covers queue depth, provider poll attempts,
-poll latency/status, finalization latency, result downloads, terminal status
-counts, or billing completeness. Use the structured events above.
+`finalize.generation_lines` counts per-line publication outcomes once per
+generation-emission pass: `emitted` and `estimated` lines were published for
+billing, `failed` aborted the pass for retry, `skipped` produced a
+non-billable row error, and `unaccounted` lines were dropped without billing
+or a row error. The result buckets are mutually exclusive. A retried pass
+re-counts every line (downstream billing dedupes by generation ID, StatsD
+does not), so read rates and the outcome mix, not absolute totals. Any
+sustained nonzero `unaccounted` or `failed` rate is a billing-completeness
+signal. `sweep.candidates_found` is a per-tick gauge of the candidate rows
+read by the scan, capped by the 3000-row scan limit; only up to 400 eligible
+candidates are polled per tick. A gauge pinned near 3000 means the scan
+cannot see the whole backlog; sustained values above 400 mean the backlog
+takes multiple ticks to drain.
+
+No batch-specific metric covers provider poll attempts, poll latency/status,
+result downloads, terminal status counts, or emitted-vs-billed reconciliation
+against the downstream Dataflow sink. Use the structured events above.
 
 ## Reporting format
 
