@@ -139,7 +139,7 @@ colleague: `/user-request-summaries` (SEC-136, PR
 [#33085](https://github.com/OpenRouterTeam/openrouter-web/pull/33085)).
 
 The accepted pattern is the caller-scoping block in
-`services/cfw-frontend-api/src/routes/migrated/user-sessions.ts:209-254`:
+`internalUserSessionsHandler` in `services/cfw-frontend-api/src/routes/activity/user-sessions/route.ts`:
 re-verify org membership from the primary so a revoked member fails closed,
 let an admin keep the requested filter, and force every other caller's filter
 to `[callerUserId]` rather than trusting the client-supplied array. A
