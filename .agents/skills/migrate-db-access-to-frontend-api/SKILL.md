@@ -31,7 +31,7 @@ Reference implementations:
   `NotificationsApp.tsx` loader split) ship with that PR.
 - **PR #28397** (guardrails) — the client-side TanStack
   pattern (`queries.ts`, `queryOptions`, `useAPIMutation`).
-- `services/cfw-frontend-api/src/routes/migrated/api-key-labels.ts`
+- `services/cfw-frontend-api/src/routes/user/api-keys/labels/route.ts`
   and `presets.ts` — the route-definition style to copy.
 
 ## Architecture target
@@ -108,9 +108,7 @@ New file:
 
 The `migrated/` folder is vestigial from an earlier NextJS HTTP-route migration
 and is being retired. New routes follow the established per-route-subdirectory
-convention (`<domain>/route.ts`), not a flat file and not `migrated/`. The
-sibling examples `api-key-labels.ts`, `presets.ts`, and
-`provider-preferences.ts` still live under `migrated/` for now.
+convention (`<domain>/<resource>/route.ts`), not a flat file and not `migrated/`. The API-key labels, presets, and provider-preferences examples now live under the `user` domain.
 
 ### Sub-app and registration
 
