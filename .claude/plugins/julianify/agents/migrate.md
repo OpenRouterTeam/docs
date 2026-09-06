@@ -66,7 +66,7 @@ Resolve the target to a concrete file path in openrouter-web.
   - `(static)` -- docs, legal, about
 
   Example: `/settings/keys` maps to
-  `projects/web/app/(user)/settings/keys/page.tsx`.
+  `projects/web/app/[locale]/(user)/settings/keys/page.tsx`.
 
 - **Component name**: Use `Glob` to search existing
   components in `packages/frontend/components/` and

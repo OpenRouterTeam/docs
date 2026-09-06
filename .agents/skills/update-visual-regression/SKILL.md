@@ -85,12 +85,13 @@ cd tests/web-e2e
 bun run test:vr
 ```
 
-`test:vr` runs the whole `suites/visual-regression/` directory,
-so the dashboard and mission-control suites execute too and fail
-signed-out under `SKIP_AUTH=true`. Read the per-suite results,
-not the exit code: a non-zero exit whose only failures are in
-`dashboard-pages.test.ts` says nothing about public pages. Add
-`--grep`, or pass the suite file, to run public pages alone.
+`test:vr` runs the whole `suites/visual-regression/` directory.
+The dashboard suite skips itself under `SKIP_AUTH=true` (and the
+mission-control suite skips without `MC_BASE_URL`), so only
+public pages produce results. Signed-out dashboard captures were
+never valid: without a session every dashboard route redirects to
+Clerk sign-in, so `--update-snapshots` used to write the sign-in
+page as the baseline.
 
 **Dashboard pages (needs Clerk credentials from Infisical):**
 
@@ -137,6 +138,8 @@ bun run test:vr:dashboard:update
 
 This overwrites the `.png` files in the `*-snapshots/`
 directories for both `chromium-vr` and `mobile-chrome`.
+
+The suffix records the OS that rendered the baseline, and CI reads one set per job: `visual-regression-daily` reads `*-linux.png`, `visual-regression-pr` (macOS) reads `*-darwin.png`. A baseline rendered on a laptop can drift by tens of percent from the same OS on a CI runner (fonts, antialiasing, OS version), so treat a wide diff on pages you did not touch as a provenance problem, not a regression. Check which machine produced the current PNGs (`git log` on the snapshot directory) before widening thresholds.
 
 ## Step 4 -- Re-run to Confirm Green
 
@@ -294,12 +297,11 @@ When a page is removed:
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `test:vr` exits non-zero with failures only in `dashboard-pages.test.ts` | Authenticated pages ran signed-out under `SKIP_AUTH=true` | Expected. Judge public-page results on their own, and use `test:vr:dashboard` (Infisical Clerk creds) for those pages. |
+| `test:vr` reports dashboard tests as skipped | `SKIP_AUTH=true` skips `dashboard-pages.test.ts` | Expected. Use `test:vr:dashboard` (Infisical Clerk creds) for those pages. |
 | Snapshot diff on pages you did not change | Font subpixel rendering, CI runner differences | Widen threshold or add CSS mask. Verify the diff is not a real regression. |
 | `waitForVisualStability` timeout | Page has persistent `.animate-pulse` skeletons | Increase `skeletonTimeoutMs` in the test, or increase `settleMs`. |
 | Test times out entirely | Slow page load (e.g. `/docs`, `/rankings`) | Add `test.setTimeout(120_000)` before `goto()`. |
 | Dashboard tests fail with auth errors | Missing Clerk credentials | Ensure `infisical run` injects `E2E_CLERK_USER` and `E2E_CLERK_PASSWORD` from `/tests/e2e`. |
-| `bun run test:vr` reports dashboard auth failures | The package script globs both visual-regression suites while setting `SKIP_AUTH=true` | Run `RUN_VISUAL_REGRESSION=true SKIP_AUTH=true bunx playwright test suites/visual-regression/public-pages.test.ts` to isolate public coverage. |
 | `test:vr:dashboard` fails with `Project ID is required when using machine identity` | Infisical machine authentication needs an explicit project ID | Include `--projectId=771b7bc0-6578-41b0-886e-9fcdb66e9173` when invoking `infisical run` directly. |
 | Dashboard script fails with a missing project ID under machine auth | The package script does not pass the Infisical project ID | Run `infisical run --projectId=771b7bc0-6578-41b0-886e-9fcdb66e9173 --env=dev --path=/tests/e2e -- env RUN_VISUAL_REGRESSION=true bunx playwright test suites/visual-regression/dashboard-pages.test.ts`. |
 | Local `/models` snapshot is nearly empty | The local KV-backed model cache has no rows | Inspect the rendered model count before treating a passing or failing snapshot as meaningful. Use a data-backed environment for model screenshots. |

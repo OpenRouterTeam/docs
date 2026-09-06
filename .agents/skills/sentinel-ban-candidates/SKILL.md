@@ -863,11 +863,15 @@ Each target contains:
 - `proposedParams` — parameters for the proposed kind. Account-wide
   `rate_limit` requires positive integer `rpm` and/or `rpd`. The scoped
   rate-limit kinds require `rpm` only (no `rpd`), and by default it must be one
-  of the fast-limiter buckets — 1, 4, 16, 64, 256, 1024, 4096 — because the
-  Cloudflare limiter is the whole control and an in-between value is rejected
-  rather than rounded. Pass `"slow_enforcement": true` to have a
-  globally-consistent Redis limiter enforce an exact non-bucket rpm, up to a
-  ceiling of 4096. Other kinds use `{}`. A scoped non-bucket rpm without
+  of the fast-limiter buckets (`RPM_LIMITER_BUCKETS` in
+  `packages/type-utils/rate-limiter-rpm.ts`, currently topping out at 8192)
+  because the Cloudflare limiter is the whole control and an in-between value
+  is rejected rather than rounded. Pass `"slow_enforcement": true` to have a
+  globally-consistent Redis limiter enforce an exact non-bucket rpm, up to the
+  largest bucket. Raising that ceiling means adding a bucket and a
+  `RATE_LIMITER_RPM_*` binding to every worker wrangler.toml, then deploying;
+  a restriction above the deployed ceiling is rejected at ingest. Other kinds
+  use `{}`. A scoped non-bucket rpm without
   `slow_enforcement` returns `Invalid proposed params for
   proposedKind=author_rate_limit`; the inner bucket explanation is not returned
   to the agent. Scoped params are strict, so adding `rpd` is rejected and

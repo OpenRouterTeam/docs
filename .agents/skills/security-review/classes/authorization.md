@@ -174,7 +174,7 @@ reachable with no auth wrapper purely because it was exported from a
 function that is not meant to be an action, the accepted remedy is removal of
 the endpoint, not a gate: relocate it to a module with `import 'server-only'`
 (evidence:
-`projects/web/app/(user)/(dashboard)/settings/integrations/azure-key-merge.ts`)
+`projects/web/app/[locale]/(user)/(dashboard)/settings/integrations/azure-key-merge.ts`)
 and keep only genuine actions exported from the action module. An entry added
 to `scripts/oxlint/server-action-auth-wrapper-baseline.ts` or
 `scripts/oxlint/route-handler-auth-baseline.ts` grants an exemption from the
@@ -350,7 +350,7 @@ pattern.
 Report a missing test separately as `TEST GAP`, not as a vulnerability finding:
 it means the authorization logic may be correct but its required proof is
 absent. Copy the matrix and isolation coverage in
-`projects/web/app/(user)/(dashboard)/workspaces/[workspaceId]/keys/authorize-api-key-write.test.ts`
+`projects/web/app/[locale]/(user)/(dashboard)/workspaces/[workspaceId]/keys/authorize-api-key-write.test.ts`
 (PR #29628, commit `4a72ec91d6`) and the regression test added by
 `4eacb09ffd` for API-key guardrail assignment. For query-layer changes, copy
 `should not delete guardrail with wrong entityId` in

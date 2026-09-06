@@ -289,7 +289,7 @@ Create one `queries.ts` for the domain:
   - **Promotion trigger**: the moment another surface needs
     the domain's query keys — an org switcher invalidating
     them, a dashboard widget reading them — importing keys
-    from deep inside `app/(user)/(dashboard)/...` is the
+    from deep inside `app/[locale]/(user)/(dashboard)/...` is the
     smell. Move the domain (keys and queries together) to
     `features/<domain>/` at that point.
 - `createQueryKeys('<domain>', ...)` — the namespace is the
@@ -331,7 +331,7 @@ the direct db call with `fetchPublicInternalJsonApi` from
 `@openrouter-monorepo/frontend/utils/fetch-internal-api`,
 unwrapping the `{ data: T }` envelope and validating with the
 shared schema — see
-`projects/web/app/(marketplace)/[maker-id]/fetch-author-page-data.ts`.
+`projects/web/app/[locale]/(marketplace)/[maker-id]/fetch-author-page-data.ts`.
 An *authenticated* RSC read (`fetchInternalApi`, cookie
 forwarding) should be rare enough to justify in the PR
 description — it keeps the page force-dynamic and the Next
