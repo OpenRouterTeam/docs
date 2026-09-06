@@ -117,6 +117,17 @@ or bot population shift), whose cohort is below the 200-view floor, or whose
 slow metric is inherent to a signed-in, interaction-gated surface with no
 server-renderable content.
 
+Before ranking, look for headless fleets that `@session.type:user` does not
+catch: group the slow views by `@browser.name`, `@browser.version_major` and
+`@display.viewport.width`. One browser version at one viewport width that
+appears on unrelated routes across many countries with multi-second TTFB and
+INP at 0 is a lead, not proof, since a managed device fleet can share all of
+those. Corroborate before excluding: the same cohort's views on fast routes
+are equally slow, its `@geo.city` values are datacenter cities, and its
+`@view.action.count` is 0. Then exclude only the intersection of
+the verified attributes with a negated query clause, never a whole browser
+version or every user in a city, and re-rank and re-check the view floor.
+
 When TTFB is the only over-threshold metric, no browser-side change moves it,
 and RUM cannot say on its own whether the wait is cache state, render time or
 an upstream fetch, because APM has no server spans for this app
@@ -180,7 +191,20 @@ same baseline:
    preview-only, so same-origin client API calls do not reach the local workers.
    Check the request log of a measurement run, and when the route's critical
    path depends on those responses, take the reading from the deployed preview
-   below instead of the local server.
+   below instead of the local server. For a public route whose critical path is
+   public frontend-api only, a same-origin proxy in front of `next start` that
+   forwards `/api/*` to production is enough for a CLS reading, since the
+   layout does not depend on where the JSON came from. Say so in the PR, since
+   the timing metrics of such a run are not production-equivalent.
+
+   Clerk middleware redirects a local production server to a dev-browser
+   handshake (`__clerk_hs_reason=dev-browser-missing`) unless the request
+   carries a `__clerk_db_jwt` cookie; the harness and any VR run against the
+   local build need a placeholder value for that cookie on every page request.
+
+   The per-route first-load JS size for the bundle delta is in
+   `.next/diagnostics/route-bundle-stats.json` (`firstLoadUncompressedJsBytes`)
+   on both builds, so keep both `.next` directories until the PR is written.
 
    Drive the route with Playwright (`tests/web-e2e`, page objects in
    `tests/web-e2e/pages`; a standalone harness imports `playwright-core` from
@@ -305,3 +329,18 @@ Candidate classes seen so far:
   stencil-to-content transition needs private frontend-api paths.
 - Public routes whose p75 TTFB is dominated by a single geography or bot cohort
   — check `@geo.country` and `@session.type` before trusting the headroom.
+- Public routes with a `Suspense fallback={null}` around search-param-bound
+  controls (`nuqs`, `useSearchParams`) above the main content. The controls are
+  missing from the first-pass HTML and are inserted at hydration, so CLS shows
+  on `initial_load` only and lands hardest on the device class where the
+  controls stack (`@device.type` p75 CLS diverging by 5x is the tell). The fix
+  is a fallback with the live control's geometry; `curl` the production HTML
+  to confirm the control is absent before building it.
+- A stencil that renders the LCP text as a DOM node the real component
+  replaces. Chrome promotes a later text paint only when it is strictly larger,
+  and a copy first painted in the fallback font is smaller than the web-font
+  copy painted after hydration, so when the font arrives between the two paints
+  LCP moves back to hydration time. Diagnose with a buffered
+  `PerformanceObserver` on `largest-contentful-paint` logging `size` and the
+  element per entry under CPU and network throttling. The fix must keep one DOM
+  node across the swap.

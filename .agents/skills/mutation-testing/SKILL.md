@@ -80,7 +80,7 @@ instead of changing unrelated tests.
 The harness builds the command-runner test command without quoting
 (`scripts/mutation-test.ts` `buildTestCommand`), so source files under
 parenthesized route directories (e.g.
-`projects/web/app/(user)/...`) fail the dry run with
+`projects/web/app/[locale]/(user)/...`) fail the dry run with
 `/bin/sh: Syntax error: "(" unexpected`. Workaround: run Stryker
 directly, keeping the resolve hook
 (`node --import ./scripts/stryker-typescript-alias.mjs node_modules/.bun/@stryker-mutator+core@*/node_modules/.bin/stryker run <config>.json`)

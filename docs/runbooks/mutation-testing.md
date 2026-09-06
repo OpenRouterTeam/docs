@@ -93,8 +93,12 @@ What it will and will not do:
   runs. Files with thousands of mutants against a large suite (for example
   `packages/router/index.ts`) run at about 2 mutants per second and take
   12-30 minutes. The run has no cap on the number of files. `timeout-minutes`
-  (25) is the only ceiling. A changeset of hundreds of files, such as a branch
-  far behind main, hits the timeout and gets no report.
+  is the only ceiling: 18 minutes on the mutation step, inside the report
+  job's 30 (the 12-minute gap covers setup and scoping before the step and
+  report publication after it). A changeset of hundreds of files, such as a branch far behind
+  main, hits the step budget and gets no report; the check still passes,
+  because a job cut short by the job ceiling would end as cancelled and turn
+  this non-blocking check red.
 - Each run also submits its numbers to Datadog for the "Mutation Testing
   Quality" dashboard (`configs/terraform-monitors/monitoring/mutation_testing`).
   The metrics are per package: `openrouter.mutation_testing.score`,

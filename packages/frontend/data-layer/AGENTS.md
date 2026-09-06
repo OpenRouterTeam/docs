@@ -366,7 +366,7 @@ export function NotificationsApp() {
 Below the boundary there is no `enabled`, no sentinel, and `isPending`
 honestly means "first fetch in flight". In-tree exemplar:
 `NotificationsApp.tsx` in
-`projects/web/app/(user)/(dashboard)/settings/notifications/`.
+`projects/web/app/[locale]/(user)/(dashboard)/settings/notifications/`.
 
 This works because conditional *rendering* is the tool React gives you
 — the `enabled` + sentinel dance only exists because hooks can't be

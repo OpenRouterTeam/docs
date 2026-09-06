@@ -106,10 +106,10 @@ recurring questions (pricing, programs, product/entity pages), consider
 adding an FAQ section, and consider it for relevant new pages going forward.
 
 - **Static pages**: define a `FaqItem[]` and render it with the shared
-  accordion `app/(static)/shared/FAQAccordion.tsx` (see `app/(static)/pricing`,
-  `app/(static)/learn/LearnFaq.tsx`, the `app/(static)/startups` family).
+  accordion `app/[locale]/(static)/shared/FAQAccordion.tsx` (see `app/[locale]/(static)/pricing`,
+  `app/[locale]/(static)/learn/LearnFaq.tsx`, the `app/[locale]/(static)/startups` family).
 - **Entity pages**: follow the model-page pattern —
-  `app/(marketplace)/[maker-id]/[slug]/ModelFaqSection.tsx` renders the list and
+  `app/[locale]/(marketplace)/[maker-id]/[slug]/ModelFaqSection.tsx` renders the list and
   emits `FAQPage` JSON-LD via `buildFaqPageJsonLd` + the shared
   `components/seo/JsonLd` component so the questions are eligible for rich
   results.
@@ -162,7 +162,7 @@ adding an FAQ section, and consider it for relevant new pages going forward.
   resolves only after hydration; a skeleton in first-pass HTML is acceptable
   only for genuinely personalized or interaction-dependent surfaces.
 - **Follow the server-fetch pattern** in
-  `app/(marketplace)/providers/fetch-providers-listing.ts`: server-side fetch
+  `app/[locale]/(marketplace)/providers/fetch-providers-listing.ts`: server-side fetch
   of the private frontend API, successful-result-only cache, awaited in the
   RSC, real rows rendered. Auth- or user-dependent variants layer on
   client-side over the SSR'd public default view. `/providers` remains
