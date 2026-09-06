@@ -59,6 +59,8 @@ Size-class label mapping:
 | `ubuntu-latest-xl` | `blacksmith-32vcpu-ubuntu-2404`  | `warp-ubuntu-2404-x64-32x`    |
 | `macos-latest`     | `blacksmith-12vcpu-macos-latest` | `warp-macos-latest-arm64-12x` |
 
+A job keeps the same row on every fleet, with one exception: the `deploy-cloudflare-container.yaml` deploy job defaults to `warp-ubuntu-2404-x64-8x` but `blacksmith-16vcpu-ubuntu-2404`, because WarpBuild builds the image on a remote builder VM while Blacksmith builds it on the runner.
+
 The macOS row covers the `visual-regression-pr` job only. `warp-macos-latest-arm64-12x` is WarpBuild's M4 Pro runner (12 vCPU, 44 GB), the same size as the Blacksmith label. The two labels do not run the same macOS major: WarpBuild's `latest` alias tracks GitHub's `macos-latest` (macOS 15 today), while `blacksmith-12vcpu-macos-latest` runs a newer major (macOS 26 as of August 2026). A provider flip therefore moves the job across a macOS major, and the `darwin` snapshot baselines may need a refresh after the flip. The job uses `actions/cache` directly, so its cache entries follow the backend rule described under GitHub-hosted fallback below.
 
 `runs-on` sites are converted to the canonical expression incrementally, workflow by workflow, starting with the WarpBuild pilot workflows, because each converted site also changes checkout and cache action selection. Until a site is converted, it honors only `USE_GITHUB_RUNNERS`.
