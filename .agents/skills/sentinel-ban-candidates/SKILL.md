@@ -140,7 +140,10 @@ BYOK victim.
 
 A trip is a hard stop: do not `review ... approved` and do not `enact`. File for
 visibility, leave every target `pending_review`, and escalate to a human for key
-revocation, holder notification, and crediting the negative balance. The full
+revocation, holder notification, and crediting the negative balance. File the
+revocation as its own `targetType: api_key` case (see
+[API-key targets](#api-key-targets)) so the human reviews and enacts it in
+Mission Control rather than tracking it out of band. The full
 gate is in
 [`SCANNER_SPEC.md`](../../../packages/kyc/sentinel/SCANNER_SPEC.md#compromised-key-gate).
 
@@ -822,7 +825,7 @@ Top-level fields:
 - `urgency` — required self-reported urgency: `red` (enforcement needed fast),
   `yellow` (needs a human eye), or `green` (nothing to act on). The agent must
   make an explicit judgement call for every ingest.
-- `targetType` — `user` or `domain`.
+- `targetType` — `user`, `domain`, or `api_key`.
 - `targets` — 1–10000 targets per request (at most 5000 distinct users for
   `user` suggestions), with a cumulative maximum of 10000 targets and 5000
   distinct users for each suggestion identified by `source` + `ruleKey` +
@@ -910,6 +913,45 @@ Cross-field rules:
   `frontier_us_models`, with the domain in `targetValue`, and are stored as
   candidates for review. The retired `domain_block` kind is rejected at ingest;
   domain enactment is deferred to #30819.
+
+### API-key targets
+
+A compromised key is filed as `targetType: api_key`, one target per key, and is
+the remedy path for the
+[compromised-key gate](#compromised-key-gate--run-before-review-and-enact).
+It is not a restriction: the only `proposedKind` is `api_key_revocation`, and
+the ordinary restriction kinds are rejected on this target type just as
+`api_key_revocation` is rejected on `user` and `domain` targets.
+
+- `targetValue` — the decimal `api_keys.id`. Never key material, a hash, or a
+  key prefix; ingest rejects anything that is not a decimal integer.
+- `evidence.compromised_at` — required ISO datetime, the proposed moment of
+  theft. Every review signal is a before/after split on it, so a case without
+  it cannot be reviewed and is rejected.
+- `evidence.compromise_note` — optional, up to 500 characters, why we believe
+  the key is compromised.
+- `proposedParams`, `proposedTarget`, and `proposedExpiresAt` are rejected;
+  the shared evidence minimum still applies.
+
+Filing is the whole of the agent's authority: key actions are refused on the
+agent enact path, so a human reads the key's before/after model, provider,
+colo, ASN and spend split against the account's other keys in Mission Control
+and enacts. Enactment disables that one key, stamps `api_keys.compromised_at`,
+and writes the linked revocation audit row. Undo does not re-enable the key.
+Hand-filed reports come from the Mission Control revoke-keys page and land in
+the same queue.
+
+```json
+{
+  "targetValue": "1234567",
+  "proposedKind": "api_key_revocation",
+  "evidence": {
+    "compromised_at": "2026-08-30T12:00:00.000Z",
+    "compromise_note": "burst from one ASN on models the key never used",
+    "requests_last_hour": 4200
+  }
+}
+```
 
 For example, an account-wide rate limit that expires at a specific time uses:
 
