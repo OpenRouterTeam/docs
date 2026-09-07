@@ -82,9 +82,12 @@ as the arms it will be compared against and give it a fresh band above 15
 are safe there. Reserve design 1 for cases where arms must not share entities
 (e.g. isolating a whale), not for making room.
 
-**Always set `--min-shard-index` AND `--max-shard-index` together.** They resolve
-independently with no pairing guard — omitting min silently defaults it to 0,
-overlapping the baseline band.
+**Always set `--min-shard-index` AND `--max-shard-index` together.** The deploy
+script rejects one without the other; when both are omitted the lane default
+applies. Prod lanes already run on disjoint bands: interactive `0-13`, batch
+`14-15` (`generation_lane.py`, `BATCH_LANE_SHARD_COUNT`). An untagged staging
+arm inherits the same lane band, so a staging arm compared against a prod-like
+baseline arm needs an explicit band above 15 to avoid overlapping it.
 
 ## Finding the hot entity's partition
 
@@ -114,7 +117,7 @@ byte-identical. Deploy-script flag → pipeline option:
 - `--partition-count` / `--partition-index` — entity slice (both required
   together).
 - `--min-shard-index` / `--max-shard-index` — shard band (both required
-  together).
+  together; defaults to the lane band, interactive `0-13` / batch `14-15`).
 - `--spanner-tag=arm:NAME` — per-arm SPANNER_SYS tag (else auto-derived from
   `--staging-tag`, or `arm:baseline`).
 - `--batch-max-size` / `--batch-max-buffering-secs` / `--batch-min-size` —

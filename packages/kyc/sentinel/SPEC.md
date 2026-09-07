@@ -38,6 +38,11 @@ configuration, or a release gate.
 - Sentinel accepts domain targets as candidates and stores them for review.
   Domain enactment is deferred to #30819. The retired `domain_block` proposal
   kind is rejected at ingest.
+- A compromised key is filed as `targetType: api_key`, one target per key with
+  `proposedKind: api_key_revocation`. Key actions are refused on the agent enact
+  path; a human enacts in Mission Control, which disables the key, stamps
+  `api_keys.compromised_at`, and writes the linked revocation audit row. Undo
+  does not re-enable the key.
 - A Sentinel restriction is attributed to the caller-supplied acting identity,
   trusted as-sent behind the internal HMAC boundary; when omitted it falls
   back to `system`. Ingest-key (agent) callers must supply the identity. The
@@ -345,6 +350,7 @@ flowchart LR
   APPROVED --> ENACT["Enact"]
   ENACT -->|"user target"| RESTRICTION["System restriction"]
   ENACT -->|"domain target"| DOMAIN_ENACT["Deferred to #30819"]
+  ENACT -->|"api_key target"| KEY_DISABLE["Key disabled<br/>compromised_at stamped"]
   CASE --> ARCHIVE["Archive case<br/>freeze future ingest"]
   ARCHIVE -. "unarchive" .-> CASE
   RESTRICTION -->|"target or case undo"| REVOKED["Restriction revoked"]
@@ -489,6 +495,18 @@ Domain targets use the domain in `targetValue` and are stored as candidates for
 review. They are accepted for supported restriction kinds except
 `frontier_us_models`; the retired legacy `domain_block` proposal kind is
 rejected at ingest. Domain enactment is deferred to #30819.
+
+### API-key targets
+
+A compromised key is filed as `targetType: api_key`, one target per key, with
+`targetValue` the decimal `api_keys.id` (never key material, a hash, or a
+prefix) and `proposedKind: api_key_revocation`. `evidence.compromised_at`
+holds the proposed moment of theft since every review signal is a split on
+it. Key actions are refused on the agent enact path, so a human reviews the
+key's before/after evidence in Mission Control and enacts, which disables
+that one key, stamps `api_keys.compromised_at`, and writes the linked
+revocation audit row. Undo does not re-enable a key; hand-filed reports from
+the Mission Control revoke-keys page land in the same queue.
 
 ### Operational safety
 

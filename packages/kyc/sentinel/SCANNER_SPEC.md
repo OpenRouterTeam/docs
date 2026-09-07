@@ -322,7 +322,7 @@ caller sends. The gate admits only allowlisted restriction kinds
 `forced_moderation`, `spend_cap`, plus `inference_block`, which the run may enact
 only after a human approves it), only `user` targets, and only unprotected PAYG
 accounts —
-any paid, sales-managed, or enterprise signal blocks it, and a failed user or
+any sales-managed or enterprise signal blocks it, and a failed user or
 plan lookup blocks it too, because the gate fails closed. Refused targets come
 back as `agent_forbidden_kind` — including domain targets, which the gate refuses
 as a non-`user` target before enactment is attempted — or

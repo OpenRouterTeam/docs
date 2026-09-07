@@ -138,10 +138,11 @@ file's header comment for the shared-prefix key shape). A colocated
 completeness test fails CI on an unclassified mount, so this is
 mandatory per route, not a follow-up.
 
-Append each migrated private route path to the migrated list in
-`configs/terraform-monitors/monitoring/cfw_frontend_api_migration.tf`;
-add explicitly never-migrated private routes to its unmigrated list, and use
-the dashboard's unregistered-routes widget to check both lists.
+No per-route monitor registration is needed. The service-wide
+`[frontend-api]` monitors in
+`configs/terraform-monitors/monitoring/cfw_frontend_api.tf` cover every
+route under `service:frontend-api`, and the route-level toplists on its
+dashboard pick up a new path as soon as it serves traffic.
 
 ### Route definitions: use `createRoute`, not plain handlers
 
