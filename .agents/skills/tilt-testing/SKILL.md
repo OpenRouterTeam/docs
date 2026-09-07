@@ -426,7 +426,6 @@ will **not** report ready unless explicitly triggered with
 | `bench-worker` | local_resource | Benchmark worker backed by Temporal. | Running benchmark jobs locally. |
 | `gateway-bench-runner` | local_resource | Gateway benchmark runner service. | Running gateway benchmark scenarios. |
 | `gateway-bench-coord` | local_resource | Gateway benchmark coordinator. Depends on Postgres and the benchmark runner. | Coordinating gateway benchmark runs. |
-| `gcp-data-deletions` | local_resource | Graphile-worker service for processing data-deletion jobs. | Testing data-deletion workflows and job processing. |
 | `local-intern` | local_resource | Runs the production `ori-runtime` container as a local intern daemon on `ORI_LOCAL_INTERN_PORT` (default 7070). Auto-starts with `tilt up -- --interns`; manual-trigger otherwise. Depends on api. | Testing intern behavior locally with no provisioning — see `.agents/skills/local-intern-chat/SKILL.md`. |
 | `dataflow` | dc_resource | Local Dataflow emulator/service. **Disabled in lean mode.** | Testing Dataflow-backed usage or processing flows. |
 | `dataflow-async-jobs` | dc_resource | Async-jobs Dataflow worker. **Disabled in lean mode.** | Testing asynchronous Dataflow jobs. |
@@ -450,16 +449,16 @@ will **not** report ready unless explicitly triggered with
 | `gcp-batch-api` | local_resource | Local batch API service using the fake provider and emulators. **Disabled in lean mode.** | Testing batch API ingress and processing. |
 | `cfw-batch-api` | local_resource | Local Cloudflare batch API ingress. **Disabled in lean mode.** | Testing the batch API worker boundary. |
 
-Full profile has 32 manual resources:
+Full profile has 31 manual resources:
 
 ```text
-postgres-reset ch-ui clickhouse-reset auth post-generation-checks alert-evaluator alert-delivery custom-classifier insert-generations-clickhouse otel-collector valkey presidio-analyzer presidio-anonymizer presidio coop-hma-runtime coop-hma-bootstrap stripe-webhook docs mcp bleep internal tts-api stt-api kv-cache fusion intern-provisioner temporal bench-worker gateway-bench-runner gateway-bench-coord gcp-data-deletions local-intern
+postgres-reset ch-ui clickhouse-reset auth post-generation-checks alert-evaluator alert-delivery custom-classifier insert-generations-clickhouse otel-collector valkey presidio-analyzer presidio-anonymizer presidio coop-hma-runtime coop-hma-bootstrap stripe-webhook docs mcp bleep internal tts-api stt-api kv-cache fusion intern-provisioner temporal bench-worker gateway-bench-runner gateway-bench-coord local-intern
 ```
 
 Lean profile:
 
 ```text
-postgres-reset ch-ui clickhouse-reset auth post-generation-checks alert-evaluator alert-delivery custom-classifier insert-generations-clickhouse dataflow dataflow-async-jobs otel-collector minio-s3 minio-init valkey presidio-analyzer presidio-anonymizer presidio coop-hma-runtime coop-hma-bootstrap dev-fs-logs clerk-webhook sequence-webhook stripe-webhook mission-control docs cfw-sandbox video-api embeddings-api rerank-api workflow-api files-api image-api public-api mcp bleep internal tts-api stt-api kv-cache fusion fake-gcs fake-gcs-init fake-provider gcp-batch-api cfw-batch-api intern-provisioner temporal bench-worker gateway-bench-runner gcp-data-deletions local-intern
+postgres-reset ch-ui clickhouse-reset auth post-generation-checks alert-evaluator alert-delivery custom-classifier insert-generations-clickhouse dataflow dataflow-async-jobs otel-collector minio-s3 minio-init valkey presidio-analyzer presidio-anonymizer presidio coop-hma-runtime coop-hma-bootstrap dev-fs-logs clerk-webhook sequence-webhook stripe-webhook mission-control docs cfw-sandbox video-api embeddings-api rerank-api workflow-api files-api image-api public-api mcp bleep internal tts-api stt-api kv-cache fusion fake-gcs fake-gcs-init fake-provider gcp-batch-api cfw-batch-api intern-provisioner temporal bench-worker gateway-bench-runner local-intern
 ```
 
 The 21 resources that are auto-init in full but manual in lean are:

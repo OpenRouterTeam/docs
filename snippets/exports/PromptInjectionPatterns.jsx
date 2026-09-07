@@ -186,17 +186,17 @@ export const PromptInjectionPatternsTables = () => {
     "patterns": [
       {
         "name": "system_tag_injection",
-        "regex": "/<\\s*\\/?\\s*system\\s*\\/?>/i",
+        "regex": "/<\\s*(?:\\/\\s*)?system\\s*\\/?>/i",
         "description": "Injecting `<system>`, `</system>`, or `<system/>` tags."
       },
       {
         "name": "role_tag_injection",
-        "regex": "/<\\s*\\/?\\s*(assistant|developer|tool|function)\\s*\\/?>/i",
+        "regex": "/<\\s*(?:\\/\\s*)?(assistant|developer|tool|function)\\s*\\/?>/i",
         "description": "Injecting role-related XML tags (including self-closing)."
       },
       {
         "name": "role_delimiter_injection",
-        "regex": "/\\]\\s*\\n\\s*\\[?(system|assistant|user)\\]?:/i",
+        "regex": "/\\][^\\S\\n]*\\n\\s*\\[?(system|assistant|user)\\]?:/i",
         "description": "Injecting role delimiters like `[system]:`."
       },
       {

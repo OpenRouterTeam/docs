@@ -2,13 +2,17 @@
 
 Data Subject Request (DSR) deletion targets for OpenRouter. Each target implements the `UserDeletionTarget` interface to scrub personally identifiable data from a specific storage backend, replacing it with a pseudonymized replacement user ID.
 
-Targets are shared across orchestrators: the `gcp-data-deletions` graphile worker and the `cfw-internal` `UserDeletionWorkflow` both build their handler set from `buildDeletionHandlers`. Only cfw-internal has R2 bucket bindings, so it is the only orchestrator that can complete `delete_r2_prompt_logs`; Mission Control routes new deletions there.
+The cfw-internal `UserDeletionWorkflow` is the only deletion orchestrator. It
+builds the handler set from `buildDeletionHandlers`, including the R2 and GCS
+prompt-log targets, and Mission Control routes new deletions there.
+The cfw-internal cron owns the deletion monitor sweep.
+The former GCP Graphile orchestrator has been removed.
 
 ## Architecture
 
 ```mermaid
 graph TD
-    Orchestrator["DSR Orchestrator\ngcp-data-deletions · cfw-internal workflow"] --> Build["buildDeletionHandlers"]
+    Orchestrator["DSR Orchestrator\ncfw-internal workflow"] --> Build["buildDeletionHandlers"]
     Build --> Target["UserDeletionTarget interface\nexecute(originalClerkUserId,\nreplacementClerkUserId, taskId)"]
     Target --> PG["ScrubPostgresUser\npackages/db scrub-user"]
     Target --> Spanner["ScrubSpannerBillableEntity\nbatch-scrub generations\nin Cloud Spanner"]
@@ -38,7 +42,6 @@ graph TD
 | `org-membership-check.ts` | `rejectOrgMembers` — fails the target for users in any org, since org-context prompt logs are not under the user prefix |
 | `gcs/delete-gcs-prompt-logs.ts` | `DeleteGcsPromptLogs` — sweeps `global-private-prompt-data` through the GCS JSON API (`packages/prompt-storage/gcs/client.ts`) |
 | `r2/delete-r2-prompt-logs.ts` | `DeleteR2PromptLogs` — sweeps the three prompt-log buckets through Worker R2 bindings; only constructible on cfw-internal, so `buildDeletionHandlers` takes it as a dependency |
-| `not-implemented-target.ts` | `NotImplementedTarget` — settles a target as failed on runtimes that cannot run it (the R2 target on `gcp-data-deletions`) |
 
 ## Commands
 
