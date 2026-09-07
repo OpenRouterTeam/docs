@@ -30,6 +30,8 @@ description: Run and test Mission Control (projects/mission-control) end-to-end 
 - A long-lived local Postgres can drift behind `postgres/migrations` (symptom: cfw-internal 500s such as `column "source_alert" of relation "ban_candidate_suggestions" does not exist`). `bun run db:migrate` needs an Infisical session; without one, run the installed dbmate directly: `DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable" node node_modules/.bun/dbmate@*/node_modules/dbmate/dist/cli.js --migrations-dir postgres/migrations --migrations-table dbmate.schema_migrations --no-dump-schema up`. Never hand-edit the schema.
 
 ## Sentinel ban-candidate case detail (`/admin-utils/sentinel/ban-candidates/<id>`)
+- For case-scoped Usage or standalone `/admin-utils/sentinel/usage`, seed a **user-type** target with a non-null Clerk user ID and `status='pending_review'` to get a nonempty Awaiting approval cohort; an API-key-only case does not exercise this branch (`packages/db/ban-candidates/queries.ts`). Start/migrate ClickHouse with `bun run ch:start` / `bun run ch:migrate`; an empty analytics response can still verify the explorer shell.
+- Account timing needs at least three targets with usable signup timestamps to render comparison charts. A single-user fixture verifies tab navigation and the unavailable state, not populated timing analysis.
 - The case page loads three independent sources; if any is down the page can sit on **skeletons forever** with no visible error. Check the MC/cfw-internal logs for the failing dependency before assuming a UI bug.
   - `cfw-internal` (:8794) — case detail/enrichment.
   - `cfw-frontend-api` (:8795) — entity lookup; if it isn't running, the target detail sheet never resolves. Start it with `bun run dev cfw-frontend-api`, or directly from `services/cfw-frontend-api` with `WRANGLER_INSPECTOR_PORT=9245` when :9229 is already taken by another wrangler ("Address already in use (127.0.0.1:9229)").
@@ -64,3 +66,10 @@ description: Run and test Mission Control (projects/mission-control) end-to-end 
 
 ## Devin Secrets Needed
 - `INFISICAL_CLIENT`, `INFISICAL_SECRET` (org secrets; use qualified refs `secret:org:INFISICAL_CLIENT` in exec env).
+
+## User deletion page runtime checks
+- `/user/<clerk-id>` also depends on usage-record (:8801) and Spanner for user analytics. If another Wrangler owns inspector :9229, start usage-record with a distinct inspector port, e.g. `node node_modules/.bin/wrangler dev --port 8801 --inspector-port 9231` from its service directory after its dev script has generated `.dev.vars`.
+- If deletion buttons remain disabled although `requested_data_deletion=true`, check the Next server-action queue. An unrelated `getRestrictionQualityForUserSA` request can block `getActiveDeletionSA`; inspect ClickHouse readiness and the action ID in `.next/dev/server/server-reference-manifest.json`. Any temporary disabling of that analytics hook must be disclosed and restored; it is not proof the unmodified whole page works.
+- Deletion fixtures need both `requested_data_deletion=true` and `deleted=true` to satisfy the Postgres scrub gate. Setting only the first makes the UI say “Deleted” while the scrub retries a gate mismatch.
+- cfw-internal local R2 persistence is under `.wrangler/shared-state/v3/r2`. Seed exact live and `_trash/` prefixes plus sibling-prefix decoys in all three bound prompt-log buckets. Verify both task rows (`user_deletion_tasks.request_id` → `user_deletions.id`) and remaining object keys; a success toast proves enqueue, not full completion.
+- Local GCS credentials may return 403 for `storage.objects.list` on the prompt-log bucket. Report that separately from successful R2 deletion and do not claim real GCS deletion coverage.
