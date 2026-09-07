@@ -413,7 +413,19 @@ the most exposed victims.
 any restriction, `frontier_us_models` included. File the case for visibility,
 leave every target `pending_review`, and route the account to key revocation,
 holder notification, and crediting the negative balance, escalating those to a
-human. When the gate trips on a target already enacted, escalate the undo in the
+human. File the revocation itself as its own case rather than a Slack aside:
+one target per compromised key, `targetType: api_key`, `targetValue` the
+decimal `api_keys.id` (never key material, a hash, or a prefix),
+`proposedKind: api_key_revocation`, and an `evidence.compromised_at` holding
+the proposed moment of theft, since every review signal is a split on it. An
+optional `evidence.compromise_note` carries why. Key actions are refused on
+the agent enact path in every case, so filing is the whole of the agent's
+authority here: a human reads the before/after model, provider, colo, ASN and
+spend split against the account's other keys in Mission Control and enacts,
+which disables that one key, stamps `api_keys.compromised_at`, and writes the
+linked revocation audit row. Undo does not re-enable a key.
+
+When the gate trips on a target already enacted, escalate the undo in the
 same run: the agent CLI has no `undo` command, so name those targets to the
 human and let them undo through Mission Control, and never report such a target
 as handled. Undo revokes the restriction and leaves the target approved; it does
