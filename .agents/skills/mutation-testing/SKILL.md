@@ -202,8 +202,7 @@ file are not automatically wrong-level. Check whether the decision it
 makes (what to compare, when to throw) is separable from the I/O it
 performs: taking that I/O as a parameter defaulting to the real
 implementation makes the decision unit-killable while leaving only the
-spawn wiring at integration level. `scripts/lint-dead-code.ts` is the
-worked example.
+spawn wiring at integration level.
 
 A survivor on a line inside a callback the unit test injects into a
 mocked collaborator is a missing assertion, not wrong level: have the
