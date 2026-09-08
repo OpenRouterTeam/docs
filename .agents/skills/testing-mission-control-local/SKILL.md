@@ -10,6 +10,7 @@ description: Run and test Mission Control (projects/mission-control) end-to-end 
 - `bun run dev mission-control cfw-internal web` starts MC (:3001), cfw-internal (:8794), web (:3000). All dev scripts require Infisical env injection.
 - Infisical universal auth: `INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id="$INFISICAL_CLIENT" --client-secret="$INFISICAL_SECRET" --plain --silent)`, then `infisical run --token "$INFISICAL_TOKEN" --env=dev --path=<service path> --projectId=771b7bc0-6578-41b0-886e-9fcdb66e9173 -- <cmd>`.
 - For cfw-internal, use Infisical path `/services/cfw-internal-api`, not the directory name `/services/cfw-internal`; check `services/cfw-internal/package.json` (`x` script) for the current path before starting it.
+- `/user/<clerk-user-id>` and `/organization/<org-id>` 500 as a whole page (not just one card) unless `usage-record` (:8801) is up, because `getUserDataSA` fetches join analytics from it. Start the Spanner emulator (`bun run spanner:start`), run `services/usage-record/scripts/dev-spanner-init.ts` under `infisical run --path=/services/usage-record`, then `services/usage-record/scripts/dev.ts` with `WRANGLER_INSPECTOR_PORT=9230` (9229 collides with cfw-internal).
 
 ## Restarting a single crashed service (without restarting dev-multi)
 - **cfw-internal**: `.dev.vars` is written by `services/cfw-internal/scripts/dev.ts` on first run and persists — so you can bypass Infisical entirely: from `services/cfw-internal`, run `node node_modules/.bin/wrangler dev --test-scheduled --port 8794 --inspector-port 9229 --persist-to ../../.wrangler/shared-state --minify=false`.
@@ -85,3 +86,8 @@ description: Run and test Mission Control (projects/mission-control) end-to-end 
 - Deletion fixtures need both `requested_data_deletion=true` and `deleted=true` to satisfy the Postgres scrub gate. Setting only the first makes the UI say “Deleted” while the scrub retries a gate mismatch.
 - cfw-internal local R2 persistence is under `.wrangler/shared-state/v3/r2`. Seed exact live and `_trash/` prefixes plus sibling-prefix decoys in all three bound prompt-log buckets. Verify both task rows (`user_deletion_tasks.request_id` → `user_deletions.id`) and remaining object keys; a success toast proves enqueue, not full completion.
 - Local GCS credentials may return 403 for `storage.objects.list` on the prompt-log bucket. Report that separately from successful R2 deletion and do not claim real GCS deletion coverage.
+## Gateway benchmark schedules
+
+- `/gateway-benchmarks/schedules/create` needs a catalog model (`models`, with its `model_authors` parent) and a mapping row in `gateway_benchmark_models`. The local catalog is usually empty; insert temporary fixtures, track their IDs, and delete only those afterwards — never edit seed files.
+- Keep test schedules disabled and do not click Run Now when testing persistence only.
+- Verify nullable array columns with `runner_regions IS NULL` in psql, not a blank cell. To test unknown-value hydration, `UPDATE` only the test schedule, hard-navigate to its `/edit` URL, save through the UI, and re-check the persisted array.
