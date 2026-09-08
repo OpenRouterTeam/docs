@@ -223,9 +223,9 @@ an archived suggestion, and the second means every target eligible for
 restriction matching has an active matching restriction. `enactableCount`
 counts targets with a non-null `target_value` and a real restriction
 `proposed_kind`. Domain targets may use any supported restriction kind except
-`frontier_us_models`, with the domain in `targetValue`, and are stored as
-candidates for review. The retired legacy `domain_block` proposal kind is
-rejected at ingest, and domain enactment is deferred to #30819. A row with
+`frontier_us_models`, with a literal domain or a `*.<apex>` wildcard in
+`targetValue`, and are stored as candidates for review. The retired legacy
+`domain_block` proposal kind is rejected at ingest. A row with
 `pendingCount === 0 && enactedCount < enactableCount` is only a candidate for
 "fully denied": the list endpoint does not expose `deniedCount`, so fetch
 `targets <suggestionId>` and skip it only when every target is `denied`.
@@ -847,7 +847,8 @@ Top-level fields:
 
 Each target contains:
 
-- `targetValue` — non-empty Clerk user ID or domain, or the decimal
+- `targetValue` — non-empty Clerk user ID, domain (literal or `*.<apex>`
+  wildcard, see [Domain targets](#domain-targets)), or the decimal
   `api_keys.id` for an `api_key` target (see
   [API-key targets](#api-key-targets)).
 - `proposedKind` — `inference_block`, `account_ban`, `provider_ban`,
@@ -921,14 +922,33 @@ Each target contains:
   keys; with one target, all 3 are shared by default. Across multiple targets,
   at least 3 keys must be shared by every target in the report. Each target may
   contain at most 50 keys, and serialized evidence is limited to 32768 bytes.
+  Card-count keys are vocabulary-checked: `distinct_cards` and
+  `distinct_payment_methods` are retired and the whole post is rejected with a
+  ZodError. Use `distinct_card_entries_attempted`,
+  `distinct_card_fingerprints_attempted`, `distinct_card_fingerprints_charged`
+  or `distinct_bins_attempted`, computed as in
+  `packages/kyc/sentinel/SCANNER_SPEC.md#card-and-payment-method-terminology`.
 - `seenAt` — optional ISO datetime.
 
 Cross-field rules:
 
 - Domain targets may use any supported restriction kind except
   `frontier_us_models`, with the domain in `targetValue`, and are stored as
-  candidates for review. The retired `domain_block` kind is rejected at ingest;
-  domain enactment is deferred to #30819.
+  candidates for review. The retired `domain_block` kind is rejected at ingest.
+
+### Domain targets
+
+`targetValue` is either a literal domain, matched exactly, or a `*.<apex>`
+wildcard that matches the apex and every descendant label (`*.example.com`
+covers `example.com`, `a.example.com` and `b.a.example.com`). Use the wildcard
+for a family that gives every account its own subdomain, where a literal
+target would match nothing. Ingest canonicalizes the value (lowercase, no
+trailing dot) and rejects with 400 any other wildcard placement, a bare `*`,
+and a wildcard on a public or shared suffix (`*.co.uk`, `*.my.id`,
+`*.onmicrosoft.com`). A wildcard that would cover a protected, free or
+personal mail domain is refused at enact. An exact proposal counts as already
+restricted when an active ancestor wildcard policy covers it; a wildcard
+proposal only when an identical or broader wildcard does.
 
 ### API-key targets
 

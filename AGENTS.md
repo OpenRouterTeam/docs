@@ -20,7 +20,7 @@ the directory they sit in.
   than one architectural layer ships as a GitHub-native
   stacked PR, one layer per PR, dependencies pointing down.
   See `.agents/skills/stacked-prs/SKILL.md` for slicing rules
-  and `gh stack` mechanics.
+  and `.agents/skills/gh-stack/SKILL.md` for `gh stack` mechanics.
 - **Every layer stands alone.** Each PR must typecheck and
   pass its scoped tests without the layers above it applied,
   and must not import symbols introduced above it.

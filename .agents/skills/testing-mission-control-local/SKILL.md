@@ -9,6 +9,7 @@ description: Run and test Mission Control (projects/mission-control) end-to-end 
 - `bun run db:start && bun run db:migrate` (Postgres on 127.0.0.1:54322, Docker container `openrouter-web_db`).
 - `bun run dev mission-control cfw-internal web` starts MC (:3001), cfw-internal (:8794), web (:3000). All dev scripts require Infisical env injection.
 - Infisical universal auth: `INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id="$INFISICAL_CLIENT" --client-secret="$INFISICAL_SECRET" --plain --silent)`, then `infisical run --token "$INFISICAL_TOKEN" --env=dev --path=<service path> --projectId=771b7bc0-6578-41b0-886e-9fcdb66e9173 -- <cmd>`.
+- For cfw-internal, use Infisical path `/services/cfw-internal-api`, not the directory name `/services/cfw-internal`; check `services/cfw-internal/package.json` (`x` script) for the current path before starting it.
 
 ## Restarting a single crashed service (without restarting dev-multi)
 - **cfw-internal**: `.dev.vars` is written by `services/cfw-internal/scripts/dev.ts` on first run and persists — so you can bypass Infisical entirely: from `services/cfw-internal`, run `node node_modules/.bin/wrangler dev --test-scheduled --port 8794 --inspector-port 9229 --persist-to ../../.wrangler/shared-state --minify=false`.
@@ -20,6 +21,7 @@ description: Run and test Mission Control (projects/mission-control) end-to-end 
 - The demo API routes call `https://openrouter.ai/api/v1` with `OPENROUTER_API_KEY`. The Infisical dev env sets a dev-only key that fails with 401 `User not found` in prod, and `infisical run` injects it after your shell export. Override *after* Infisical: `infisical run ... -- env OPENROUTER_API_KEY="$ORG_KEY" ./node_modules/.bin/next dev --port 3001`.
 
 ## Admin auth & gating
+- Use the `clerk-dev-signin-token` skill for dev login. A reused dev user can have MFA enabled: inspect the ticket result's `status` before calling `setActive`; `needs_second_factor` is not a completed login. When isolated test-account creation is permitted, `--fresh` avoids inheriting that user's MFA configuration. Never guess its second-factor code. After activation, wait for `window.Clerk.loaded` and a non-null `window.Clerk.user` before navigating to an admin route.
 - Local admin gating reads `users.is_admin` for the Clerk user. Toggle with:
   `docker exec openrouter-web_db psql -U postgres -d postgres -c "UPDATE users SET is_admin=<bool> WHERE clerk_user_id='...'"` then reload — admin pages use `notFound()` (404) for non-admins.
 - If `window.Clerk.user` is null but a session exists in `window.Clerk.client.sessions`, call `window.Clerk.setActive({session})` and navigate.
@@ -52,8 +54,10 @@ description: Run and test Mission Control (projects/mission-control) end-to-end 
 - `bun run db:seed` triggers generate hundreds of INSERT changelog rows dated at seed time; counts drift as dev services write more rows — don't assert exact totals for trigger-generated data.
 
 ## Admin-utils pages (live-config, credit-expiration)
-- `/admin-utils/credit-expiration` renders Past Runs from `credit_expiration_runs`; a fresh DB shows an empty table, so insert a couple of rows (one `Completed`, one older) before exercising run selection.
-- Dry runs started locally end in `Failed`: the Cloudflare workflow/KV bindings (`CF_KV_API_TOKEN`) are absent in dev. The started run's id, its in-flight card, and the URL marker are still fully observable — only completion is not.
+- `/admin-utils/credit-expiration` renders Past Runs from `credit_expiration_runs` (kinds `inactivity` and `promo-credits`), not from the generic `workflow_runs` table, which holds no credit-expiration rows until that migration lands. Start real previews to verify persistence; never present seeded completed output as evidence of workflow completion.
+- Only the promo-credits start route rejects a concurrent run (409). The inactivity preview route inserts unconditionally, so two Running inactivity previews is expected locally, not a regression. The cron path checks for an active run separately.
+- Local preview outcomes depend on the workflow's dependencies, not just the `CF_KV_API_TOKEN` warning. Promo can complete with zero candidates. Inactivity discovery requires ClickHouse and the analytics CDC schema used by `packages/clickhouse/credit-expiration/queries.ts`; a healthy empty ClickHouse server is insufficient, and ordinary migrations may not create `analytics.stg_credits`, `stg_users`, or `stg_plan_tiers`. Inspect Wrangler logs for `Network connection lost` / `Database analytics does not exist` while workflows retry. Empty completed results do not exercise populated tier breakdown or pagination.
+- For active-run guard testing, use a fresh tab or reload without selecting a history row. `CreditExpirationDryRunTab.tsx` disables start controls while polling the selected run, which is not proof of server-side admission protection. Verify both rejection text and unchanged database counts.
 
 ## Inference-anomaly page
 - `app/inference-anomaly/actions.ts` reads `OPENROUTER_API_KEY` first and `PLAYGROUND_OPENROUTER_API_KEY` second. The dev-env `OPENROUTER_API_KEY` in Infisical can be a dead key (401 from `GET https://openrouter.ai/api/v1/key`); check it before running probes, and start MC with `OPENROUTER_API_KEY=` (empty) to fall through to the playground key.
@@ -66,6 +70,14 @@ description: Run and test Mission Control (projects/mission-control) end-to-end 
 
 ## Devin Secrets Needed
 - `INFISICAL_CLIENT`, `INFISICAL_SECRET` (org secrets; use qualified refs `secret:org:INFISICAL_CLIENT` in exec env).
+
+## Bulk refund page (`/admin-utils/bulk-refund`)
+- Keep **Dry run** checked for every dispatched run. To exercise the live-run dialog, uncheck it, confirm the entity count in the dialog, click **Cancel**, and recheck Dry run. Prove nothing dispatched by comparing `workflow_runs` row counts before and after.
+- Start is `POST /api/v1/internal/bulk-refund/run`, detail is `GET /api/v1/internal/bulk-refund/runs/<uuid>`. Direct probes authenticate with `Authorization: Bearer <ADMIN_API_KEY>` from cfw-internal's `.dev.vars`.
+- Before dispatch, verify the signed-in Clerk ID exists in local `users`: Mission Control binds that ID as `requestedBy`, and the worker rejects unknown accounts with HTTP 400. Do not silently insert an account to mask this failure.
+- The textarea has two limits: a raw character cap (`MAX_ENTITY_IDS_TEXT_LENGTH` in `app/admin-utils/bulk-refund/form-schema.ts`) and a distinct-ID cap. Probe the raw cap with repeated valid IDs that deduplicate to one, and expect the `Paste at most ...` error with no server-action dispatch.
+- Use IDs that match the Clerk regex (`user_`/`org_` plus alphanumerics). A skipped entity in the result proves orchestration only, not refund planning. Check `result.runConfig.dryRun` and that no negative `credits` rows were added.
+- A 500 from the server action renders the masked `Error 500 / Internal Server Error` toast, not the action's `failureMessage`. The toast auto-dismisses, so wait for its text before screenshotting.
 
 ## User deletion page runtime checks
 - `/user/<clerk-id>` also depends on usage-record (:8801) and Spanner for user analytics. If another Wrangler owns inspector :9229, start usage-record with a distinct inspector port, e.g. `node node_modules/.bin/wrangler dev --port 8801 --inspector-port 9231` from its service directory after its dev script has generated `.dev.vars`.
