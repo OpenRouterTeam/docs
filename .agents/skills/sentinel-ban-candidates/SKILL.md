@@ -298,13 +298,27 @@ Re-posting an existing `source` + `ruleKey` + `targetType` upserts targets into
 the existing suggestion and returns `created:false` with a 200 — that is a
 successful upsert, not a failure. The upsert also refreshes the suggestion's
 `description`, `confidence`, and `urgency` from the new request body, so
-re-posting with one existing target is the way to update reviewer-facing
-framing on a live suggestion. Re-ingesting an existing case overwrites its
-stored urgency, so set urgency based on the whole case after the update,
-including all accumulated targets and findings, rather than only the new
-batch. For example, if a case is red and the new batch alone would be yellow,
-keep sending red unless the overall case has genuinely de-escalated. Archived
-suggestions are frozen and skip this refresh.
+re-posting with one observed target is the way to update reviewer-facing
+framing on a live suggestion. Post members observed in the current run window
+that are not already denied in the per-case targets read, including members
+already on the case rather than only newly discovered ones. This covers denials
+within the case being posted; a denial under another case is covered only by
+the manually maintained
+[Cleared by human decision](../../../packages/kyc/sentinel/SCANNER_SPEC.md#cleared-by-human-decision--do-not-re-file)
+section. Never pad with unobserved members. If this leaves no targets because
+this run observed only denied members, file nothing and report that only denied
+members were observed and no new non-denied target was filed, in the thread the
+spec's [denied-only run rule](../../../packages/kyc/sentinel/SCANNER_SPEC.md#denied-only-run)
+names; do not call the case open or UPDATED. Re-ingesting an existing case
+overwrites its stored description, confidence, and urgency, so describe the
+accumulated [non-denied set](../../../packages/kyc/sentinel/SCANNER_SPEC.md#non-denied-targets)
+and set confidence and urgency from that set and its findings rather than only
+the new batch. For example, if a case is red and the new batch alone would be
+yellow, keep sending red unless the overall case has genuinely de-escalated. A
+candidate re-open is report-only. Name the prior denial and the pattern it did
+not consider in the run thread, and do not post the target while it reads as
+`denied`. Follow the spec's [case-block count format](../../../packages/kyc/sentinel/SCANNER_SPEC.md#case-block-count-format).
+Archived suggestions are frozen and skip this refresh.
 
 ### Changing the proposed kind, not filing a second case
 
@@ -833,7 +847,9 @@ Top-level fields:
 
 Each target contains:
 
-- `targetValue` — non-empty Clerk user ID or domain.
+- `targetValue` — non-empty Clerk user ID or domain, or the decimal
+  `api_keys.id` for an `api_key` target (see
+  [API-key targets](#api-key-targets)).
 - `proposedKind` — `inference_block`, `account_ban`, `provider_ban`,
   `model_ban`, `author_ban`, `frontier_us_models`, `rate_limit`,
   `provider_rate_limit`, `model_rate_limit`, `author_rate_limit`, `spend_cap`,
@@ -933,6 +949,9 @@ the ordinary restriction kinds are rejected on this target type just as
 - `proposedParams`, `proposedTarget`, and `proposedExpiresAt` are rejected;
   the shared evidence minimum still applies.
 
+Ingest answers 409 and stores nothing when any id in the batch names no key,
+or names a key already disabled or deleted. Re-file with the remaining ids.
+
 Filing is the whole of the agent's authority: key actions are refused on the
 agent enact path, so a human reads the key's before/after model, provider,
 colo, ASN and spend split against the account's other keys in Mission Control
@@ -1009,11 +1028,18 @@ the live signup/onboarding country and card issuer-country metrics before
 describing a cluster; do not persist those values as mandatory target evidence.
 
 If the cumulative target cap is exceeded, the result is
-`target_cap_exceeded` (HTTP 400); file a new report under a different
-`ruleKey`. Ingesting into an archived suggestion returns
-`suggestion_archived` (HTTP 200) with
-`{created:false,targetsUpserted:0,targetsAlreadyRestricted:0}` and does
-nothing.
+`target_cap_exceeded` (HTTP 400); use the next deterministic shard key, with the
+bare stable key as shard one and `<stable_key>_part_2`, `<stable_key>_part_3`,
+and so on for later shards, not a run or wave suffix. The same applies to
+`user_cap_exceeded` (HTTP 400). The soft budget a scanner stays under, the
+pre-post existence check, and the reads that check feeds live in the spec's
+[case sizing](../../../packages/kyc/sentinel/SCANNER_SPEC.md#case-sizing) rule.
+Ingesting into an archived suggestion returns HTTP 200 with
+`{suggestionId,created:false,targetsUpserted:0,targetsAlreadyRestricted:0,slack:null}`
+and does nothing. Zero `targetsUpserted` is the archived discriminator, because
+the request requires at least one target and a live post reports at least one
+posted target key even when it re-upserts. Follow the
+[archived-key response](../../../packages/kyc/sentinel/SCANNER_SPEC.md#archived-stable-key).
 
 A successful ingest reports `targetsAlreadyRestricted`: rows the upsert left in
 `already_restricted` because an existing restriction already satisfies them
