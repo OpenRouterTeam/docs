@@ -41,7 +41,6 @@ time-window variables defined by Debug Prod.
 - [Batch finalize-stalled runbook](https://app.notion.com/p/39c2fd57c4dc818592b6f21725b51017)
 - Repository monitor definitions:
   - `configs/terraform-monitors/monitoring/batch_finalize_stalled.tf`
-  - `configs/terraform-monitors/monitoring/batch_upstream_job_id_persist_failed.tf`
   - `configs/terraform-monitors/monitoring/batch_provider_submit_outcome_unknown.tf`
   - `configs/terraform-monitors/monitoring/batch_finalize_billing_loss.tf`
   - `configs/terraform-monitors/monitoring/batch_results_payment_blocked.tf`
@@ -493,7 +492,7 @@ the decision table to choose the next query.
   though the journal replacement failed.
 - **Missing provider job ID:** if persistence of the upstream ID fails after
   provider acceptance, the sweep cannot poll or finalize the job. See
-  `batch_upstream_job_id_persist_failed.tf`.
+  `batch_provider_submit_outcome_unknown.tf`.
 - **Deleted BYOK key:** the upstream batch can no longer be polled and the
   job is terminally failed. A disabled key is reversible and remains in flight.
 - **Fallback usage estimation:** missing or malformed provider usage can

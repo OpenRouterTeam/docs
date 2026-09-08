@@ -31,6 +31,14 @@ bun run test:mutation --in-place packages/mcp/src/json-rpc.ts
 bun run test:mutation --in-place --incremental packages/mcp/src/json-rpc.ts
 ```
 
+Every run is capped at 10 minutes of wall clock (`--max-minutes`, `0`
+lifts it). At the cap the harness kills the engine, restores the mutated
+files, and exits non-zero naming the packages it did not finish. Treat that
+exit as "narrow the file list", not as a reason to rerun the whole scope or
+to raise the cap: pass the files you changed and add `--incremental`, and
+classify the survivors you have. Do not spend more than one capped run on
+mutation testing per PR.
+
 The harness selects tests by the mutated source file's basename; indirect
 coverage in another colocated test (for example, `registry.test.ts` covering
 `vercel.ts`) is not included automatically. Use a direct Stryker config with
@@ -48,6 +56,8 @@ your checkout and restores it afterwards, so commit or stash first.
 The restore can drop the executable bit on `.ts` files in the mutated
 workspace (mode-only `100755 -> 100644` changes in `git status`), so
 `chmod +x` them back before committing.
+A dev server watching the same worktree hot-reloads every mutant, so do not
+capture browser or dev-log evidence while a run is in progress.
 The harness only accepts mutable sources inside workspace package
 directories; for targets under `.agents/skills/`, run Stryker directly
 with an in-place config and a command-runner test command.
@@ -151,6 +161,13 @@ Stryker run with a line-scoped mutate glob
 (`"mutate": ["packages/router/index.ts:<start>-<end>"]`) and a
 command that targets the colocated test file keeps the run fast and
 the survivor list relevant.
+
+The harness runs every selected colocated test file in one `bun test`
+process, so a test that installs `mock.module()` over a sibling module
+leaks that mock into the sibling's own test file and the dry run fails
+with "failed tests in the initial test run". Treat that CI report as a
+harness artifact: run the targets locally and report that score instead
+of moving the mock.
 
 `packages/provider-monitors` is refused outright by the harness: its `test`
 script is a bash wrapper the runner cannot narrow, and the package has more
