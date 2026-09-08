@@ -3,7 +3,8 @@ name: notifications-weekly-report
 description: >-
   Weekly metrics report for the notifications feature. Produces one table, a row
   per alert policy and destination with active users, alert events and delivery
-  outcomes, and posts one Slack message into #analytics-insights (C0BS9CC9PQD).
+  outcomes, and posts one Slack message into #weekly-product-insights
+  (C0BS9CC9PQD).
 user-invocable: true
 ---
 
@@ -26,7 +27,7 @@ prompt invokes this skill; keep them in sync when the procedure changes.
   automation **Weekly notifications report**, covering the last 7 complete UTC
   days against the 7 before them.
 - **Slack footprint:** one head message and exactly one thread reply in
-  `#analytics-insights` (`C0BS9CC9PQD`), with no attachments.
+  `#weekly-product-insights` (`C0BS9CC9PQD`), with no attachments.
 - **Manual runs:** accept an end-date override (`--end`, exclusive UTC boundary)
   and a Slack-channel override.
 
