@@ -244,3 +244,13 @@ The legacy 12-step scale from `packages/theme/index.css`:
 
 Read these steps to follow existing legacy components. New code uses the
 semantic tokens above.
+
+## Locale-owned display
+
+Read the current validated locale from `i18n/LocaleProvider`. Bind the pure `@openrouter-monorepo/i18n` formatters with `useFormatters`; shared components receive this provider from the application boundary. Pure domain adapters take an explicit locale. Never read navigator language, use ambient Intl locale defaults, or add a post-hydration language switch.
+
+Use `useResolvedDisplayTimeZone` to resolve the existing Local/UTC preference. Server HTML and the hydration pass use UTC; timezone discovery happens after hydration. Pass the same concrete zone to values and labels. Use `useRelativeFormatter`, `useRelativeTime`, or `RelativeTime` for relative labels so the initial absolute date is useful and subscribers share one clock. Keep date-only values separate from instants with explicit offsets.
+
+Display formatters return undefined for missing or malformed data. Render an explicit unknown placeholder instead of inventing zero. USD formatters own currency placement and spacing; ratio and percentage-point APIs are distinct. Canonical CSV/JSON, date-bucket keys, identifiers, and editable date-range syntax stay locale-independent.
+
+DOM tests use `renderWithLocale`, `renderWithProviders`, or `renderWithQueryClient` for the real locale provider. Override the test locale when covering a nondefault route, and test hydration with a disagreeing browser language when changing this boundary.
