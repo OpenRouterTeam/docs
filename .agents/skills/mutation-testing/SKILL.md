@@ -98,6 +98,11 @@ Service-local Bun tests may require the package's `bunfig.toml` preload
 configuration (for example, Cloudflare Worker mocks); run those test
 commands from the service directory rather than from the repository root.
 
+The default engine downloads a `stryker-rs` binary from GitHub on first
+use (`stryker-rs:downloading-binary`); in a sandbox without GitHub egress
+the target fails with `exit_code: null` before any mutant runs. Pass
+`--legacy-stryker` to run the StrykerJS engine already in `node_modules`.
+
 `--incremental` is safe to leave on while you iterate: the harness
 discards the cache whenever the test command or any test file
 changes, so a new assertion is always really executed. It is skipped
@@ -108,7 +113,23 @@ sticky comment (`.github/workflows/mutation-report.yaml`). The
 comment is a report only. A survivor does not fail the build. CI
 mutates every changed file the harness accepts; the comment lists
 the refused ones under "Not run". A local run before CI lets you
-classify the survivors while you know the code.
+classify the survivors while you know the code. The comment counts
+survivors for the whole changed file, so a small addition to a large
+existing module (a new `case` in a 700-line handler) inherits hundreds
+of pre-existing survivors. Triage by line: download the run's
+`mutation-report` artifact (`gh run download <run-id> -n mutation-report`)
+and filter `reports/mutation/<package>.json` mutants to the line ranges
+your diff added; classify only those, and state the split in the PR.
+
+On a PR whose base is another PR's branch (a stack), CI checks out
+`refs/pull/<n>/merge`, which GitHub builds on the lower PR's own merge
+ref (its branch merged into `main`'s tip), so the harness's diff against
+the merge base also contains every `main` commit since the bottom of the
+stack last synced with `main`, and the job fails on packages the PR never
+touched (`packages/helpers`, `projects/web`, ...). Syncing the bottom PR
+with `main` clears the drift until `main` moves again; otherwise expect
+"failed to produce a report" on stacked layers, run the harness locally
+with `--base <merge-base sha>`, and record the score in the PR body.
 
 `projects/web` cannot be narrowed by the harness: its `test` script
 runs the whole node and dom suites and ignores the file arguments
@@ -209,6 +230,13 @@ mocked collaborator is a missing assertion, not wrong level: have the
 mock capture the callback and call it from the test, then assert what
 it passes downstream. Route tests that mock a query orchestrator are
 the common case (PR #39232).
+
+A surviving condition that gates a rendered element whose DOM test
+asserts absence with `expect(screen.queryBy*(...)).toBeNull()` is a
+missing assertion, not an equivalent mutant: Bun's `toBeNull()` and
+`toBe(null)` pass against a React-attached element inside a large
+tree, so that assertion cannot fail. Assert absence with
+`expect(screen.queryAllBy*(...)).toHaveLength(0)` instead (PR #40669).
 
 Never change production code, weaken a test, or assert a value you
 know is wrong to raise the score. The score is triage, not a target.

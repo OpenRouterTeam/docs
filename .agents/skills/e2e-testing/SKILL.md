@@ -287,6 +287,15 @@ Gotchas when synthesizing upstream logprobs or changing endpoint capabilities:
   `x-offload-large-fields: 1`; a large multimodal body alone does not
   route through the Durable Object. Confirm with a `process-stream-json:*`
   log line in the run's `dev-fs-logs` artifact.
+- To simulate caller geography (`geoData.country` / `colo`), edit wrangler's
+  fixture at `services/cfw-api/node_modules/.mf/cf.json` and restart
+  `cfw-api` — it is read at worker start, not per request. Do not use `CN`
+  or `HK` to test adapter-level behavior on a closed OpenAI/Anthropic/Google
+  model: the routing geo gate
+  (`packages/routing/filters/gate-endpoints-with-geo-restrictions.ts`)
+  returns `403 This model is not available in your region.` before any
+  adapter runs. Pick a country the gate does not cover, and restore the
+  fixture afterwards.
 - Restoring source files with git after a temporary bypass does not
   trigger a wrangler rebuild. Touch `services/cfw-api/src/index.ts` and
   wait for the reload before capturing a "before" or control run, or the
@@ -345,6 +354,25 @@ request reads and everything returns 200 as if the policy were broken.
 Include one request an already-enforced branch of the same policy blocks as
 a sanity gate: if that one isn't blocked, the row isn't in play and the path
 under test proved nothing. Restore the column when done.
+
+### Testing inbound webhook handlers (cfw-webhooks)
+
+Shared handlers in `packages/webhook-handlers` are reachable locally through
+the `webhooks` Tilt resource on `:8807` (see `tests/e2e/webhooks/`):
+
+- The routes are `/api/webhooks/<provider>`, not `/webhooks/<provider>`
+  (the latter 404s).
+- `GET /healthz` returns 500 `env invalid` until every secret in
+  `services/cfw-webhooks/src/env.ts` is set; a missing
+  `SEQUENCE_WEBHOOK_SECRET` blocks the Clerk route too. Add a placeholder to
+  `.env.development.local` (gitignored) and `tilt trigger webhooks`.
+- Sign requests with `svix` using the `CLERK_WEBHOOK_SECRET` the dev script
+  wrote to `services/cfw-webhooks/.dev.vars`; a hand-written `whsec_...`
+  literal in a test trips the pre-commit secret scan, so build any deliberately
+  wrong secret at runtime.
+- No inference runs, so `dev-fs-logs` stays empty. Evidence is the test's
+  `.logs/*.ignore.json` response captures plus `tilt logs webhooks` for the
+  handler's structured log lines.
 
 ### Batch API Tests
 

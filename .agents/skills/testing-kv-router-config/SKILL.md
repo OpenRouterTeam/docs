@@ -17,13 +17,13 @@ description: How to E2E-test router-config KV entries (all / all_v2), live-confi
 ## Writing local KV values (live config, router config)
 All wrangler dev processes share `--persist-to .wrangler/shared-state` (repo root). Write with:
 `cd services/cfw-api && bunx wrangler kv key put <key> <value> --namespace-id <id> --local --persist-to ../../.wrangler/shared-state`
-- Live-config namespace (KV_LIVE_CONFIG): `d585bc8446184f5488b55d038337e839`; keys are the schema key names, values JSON scalars (e.g. `router_config_v2_read_sample_rate` = `1`).
+- Live-config namespace (KV_LIVE_CONFIG): `d585bc8446184f5488b55d038337e839`; keys are the schema key names, values JSON scalars (e.g. `router_config_dark_read_sample_rate` = `1`). The v2 read is unconditional — there is no live-config gate for it, only the fallback to `all`.
 - Models/endpoints namespace (KV_MODELS_AND_ENDPOINTS): `a9f19f5cce304de08ce9b0d4eb20a852`; keys `all`, `all_v2`, etc. Use `--path file.json` for large payloads. Back up with `kv key get` before corrupting.
 
 ## Timing traps when testing the read path
 - Live-config reads never block on KV: after an api restart, the FIRST request sees the schema default (e.g. sample rate 0) and only triggers a background refresh. 
 - The router config is memoized in `cfGlobalRouterConfigCache` (FetchDeduper, TTL 5 min), so a changed KV value or sample rate only takes effect on the next revalidation.
-- Reliable recipe to exercise a gated/corrupted read: `tilt trigger api` → send one warm-up chat completion → wait ~5.5 min → send a second completion → grep tilt log since a line-count mark for `kv-cache-binding fetch succeeded` (shows `key: 'all_v2'` vs `'all'`) and the fallback warning `KV_ALL_V2 router config fetch failed, falling back to v1`.
+- Reliable recipe to exercise a corrupted read: `tilt trigger api` → send one warm-up chat completion → wait ~5.5 min → send a second completion → grep tilt log since a line-count mark for `kv-cache-binding fetch succeeded` (shows `key: 'all_v2'` vs `'all'`) and the fallback warning `KV_ALL_V2 router config fetch failed, falling back to v1`.
 - `tilt trigger kv-cache` after overwriting KV keys, or its stale-while-revalidate HTTP cache may serve the old body. Even right after a warmer run, `/kv/<key>` may serve a stale SWR body — verify fresh payloads with `bunx wrangler kv key get <key> --namespace-id <id> --local --persist-to ../../.wrangler/shared-state` instead.
 - Warmer DB-query results are deduper-cached per isolate: after seeding or editing rows in local Postgres, run `tilt trigger api` before re-triggering the warmer, or it re-serves the pre-seed data.
 - If `tilt trigger api` fails to build with unresolved `@openrouter-monorepo/*` imports (e.g. `@openrouter-monorepo/env`), run `bun install` at the repo root first.

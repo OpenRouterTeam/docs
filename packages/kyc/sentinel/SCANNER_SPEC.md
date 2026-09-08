@@ -651,7 +651,12 @@ commercial-host explanation is excluded.
   signup webhook applies the same restriction to every later signup on that
   domain, which per-account cases never do. Only a domain `account_ban` adds
   the Clerk blocklist identifier and refuses registration outright; other kinds
-  let the account register already restricted. Domain targets are propose-only
+  let the account register already restricted. When the operator mints
+  accounts across subdomains of one apex (`a1b2.example.com`,
+  `x9y8.example.com`, a fresh label per signup), file one wildcard target,
+  `*.example.com`, not one literal domain per subdomain: the wildcard covers
+  the apex and every descendant label, while a literal domain matches only
+  itself and misses the next label minted. Domain targets are propose-only
   for the run (the agent gate refuses non-`user` targets and `inference_block`),
   so a human approves and enacts them. Add an account-scoped case only for
   members whose own evidence is needed on the record or who sit outside the
@@ -843,7 +848,7 @@ restricted at report time:
 Submit each candidate you'd propose to the Sentinel ban-candidates ingest. Every
 candidate lands as `pending_review`; whether this run then carries it through to
 enactment is governed by
-[Propose and enact](#propose-and-enact--the-authority-boundary).
+[Propose and enact](#read-only-propose-only).
 
 **Use the `sentinel-ban-candidates` skill / CLI** — it builds and signs the
 requests, handles auth and the correct host once you have an Infisical session,
@@ -870,9 +875,9 @@ Scanner-specific rules on top of the skill's schema:
   [Propose and enact](#read-only-propose-only). The other exception is the
   operator-owned mail-domain case from
   [Mail-domain provenance](#mail-domain-provenance--grouping-by-relay-or-domain-family):
-  `targetType: "domain"`, one target per domain, `proposedKind: "inference_block"`
-  with `{}` params (`frontier_us_models` rejects domain targets), for a human to
-  approve.
+  `targetType: "domain"`, one target per domain or per `*.<apex>` wildcard,
+  `proposedKind: "inference_block"` with `{}` params (`frontier_us_models`
+  rejects domain targets), for a human to approve.
 - **`ruleKey` naming:** use one stable key for each ring or pattern across runs,
   with no run number, timestamp, or per-wave suffix. Name the durable pattern
   the key identifies and not the remedy proposed for it, such as
@@ -891,8 +896,10 @@ Scanner-specific rules on top of the skill's schema:
   ingest is not a lookup — posting a key that has no case files one — so a bare
   key is only for a ring with no prior filing at all. A ring an earlier run filed
   under a remedy-suffixed key keeps that key, read from that run's case link or
-  report thread rather than discovered by posting. An account whose case a human denied
-  stays off-limits under every `ruleKey`, per the rejection rule below.<a id="archived-stable-key"></a>
+  report thread rather than discovered by posting. An account whose case a human
+  denied stays off-limits for posting under every `ruleKey`; the documented
+  materially-new-evidence re-open report path below is the only
+  recourse.<a id="archived-stable-key"></a>
 - **Archived stable key:** an archived case remains in the deduplication
   namespace. Its archived-key response returns HTTP 200 with `suggestionId`,
   `created: false`, `targetsUpserted: 0`, `targetsAlreadyRestricted: 0`, and
@@ -902,8 +909,8 @@ Scanner-specific rules on top of the skill's schema:
   and a live post reports at least one posted target key even when it re-upserts.
   Treat it as a no-op rather than a landed post. Run `targets <suggestionId>`
   from that response before deciding what to do, and inspect every target's
-  `status`, `reviewerClerkUserId`, and `decidedAt`. Any target with `status: denied` is
-  terminal on its own, regardless of the
+  `status`, `reviewerClerkUserId`, and `decidedAt`. Any target with
+  `status: denied` is terminal on its own, regardless of the
   [Cleared by human decision](#cleared-by-human-decision--do-not-re-file)
   section, which is a convenience record, not the authority. If that section
   records suppression for the enumerated members, stop. Otherwise, file
@@ -914,10 +921,9 @@ Scanner-specific rules on top of the skill's schema:
   section. Until the case is unarchived, report the ring as archived,
   unenforced, and undecided on later runs without re-asking. Its live burn is
   not knowingly held spend and cannot make the run green. When suppression is
-  confirmed,
-  record the answering human's name and date and enumerate the target values
-  covered by that decision. For an org-keyed entry, exclude accounts that this
-  run's own clustering places in that org.
+  confirmed, record the answering human's name and date and enumerate the
+  target values covered by that decision. For an org-keyed entry, exclude
+  accounts that this run's own clustering places in that org.
 - **Legacy run-key transition:** if a ring has one or more run-suffixed legacy
   cases in the list output, read each candidate's targets and skip cases whose
   targets are all denied, then choose the earliest-created remaining case.
@@ -932,10 +938,20 @@ Scanner-specific rules on top of the skill's schema:
   re-posting the same triple upserts targets, each deduped by `targetValue`.
   Use the unfiltered `list` first to dedup against the full queue, including
   adjudicated cases; archived cases are not discoverable there, so their ingest
-  response reveals them — follow the
-  [archived-key response](#archived-stable-key). Post the members
-  observed in this run's window, new or still active, never unobserved members,
-  so `times_seen` remains a recurrence count rather than a run counter.
+  response reveals them — follow the [archived-key response](#archived-stable-key).
+  <a id="denied-only-run"></a>
+  Post the members observed in this run's window that are not already denied in
+  the per-case targets read, including members already on the case rather than
+  only newly discovered ones. This covers denials within the case being posted;
+  a denial under another case is covered only by the manually maintained
+  [Cleared by human decision](#cleared-by-human-decision--do-not-re-file)
+  section. Never pad with unobserved members, so `times_seen` remains a
+  recurrence count rather than a run counter. If this leaves no targets because
+  this run observed only denied members, file nothing and report in the thread
+  on each new-in-run case alert for this run, or in the standalone run-summary
+  thread when no such alert exists, that only denied members were observed and
+  no new non-denied target was filed, and do not call the case open or UPDATED.
+  Run status and re-open handling belong to the two bullets below.
 - **Human rejection is terminal for all three scanners:** before filing or
   upserting, dedup against the FULL queue, including adjudicated cases, not
   only `pending_review`. A case whose targets are all denied is a human
@@ -945,15 +961,24 @@ Scanner-specific rules on top of the skill's schema:
   Record the cleared account or cluster in the
   [Cleared by human decision](#cleared-by-human-decision--do-not-re-file)
   section with who decided and when, so subsequent runs skip it at detection
-  time rather than rediscovering it. The only path back is materially new
-  evidence of a different pattern; state the prior denial explicitly in the
-  case block so the reviewer sees that it is a re-open — and material live
-  (last-1h) burn, since a re-open resting on a 24h figure alone is not net-new
-  signal.
-  A denied case or suppressed ring's spend belongs with
-  **spend we are knowingly holding** in the
-  [Status rubric](#status-rubric-green--yellow--red), so it does not by itself
-  make a run yellow or red.
+  time rather than rediscovering it. The only path back is the
+  [materially-new-evidence re-open](#materially-new-evidence-re-open) report
+  path.
+  A denied case or suppressed ring's spend belongs with **spend we are
+  knowingly holding** in the [Status rubric](#status-rubric-green--yellow--red),
+  so it does not by itself make a run yellow or red.
+- **Materially new-evidence re-open:** <a id="materially-new-evidence-re-open"></a>
+  A denial is final through every scanner and reviewer surface, so the
+  scanner's only recourse is to report a candidate re-open in the run thread,
+  naming the prior denial and the pattern it did not consider. Renewed burn
+  alone is never sufficient to justify raising a re-open; burn may corroborate
+  that pattern but cannot establish it. Lifting the denial requires an operator
+  to act directly on the row, outside both the review path and the scanner.
+  Where a covering cleared-decision entry exists, remove it on the documented
+  reversal before filing again. If the denial is ever lifted and the covering
+  entry is removed, the member is an ordinary non-denied member again and the
+  normal rule posts it under the ring's existing stable key. Never post the
+  target while its status is `denied`.
 
 - Put the dollar figure inside the `evidence` object (e.g. an `anthropic_usd_24h`
   key), not a top-level field — the ingest schema has no dedicated spend field and
@@ -972,34 +997,37 @@ Scanner-specific rules on top of the skill's schema:
   to act on. The agent sets this field in the ingest body and makes an explicit
   judgment call for every finding.
   Re-ingesting an existing case overwrites its description, confidence, and
-  urgency. Describe the whole accumulated case and set confidence and urgency
-  from all accumulated targets and findings, not just the new batch. If the case
-  was red and the new batch alone would be yellow, keep sending red unless the
-  overall case has genuinely de-escalated.
+  urgency. Describe the whole accumulated
+  [non-denied set](#non-denied-targets) and set confidence and urgency from that
+  set and its findings, not just the new batch. If the case was red and the new
+  batch alone would be yellow, keep sending red unless the overall case has
+  genuinely de-escalated.
 - Use the live reviewer-side geo reads described in
   [Network geo vs card-issuer geo](#network-geo-vs-card-issuer-geo) when
   explaining a case. Geo remains corroborating context, not filing evidence.
   A `description` should carry the cluster-level geo *shape* — "one issuer
   country against 7 unrelated signup countries across 12 targets" — which is
   what the case turns on, rather than a list of per-account country values.
-- **Case sizing:** file up to 3000 distinct users and up to 9000 restriction
-  targets in a single case (`source` + `ruleKey` + `targetType`) before splitting
-  a ring across cases. Check every ring in the unfiltered list before posting.
-  An archived-key response is also an existing-case signal and the only way an
-  archived case appears. When that existence check finds a case, run
-  `targets <suggestionId>` once before posting. Use that one read for the
-  accumulated size budget, the new-versus-total target diff, and the legacy
-  sibling check. Compute the distinct-user half from its target values because
-  the list row has no user count. Treat a ring as a first filing only when the
-  existence check is empty. It has no prior targets, so its accumulated budget
-  starts at zero and every posted target is new. The hard ingest caps are higher
-  (5000 distinct users / 10000 targets per suggestion — see the skill), but stay
-  at 3000/9000 to leave headroom for later upserts into the same case. Shard one
-  is the bare stable key; later shards use
-  `<stable_key>_part_2`, `<stable_key>_part_3`, and so on, with stable
-  partitions and sibling links. Never split by run or wave. A 400
-  `user_cap_exceeded` or `target_cap_exceeded` response triggers the next
-  deterministic shard key, not a run or wave suffix.
+- **Case sizing:** <a id="case-sizing"></a> file up to 3000 distinct users and
+  up to 9000 restriction targets in a single case (`source` + `ruleKey` +
+  `targetType`) before splitting a ring across cases. Check every ring in the
+  unfiltered list before posting. An archived-key response is also an
+  existing-case signal and the only way an archived case appears. When that
+  existence check finds a case, run `targets <suggestionId>` once before
+  posting. Use that one read for the accumulated size budget, the
+  new-versus-total target diff, the legacy sibling check, the denied-target
+  exclusion or documented re-open check, and other case-state checks as needed.
+  The size budget counts every target, including denied ones. Compute the
+  distinct-user half from its target values because the list row has no user
+  count. Treat a ring as a first filing only when the existence check is empty.
+  It has no prior targets, so its accumulated budget starts at zero and every
+  posted target is new. The hard ingest caps are higher (5000 distinct users /
+  10000 targets per suggestion — see the skill), but stay at 3000/9000 to leave
+  headroom for later upserts into the same case.
+  Shard one is the bare stable key; later shards use `<stable_key>_part_2`,
+  `<stable_key>_part_3`, and so on, with stable partitions and sibling links.
+  Never split by run or wave. A 400 `user_cap_exceeded` or `target_cap_exceeded`
+  response triggers the next deterministic shard key, not a run or wave suffix.
 
 ### Pending unarchive asks — do not suppress
 
@@ -1019,8 +1047,15 @@ decision is durable and reviewable rather than living only in a session
 scratchpad. Every new entry must enumerate the target values it covers. For an
 org-keyed entry, the run excludes accounts its own clustering places in that
 org. Only denial and confirmed suppression entries here suppress re-filing and
-count as spend we are knowingly holding. Remove an entry only with a documented
-human reversal.
+count as spend we are knowingly holding. A target's denied status in its own
+case is authoritative for excluding it from posts and classifying its spend as
+knowingly held. This section carries that decision across cases, since at
+detection time no scanner-reachable lookup can find a denial by target value.
+Remove an entry only with a documented human reversal.
+
+The ingest-key CLI exposes decision attribution via `targets <suggestionId>`:
+`reviewerClerkUserId` and `decidedAt` identify who decided and when, so future
+entries should record both rather than leaving the attribution blank.
 
 - JuicyChat, Clerk org `org_2xf8t0wKrZYzNJxLAB2BqbHyqEL` —
   `sleeper-usage-scanner` /
@@ -1030,6 +1065,38 @@ human reversal.
   reloaded dormant account is legitimate usage here. Scanners must not re-file,
   re-upsert, or re-report this account, and its spend does not color a run
   yellow or red.
+
+- adi@ara.so, Clerk org `org_3Crz6Y0GXcF70Nx6EjMmhBGCW8T` —
+  `sleeper-usage-scanner` /
+  `sleeper_newapi_relay_startup_credit_drain_ara_anthropic_block_r08` (case
+  `019f9852-2ae9-7136-94e7-d084ea9302a6`), denied by John Krauss on 2026-07-27
+  (06:50Z):
+  the case sat pending ~46h through two burst cycles ($815.67 then $3,963.40
+  Anthropic/24h at ~100% share) before review. Scanners must not re-file,
+  re-upsert, or re-report this account, and its spend does not color a run
+  yellow or red.
+
+- Clerk user `user_37vu8rz90Qv8Fze4cQZuNZO5iKg` —
+  `sleeper-usage-scanner` /
+  `sleeper_newapi_hillsboro_relay_baton_drain_anthropic_block_r14` (case
+  `019f999f-0e14-7281-b5de-927e9cd4240b`), denied by John Krauss on 2026-07-27
+  (07:14Z):
+  rolled off to $0 Anthropic/24h before review and was denied. Same no-re-file
+  rule.
+
+- roadtouk, Clerk user `user_32CcpAjEi35FXLirM2ir23y9ZkA` —
+  `sleeper-usage-scanner` /
+  `sleeper_roadtouk_newapi_relay_dormant_burn_frontier_block_r25` (case
+  `019fa2b0-ad9f-7bc5-a04a-f399e7291c8a`), denied by John Krauss on 2026-07-27
+  (08:30Z):
+  the reviewer approved and enacted the Anthropic `author_ban`
+  (`sleeper_roadtouk_newapi_relay_dormant_burn_anthropic_block_r24`, case
+  `019fa1d4-e23f-7c74-b6b0-9366d5cfe755`) but denied the wider
+  `frontier_us_models` widening. This is terminal for the frontier remedy on
+  this account: scanners must not re-file or upsert a frontier block for it.
+  The enacted Anthropic ban stands, and post-enforcement Anthropic and
+  non-Anthropic spend both read $0 as of 2026-07-27 12:25Z, so no pivot was
+  observed.
 
 ## Output — post to Slack
 
@@ -1044,25 +1111,31 @@ human reversal.
 - A filed case alert is new when its non-null `{channel, ts}` has a Slack `ts`
   at or after this run's start moment, not the detection lookback window.
   Slack `ts` is an epoch-seconds timestamp; an older one is a reused alert from
-  an earlier run. A standalone top-level line is required only when no
-  new-in-run case alert exists in the server-routed channel for this run's
-  status, meaning no case was filed or every returned ref is reused from an
-  earlier run. A case alert created during the run carries that status as its
-  urgency and lands in that channel, so it is the run's top-level message.
-  Still thread per-case findings onto every non-null case alert. Never drop
-  findings or invent a synthetic case link.
+  an earlier run. A standalone top-level line is required unless a new-in-run
+  case alert exists in the channel the server routes this run's status to and
+  has urgency at least as high as the run's status, using the server's urgency
+  mapping rather than the standalone emoji table.
+  That server mapping is green to the runs channel and both yellow and red to
+  the alerts channel.
+  For a yellow run filing a yellow case, that alert is in the alerts channel,
+  where the status routes, so no standalone line goes to the runs channel.
+  When the presence test is satisfied, the new case alert messages are the
+  run's top-level messages. Still thread per-case findings onto every non-null
+  case alert. Never drop findings or invent a synthetic case link.
 - **Transport warning:** Do NOT use `slack-remote` (it appends a "Sent using
   @Devin" block that spawns a recursive Devin session).
-- For a non-green run with a new case alert, keep the agent's findings in that
+- When the presence test above is satisfied, keep the agent's findings in that
   ingest-owned thread reply. Do not create a synthetic case link or a second
-  top-level message in the same channel.
+  top-level message in the same channel. When it is not satisfied, the required
+  standalone line is the run's only top-level message, and it may share a
+  channel with a case alert whose urgency is below the run's status.
 - **Classify every run with one status emoji** (see [Status
   rubric](#status-rubric-green--yellow--red)). Always set it — when a case is
   filed, the value is sent as the ingest `urgency`. For a standalone summary,
   it is the ONLY emoji on the top-level line and drives channel routing.
 - **Standalone top-level post = ONE line, verdict first, scannable in two
   seconds:** This applies whenever the condition above requires a standalone
-  line. Otherwise, the new case alert is the top-level message.
+  line. Otherwise, the new case alerts are the top-level messages.
 
   ```text
   <status emoji> <Scanner> <run/UTC> — <verdict in <=6 words> —
@@ -1105,7 +1178,8 @@ merely whether any tracked account is spending:
   staleness.
 - `:large_yellow_circle:` — **needs a human eye, but enforcement is not clearly
   warranted yet.** A genuinely ambiguous/borderline item that requires human
-  judgment this run — not a settled watchlist entry.
+  judgment this run — not a settled watchlist entry. A candidate re-open is
+  yellow when it is the run's only finding.
 - `:large_green_circle:` — **nothing to act on.** No new gated candidates,
   nothing pending, enforcement gap closed. This is green **even if allowed or
   watchlisted accounts are still spending** — spend we are knowingly holding
@@ -1126,7 +1200,7 @@ for a real judgment call and red for "act now".
     agents, not for scanner run logs.
   - `C0BL5TQG45C` (#tns-scanner-runs) is a machine log reviewed on a best-effort
     daily skim, not actively watched. Anything needing timely human action this
-    run must be red; yellow remains routed there by design.
+    run must be red; yellow standalone summaries remain routed there by design.
   - If posting to `C0BL5TQG45C` fails (e.g. `not_in_channel`), post the run to
     `C0BJ51BK7P0` (#alerts-tns) instead, force the status to at least
     `:large_yellow_circle:`, and state the delivery failure on the top-level
@@ -1160,14 +1234,16 @@ stale instructions or degraded execution, so the status must not read as clean.
     (and **Gap** / **Also tracked** when present) at the end of EVERY case
     thread the run posts to, so each case thread is self-contained and a
     reviewer never has to hunt through sibling cases for run-level context.
-  - Each NEW / UPDATED case block owns its data: bold `NEW` or `UPDATED` plus
-    `<new_members>` new / `<total>` total targets when new members exist,
-    optionally followed by a short status annotation, or a verdict alone when
-    none do, the `ruleKey` in backticks, and one line of selected facts. Derive
-    `new_members` by diffing the posted set against targets read before posting,
-    not from `targetsUpserted`, which counts posted target keys. When
+  - <a id="case-block-count-format"></a>
+    Each NEW / UPDATED case block owns its data: bold `NEW` or `UPDATED` plus
+    `<new_members>` new / `<total>` total non-denied targets when new members
+    exist, optionally followed by a short status annotation, or a verdict alone
+    when none do, the `ruleKey` in backticks, and one line of selected facts.
+    Derive `new_members` by diffing the posted set against targets read before
+    posting, not from `targetsUpserted`, which counts posted target keys. When
     `<new_members>` is below `<total>`, identify the new members in the case
-    thread.
+    thread. If denied targets exist, append their count separately regardless
+    of whether `<new_members>` equals `<total>`; do not list those targets.
   - Keep at most ~2 facts per NEW / UPDATED case. The money fact is the
     mandatory live-led split — live $ (last 1h), 24h Anthropic spend, and
     restricted $ — and counts as one fact; never drop or collapse this split.
@@ -1252,12 +1328,12 @@ stale instructions or degraded execution, so the status must not read as clean.
   ```text
   *Autobuy Scanner · run 184 · 19:00–20:00 UTC*
 
-  *NEW — 12 new / 12 total targets*
+  *NEW — 12 new / 12 total non-denied targets*
   <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/00000000-0000-4000-8000-000000000001|Open Sentinel case>
   `autobuy_synthetic_quest_bin436797_hk_tw`
   Synthetic `.quest` ring · $3,608 live last 1h · $4,935 Anthropic/24h · restricted $0
 
-  *UPDATED — 2 new / 7 total targets · pending review*
+  *UPDATED — 2 new / 7 total non-denied targets · 3 denied · pending review*
   <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/00000000-0000-4000-8000-000000000002|Open Sentinel case>
   `autobuy_bin450306_sg_debit_datacenter`
   Enacted for `user_3Gk2vT9qLxWbNpD41sZaYcEfMhR` · $0 live last 1h · $21,125 Anthropic/24h · restricted $21,125
@@ -1282,6 +1358,10 @@ stale instructions or degraded execution, so the status must not read as clean.
   ```
 
 ## Terminology
+
+**Non-denied targets** <a id="non-denied-targets"></a> are a case's accumulated
+targets whose `status` is not `denied`. That set drives counts, case-block figures,
+confidence, and urgency. The [case size budget](#case-sizing) is the exception.
 
 In all Slack output (top-level line, thread, per-cluster lines), label the dollar
 figure with its basis and window — for example, "Anthropic spend ($/24h,

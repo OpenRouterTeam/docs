@@ -35,9 +35,10 @@ configuration, or a release gate.
 - Mission Control also exposes a unified operator Ban Users page. It either
   writes admin-sourced restrictions directly through the dual-write layer,
   recording the acting administrator, or opens a Sentinel case for review.
-- Sentinel accepts domain targets as candidates and stores them for review.
-  Domain enactment is deferred to #30819. The retired `domain_block` proposal
-  kind is rejected at ingest.
+- Sentinel accepts domain targets, a literal domain or a `*.<apex>` wildcard,
+  as candidates and stores them for review. Enacting one writes a domain
+  restriction that fans out to matching accounts and to later signups. The
+  retired `domain_block` proposal kind is rejected at ingest.
 - A compromised key is filed as `targetType: api_key`, one target per key with
   `proposedKind: api_key_revocation`. Key actions are refused on the agent enact
   path; a human enacts in Mission Control, which disables the key, stamps
@@ -349,7 +350,7 @@ flowchart LR
   REVIEW --> APPROVED["Approved"]
   APPROVED --> ENACT["Enact"]
   ENACT -->|"user target"| RESTRICTION["System restriction"]
-  ENACT -->|"domain target"| DOMAIN_ENACT["Deferred to #30819"]
+  ENACT -->|"domain target"| DOMAIN_ENACT["Domain restriction<br/>fanout + signup webhook"]
   ENACT -->|"api_key target"| KEY_DISABLE["Key disabled<br/>compromised_at stamped"]
   CASE --> ARCHIVE["Archive case<br/>freeze future ingest"]
   ARCHIVE -. "unarchive" .-> CASE
@@ -491,10 +492,13 @@ later ingest if the restriction is revoked.
 
 ### Domain targets
 
-Domain targets use the domain in `targetValue` and are stored as candidates for
-review. They are accepted for supported restriction kinds except
-`frontier_us_models`; the retired legacy `domain_block` proposal kind is
-rejected at ingest. Domain enactment is deferred to #30819.
+Domain targets carry a literal domain or a `*.<apex>` wildcard in
+`targetValue` and are stored as candidates for review. A literal domain matches
+exactly; a wildcard matches the apex and every descendant label. Ingest
+canonicalizes the value and rejects any other wildcard placement or a wildcard
+on a public or shared suffix. They are accepted for supported restriction kinds
+except `frontier_us_models`; the retired legacy `domain_block` proposal kind is
+rejected at ingest.
 
 ### API-key targets
 
@@ -680,11 +684,12 @@ merged.
 
 ### 4. Domain enforcement is a separate system
 
-Sentinel currently stores domain proposals as candidates but skips their
-enactment with `domain_enactment_not_implemented`. Domain enactment is deferred
-to #30819. Domain-policy enforcement, including revocation, fanout, signup, and
-protected-domain semantics, lives in the `domain_restrictions` workflow rather
-than the generic `restrictions` table.
+Sentinel stores domain proposals as candidates; enacting one creates a
+`domain_restrictions` policy rather than a row in the generic `restrictions`
+table. Domain-policy enforcement, including revocation, fanout to existing
+accounts, the signup webhook, wildcard specificity (exact before nearest
+wildcard before broader wildcard) and protected-domain semantics, lives in the
+`domain_restrictions` workflow.
 
 ### 5. Enforcement does not share one lifecycle
 
