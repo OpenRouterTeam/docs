@@ -283,6 +283,45 @@ export const PromptInjectionFuzzyTargets = () => {
   );
 };
 
+export const PromptInjectionFuzzyPhrases = () => {
+  const PHRASES = [
+  {
+    "name": "fuzzy_phrase_instruction_override",
+    "keywords": "ignore / disregard / forget / delete / bypass / override / skip~ … (all / any / the / my / your / our / its / their / every / this / that / these / those / of)? … previous / prior / above / earlier / initial / safety / security / system / internal / core / original~ … (safety / security / system / internal / core / original)?~ … instructions / instruction / rules / rule / guidelines / guideline / constraints / directives / prompt / prompts~"
+  },
+  {
+    "name": "fuzzy_phrase_read_instruction_override",
+    "keywords": "reveal / expose / print / output~ … (all / any / the / my / your / our / its / their / every / this / that / these / those / of)? … previous / prior / above / earlier / initial / safety / security / system / internal / core / original … (safety / security / system / internal / core / original)? … instructions / instruction / rules / rule / guidelines / guideline / constraints / directives / prompt / prompts"
+  },
+  {
+    "name": "fuzzy_phrase_prompt_extraction",
+    "keywords": "reveal / show / print / output / display / expose / leak / repeat~ … (me)? … (all / any / the / my / your / our / its / their / every / this / that / these / those / of)? … (full / hidden / secret / internal / original / complete / entire / exact / actual / real)?~ … system~ … prompt / prompts / instructions~"
+  }
+];
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Pattern Name</th>
+          <th>Candidate Phrase Keywords</th>
+        </tr>
+      </thead>
+      <tbody>
+        {PHRASES.map((phrase) => (
+          <tr key={phrase.name}>
+            <td>
+              <code>{phrase.name}</code>
+            </td>
+            <td>
+              <code className="regex-cell">{phrase.keywords}</code>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
 export const PromptInjectionEvasionKeywords = () => {
   const ITEMS = ["ignore","bypass","override","reveal","system","prompt"];
   return (
