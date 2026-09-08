@@ -195,7 +195,11 @@ same baseline:
    public frontend-api only, a same-origin proxy in front of `next start` that
    forwards `/api/*` to production is enough for a CLS reading, since the
    layout does not depend on where the JSON came from. Say so in the PR, since
-   the timing metrics of such a run are not production-equivalent.
+   the timing metrics of such a run are not production-equivalent. Starting
+   the production build with `VERCEL_ENV=preview` turns that same proxy on
+   inside `next start` itself, so no external proxy is needed for public
+   frontend-api routes (PR #40626); routes that read Postgres directly, such
+   as the model detail page, still fail without a local database.
 
    Clerk middleware redirects a local production server to a dev-browser
    handshake (`__clerk_hs_reason=dev-browser-missing`) unless the request
