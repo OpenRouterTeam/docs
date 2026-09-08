@@ -187,6 +187,9 @@ Everything a reviewer would eyeball can be asserted through the API:
   properties are not allowed ('custom_unit' was unexpected)`. It is accepted on `query_value`.
   Put the unit in the widget title or a formula style override instead. The error names the widget
   by index into the (possibly filtered) widget array, so count from the widgets actually sent.
+- **Datadog also rejects formula `number_format.unit` on `timeseries` widgets** with the same
+  invalid-widget-schema response. Omit it from timeseries formulas and use a title or style
+  override when a custom unit is needed.
 - **Metric tag filters inside `{...}` are comma-separated.** Do not append
   `AND status:5*` or similar clauses inside the braces; Datadog can persist
   those dashboard queries without validating them, but the query API rejects
