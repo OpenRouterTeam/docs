@@ -454,6 +454,29 @@ authenticate before Playwright tests. `E2E_CLERK_USER` /
 `E2E_CLERK_PASSWORD` belong to the **prod** Clerk tenant — do not
 use them against localhost.
 
+To render every route in `projects/web/app` against the local stack
+(Tilt up is the only precondition; it builds and serves the production
+app itself, dev Clerk ticket, runtime fixtures):
+```bash
+cd tests/web-e2e && bun run e2e:local
+```
+Knobs: `LOCAL_ROUTE_SMOKE_RUNS=3` (repeat for flakiness),
+`LOCAL_ROUTE_SMOKE_WORKERS` (keep the default; the single local
+`next start` is the bottleneck, and higher counts cause hydration
+failures on the activity pages),
+`LOCAL_ROUTE_SMOKE_BUILD=never` to reuse an existing `.next` build.
+Details in `tests/web-e2e/scripts/run-local-route-smoke.ts`.
+
+Gotchas the runner already handles, worth knowing when you script around it:
+- The `/projects/web` Infisical path injects `NODE_ENV=development`; set
+  `NODE_ENV=production` inside the `infisical run -- ...` command, not in
+  the parent shell, or `next build` prerenders with development React.
+- Clerk session tokens live 60s. A fresh Playwright context per test
+  replays the Clerk handshake redirect on every navigation, which is slow
+  and occasionally lands on `/sign-in`; navigation-only suites should
+  share one signed-in context per worker (see
+  `suites/smoke/all-routes-navigation.test.ts`).
+
 ### Sign In Flow (local manual browser testing)
 
 1. Mint and consume a sign-in ticket per the

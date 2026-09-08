@@ -165,8 +165,7 @@ adding an FAQ section, and consider it for relevant new pages going forward.
   `app/[locale]/(marketplace)/providers/fetch-providers-listing.ts`: server-side fetch
   of the private frontend API, successful-result-only cache, awaited in the
   RSC, real rows rendered. Auth- or user-dependent variants layer on
-  client-side over the SSR'd public default view. `/providers` remains
-  `force-dynamic` and will migrate separately.
+  client-side over the SSR'd public default view. `/providers` uses one-minute ISR.
 - **Use ISR for public indexable listing routes.** Set an explicit `revalidate`
   so HTML is served from the shared cache instead of re-rendering per request.
 - **Pair route caching with a successful-result-only data cache.** The
