@@ -2,8 +2,9 @@
 name: local-intern-chat
 description: >-
   Run a real intern locally with no provisioning: `tilt up -- --interns` boots
-  the production ori-runtime container and a dev-only web chat talks to it. Use
-  to test intern behaviour without GCP, Slack, OAuth, or the vault.
+  the production ori-runtime container, and either the playground chatroom or a
+  dev-only page talks to it. Use to test intern behaviour without GCP, Slack,
+  OAuth, or the vault.
 user-invocable: true
 ---
 
@@ -20,33 +21,56 @@ Add what you learn. Where this file and reality disagree, reality wins.
 
 ## Setup, in start-up order
 
-1. **Prerequisites**: Docker running (`docker ps`), and one-time GAR pull auth:
+1. **Two logins, both interactive, both easy to forget.** Neither is
+   optional and each fails in a way that does not name itself:
 
    ```bash
-   gcloud auth configure-docker us-central1-docker.pkg.dev
+   gcloud auth login       # expired token => the ori-runtime pull fails
+   infisical login         # no session   => every worker's dev vars are missing
+   gcloud auth configure-docker us-central1-docker.pkg.dev   # one-time
    ```
 
-2. **Start the stack**:
+   `configure-docker` is a **one-time** setup step and is not the fix for an
+   expired session — the two failures look identical from docker's error
+   (`error getting credentials - err: exit status 1`). If a pull fails,
+   `gcloud auth print-access-token` tells you which one you are in.
+
+2. **Docker running.** `docker ps`. On macOS this is Colima for most people
+   (`colima start`), not Docker Desktop.
+
+3. **Database up and migrated**, before the stack:
 
    ```bash
-   tilt up -- --interns          # auto-starts local-intern with the stack
-   tilt trigger local-intern     # or: manual trigger in an already-running stack
+   bun run db:start
+   bun run db:migrate     # or db:reset for a clean slate + seeded intern rows
    ```
 
-   Positional `tilt up -- <resources>` sets enabled resources exactly and does
-   **not** pull in transitive deps, so prefer the full `tilt up -- --interns`.
+   `db:reset` seeds the `seed-local` intern row and drops any Clerk user row
+   you inserted, so do it **before** minting a session, not after.
 
-3. **Health check** (the Tilt resource probes the same endpoint):
+4. **Start the stack**:
+
+   ```bash
+   tilt up -- --interns
+   ```
+
+   `--interns` is a config flag, so every resource stays enabled and
+   `local-intern` auto-starts. Positional `tilt up -- <resources>` is a
+   different thing: it sets enabled resources *exactly* and pulls in no
+   transitive deps.
+
+5. **Health check**:
 
    ```bash
    curl -s http://localhost:7070/health   # {"ok":true,"service":"ori-runtime"}
    ```
 
-   Set `ORI_LOCAL_INTERN_PORT` to use a different host port; worktrees get a
-   per-branch port from `scripts/worktree-ports.sh` automatically.
+   7070 is the default; `ORI_LOCAL_INTERN_PORT` overrides it and worktrees get
+   a per-branch port from `scripts/worktree-ports.sh`. Read the real one from
+   Tilt rather than assuming.
 
-4. **Terminal smoke test** (streams NDJSON: `run.started`,
-   `assistant.text.delta`, `turn.succeeded` with usage + `generationIds`):
+6. **Smoke test the daemon directly** — no browser, no auth, no gates. This is
+   the fastest proof the intern is alive:
 
    ```bash
    curl -N -X POST http://localhost:7070/api/invoke \
@@ -54,11 +78,13 @@ Add what you learn. Where this file and reality disagree, reality wins.
      -d '{"type":"agent.invoke","commandId":"t1","prompt":"say hi"}'
    ```
 
-5. **Seed the intern row** so it appears in listings:
+   Streams NDJSON. Each line wraps the real event: `{"type":"runtime.event",
+   "event":{"type":"turn.succeeded", ...}}`. A `turn.succeeded` carrying
+   `generationIds` is a real model call through local cfw-api — cross-check it
+   against a fresh directory under `services/dev-fs-logs/.logs/`.
 
-   ```bash
-   bun run db:reset
-   ```
+At this point you have a working intern. Everything below is about talking to
+it from the web UI, which needs a logged-in user and therefore more setup.
 
 ## Enable the two browser gates (required, not troubleshooting)
 
@@ -85,20 +111,104 @@ Equivalent UI path: dev panel (bottom-left OpenRouter button) → **Feature
 Flags** → search `ori-code` → **On** (this also flips the panel to Internal
 mode). No server restart needed.
 
-## Chat in the web UI
+## Two chat surfaces, and they are not the same path
 
-Open `/workspaces/<workspaceId>/interns/<internId>/chat` (`default` works as
-the workspace slug). The page posts to the dev-only proxy
-`/api/dev/intern-chat`, which dials the local daemon on
-`ORI_LOCAL_INTERN_PORT` directly and **never reads the intern row** — the
-intern id in the URL is not load-bearing; every id resolves to the same
-daemon. The seeded `seed-local` row exists only so an intern shows up in
-listings to click into. Do not re-add routing metadata (e.g.
+**The web app is not on port 3000 under Tilt.** Each worktree gets its own
+port block from `scripts/worktree-ports.sh`; read the real one from
+`tilt get uiresources -o json | jq -r '.items[]|select(.metadata.name=="web")|.status.endpointLinks[]?.url'`.
+
+### A. The playground chatroom — the production path, exercised locally
+
+An intern joins a room as a character whose model slug is `intern/<intern id>`
+(`projects/web/features/playground/definitions/intern-character.ts`). That
+prefix is what routes the turn to the daemon instead of the Responses API.
+The turn goes to cfw-frontend-api:
+
+```
+POST /api/frontend/v1/private/interns/<intern id>/chat
+```
+
+`resolveDaemonTarget` in
+`services/cfw-frontend-api/src/routes/labs/interns/chat/route.ts` then picks
+the daemon. In production it decrypts the intern's `daemon_token_encrypted`
+and dials its `cf_tunnel_hostname`. **Locally, `INTERN_DAEMON_ORIGIN_OVERRIDE`
+and `INTERN_DAEMON_TOKEN_OVERRIDE` short-circuit that** — the Tiltfile sets
+both to the `local-intern` daemon, so a turn for *any* intern row reaches the
+one container `tilt up -- --interns` runs. Neither var exists in Infisical's
+dev path, so they only ever apply locally.
+
+This is the surface worth testing on: it is the same code production runs, with
+one substitution at the last hop.
+
+**The worker gates are seeded for you, and that is load-bearing.** The route
+needs `ori-code-api` *and* `ori-chat-api` (`isInternChatEnabledForCaller`).
+Those are worker gates read from a Statsig ruleset in `KV_LIVE_CONFIG`, which
+a cfw-internal cron warmer syncs in production and nothing syncs locally — so
+without help both fall through to their registry default of off. The
+`worker-gates-seed` Tilt resource writes a minimal open ruleset, and
+`frontend-api` depends on it.
+
+Three things about that are worth knowing before you debug it:
+
+- **The ruleset is read once per isolate and cached.** Seeding after
+  `frontend-api` is already up leaves the routes 404ing until the worker
+  restarts (`tilt trigger frontend-api`). That is why the dependency exists.
+- **Both gates are required.** A ruleset opening only `ori-code-api` still
+  404s — verified by seeding exactly that and watching the turn fail.
+- **`--persist-to` matters.** Each worker's own dev launcher (e.g.
+  `services/cfw-frontend-api/scripts/dev.ts`) starts wrangler with
+  `--persist-to ../../.wrangler/shared-state`, so a `wrangler kv key put`
+  without it writes to the per-service `.wrangler/state` that nothing reads,
+  reports success, and changes nothing.
+
+To re-seed by hand: `cd services/cfw-frontend-api && bun scripts/seed-worker-gates.ts`, then
+restart `frontend-api`.
+
+**When it 404s anyway, read the message — the two are one word apart:**
+
+| body message | meaning |
+| --- | --- |
+| `Not found` | `FailureReason.GateClosed` — the gate, not the intern |
+| `Intern not found` | the intern row genuinely is not there |
+
+The dev panel's `localStorage` flags do **not** affect this. Those open the
+*client* gate that renders the UI; this is the server-side twin evaluated in
+the worker against your Clerk id and email.
+
+### B. `/workspaces/<id>/interns/<id>/chat` — the dev-only page
+
+Still present and still works. It posts to `/api/dev/intern-chat`, whose
+handler opens with
+
+```ts
+if (process.env.NODE_ENV !== 'development') {
+  return new Response(null, { status: 404 });
+}
+```
+
+so it is **404 outside local dev**. It dials
+the daemon on `ORI_LOCAL_INTERN_PORT` directly, **never reading the intern
+row** — every id resolves to the same daemon. It bypasses frontend-api, so it
+proves the daemon works but proves nothing about the routing, auth or gating
+that production uses. The seeded `seed-local` row exists only so an intern
+shows up in listings to click into. Do not re-add routing metadata (e.g.
 `cf_tunnel_hostname`) to the seed fixture; it was removed because nothing
 reads it.
 
 Known quirk: **Enter does not submit** in the prompt textarea; it inserts a
 newline. Click **Send** (it can be below the fold once the transcript grows).
+
+### Getting a session without a password
+
+Both surfaces need a logged-in user. Mint a throwaway one with the
+`clerk-dev-signin-token` skill rather than sharing the dev account. For the
+chatroom the user must also own the intern row — repoint a seeded one if
+needed:
+
+```sql
+UPDATE interns SET entity_id = '<clerk user id>', creator_user_id = '<clerk user id>'
+WHERE name = 'seed-local';
+```
 
 ## When it misbehaves
 
@@ -120,10 +230,10 @@ newline. Click **Send** (it can be below the fold once the transcript grows).
 ## Testing an unreleased ori build (`ORI_RUNTIME_IMAGE`)
 
 `:alpha` is a moving multi-arch (amd64+arm64) tag and Docker never re-pulls a
-tag it already has — which is why the default path pins `--pull=always`. That
-flag deliberately does **not** apply to an `ORI_RUNTIME_IMAGE` override: a
-locally built image has no registry behind it and `--pull=always` would fail
-the run.
+tag it already has, so the Tiltfile preflights the image with its own
+`docker pull` step. An `ORI_RUNTIME_IMAGE` override falls back to a
+pre-existing local copy when that pull fails, so a locally built image with
+no registry behind it still works.
 
 To build the runtime image from an ori checkout (e.g. an unmerged branch):
 

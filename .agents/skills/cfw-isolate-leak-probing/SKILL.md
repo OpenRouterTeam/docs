@@ -576,7 +576,7 @@ Totals scale ~linearly with C (C=4: ~264 MB sampled, same proportions). Per-in-f
 
 **Why the isolate pays this at all:** `cfGlobalRouterConfigCache` (`services/cfw-api/src/kv/index.ts` (the cfGlobalRouterConfigCache definition)) is the KV-snapshot path, but when KV is unwarmed every request falls back to `endpointsCachePgFetcher` → `listDBEndpointsHydrated` → `initEndpointFromDb` across all 4,453 endpoints. In prod the KV path usually wins, so local's 33 MB hydration floor overstates prod steady state — but victims dying at low served counts with prod p50 memory at 136 MiB say a per-request catalog-sized cost exists there too. Before trusting 14 MB as prod's floor, re-run the probe against a warmed-KV local isolate (seed shared-state KV).
 
-**Candidate cut if the warmed-KV probe still shows a fat floor:** `createEndpointsCacheFromConfig` builds per-request `ListCache` snapshots (`ttlSeconds: 0`), so every request re-materializes `Endpoint[]` from the KV snapshot. A per-isolate memo of the parsed `Endpoint[]` keyed on snapshot version turns per-request construction into per-isolate construction — inside the CLAUDE.md per-isolate-cache carve-out (rarely-updated, request-independent data).
+**Shipped (#40150):** `createEndpointsCacheFromConfig` used to build per-request `ListCache` snapshots (`ttlSeconds: 0`), re-materializing `Endpoint[]` from the KV snapshot on every request. It now memoizes one cache per isolate, keyed on the endpoints array identity, and rebuilds only when a KV revalidation swaps in a new array — inside the CLAUDE.md per-isolate-cache carve-out (rarely-updated, request-independent data).
 
 ## Isolate handoff / overflow without 429s — what CF actually supports
 

@@ -283,6 +283,14 @@ Gotchas when synthesizing upstream logprobs or changing endpoint capabilities:
 - `tsx --watch` on fake-provider may not reload reliably; restart the
   process (in a dedicated shell) after patching and verify with a direct
   curl to :3002 before testing through the router.
+- HIPAA-workspace keys (`sk-or-v1-hipaaexplicitwskey`) are dispatched from
+  :8787 to the HIPAA mirror, which must be running separately
+  (`cd services/cfw-api && bun run dev:hipaa`, port 8817). The mirror
+  reads the `hipaa-dev` Infisical env, so put the `dev`
+  `FAKE_PROVIDER_API_KEY` in the repo-root `.env.development.local`
+  (gitignored, loaded after Infisical) before starting it, or the eligible
+  path fails with `Provider returned error` 401. Editing `.dev.vars.hipaa`
+  by hand does not reload the running worker.
 - To force the supersize/DO-hydration path on a chat request, send
   `x-offload-large-fields: 1`; a large multimodal body alone does not
   route through the Durable Object. Confirm with a `process-stream-json:*`

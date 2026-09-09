@@ -103,6 +103,25 @@ Use one persistent live region whose content changes — a newly mounted
 separate live region per loading/error/result branch. Mark decorative icons
 next to announced text `aria-hidden="true"`.
 
+## Toggle state labels
+
+Flag any text beside a `Switch` that echoes the switch's own state —
+`Enabled`/`Disabled`, `On`/`Off`, `Active`/`Inactive`. The control already
+conveys it, and the duplicate scales badly: a list of rows all reading
+"Enabled" hides the one row that differs. The row title names the thing; the
+switch names the state. See [`DESIGN.md`](../../DESIGN.md) -> Components ->
+Controls.
+
+Keep the state programmatic when removing the text: `Switch` supplies
+`role="switch"` + `aria-checked`, so the `aria-label` should name the thing
+(`Toggle Web Search`), not the state. Removing visible text without an
+accessible name is a regression, not a cleanup.
+
+Two adjacent labels are fine and should not be flagged: a `LabelledToggle`
+label that *describes what the control does* ("Enable web search"), and a
+read-only status cell in a row that has no control, where the text is the
+only carrier of the value.
+
 ## Pending mutation state
 
 The initiating button of an in-flight mutation gets `disabled` plus visible
