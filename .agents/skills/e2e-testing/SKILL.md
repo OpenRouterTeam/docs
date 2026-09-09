@@ -381,6 +381,15 @@ the `webhooks` Tilt resource on `:8807` (see `tests/e2e/webhooks/`):
 - No inference runs, so `dev-fs-logs` stays empty. Evidence is the test's
   `.logs/*.ignore.json` response captures plus `tilt logs webhooks` for the
   handler's structured log lines.
+- The vitest setup gate requires cfw-api on `:8787` even for webhook-only
+  runs. When only the worker is up (`cd services/cfw-webhooks && bun run dev`),
+  run with `SKIP_CFW_API_CHECK=1`.
+- `tests/e2e/webhooks/route-contract.test.ts` pins the Stripe, Coinbase
+  Business and Sequence HTTP contract (invalid signature status, empty error
+  bodies, `405` + `Allow: POST` on non-POST). The signed cases read
+  `STRIPE_WEBHOOK_SECRET`, `COINBASE_BUSINESS_WEBHOOK_SECRET` and
+  `SEQUENCE_WEBHOOK_SECRET` from the test process env and skip when unset, so
+  export the same values the worker's `.dev.vars` holds to run them.
 
 ### Batch API Tests
 
