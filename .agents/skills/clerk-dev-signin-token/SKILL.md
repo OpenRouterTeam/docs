@@ -49,6 +49,23 @@ Tokens are single-use and expire after 10 minutes.
 
 ## 2. Consume the ticket in the browser
 
+**Simplest path: open it as a URL.** Nothing to script, and it works in a human's own browser as well as an agent's:
+
+```text
+<web-origin>/sign-in#/?__clerk_ticket=<ticket>
+```
+
+Note the `#/` — the root route does not consume the ticket, it just renders the signed-out home page. [`local-dev-env`](../local-dev-env/SKILL.md) → "Ticket gotchas" owns this path and the rest of them (single-use tickets, and why a long JWT must never be typed by synthetic keystrokes).
+
+`<web-origin>` is **not** always `localhost:3000` — under Tilt the web app gets a per-branch port. Read the real one rather than assuming:
+
+```bash
+tilt get uiresources -o json \
+  | jq -r '.items[]|select(.metadata.name=="web")|.status.endpointLinks[]?.url'
+```
+
+Use the scripted flow below instead when the session needs to branch on the `status` (e.g. `needs_second_factor`) rather than just land signed in.
+
 ```bash
 agent-browser connect 29229
 agent-browser open http://localhost:3000

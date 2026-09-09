@@ -86,7 +86,7 @@ This will build a new Docker image locally, push it, and trigger a zero-downtime
 upgrade of the Dataflow job.
 
 Generation-commit batching uses a deterministic bounded logical shard key with
-16 shards by default. The shard count is part of Dataflow's state key space,
+32 shards by default. The shard count is part of Dataflow's state key space,
 so a change must never go out through an in-place `--update`. The deploy
 script rejects `--replace` for this pipeline; omit it and the default path
 rolls the new job out by parallel replacement, which keeps the old job serving
