@@ -21,6 +21,7 @@ In general you should be able to accomplish an entire model launch in a single S
 | E2E generations (if media, used for featured playground examples) (§3, §3b) | Buddy |
 | Verify generated E2E results (§3) | Devin |
 | [images + video] Approve and assign primary model example (§3a) | Buddy |
+| [image / video / speech] Arena benchmark backfill, then judge after approval (§3c) | Buddy, approval Human |
 | Public visibility flip (§4) | Buddy |
 | Final visual checks on openrouter.ai | Human |
 | Social launch thread (Typefully) (§5) | Buddy |
@@ -173,6 +174,15 @@ The contract (step-by-step mechanics live in Buddy's own skills, not here):
 - Any phase failure (validation, submission, poll timeout, empty output, storage) is a launch blocker with a concrete error — do not fall back to provider-direct testing as evidence, and do not substitute the internal batch generation routes (§3a agent path) for this gate.
 - **Paid example/e2e generations are strictly Buddy's.** A Devin-run generation bills real money but produces no `model_examples` row and does not satisfy this gate — Devin never submits one.
 - **`sku_items` billing readback is not Buddy's.** The per-generation SKU breakdown lives behind the admin/OIDC-gated ops routes (`/api/v1/internal/ops/generation`), which Buddy's key cannot reach. Buddy verifies `usage.cost` from the public response; SKU-level reconciliation (discounts, cache SKUs, provider-reported quantities) is Devin's or a human's, via the ops route or ClickHouse.
+
+### 3c. Arena benchmark backfill (image / video / speech models) — Buddy
+
+Put the model on the public Arena benchmarks with three Buddy calls and one human approval. Every prompt, prompt version, media spec, and judge is stored on the challenge or in the shared default roster — nobody picks them by hand.
+
+1. **Fill**: `POST /buddy-api/arena-model-backfill` with `{ model_permaslug }` — nothing else. Buddy reads the model's output modality (image, video, or speech), fills every live challenge of that modality from its stored prompt and pinned spec, and reports each challenge as `dispatched` (paid now), `claimed` (another batch is still generating it), or `covered` (a pending or approved cell exists), plus `skipped` rows with a reason. A model outputting two Arena modalities, or none, is refused; fill a multi-modality model per challenge with `startArenaFill`. Calling it again is safe: only cells with no pending, approved, or in-flight result are paid for, so rejecting a cell and calling again regenerates just that cell.
+2. **Approve**: cells land pending. Review them in the Arena Studio queue (or Buddy's `listArenaReviewQueue`), then `approveArenaResults` / `rejectArenaResults`. Nothing is judged or public before this.
+3. **Judge**: `POST /buddy-api/arena-eval-runs` with `{ model_permaslugs: [<permaslug>], target_selection: "unjudged" }` and **no `judge_models`**. The roster defaults to the per-modality set the response of step 1 reported as `default_judge_models` (the same roster Mission Control's judge panel pre-selects). Pass `judge_models` only when deliberately overriding. Judge calls are billed and the batch route has no idempotency key, so do not resend a judging call that already answered.
+4. **Publish**: `publishArenaEvalRuns` stays an explicit human call, after the verdicts are read.
 
 ## 4. Launch
 

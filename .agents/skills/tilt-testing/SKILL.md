@@ -374,6 +374,15 @@ until timeout with **no request ever logged by the target worker** — the
 wrangler dev-registry link is stale. Restart the target worker too, then the
 caller (`tilt trigger image-api && tilt trigger api`).
 
+### First request after a worker restart serves live-config defaults
+
+Live-config reads never block on KV, so the first request into a freshly
+restarted worker (`tilt trigger api`) is served with the schema defaults
+(e.g. server-tool `user_rate_per_second_override = 0`, so a settlement row
+lands with `usage 0`) while the KV refresh runs in the background. Send a
+throwaway request after the restart before collecting billing or
+live-config-gated evidence.
+
 ### Alpha tools route caps at 10s
 
 `POST /api/alpha/tools/:toolName` sits behind cfw-api's default 10s timeout
