@@ -153,6 +153,12 @@ use shared capacity for any model on this provider"** on your
 BYOK keys in your
 [workspace BYOK settings](https://openrouter.ai/workspaces/default/byok).
 
+### BYOK and Regional Endpoints
+
+Some providers host region-pinned endpoints for a model alongside a standard one, for example `amazon-bedrock/us` or `google-vertex/europe-west1`. Providers charge a premium for these regional endpoints, so requests to the global API (`openrouter.ai`) skip them unless you target one explicitly with `provider.order` or `provider.only` (see [Targeting Specific Provider Endpoints](/guides/routing/provider-selection#targeting-specific-provider-endpoints)).
+
+With a prioritized BYOK key, the regional premium is billed to your own provider account rather than to OpenRouter credits, so the rule relaxes in one case: if a provider has **no** standard-priced endpoint for the model, only regional ones, your prioritized key for that provider can route to the regional endpoint. When the provider offers both a standard and a regional endpoint for the model, your key is routed to the standard endpoint, the same as a non-BYOK request. Fallback keys never unlock regional endpoints. Requests to the regional APIs (`us.openrouter.ai`, `eu.openrouter.ai`) are unaffected, since they route to in-region endpoints by design.
+
 ### BYOK with Data Policies
 
 BYOK endpoints are subject to your data policies. Bringing your own key changes which credential authenticates the upstream request. It doesn't change which endpoints you're allowed to route to. Your provider, account, and guardrail data policies are applied **before** BYOK endpoints are created, so BYOK only routes to endpoints that already satisfy them.

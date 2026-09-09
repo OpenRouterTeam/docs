@@ -97,6 +97,11 @@ description: Run and test Mission Control (projects/mission-control) end-to-end 
 - Use IDs that match the Clerk regex (`user_`/`org_` plus alphanumerics). A skipped entity in the result proves orchestration only, not refund planning. Check `result.runConfig.dryRun` and that no negative `credits` rows were added.
 - A 500 from the server action renders the masked `Error 500 / Internal Server Error` toast, not the action's `failureMessage`. The toast auto-dismisses, so wait for its text before screenshotting.
 
+## Fee waiver expiration (`/admin-utils/fee-waiver-expiration`)
+- A valid-format but nonexistent target such as `user_abc123` can complete a real dry run in milliseconds with zero candidates. This verifies dispatch, persisted results and auto-opened detail, not in-flight polling, active-run rejection, or nonzero notice planning. Choose a controlled eligible local fixture when those branches are required; do not wait for a transient “Planning notices” label that may never render.
+- The workflow link is a Cloudflare Workflows instance URL, not Temporal (`app/admin-utils/credit-expiration/WorkflowLink.tsx`). Verify its instance ID against `workflow_runs.workflow_instance_id`.
+- For live-cancel testing, leaving targets blank proves optional targeting validates when the confirmation appears. Cancel only and compare `workflow_runs` counts filtered by `kind='fee-waiver'`.
+
 ## User deletion page runtime checks
 - `/user/<clerk-id>` also depends on usage-record (:8801) and Spanner for user analytics. If another Wrangler owns inspector :9229, start usage-record with a distinct inspector port, e.g. `node node_modules/.bin/wrangler dev --port 8801 --inspector-port 9231` from its service directory after its dev script has generated `.dev.vars`.
 - If deletion buttons remain disabled although `requested_data_deletion=true`, check the Next server-action queue. An unrelated `getRestrictionQualityForUserSA` request can block `getActiveDeletionSA`; inspect ClickHouse readiness and the action ID in `.next/dev/server/server-reference-manifest.json`. Any temporary disabling of that analytics hook must be disclosed and restored; it is not proof the unmodified whole page works.
