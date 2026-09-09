@@ -21,7 +21,6 @@ graph TD
     Models --> DB["packages/db\nKysely queries"]
     Users --> DB
     Benchmarks --> Coord["gcp-gateway-bench-coord\nCloud Run"]
-    Benchmarks --> CH["packages/clickhouse\nbenchmark results"]
     DB --> PG["PostgreSQL"]
     Tools --> EmailPreview["Transactional Email Preview\nv1 and new-branding v2 renders\nsandboxed preview and test send"]
     Tools --> Sentinel["Sentinel Ban Candidates\nscanner proposals and approve or deny"]

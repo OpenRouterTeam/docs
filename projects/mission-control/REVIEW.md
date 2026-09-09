@@ -38,6 +38,19 @@ and surface transport-level failures as user-visible errors.
 *Source: [PR #27107](https://github.com/OpenRouterTeam/openrouter-web/pull/27107)
 — a rejected scan call left the delete-logs panel stuck in the scanning state.*
 
+## Every `'use server'` export must be an async function
+
+Next.js only enforces this at production module evaluation, not in dev,
+build, or typecheck: a `'use server'` module with a non-async runtime export
+(a plain const, a Zod schema, anything not `async function` or an
+async-returning call) throws when that module is first evaluated in
+production. `app/use-server-export-guard.test.ts` walks every such module
+under `app/` and fails on any export shape it does not recognize as async.
+
+*Source: [PR #38949](https://github.com/OpenRouterTeam/openrouter-web/pull/38949)
+— an exported Zod schema in an actions file shipped past dev, build, and
+typecheck, then threw at runtime on production module evaluation.*
+
 ## Transactional email previews
 
 Email preview utilities must render through the package email renderers,

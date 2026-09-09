@@ -726,6 +726,10 @@ Checkboxes, radios, switches, and segmented active states all use the accent —
 
 **Disabled** (any control or button): `opacity-50` + `pointer-events-none`. Don't recolor — the dimmed state reads consistently in both themes.
 
+**A toggle states its own state — never label it with that state.** No `Enabled`/`Disabled`, `On`/`Off`, `Active`/`Inactive` text beside the switch. The track position and accent fill already carry it, so the text is a second copy of one fact, and it degrades as it repeats: a column of thirteen rows reading "Enabled" is a wall of identical words that hides the one row that differs. Name the *thing* in the row's title and let the switch speak for the state.
+
+The state still has to be programmatic, just not visible: `Switch` carries `role="switch"` + `aria-checked`, so give it an `aria-label` naming the thing (`Toggle Web Search`) — not the state. Two labels that are *not* this mistake: a **descriptor** of what the control does (`LabelledToggle`'s label, e.g. "Enable web search" — it names the thing, and the switch names the state), and a **read-only status cell** in a table with no control in the row, where the text is the only thing carrying the value.
+
 When a control marks something *selectable* — an option card, a toggle button, a pickable row — its placement and the surface it sits on follow **Selection states** below.
 
 ### Selection states

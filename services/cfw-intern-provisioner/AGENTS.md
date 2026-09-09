@@ -202,8 +202,7 @@ Register a name here only once it is confirmed set at `/services/cfw-intern-prov
 - **E2E-only base-URL overrides**, documented in `env.ts` as staying unset in production: `CF_API_BASE_URL`, `GCP_COMPUTE_API_BASE_URL`, `GCP_STORAGE_API_BASE_URL`, `GCP_ARTIFACT_REGISTRY_API_BASE_URL`.
 - **Prod-only overrides.** Infisical **prod** reads return `403 You are not allowed to readValue on secrets` under ordinary developer credentials, so these cannot be confirmed *from Infisical* on a laptop. `npx wrangler secret list --config wrangler.toml` can: it prints the names bound on the deployed worker with no Infisical prod access at all. Re-run it before trusting this classification of the four names:
   - `INTERN_VAULT_API_KEY`, `INTERN_VAULT_TUNNEL_URL` — **bound in prod**. Genuine prod-only overrides.
-  - `INTERN_CLOUDFLARED_IMAGE` — **not bound**. Production runs the committed `cloudflare/cloudflared:latest` default: a moving tag, on a non-Google registry, pulled anonymously.
-  - `INTERN_RUNTIME_IMAGE` — **not a secret**: a `[vars]` entry in `wrangler.toml` (#34948); see "Moving a secret into `[vars]`" above.
+  - `INTERN_RUNTIME_IMAGE`, `INTERN_CLOUDFLARED_IMAGE` — **not secrets**: `[vars]` entries in `wrangler.toml` (#34948 and ORI-1267 respectively); see "Moving a secret into `[vars]`" above. Neither was ever bound as a secret on the deployed worker, so neither move hit the var-vs-secret collision that section describes.
 
   Note the limit of that instrument. It answers "is this a real prod-only override?" It does **not** answer "should this be registered?" — `validate-infisical-mapping.ts` checks against **dev**, so a name bound in prod but absent from the dev path still buys the permanent false `❌`. Registration stays gated on the name existing at `/services/cfw-intern-provisioner` in dev, exactly as the paragraph above says. The two questions are easy to conflate because one command appears to answer both.
 

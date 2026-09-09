@@ -104,6 +104,13 @@ The default run mutes `StringLiteral` and `ObjectLiteral` mutants and reports th
 
 A test-only diff gives the CI mutation job nothing to mutate. Run the harness locally on the source the new tests cover and put the result in the PR.
 
+The harness runs tests through `bun run`, which puts `node_modules/.bin`
+first on `PATH`, so they execute under the `bun` package the root
+`package.json` pins rather than the global Bun. A fixture whose verdict
+depends on runtime parsing behaviour can pass under bare `bun test` and
+fail the dry run. Reproduce with `node_modules/.bin/bun test <file>` and
+use input both versions treat the same.
+
 Service-local Bun tests may require the package's `bunfig.toml` preload
 configuration (for example, Cloudflare Worker mocks); run those test
 commands from the service directory rather than from the repository root.
@@ -254,6 +261,12 @@ missing assertion, not an equivalent mutant: Bun's `toBeNull()` and
 `toBe(null)` pass against a React-attached element inside a large
 tree, so that assertion cannot fail. Assert absence with
 `expect(screen.queryAllBy*(...)).toHaveLength(0)` instead (PR #40669).
+
+A surviving default or fallback that feeds a list is likewise a missing
+assertion when the test checks the list with `toEqual`: Bun's `toEqual`
+treats `[undefined]` as equal to `[]`, so a mutant that pushes an
+`undefined` element passes. Assert lists with `toStrictEqual`
+(PR #40473).
 
 Never change production code, weaken a test, or assert a value you
 know is wrong to raise the score. The score is triage, not a target.
