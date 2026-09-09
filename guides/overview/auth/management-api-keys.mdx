@@ -15,6 +15,8 @@ nofollow: false
 icon: key
 ---
 
+import ManagementKeyRoutes from '/snippets/exports/ManagementKeyRoutes.mdx';
+
 OpenRouter provides endpoints to programmatically manage your API keys, enabling key creation and management for applications that need to distribute or rotate keys automatically.
 
 ## Creating a Management API Key
@@ -249,3 +251,9 @@ API responses return JSON objects containing key information:
 ```
 
 When creating a new key, the response will include the key string itself. Read more in the [API reference](/api/api-reference/api-keys/create-a-new-api-key).
+
+## Routes That Require a Management Key
+
+The following documented routes reject regular API keys and must be called with a Management API key.
+
+<ManagementKeyRoutes />
