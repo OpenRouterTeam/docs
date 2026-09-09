@@ -2,9 +2,9 @@
 name: local-intern-chat
 description: >-
   Run a real intern locally with no provisioning: `tilt up -- --interns` boots
-  the production ori-runtime container, and either the playground chatroom or a
-  dev-only page talks to it. Use to test intern behaviour without GCP, Slack,
-  OAuth, or the vault.
+  the production ori-runtime container, and the playground chatroom talks to it
+  through the production frontend-api route. Use to test intern behaviour
+  without GCP, Slack, OAuth, or the vault.
 user-invocable: true
 ---
 
@@ -111,13 +111,13 @@ Equivalent UI path: dev panel (bottom-left OpenRouter button) → **Feature
 Flags** → search `ori-code` → **On** (this also flips the panel to Internal
 mode). No server restart needed.
 
-## Two chat surfaces, and they are not the same path
+## Talking to it from the web UI
 
 **The web app is not on port 3000 under Tilt.** Each worktree gets its own
 port block from `scripts/worktree-ports.sh`; read the real one from
 `tilt get uiresources -o json | jq -r '.items[]|select(.metadata.name=="web")|.status.endpointLinks[]?.url'`.
 
-### A. The playground chatroom — the production path, exercised locally
+### The playground chatroom
 
 An intern joins a room as a character whose model slug is `intern/<intern id>`
 (`projects/web/features/playground/definitions/intern-character.ts`). That
@@ -175,32 +175,20 @@ The dev panel's `localStorage` flags do **not** affect this. Those open the
 *client* gate that renders the UI; this is the server-side twin evaluated in
 the worker against your Clerk id and email.
 
-### B. `/workspaces/<id>/interns/<id>/chat` — the dev-only page
+The seeded `seed-local` row exists so there is an intern to pick in the model
+picker. Do not add routing metadata (e.g. `cf_tunnel_hostname`) to the seed
+fixture — the local override means nothing reads it.
 
-Still present and still works. It posts to `/api/dev/intern-chat`, whose
-handler opens with
-
-```ts
-if (process.env.NODE_ENV !== 'development') {
-  return new Response(null, { status: 404 });
-}
-```
-
-so it is **404 outside local dev**. It dials
-the daemon on `ORI_LOCAL_INTERN_PORT` directly, **never reading the intern
-row** — every id resolves to the same daemon. It bypasses frontend-api, so it
-proves the daemon works but proves nothing about the routing, auth or gating
-that production uses. The seeded `seed-local` row exists only so an intern
-shows up in listings to click into. Do not re-add routing metadata (e.g.
-`cf_tunnel_hostname`) to the seed fixture; it was removed because nothing
-reads it.
-
-Known quirk: **Enter does not submit** in the prompt textarea; it inserts a
-newline. Click **Send** (it can be below the fold once the transcript grows).
+There was a second surface here, a dev-only page at
+`/workspaces/<id>/interns/<id>/chat` posting to `/api/dev/intern-chat`. Both
+are **deleted** (ORI-1460). It never read the intern row, so it proved the
+daemon worked and nothing about the routing, auth or gating production uses —
+the `curl` against `localhost:7070/api/invoke` above covers that with no page
+at all.
 
 ### Getting a session without a password
 
-Both surfaces need a logged-in user. Mint a throwaway one with the
+The chatroom needs a logged-in user. Mint a throwaway one with the
 `clerk-dev-signin-token` skill rather than sharing the dev account. For the
 chatroom the user must also own the intern row — repoint a seeded one if
 needed:
