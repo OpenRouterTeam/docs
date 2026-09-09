@@ -69,6 +69,8 @@ with an empty body as a stub, never as success.
 
 Copy `dashboard.tf` from the module directory into `$HOME/tf-preview/`. If the module ships its dashboard definition in JSON form, copy `dashboard.json` alongside it so the `file("${path.module}/dashboard.json")` reference still resolves. Do NOT copy `variables.tf` (the variables are already defined in `main.tf` above).
 
+If the module takes more than `name_prefix` / `preview_mode` (e.g. `cfw_service_dashboard` needs `service_name` and `custom_widgets`, and renders `dashboard.json` through `templatefile(...)` with `${service}` placeholders), skip the copy and `source` the module directory by absolute path from the workspace `main.tf` instead (see "Previewing several modules at once"). Copying a templated `dashboard.tf` without its `variables.tf` fails on the undeclared inputs.
+
 ```bash
 MODULE_DIR=configs/terraform-monitors/monitoring/<module_name>
 cp "$MODULE_DIR/dashboard.tf" $HOME/tf-preview/dashboard.tf
@@ -172,6 +174,9 @@ Everything a reviewer would eyeball can be asserted through the API:
   mixed with a distribution in one formula" bug.
 - **Layout**: rasterize each `layout` `{x,y,width,height}` into 12-column grid cells and assert
   zero double-covered cells and zero uncovered cells inside the bounding box.
+- **Tab membership**: the persisted `tabs[].widget_ids` come back as integer widget ids, not the
+  `@N` positional refs the source uses. Map `widgets[i].id` to its index before asserting which
+  tab a widget landed in, and check every widget appears in exactly one tab.
 - **Data window**: before trusting any expected numbers, confirm the metric actually has points
   in the window. `POST /api/v2/query/timeseries` with `interval: 60000` and check for the first and
   last non-null bucket; new Logpush-derived metrics often only start hours before you test, and
@@ -227,6 +232,12 @@ Everything a reviewer would eyeball can be asserted through the API:
   Actions `TF_DATADOG_API_KEY` / `TF_DATADOG_APP_KEY` (not in Infisical). Do not treat Infisical
   validate-success as write access.
 
+- **`.as_rate()` and `.as_count()` are no-ops on gauge metrics.** The CF GraphQL sync metrics
+  (`openrouter.cloudflare.*.sum.*`) are per-minute sums stored as gauges, so all three spellings
+  replay to the same per-minute value. To chart them per second, divide in the formula
+  (`query1 / 60`) and check `GET /api/v1/metrics/<name>` reports `type: gauge` before trusting a
+  rate modifier on any metric.
+
 - **Percentile queries on a `distribution()` metric return empty series** when percentile
   aggregation is not enabled for that metric in Datadog. Probe with `avg:` before charting
   percentiles, and fall back to avg/max until percentiles are enabled.
@@ -281,6 +292,12 @@ block sources the real module directory, `terraform import module.<name>.datadog
 then `terraform plan` must print `No changes.` Import and plan need no write scope. Plan the
 previous `dashboard.json` once too and confirm it shows `1 to change`, otherwise the no-diff proves
 nothing.
+
+The same import-then-plan proves an HCL `datadog_dashboard` to `datadog_dashboard_json` conversion is
+behavior-preserving: import the HCL module's live preview into the JSON resource address and plan.
+Expect a first diff on metadata the HCL provider defaulted silently (`notify_list: []`,
+`template_variable_presets: []`, `on_right_yaxis: false` on every request); add those to the JSON
+rather than accepting a permanent one-line plan.
 
 ## Distinguishing "No data" from a broken query without a UI
 
