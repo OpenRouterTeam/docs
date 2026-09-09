@@ -342,14 +342,10 @@ server in the data path.
 
 - Delete the server action file (or the db-calling section
   of the RSC loader) and its imports.
-- Remove the migrated file's entry from
-  `scripts/oxlint/frontend-db-import-baseline.ts`. The
-  `openrouter/no-direct-db-imports-in-frontend-entrypoints`
-  rule grandfathers baseline paths so the burndown can land
-  incrementally; an entry left in after its file is migrated
-  silently exempts it, so a re-introduced db import in that
-  file would not fail lint. Each migration removes its own
-  entries.
+- The `openrouter/no-direct-db-imports-in-frontend-entrypoints`
+  rule has no baseline any more (the burndown list drained), so
+  a re-introduced db import in a migrated file fails lint
+  immediately.
 - Verify the acceptance criterion for the domain:
 
 ```bash

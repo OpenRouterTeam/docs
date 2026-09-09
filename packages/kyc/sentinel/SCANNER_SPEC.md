@@ -4,8 +4,9 @@
 >
 > **Audience:** the scheduled Devin automations that scan for abuse and file
 > Sentinel ban-candidates — currently **Sleeper Scanner**, **Recent Signups
-> Scanner**, and **Autobuy Scanner** — plus the report-only **Anthropic
-> Concentration Monitor**, which does not feed the ban-candidates queue.
+> Scanner**, **Autobuy Scanner**, and the file-only **Leaked Key Scanner** —
+> plus the report-only **Anthropic Concentration Monitor**, which does not feed
+> the ban-candidates queue.
 >
 > This file is the single source of truth for everything those scanners share:
 > data access, signal sources, the materiality gate, KYC prioritization, the
@@ -116,7 +117,10 @@ proposal: see [Propose and enact](#read-only-propose-only).
   and `europe`. These scanners cover non-EU traffic, so every generations query
   excludes EU rows with `data_region != 'europe'`. Do not write
   `data_region = 'global'`: that silently drops the `us` rows (a live 24h count
-  on 2026-07-27 was 503,611,839 `global` / 383 `us` / 39,666 `europe`).
+  on 2026-07-27 was 503,611,839 `global` / 383 `us` / 39,666 `europe`). The one
+  exception is the [Leaked Key Scanner](#leaked-key-scanner), which reads all
+  three regions — see its section for why and for what it may do with the EU
+  rows.
 
 ## Generations query shapes — mandatory
 
@@ -408,6 +412,11 @@ the second independent account-level signal the
 OpenRouter `usage`. Relayed BYOK traffic bills the holder's own provider
 account, so `usage` alone understates the harm by orders of magnitude and misses
 the most exposed victims.
+
+A whole wave of replayed keys is the [Leaked Key
+Scanner](#leaked-key-scanner)'s subject rather than an incidental gate trip:
+hand the wave to it, and read its section for the provenance measurement that
+decides victim from operator.
 
 **Action when the gate trips — a hard stop.** Do not approve and do not enact
 any restriction, `frontier_us_models` included. File the case for visibility,
@@ -952,7 +961,7 @@ Scanner-specific rules on top of the skill's schema:
   thread when no such alert exists, that only denied members were observed and
   no new non-denied target was filed, and do not call the case open or UPDATED.
   Run status and re-open handling belong to the two bullets below.
-- **Human rejection is terminal for all three scanners:** before filing or
+- **Human rejection is terminal for every scanner:** before filing or
   upserting, dedup against the FULL queue, including adjudicated cases, not
   only `pending_review`. A case whose targets are all denied is a human
   decision that the pattern is not abuse: do not re-post or upsert it, report
@@ -1168,7 +1177,7 @@ merely whether any tracked account is spending:
   Page red on the first run that observes the gap. For the same `ruleKey`, the
   comparison figure is the figure in the most recent red gap post for that key
   in `conversations.history` on `C0BJ51BK7P0` (#alerts-tns); this history is
-  shared across all three scanners, so first-observation and re-page dedup are
+  shared across every scanner, so first-observation and re-page dedup are
   per `ruleKey`, not per-scanner playbook. Re-page only when the applicable
   run-computed amount — Anthropic live $ or the pivot aggregate — exceeds the
   figure last reported red or when the gap has persisted for ≥8h since the last
@@ -1489,6 +1498,11 @@ Only these differ between scanners; everything above is shared.
   the trigger set uses. A wake whose account carries lifetime funding, prior
   traffic, and keys older than the wave is a
   [compromised-key](#compromised-key-gate) candidate, not a sleeper cell.
+- **Handoff:** a synchronized wake whose members' burst keys carry prior
+  legitimate traffic is a key-replay wave. Hand it to the [Leaked Key
+  Scanner](#leaked-key-scanner) and file nothing enactable on it; a lone wake is
+  yours to adjudicate, and it is subject to the same provenance check before any
+  enactment.
 - **Reporting window for filed spend:** 24h.
 
 ### Recent Signups Scanner
@@ -1611,6 +1625,191 @@ Only these differ between scanners; everything above is shared.
   `analytics.stg_credits.cf_ipcountry` and `analytics.stg_credits.card_country`
   on the credit row for the top-up under adjudication, which carries both on
   one row alongside the `cf_asn` above. Geo remains corroborating only.
+- **Reporting window for filed spend:** 24h.
+
+### Leaked Key Scanner<a id="leaked-key-scanner"></a>
+
+- **Source key:** `leaked-key-scanner`.
+- **Role:** catch harvested API keys replayed at scale — one operator driving
+  many unrelated accounts' keys through a shared relay, which arrives looking
+  like a synchronized ring while the account holders are victims. The run's
+  product is the victim/operator split and the blast radius, not an enforcement
+  cohort. The other scanners ask whether an account is abusive; this one asks
+  whose key it was.
+- **Authority — files two kinds of case, enacts neither.** The account-level
+  half of this scanner's subject matter is what the
+  [compromised-key gate](#compromised-key-gate) forbids acting on, so it never
+  approves and never enacts a restriction, `frontier_us_models` included, on any
+  target it files: restricting a victim breaks a paying customer's integration
+  and leaves the operator's other keys serving. Key revocation is its own
+  proposal now rather than a Slack aside — see the remedy below — and it is not
+  a restriction, but `api_key` targets are refused on the agent enact path in
+  every case, so filing remains the whole of this scanner's authority. Leave
+  every target `pending_review` and put the enforcement recommendation in the
+  thread for a human.
+- **Data region — the one scanner that reads EU rows.** A replay wave is the
+  operator's traffic, and nothing stops them replaying an EU-region holder's key,
+  so dropping `europe` would hide victims and undercount the keys to revoke.
+  Query all three regions and omit the spec-wide `data_region != 'europe'`
+  predicate. This is scoped to measuring the wave: EU members are counted in the
+  blast radius and named for key revocation like any other victim, and the
+  file-only authority above already forbids enacting on them.
+- **Trigger set:** a minutes-wide frontier spend burst whose requests concentrate
+  on one client fingerprint, user agent, or egress ASN across many accounts; or
+  an account whose balance went negative on traffic it did not fund. Either can
+  start a run, and either is unvalidated detection, not evidence.
+- **Scope:** the wave, at every account age. Inside a confirmed wave this
+  overrides the age split between the sleeper and signups scanners: they hand
+  their members here for that window, and this scanner hands an account back when
+  provenance shows the burst key was minted for the burst. It does not adjudicate
+  an account's behavior outside the wave.
+- **Key provenance is the run's core measurement, and it decides the case.**
+  Two things have to be true of the keys you measure: each one actually served
+  the burst, and its age is its real mint time. Derive the burst participants
+  from the burst window itself, per `(clerk_user_id, api_key_id)` pair, and take
+  the mint time from `analytics.stg_api_keys.created_at` — the authoritative key
+  record. A `min(created_at)` over generations is FIRST OBSERVED USE inside the
+  lookback, not creation, so a long-idle legitimate key reads as freshly minted
+  and its victim is misclassified as the operator. Do not rebuild the key's
+  traffic history here — filing the revocation already produces it, see below.
+
+  ```sql
+  WITH burst AS (
+    SELECT clerk_user_id, api_key_id
+    FROM analytics.stg_generations
+    -- No data_region predicate: this scanner covers EU rows too (see above).
+    WHERE created_at BETWEEN {burst_start:DateTime} AND {burst_end:DateTime}
+      AND clerk_user_id IN ({cohort:Array(String)})
+      -- REQUIRED: the signature that confirmed THIS wave, not just its window.
+      -- Fill in the facets that are actually uniform across it, at least one
+      -- and only those — a facet the wave does not share drops real
+      -- participants and leaves compromised keys unrevoked. E.g.:
+      --   AND asn = {wave_asn:UInt32}
+      --   AND user_agent = {wave_user_agent:String}
+      --   AND model_permaslug = {wave_model:String}
+      --   AND coalesce(origin, '') = ''
+    GROUP BY clerk_user_id, api_key_id
+  ), keys AS (
+    -- Prefiltered to the burst's own ids: joining stg_api_keys whole builds
+    -- its entire key record into the hash side for the sake of a few
+    -- hundred mint times.
+    SELECT id, created_at
+    FROM analytics.stg_api_keys
+    WHERE id IN (SELECT toInt64(api_key_id) FROM burst)
+  )
+  SELECT b.clerk_user_id, b.api_key_id,
+         k.created_at AS a_key_minted, k.id = 0 AS a_key_unresolved
+  FROM burst AS b
+  LEFT JOIN keys AS k ON k.id = toInt64(b.api_key_id)
+  ```
+
+  Carry the wave's own request signature into the participant CTE, not just its
+  time window: a cohort account keeps serving its ordinary traffic during the
+  burst, and a window-only filter pulls those concurrent keys in as revocation
+  candidates and inflates the blast radius. Which facets those are is the wave's
+  to dictate — a wave can be uniform on user agent while spanning ASNs and
+  models, so filter on the facets that confirmed this one and on nothing else,
+  and check the filter both ways: it must exclude a cohort account's known
+  ordinary key and keep every key the wave visibly drove. A wave with no shared
+  request signature to filter on is not a confirmed wave yet.
+
+  Keep the pair, not the key alone: an account can bring several keys to one
+  burst, each classified on its own provenance, and one account's compromised key
+  says nothing about another's. `stg_generations.api_key_id` is nullable, so a
+  row that fails to resolve against `stg_api_keys` is **undetermined**, never
+  operator by default. Read that from `a_key_unresolved`, not from the mint
+  time: a burst key with no matching key record comes back on the join's
+  default fill rather than as NULL, so its mint time reads as the epoch —
+  "minted long ago", the victim-shaped answer — while `id` reads 0, which no
+  real key holds.
+
+  The key's traffic history comes with the filing, so do not query it. An
+  `api_key` target carries the before/after split around
+  `evidence.compromised_at` for the key and for its account siblings: requests,
+  spend including BYOK, distinct egress and colo, first and last seen, and each
+  window's model, provider, colo, ASN and origin mix. It is built on a
+  `pending_review` target, so the reviewer has it before anyone enacts.
+
+  That split is the reviewer's surface, not this scanner's input: it exists once
+  the target is filed, and what this scanner files on is mint time and whose
+  funding drained. State the classification and the signature in the thread, so
+  the reviewer knows what the split has to show for the recommendation to stand
+  and can refuse it when it does not.
+
+  Read the split for a life of its own rather than for volume. Traffic on the
+  wave's own signature is the replay, and each dimension is broken out
+  separately, so an established key is one whose before window carries traffic
+  off that signature on some dimension — a named origin, a model or an egress
+  the wave never used. Volume alone does not separate a working integration from
+  a key the operator has been replaying for weeks. The same reading applies
+  after the burst, where off-signature traffic means a live integration.
+
+  Keep the key lookup prefiltered to the burst's ids in its own CTE, as above,
+  rather than joining `analytics.stg_api_keys` whole: a right-side `ON`
+  predicate is not a pushed-down filter, so the table is read whole and a wide
+  cohort exhausts the memory limit. Aggregate aliases must not collide with
+  source column names — `any(asn) AS asn` throws `ILLEGAL_AGGREGATION`.
+- **Classify every member, and report the split:**
+  - **Victim** — burst key minted well before the burst per `stg_api_keys`, on
+    an account whose own funding is what drained. The filed split confirms it:
+    a before window off the wave's signature, and off-signature traffic still
+    flowing after the burst. Victims are filed for visibility only and are
+    never an enactment target, in this run or a later one.
+  - **Operator** — burst key minted shortly before the burst per `stg_api_keys`,
+    with no independent funding history. Traffic before the burst that sits on
+    the wave's own signature is earlier replay, not legitimate history. That is
+    account-level access rather than a stolen key, so it belongs to the sleeper
+    or signups scanner's turf under the ordinary
+    [authority boundary](#read-only-propose-only); hand it over with the
+    provenance evidence rather than enacting it here.
+  - **Undetermined** — say so. A member whose burst key does not resolve to a
+    key record, or a cohort whose provenance is missing or mixed, stays
+    undetermined and unenacted, and per the remedy below is never filed for
+    revocation in the first place. A filed key the split later disproves — an
+    old key whose traffic sits entirely on the wave's signature is neither a
+    fresh operator key nor a key with a life of its own — is undetermined too,
+    and a note in the thread does not unfile it: deny that target with its
+    reason, and archive the case when the whole of it falls. A target left
+    `pending_review` stays enactable for whoever reads the case next. Do not
+    resolve the ambiguity toward enforcement.
+- **The cohort shape is not a cluster.** Relay and client uniformity is ONE
+  attacker-side attribute however many facets it has, so a shared relay never
+  supplies a second independent signal and never widens the cohort. Measure the
+  grouping key's global fanout before trusting it, and derive membership from
+  per-account burst behavior instead.
+- **Blast radius** is what the report leads with: distinct victim accounts,
+  distinct replayed keys, own-balance dollars drained, dollars driven past a zero
+  balance, and BYOK inference exposure. Rank on
+  `analytics.stg_generations.byok_usage_inference` alongside `usage`: relayed
+  BYOK traffic bills the holder's own provider account, so `usage` alone
+  understates the harm and hides the most exposed victims.
+- **Remedy — propose the revocation, don't hand it off.** Key revocation is a
+  filed proposal now, not a Slack aside: one `api_key` target per compromised
+  burst key, in its own case separate from the user-target case, on the field
+  contract in the [compromised-key gate](#compromised-key-gate) — `targetValue`
+  is the decimal `api_keys.id` this scanner already has in `api_key_id`, and
+  `evidence.compromised_at` is the proposed moment of theft. Take that moment
+  from provenance rather than from the burst window by reflex: a key the
+  operator was already driving before this burst was stolen earlier, and a
+  too-late timestamp hides the traffic the reviewer splits on. Only keys this
+  run classified victim-side get filed — a human enacts, which disables the key,
+  and undo does not re-enable it, so an undetermined key on that list costs a
+  holder their key permanently. Holder notification and the negative balance
+  stay human. Name in the thread every target another run already restricted on
+  what this run classifies as a victim, so a human can undo it in Mission
+  Control — the agent CLI has no `undo`.
+- **`ruleKey` naming:** name the durable relay or replay pattern and carry the
+  do-not-enact framing in the key itself, e.g.
+  `<relay>_replayed_key_burst_watch_do_not_enact`. Keep operator-classed members
+  out of that case and under their own key so a human approving one is not
+  approving victims.
+- **Zero-cost burst traffic is key-liveness probing**, not burn. Report it as
+  probing and never as live spend.
+- **Status:** unrevoked keys with live burn are `:red_circle:` — the urgency is
+  revocation, and the thread must link the filed revocation case rather than
+  implying enforcement is pending. A wave whose keys are already revoked and
+  whose burn has stopped is `:large_yellow_circle:` while the undo and balance
+  decisions are open.
 - **Reporting window for filed spend:** 24h.
 
 ### Anthropic Concentration Monitor
