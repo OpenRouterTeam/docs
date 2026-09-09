@@ -135,13 +135,30 @@ described below.
 
 ### First check whether the intern can be upgraded at all
 
-**Most interns alive today cannot.** The reconcile subsystem (#34610,
-#34611, both merged 2026-08-18) installs
-`sync-runtime-image-<bot>.timer` from the VM's **startup script, at
-creation time**. That script is baked into instance metadata when the
-VM is created and stripped after a successful boot, so the timer
-cannot be retrofitted onto a VM created without it. There is no
-migration path.
+The reconcile subsystem (#34610, #34611, both merged 2026-08-18)
+installs `sync-runtime-image-<bot>.timer` from the VM's **startup
+script, at creation time**. That script is baked into instance metadata
+when the VM is created and stripped after a successful boot, so a VM
+created without the timer does not have one and cannot be given one by
+writing metadata at it.
+
+**It CAN be repaired by re-bootstrapping the instance, and that keeps
+the workspace.** This section previously said there was no migration
+path; that was wrong (corrected 2026-09-08, ORI-1461). A reprovision of
+a **Live** instance takes `resolveLiveVmRefresh` in `create-gcp-vm.ts`:
+the create path 409s on the existing name, which re-stamps the CURRENT
+metadata — `startup-script` included — over the live VM, and
+`resetRestampedVm` then resets it so that script runs. The boot
+installs the missing units. The instance is reset, never deleted, so
+the boot disk survives, and the workspace seed is skipped when the
+directory already exists (`startup-script/features.ts`, and
+`archive.ts` logs "workspace already restored on a previous boot").
+**Restart** in the dashboard is exactly this request.
+
+The destructive reading applies to a VM that is NOT live: a dead or
+unreachable instance goes down the `recreating_dead_vm` branch, which
+rebuilds the machine and loses the disk with it. So "reprovision" costs
+the workspace only once the VM has stopped responding.
 
 The test is whether the VM carries the two keys the timer reads:
 
@@ -162,12 +179,14 @@ Observed across the fleet on 2026-08-19: of the nine intern VMs in
 `ext-interns-spawner-000`, the two created after the subsystem shipped
 carried both keys and the other seven carried neither.
 
-For an intern without the timer the only route onto a new image is a
-**reprovision**, which destroys the workspace — the boot disk is
-`autoDelete: true` and recovery recreates the VM, so everything the
-intern authored is lost and none of it is backed up. Treat "upgrade
-that older intern" as a decision about whether its workspace is
-expendable, not as routine maintenance.
+For an intern without the timer, restart it (a live-VM reprovision, as
+above) and then upgrade it. The swap endpoint refuses such a VM with
+**422 `no_reconcile_timer`** rather than accepting a request nothing
+will read, and the dashboard withholds Update and says the same thing
+before the click (ORI-1461).
+
+Reserve the "expendable workspace" framing for a VM that is already
+dead, where recovery genuinely rebuilds the machine.
 
 ### How the swap works on a VM that has the timer
 
@@ -220,11 +239,14 @@ Two deliberate non-behaviours:
   `RUNTIME_IMAGE` goes back to the deployment's `INTERN_RUNTIME_IMAGE`.
   That is the intended reading of "reprovision".
 
-Known gap, out of scope here: the units live in `/etc/systemd/system/`,
-which COS does not persist across reboots, and `startup-script` is
-stripped after a successful boot — so a rebooted intern loses its units
-entirely, upgraded or not. That is the unattended-boot problem, not an
-upgrade problem.
+Known gap: the units live in `/etc/systemd/system/`, which COS does not
+persist across reboots, and `startup-script` is stripped after a
+successful boot — so a rebooted intern loses its units entirely,
+upgraded or not. That is the unattended-boot problem, not an upgrade
+problem, and it is why the eligibility check above is necessary but not
+sufficient: such a VM still carries both metadata keys, so it reads as
+eligible and its swap is a no-op that surfaces later as `stalled`. The
+repair is the same re-bootstrap.
 
 ## Rotating the vault root CA (procedure lives in the vault)
 
