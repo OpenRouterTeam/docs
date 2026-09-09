@@ -286,6 +286,8 @@ curl https://openrouter.ai/api/v1/byok/11111111-2222-3333-4444-555555555555 \
     "name": "Production GPT-4o Key",
     "disabled": false,
     "is_fallback": false,
+    "is_required": false,
+    "is_byok_only": false,
     "allowed_models": ["openai/gpt-4o", "openai/gpt-4o-mini"],
     "allowed_api_key_hashes": ["f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943"],
     "allowed_user_ids": ["user_2abc123"],
@@ -302,6 +304,27 @@ curl https://openrouter.ai/api/v1/byok/11111111-2222-3333-4444-555555555555 \
 - Maximum 100 entries.
 - Must contain at least one hash if provided — an empty array (`[]`) is rejected with a `400` error. Pass `null` to clear the restriction instead, or omit the field to leave it unset (create) or unchanged (update).
 - Every hash must resolve to a live API key owned by your account; unknown or cross-account hashes return a `400` error.
+
+#### Managing Shared Capacity Fallback via the Management API
+
+The **Shared capacity fallback** setting maps to two boolean fields on the same endpoints:
+
+| UI setting | API fields |
+|---|---|
+| Use shared capacity (default) | `is_required: false`, `is_byok_only: false` |
+| Never use shared capacity for models this key applies to | `is_required: true` |
+| Never use shared capacity for any model on this provider | `is_byok_only: true` |
+
+Both default to `false` on create, and omitting either on update leaves the stored value unchanged. `is_byok_only` cannot be combined with `is_fallback: true`, because a fallback key only runs after shared endpoints have been tried. Sending both returns a `400` error, whether in the same request or when the stored key already has the other flag set. `is_required` and `is_byok_only` may both be `true`; in that case `is_byok_only` takes precedence and the provider is fully blocked from shared capacity.
+
+```bash
+curl -X PATCH https://openrouter.ai/api/v1/byok/11111111-2222-3333-4444-555555555555 \
+  -H "Authorization: Bearer $OPENROUTER_MANAGEMENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "is_byok_only": true
+  }'
+```
 
 #### Combining Filters with Multiple Keys
 
