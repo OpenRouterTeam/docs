@@ -154,6 +154,19 @@ Once running, logs are written to
 Note: logs are only written during local development — not
 during `bun run test` or in production/Kubernetes environments.
 
+## HIPAA Mirror Suite (`api/hipaa`)
+
+`api/hipaa` covers the `api-hipaa` service-binding mirror end to end (ENT-2052): dispatch from the primary and its fail-closed 503, the unsupported-surface 403 on every non-text worker (post-auth and pre-relay), BAA-eligibility routing, and sink isolation (prompt storage, Pub/Sub task topics, broadcast destinations, Spanner, Postgres) with a non-HIPAA positive control for every negative.
+
+It is local-only. Remote runs skip every file, and each file also skips — with a `[WARN]` naming the missing piece — when part of the stack is down, so a partial `tilt up` still runs what it can. To run all of it:
+
+1. `tilt up` (the default profile starts Postgres, the emulators, MinIO, the fake provider, the primary API, and the non-text workers; `tilt trigger stt-api tts-api` adds the two manual audio workers).
+2. Start the mirror: `tilt trigger api-hipaa`, or `cd services/cfw-api && bun run dev:hipaa`. The mirror reads the `hipaa-dev` Infisical scope; until `/services/cfw-api` is populated there, run it the way CI does — copy `services/cfw-api/.dev.vars` to `.dev.vars.hipaa` and start `wrangler dev --env hipaa --port 8818 --persist-to ../../.wrangler/shared-state`. The primary must have been started through `bun run dev` (not bare `wrangler dev`), which generates the `wrangler.dev.toml` that carries the `SVC_CFW_API_HIPAA` binding.
+3. `bunx tsx tests/e2e/utils/seed-test-data.ts` for the sink-control entity and keys. The fixture models (`openrouter/fake-hipaa`, `openrouter/fake-hipaa-ineligible`) come from `bun run db:seed`; after a fresh seed, re-warm KV (`curl 'http://localhost:8787/__scheduled?cron=*/5+*+*+*+*'`) and restart both workers so they pick the models up.
+4. `cd tests/e2e && bunx vitest run api/hipaa`.
+
+When the primary runs without the mirror binding (how the nightly `TEST_ENV=local` workflow starts it), `dispatch.test.ts` runs its fail-closed assertions instead of the dispatch ones. When the binding exists but no `api-hipaa` session answers, the files skip with instructions rather than fail. The broadcast assertions in `sink-isolation.test.ts` need the `PROVIDER_ENCRYPTION_KEY` cfw-api runs with; the file reads it from the environment or from `services/cfw-api/.dev.vars` and skips only those assertions when it is unavailable. The suite's webhook listener binds `HIPAA_E2E_WEBHOOK_PORT` (default 47331).
+
 ## Features
 
 ### Model Configuration

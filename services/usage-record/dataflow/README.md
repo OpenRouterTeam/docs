@@ -57,7 +57,7 @@ ranges stay disjoint.
 | `src/openrouter_monorepo/usage_record/generation_stream.py` | Generation Pub/Sub → Spanner pipeline |
 | `src/openrouter_monorepo/usage_record/generation_lane.py` | Interactive vs batch lane defaults: subscription, DLQ folder, batcher knobs, write shard range |
 | `src/openrouter_monorepo/usage_record/entity_batcher.py` | Shard-aware reshuffle and stateful batching by billable entity |
-| `src/openrouter_monorepo/usage_record/generation_commits_stream.py` | Deterministic bounded logical shard key and `GroupIntoBatches` for generation-commit batching |
+| `src/openrouter_monorepo/usage_record/generation_commits_stream.py` | Runner-sharded (or fixed logical shard) `GroupIntoBatches` for generation-commit batching |
 | `src/openrouter_monorepo/usage_record/post_gen_spanner_reader.py` | `PostGenChecksDoFn` — deduplicates in-DoFn, reads entity totals from Spanner |
 | `src/openrouter_monorepo/usage_record/generation_writer.py` | Spanner generation inserts |
 | `src/openrouter_monorepo/usage_record/async_job.py` | Async job charge handling |
@@ -85,9 +85,12 @@ bun run x scripts/dataflow-deploy.ts
 This will build a new Docker image locally, push it, and trigger a zero-downtime
 upgrade of the Dataflow job.
 
-Generation-commit batching uses a deterministic bounded logical shard key with
-32 shards by default. The shard count is part of Dataflow's state key space,
-so a change must never go out through an in-place `--update`. The deploy
+Generation-commit batching keys every entry to one logical key and lets the
+runner shard it across workers (`GroupIntoBatches.WithShardedKey`), so read
+concurrency follows the autoscaler. `--generation-commits-shard-count <N>`
+switches to N deterministic CRC32 shards instead, for A/B or rollback. Both
+shapes are part of Dataflow's state key space, so a change between them or to
+N must never go out through an in-place `--update`. The deploy
 script rejects `--replace` for this pipeline; omit it and the default path
 rolls the new job out by parallel replacement, which keeps the old job serving
 during the overlap. Do not drain first: that skips the overlap and resets the

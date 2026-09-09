@@ -285,12 +285,20 @@ Gotchas when synthesizing upstream logprobs or changing endpoint capabilities:
   curl to :3002 before testing through the router.
 - HIPAA-workspace keys (`sk-or-v1-hipaaexplicitwskey`) are dispatched from
   :8787 to the HIPAA mirror, which must be running separately
-  (`cd services/cfw-api && bun run dev:hipaa`, port 8817). The mirror
+  (`cd services/cfw-api && bun run dev:hipaa`, port 8818). The mirror
   reads the `hipaa-dev` Infisical env, so put the `dev`
   `FAKE_PROVIDER_API_KEY` in the repo-root `.env.development.local`
   (gitignored, loaded after Infisical) before starting it, or the eligible
   path fails with `Provider returned error` 401. Editing `.dev.vars.hipaa`
-  by hand does not reload the running worker.
+  by hand does not reload the running worker. The only models with a
+  BAA-eligible endpoint locally are the `db:seed` fixtures
+  `openrouter/fake-hipaa` (eligible + cheaper ineligible sibling) and
+  `openrouter/fake-hipaa-ineligible`; every other model 403s for a HIPAA
+  key. The mirror itself is invisible on the wire — prove a request was
+  served there from `is_hipaa_generated = true` on its Spanner
+  `generations` row, or run `tests/e2e/api/hipaa` (see
+  `tests/e2e/README.md` → HIPAA Mirror Suite), which covers dispatch,
+  unsupported surfaces, eligibility routing, and sink isolation.
 - To force the supersize/DO-hydration path on a chat request, send
   `x-offload-large-fields: 1`; a large multimodal body alone does not
   route through the Durable Object. Confirm with a `process-stream-json:*`
