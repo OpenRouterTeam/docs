@@ -28,6 +28,8 @@ description: Run and test Mission Control (projects/mission-control) end-to-end 
 - If `window.Clerk.user` is null but a session exists in `window.Clerk.client.sessions`, call `window.Clerk.setActive({session})` and navigate.
 
 ## Model/endpoint edit pages
+- Before testing `/api/endpoints/<id>/get-{latency,latency-e2e,throughput,colo-request}-graph`, confirm whether an MC page actually consumes them. If not, open each URL directly in the authenticated admin browser with `?window=1d` and verify HTTP 200 plus `{data:[...]}`. These routes return built-in generated data in non-production mode before the V5 reader; report local response-shape coverage separately from production ClickHouse reader coverage.
+- Check `docker ps` for the container actually publishing :54322 before using `docker exec`; a reused environment can have a different container name while `openrouter-web_db` is stopped.
 - Model edit route is `/model/edit/<maker>/<permaslug>` and needs the **dated permaslug** (e.g. `tencent/hy4-preview-20260827`), not the human slug (`tencent/hy4-preview`) — the human slug renders a permanent skeleton/loading state with no error. Look up a valid one: `docker exec openrouter-web_db psql -U postgres -d postgres -c "SELECT permaslug FROM models LIMIT 5"`. Endpoint edit is `/endpoint/edit/<endpoint uuid>` (`SELECT id FROM endpoints LIMIT 5`).
 - Fresh DBs have zero models — run `bun run db:seed` first (~1k models, ~4.7k endpoints).
 - A long-lived local Postgres can drift behind `postgres/migrations` (symptom: cfw-internal 500s such as `column "source_alert" of relation "ban_candidate_suggestions" does not exist`). `bun run db:migrate` needs an Infisical session; without one, run the installed dbmate directly: `DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable" node node_modules/.bun/dbmate@*/node_modules/dbmate/dist/cli.js --migrations-dir postgres/migrations --migrations-table dbmate.schema_migrations --no-dump-schema up`. Never hand-edit the schema.
@@ -74,6 +76,18 @@ description: Run and test Mission Control (projects/mission-control) end-to-end 
 
 ## Devin Secrets Needed
 - `INFISICAL_CLIENT`, `INFISICAL_SECRET` (org secrets; use qualified refs `secret:org:INFISICAL_CLIENT` in exec env).
+
+## Organization and user search proof
+- `/organization` submits on Enter and stores the query/page in the URL. Plain fragments of at least three characters exercise name/slug/email substring search; full emails, domains, and Clerk-style IDs can take alternate lookup branches. Choose column-specific fragments from known fixtures when proving a search index.
+- Compare the rendered page's **ID set**, not its presentation order, with the SQL `ORDER BY id DESC LIMIT ... OFFSET ...` page: enrichment may reorder rows. The total is compact-formatted (for example, 15,790 becomes 15.8K), while pagination uses the exact total.
+- URL and pagination labels can update before the replacement rows arrive. Wait for the expected row set and the loading indicator to clear before screenshotting or comparing SQL results.
+- Synthetic Postgres organizations need not exist in Clerk. Detail navigation/account fields can work while membership, enterprise, or activity panels fail. Record these separately, compare a control account, and do not infer full detail-page health from a successful search.
+
+## Gateway benchmark schedule forms
+- `/gateway-benchmarks/schedules/create` filters its model picker to gateway benchmark mappings. Seed the local catalog, then add a mapping through `/gateway-benchmarks/models`; a catalog model alone is insufficient.
+- The model picker also needs `cfw-frontend-api` (:8795). If full DB seeding is unnecessary, the standalone catalog seed is `PG_US_CENTRAL1_POOL_DB_URL=<local-db-url> ./node_modules/.bin/tsx --tsconfig ./scripts/tsconfig.json scripts/seed/seed-models-endpoints.ts` from the repo root.
+- A Clerk login can succeed while MC actions return 401 `User not found`. With local account synchronization authorized, run `scripts/sync-clerk.ts` through the Infisical-backed `bun run x`, setting `DEV_ADMIN_CLERK_USER_ID` to the signed-in Clerk ID and `PG_US_CENTRAL1_POOL_DB_URL` to the local database. This syncs the user and grants local admin without fabricating a users row.
+- Keep schedules disabled during form/persistence testing; avoid **Run Now**. Reload the list and reopen **Edit** after saving to distinguish durable values from client state. Wait for save navigation before reloading so the reload does not interrupt the transition.
 
 ## Bulk refund page (`/admin-utils/bulk-refund`)
 - Keep **Dry run** checked for every dispatched run. To exercise the live-run dialog, uncheck it, confirm the entity count in the dialog, click **Cancel**, and recheck Dry run. Prove nothing dispatched by comparing `workflow_runs` row counts before and after.
