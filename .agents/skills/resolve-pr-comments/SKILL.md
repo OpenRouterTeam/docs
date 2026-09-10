@@ -161,6 +161,11 @@ A Devin session can do both halves in one call instead: `git_comment_on_pr`
 with `in_reply_to=<databaseId>` plus `resolve_thread_id=<threadId>` replies and
 resolves atomically, so the reply cannot land without the resolve (seen on
 #39007). Keep the `gh` commands for shells and for the resolve-only case.
+To fix a reply you already posted in a thread, `gh api --method PATCH
+repos/{owner}/{repo}/pulls/comments/<databaseId> --input body.json` — Devin's
+`git_edit_comment` only edits top-level comments, and its wrapper rejects
+`gh pr view`, so read reviewers from `gh api repos/{owner}/{repo}/pulls/<PR>`
+(`requested_reviewers`) instead (seen on #41390).
 
 After resolving, react on the original comment so the verdict is visible
 without opening the thread: `+1` for a fix, `-1` for a decline

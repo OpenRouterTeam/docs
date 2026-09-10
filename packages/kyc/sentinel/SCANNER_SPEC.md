@@ -539,6 +539,19 @@ never as zero or as a cluster of its own — gate fingerprint searches on field
 presence (e.g. `@signup_ip_hash:*`, adjusting for the envelope's actual facet
 prefix, which `Account created` lines nest under `@extra.*`).
 
+Between 2026-08-27 10:45Z and 2026-09-08 01:00Z (checkout time) the web app
+sent Coinbase checkouts through a server-side relay, so the `cf_*` values on
+those checkouts describe the relay, not the customer. A relayed row has
+`cf_asn` 14618 or 16509, `cf_bot_score` 1, and `cf_js_detection` false; its
+`cf_ipcountry` is `US` or `SG`. Do not classify by the window alone: rows in
+the window that do not match were captured from the caller's own request and
+keep their normal weight. The rule covers `Coinbase checkout initiated` lines
+and the `public.credits` / `analytics.stg_credits` `cf_*` columns of the
+credits they settled into (settlement lag runs to 2026-09-08 11:21Z). Treat
+matching values as unknown: do not compare them with signup or card geo, and
+do not cluster on them. A shared ASN, IP hash, JA3, or JA4 across matching
+Coinbase rows comes from the relay. Stripe rows are unaffected.
+
 ### Line-specific notes
 
 - `API key created` covers all three key-creation routes, including the legacy
@@ -610,7 +623,10 @@ Do NOT conclude "no IP/ASN/device in `analytics.*`". They live in staging, not i
 - **ASN origin is available now** (not just an equality hash):
   `analytics.stg_users.signup_asn` (~94% coverage on recent cohorts) and
   `onboarding_cf_asn`; `analytics.stg_generations.asn` / `asn_organization`
-  (per-request ASN); `analytics.stg_credits.cf_asn` (payment-time ASN).
+  (per-request ASN); `analytics.stg_credits.cf_asn` (payment-time ASN; on a
+  relay-window Coinbase row that matches the relay fingerprint it is the
+  relay's ASN, not the customer's; see the relay note under "Shared fields on
+  the key/funding lines").
 - **Known limits:** a salted `ip_hash` gives equality only — no subnet/CIDR
   clustering. The country fields below provide no city-level or
   residential-vs-VPN/Tor classification. Use the
@@ -683,7 +699,10 @@ These are distinct concepts answering different questions:
   live on Postgres `public.users` (`signup_country`, `onboarding_cf_country`),
   which the reviewer enrichment reads live — not the analytics mirror.
   Payment-time network country is Postgres `public.credits.cf_ipcountry`
-  (mirrored as `analytics.stg_credits.cf_ipcountry`).
+  (mirrored as `analytics.stg_credits.cf_ipcountry`); on a relay-window
+  Coinbase row that matches the relay fingerprint it is the relay's country,
+  not the customer's; see the relay note under "Shared fields on the
+  key/funding lines".
 - **Issuer geo:** where a funding card was issued. The existing reviewer
   metrics join reads the card country from the same succeeded-charge set as
   BINs, as an unordered set over every succeeded charge — it is not tied to any
@@ -1489,7 +1508,9 @@ Only these differ between scanners; everything above is shared.
   funding card's issuer country; geo remains corroborating only. Neither side
   has a live reviewer read at that granularity — for a re-load, query
   `analytics.stg_credits.cf_ipcountry` and `analytics.stg_credits.card_country`
-  on that credit row; for a wake with no re-load, use
+  on that credit row (a relay-window Coinbase row that matches the relay
+  fingerprint has no usable network country; see the relay note under "Shared
+  fields on the key/funding lines"); for a wake with no re-load, use
   `analytics.stg_generations.country` over the emergent-usage window. The
   reviewer panel's signup/onboarding country is the dormant account's original
   network context: keep it as separate context, not as the network slot in this
@@ -1618,7 +1639,9 @@ Only these differ between scanners; everything above is shared.
   lag.
 - **Signal note:** `analytics.stg_credits.cf_asn` (payment-time ASN) is the most
   relevant ASN for this scanner; weight it alongside the shared
-  fingerprint-clustering signals above.
+  fingerprint-clustering signals above. A relay-window Coinbase row that
+  matches the relay fingerprint carries the relay's ASN, not the customer's;
+  see the relay note under "Shared fields on the key/funding lines".
 - **Geo evidence:** compare the payment-time network country with the issuer
   country of the card funding the top-up under adjudication. Neither side has a
   live reviewer read at that granularity — query
