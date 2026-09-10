@@ -143,10 +143,12 @@ nav[aria-label="Pages"] button[aria-expanded] svg.transition-transform {
 }
 
 /* ── Tooltips: inverse surface pairing ──
- * Mintlify has a foreground variable for Radix tooltips but no matching
- * background variable, so both values are mirrored here from the inverse pair.
- * Radix opens tooltips as "delayed-open" on a normal hover but "instant-open"
- * when moving between triggers within its skip-delay window; cover both. */
+ * Mintlify has a foreground variable for tooltips but no matching background
+ * variable, so both values are mirrored here from the inverse pair. Its
+ * tooltip popup renders through Base UI (role="tooltip" on a data-side popup
+ * filled with bg-primary-dark, which is Volt in dark mode); the Radix
+ * selectors cover the previous implementation. */
+[role="tooltip"][data-side],
 [data-radix-popper-content-wrapper]
   > div[data-state="delayed-open"],
 [data-radix-popper-content-wrapper]
