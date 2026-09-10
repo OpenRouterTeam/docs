@@ -92,7 +92,7 @@ This check applies to Blacksmith jobs only. WarpBuild jobs use `.github/actions/
 
 `fatal: could not read Username for 'https://github.com'` in a `lint` job is an anonymous `git fetch` outside the checkout being refused on the fleet's shared egress addresses, not a permissions problem. Such fetches must authenticate with the job's `GITHUB_TOKEN` through `GIT_CONFIG_*` environment variables (never argv, which leaks into `ps` and error text); `scripts/check-subtree-integrity.ts` is the reference implementation. A branch that predates that fix fails until it merges `main`.
 
-Any workflow calling `.github/actions/setup-environment-blacksmith` without setting `use-sticky-disks: "false"` uses the sticky-disk path. In this incident, the observed stalling workflows were `ci.yaml`, `ci-clickhouse.yaml`, and `ci-python.yaml`. The control path is `.github/actions/setup-environment`, which uses `actions/cache@v5` and no sticky disk. Compare runs from the same minute and Blacksmith fleet:
+Any workflow calling `.github/actions/setup-environment-cached` without setting `use-sticky-disks: "false"` uses the sticky-disk path. In this incident, the observed stalling workflows were `ci.yaml`, `ci-clickhouse.yaml`, and `ci-python.yaml`. The control path is `.github/actions/setup-environment`, which uses `actions/cache@v5` and no sticky disk. Compare runs from the same minute and Blacksmith fleet:
 
 ```bash
 gh run view --job <JOB_ID> --log \
@@ -155,7 +155,7 @@ Before reverting, confirm recovery rather than assuming it. While the fallback i
 
 ### Stay on Blacksmith and rotate cache keys
 
-This is a secondary option, not the mitigation used in this incident. The sticky-disk keys include version suffixes; see `.github/actions/setup-environment-blacksmith/action.yaml` for the current values (e.g. `...-bun-store-vN`, `...-turbo-cache-vN`). The action comment there says to bump the suffix to provision clean disks. Use this option only when accepting the risk of staying on Blacksmith.
+This is a secondary option, not the mitigation used in this incident. The sticky-disk keys include version suffixes; see `.github/actions/setup-environment-cached/action.yaml` for the current values (e.g. `...-bun-store-vN`, `...-turbo-cache-vN`). The action comment there says to bump the suffix to provision clean disks. Use this option only when accepting the risk of staying on Blacksmith.
 
 ## Vendor Escalation
 
@@ -179,7 +179,7 @@ Send the following to <support@warpbuild.com> or to the dashboard chat at <https
 
 Send Blacksmith support:
 
-- Disk keys (the current sticky-disk keys from `.github/actions/setup-environment-blacksmith/action.yaml`)
+- Disk keys (the current sticky-disk keys from `.github/actions/setup-environment-cached/action.yaml`)
 - Expose ID `01KZ2VZ0HDPWG2N1JJM4RT2NW3` from a hung job
 - The specific runner instance names, for example `blacksmith-01kz2vmzxnqgqrvbkas3e0x8mh-32vcpu`
 - The symptom that the sticky-disk mount succeeds in about `435ms`, then `bun install` prints `Resolved, downloaded and extracted [24]` and stalls while reads from the warm bun store do not complete
