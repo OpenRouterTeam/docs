@@ -434,6 +434,17 @@ spend split against the account's other keys in Mission Control and enacts,
 which disables that one key, stamps `api_keys.compromised_at`, and writes the
 linked revocation audit row. Undo does not re-enable a key.
 
+When the evidence shows the account itself was taken over rather than one key
+leaked (sign-in from new infrastructure followed by key rotation, email or
+payout changes), file a compromised-account case alongside: one target per
+user, `targetType: user`, `targetValue` the Clerk user id, and
+`proposedKind: compromised_account`, with `proposedTarget`, `proposedParams`,
+and `proposedExpiresAt` left empty. This kind writes no restriction. Agent
+enactment is refused, so filing is again the whole of the agent's authority: a
+human enacts in Mission Control, which calls Clerk's set-password-compromised
+API for the user and stamps `compromised_account_enacted_at` on the target.
+Undo cannot reverse it; the user clears the state by resetting their password.
+
 When the gate trips on a target already enacted, escalate the undo in the
 same run: the agent CLI has no `undo` command, so name those targets to the
 human and let them undo through Mission Control, and never report such a target

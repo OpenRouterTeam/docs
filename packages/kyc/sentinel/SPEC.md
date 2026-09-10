@@ -44,6 +44,13 @@ configuration, or a release gate.
   path; a human enacts in Mission Control, which disables the key, stamps
   `api_keys.compromised_at`, and writes the linked revocation audit row. Undo
   does not re-enable the key.
+- A taken-over account is filed as `targetType: user` with
+  `proposedKind: compromised_account`. It takes no durable OpenRouter action:
+  a human enacts in Mission Control, which calls Clerk's set-password-
+  compromised API for the user and stamps
+  `ban_candidate_targets.compromised_account_enacted_at`. Agent enactment is
+  refused and undo cannot reverse it; the user clears the state by resetting
+  their password.
 - A Sentinel restriction is attributed to the caller-supplied acting identity,
   trusted as-sent behind the internal HMAC boundary; when omitted it falls
   back to `system`. Ingest-key (agent) callers must supply the identity. The
@@ -511,6 +518,21 @@ key's before/after evidence in Mission Control and enacts, which disables
 that one key, stamps `api_keys.compromised_at`, and writes the linked
 revocation audit row. Undo does not re-enable a key; hand-filed reports from
 the Mission Control revoke-keys page land in the same queue.
+
+### Compromised-account targets
+
+A taken-over account is filed as `targetType: user`, `targetValue` the Clerk
+user id, and `proposedKind: compromised_account`. `proposedTarget`,
+`proposedParams`, and `proposedExpiresAt` must be empty; this is not a
+restriction and writes no `restrictions` row. Agent enactment is refused. A
+human enacts in Mission Control, which calls Clerk's
+`POST /users/{user_id}/password/set_compromised` once per target and, only
+after Clerk accepts, stamps `compromised_account_enacted_at` on the target with
+a conditional write so a retry or a concurrent enactment reports
+`already_active` instead of calling Clerk twice. A Clerk failure leaves the
+marker null so the target can be retried. Clerk owns the compromised-password
+state and the user clears it by resetting their password, so undo reports
+`not_reversible` after enactment and never clears the marker.
 
 ### Operational safety
 

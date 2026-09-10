@@ -992,6 +992,30 @@ the same queue.
 }
 ```
 
+### Compromised-account targets
+
+A taken-over account is filed as `targetType: user` with
+`proposedKind: compromised_account`. Like `api_key_revocation` it is not a
+restriction: it is accepted only on `user` targets, `targetValue` must be a
+Clerk user id, and `proposedParams`, `proposedTarget`, and `proposedExpiresAt`
+are rejected. Agent enactment is refused. A human enacts in Mission Control,
+which calls Clerk's set-password-compromised API for the user and stamps
+`compromised_account_enacted_at` on the target; a retry after that reports
+`already_active`. Undo cannot reverse it, the user clears the state by
+resetting their password.
+
+```json
+{
+  "targetValue": "user_...",
+  "proposedKind": "compromised_account",
+  "evidence": {
+    "signal": "account_takeover",
+    "new_signin_asn": 4134,
+    "keys_rotated_after_signin": 3
+  }
+}
+```
+
 For example, an account-wide rate limit that expires at a specific time uses:
 
 ```json

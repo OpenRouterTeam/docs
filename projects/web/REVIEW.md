@@ -82,3 +82,30 @@ point. Blocked nav and menu entries render disabled through the shared
 `CapabilityDisabledNavItem` components with their standard tooltip; reject
 hidden entries and hand-rolled per-surface disabled treatments alike. See
 `packages/entitlements/WORKSPACE_CAPABILITIES.md` for the full model.
+
+## Copy must describe what the code does
+
+Every user-visible string is an assertion about runtime behavior. When a branch changes, its copy changes with it.
+
+- A terminal state needs terminal copy. If a failure path deliberately stays put, it renders an error with a retry — not the "Redirecting you…" or spinner copy of the success path.
+- Descriptive copy ("chat with the flow that created this post") only ships when the code it describes exists.
+- A label or tooltip must match the number beside it. Aggregate wording over a single-entity value is wrong even when the number is right.
+
+```tsx
+// BAD: the reject path never navigates, but the copy promises it will
+if (isErr(result)) return; // stays on /logout
+return <p>Redirecting you to the home page.</p>;
+
+// GOOD
+if (isErr(result))
+  return <ErrorState title='Sign out failed' onRetry={retry} />;
+```
+
+## In-flight mutations: freeze the inputs, re-read the state
+
+A mutation that resolves against a snapshot taken before it started silently discards whatever the user did in between.
+
+- Disable **every** field the submit reads while the request is in flight, not just the one that triggered it.
+- Clear a dirty/unsaved latch only if the submitted revision is still the current one; otherwise the newest edits look saved and are not.
+- A dialog that owns an in-flight mutation ignores close requests until it settles — a late success must not write over the surface the user moved to.
+- A retry re-reads the state it depends on. Reusing the snapshot from the failed attempt reproduces the failure.

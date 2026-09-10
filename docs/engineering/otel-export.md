@@ -9,8 +9,9 @@ decision history lives in Git and Linear, not here.
   rendered and run locally
 - **Tests:** `gcp-startup-script-otel.test.ts`, which parses the generated YAML
   rather than substring-matching it
-- **Collector:** `otel/opentelemetry-collector-contrib`, pinned by
-  `INTERN_OTEL_COLLECTOR_IMAGE`
+- **Collector:** `otel/opentelemetry-collector-contrib`, mirrored into the
+  interns' Artifact Registry and digest-pinned by
+  `INTERN_OTEL_COLLECTOR_IMAGE` (ORI-1878)
 - **Gated on:** `INTERN_DD_API_KEY`. Unset leaves the VM byte-identical to one
   provisioned before telemetry existed
 
