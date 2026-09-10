@@ -192,9 +192,10 @@ Everything a reviewer would eyeball can be asserted through the API:
   properties are not allowed ('custom_unit' was unexpected)`. It is accepted on `query_value`.
   Put the unit in the widget title or a formula style override instead. The error names the widget
   by index into the (possibly filtered) widget array, so count from the widgets actually sent.
-- **Datadog also rejects formula `number_format.unit` on `timeseries` widgets** with the same
-  invalid-widget-schema response. Omit it from timeseries formulas and use a title or style
-  override when a custom unit is needed.
+- **Formula `number_format.unit` with a `canonical_unit` (second, millisecond, dollar, …) is
+  accepted on `timeseries` widgets** and persists as `{"type":"canonical_unit","unit_name":…}`
+  (verified on preview `z4a-rsa-mrh`, provider 4.9.0, `server_tools_usage/dashboard.tf`). Only
+  free-text custom units have no timeseries home: put those in the title or a formula alias.
 - **Metric tag filters inside `{...}` are comma-separated.** Do not append
   `AND status:5*` or similar clauses inside the braces; Datadog can persist
   those dashboard queries without validating them, but the query API rejects
@@ -222,6 +223,11 @@ Everything a reviewer would eyeball can be asserted through the API:
 - Resources gated with `count = var.preview_mode ? 0 : 1` are safe to reference as `[0]` only from
   inside an expression that Terraform does not evaluate in preview mode — which a conditional arm
   is *not*.
+- **`by {tag}` on a distribution percentile query fails at apply**, not `terraform validate`, with
+  `configuration error :: type: disabled_tags :: location: group_by :: metric_name: …` when the
+  tag is not in the distribution's percentile tag config (e.g. `framework`/`skin` on
+  `openrouter.server_tools.call.duration_ms`). Replay `p50:<metric>{*} by {tag}` via
+  `/api/v2/query/timeseries` before adding the group-by; otherwise keep percentile queries ungrouped.
 - **Formula `limit` blocks on `timeseries` widgets are silently ignored.** Terraform and the
   Datadog API both accept them, but the widget renders every series anyway. Use a query-level
   `topN(...)` wrapper instead, and verify by replaying the persisted query via

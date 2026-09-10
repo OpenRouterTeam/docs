@@ -45,6 +45,9 @@ coverage in another colocated test (for example, `registry.test.ts` covering
 the relevant test command when those assertions need to be measured.
 Nested route sources can likewise be refused when their regression test lives
 in a parent directory; point a direct in-place config at that parent-level test.
+The same blind spot applies to your own pre-push test run: when a change alters
+a module's output shape, grep the package for every test that imports the
+module and run the whole package's tests, not only the source file's directory.
 
 When the worktree changes are unstaged, the default diff scope sees only
 committed files and may report no mutable source files; pass the changed paths
@@ -192,7 +195,7 @@ an in-place config whose command targets the colocated test file, then classify
 survivors from that narrowed report rather than changing unrelated tests.
 
 A colocated test that drives the source through a child process (for
-example `packages/stt/router.test.ts` spawning `router.harness.ts` with
+example `packages/stt/lifecycle/submit.test.ts` spawning `submit.harness.ts` with
 `execFile`) leaves the in-process coverage probe blind: every mutant in
 that source reports `NoCoverage` and the file scores 0% even though the
 harness exercises it. Classify those as a file-scope artifact and prove
@@ -267,6 +270,13 @@ assertion when the test checks the list with `toEqual`: Bun's `toEqual`
 treats `[undefined]` as equal to `[]`, so a mutant that pushes an
 `undefined` element passes. Assert lists with `toStrictEqual`
 (PR #40473).
+
+A surviving optional chain or nullish fallback (`a?.b ?? d`) on a
+recovery path is a missing assertion, not an equivalent mutant, when no
+test reaches it with the left operand actually `undefined`: the suite
+only ever exercised the happy operand, so the mutant's `TypeError`
+never fires. Add the case where the operand is absent (for a cache
+fallback, the cold or empty state) and assert the recovered value.
 
 Never change production code, weaken a test, or assert a value you
 know is wrong to raise the score. The score is triage, not a target.
