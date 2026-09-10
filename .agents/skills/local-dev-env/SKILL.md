@@ -1,140 +1,111 @@
 ---
 name: local-dev-env
-description: >-
-  Bring up a working local OpenRouter (web + inference + DB + a funded
-  Clerk session). Use when the user wants to test locally, run the
-  playground, generate images/chat, or "just start the stack".
+description: Start and test the local OpenRouter stack with Tilt; covers login, service readiness, fixtures, and request tracing.
 user-invocable: true
 ---
 
-# Local Dev Env
+# Local development
 
-A working local copy is Docker + the stack + a signed-in Clerk user with credits. Prod login / prod credits do not apply here.
+## Start
 
-## Cookbook
-
-**Full stack** — usually the right call if you want the site to actually generate:
+From the repository root:
 
 ```bash
-docker info >/dev/null || echo "start Docker / OrbStack first"
-# secrets: on your own machine, `infisical login` once. On a cloud box
-# (Devin, CI, …), export INFISICAL_TOKEN from INFISICAL_CLIENT /
-# INFISICAL_SECRET — see AGENTS.md.
-bun install
-tilt up
+bun run dev:up
+tilt wait --for=condition=Ready uiresource/api uiresource/api-kv-cron uiresource/frontend-api --timeout=300s
+tilt get uiresources -o json | jq -r '.items[] | .metadata.name as $name | .status.endpointLinks[]? | "\($name)\t\(.url)"'
 ```
 
-`tilt up` owns the DB lifecycle — the `postgres`, `postgres-migrate` and `postgres-seed` resources run `db:start` / `db:migrate` / `db:seed` for you. Don't run those by hand first. `bun run dev:doctor` is a diagnostic for an already-started stack; on a cold box it just reports Postgres unreachable.
+- `dev:up` handles Infisical authentication, persists a missing local Postgres URL in `.env.development.local` so it survives secret injection, starts and seeds Postgres, starts Tilt, and checks the web server. Existing database overrides are preserved.
+- The explicit wait above checks the API and frontend API too.
+- Use Tilt's URLs; environment and `.env.worktree` overrides can change ports.
+- Memory capacity below 20 GiB selects `lean`; 20 GiB or more selects `full`. Capacity is total host RAM capped by an OS/container memory allowance, never currently free RAM: a busy 64 GiB Mac still selects full. Lean keeps the full service set, starts Mission Control and its internal API on demand, and limits concurrent updates, Next.js heaps, esbuild memory, and ClickHouse. Use `TILT_PROFILE=full bun run dev:up` or `TILT_PROFILE=lean bun run dev:up` to override. Successful lean startup prints the Mission Control commands and a link to this guide.
 
-Wait for `web`, `api`, `api-kv-cron`, plus the modality worker for what you're testing. Ready check: `curl -sf localhost:3000 >/dev/null && curl -sf localhost:8787/health`.
+## Services
 
-**Smaller slice** when you don't need Tilt:
+Check the resources needed for the test. Many already start automatically; enable and trigger resources that are not running, in dependency order:
 
 ```bash
-bun run db:start && bun run db:seed
-bun run dev web cfw-api
+tilt enable <resource>
+tilt trigger <resource>
+tilt wait --for=condition=Ready uiresource/<resource> --timeout=300s
 ```
 
-Add modality workers (`cfw-image-api`, `cfw-embeddings-api` on `:8789`, …) as needed. Pass the Turbo package name with the `cfw-` prefix: `bun run dev embeddings-api dev-fs-logs` silently starts only `dev-fs-logs`.
+| Test | Additional resources, in order |
+| --- | --- |
+| BYOK inference | `valkey`, `auth` |
+| Mission Control | See [Mission Control](#mission-control) below |
+| Public model/pricing API | `public-api` |
+| Image, video, embeddings, rerank, speech | The corresponding `image-api`, `video-api`, `embeddings-api`, `rerank-api`, `stt-api`, `tts-api` |
+| KV routing | `kv-cache` |
+| Notification delivery | `alert-delivery` |
+| Request captures | `dev-fs-logs` |
+| Persisted usage | `dataflow`, `dataflow-generation-commits`; add `dataflow-async-jobs` for async jobs |
+| Local fake upstream | `fake-provider` starts automatically in both profiles |
+| Batch API | See [batch-api-testing](../batch-api-testing/SKILL.md#launch) for its resource list and subscription checks |
 
-**Sign in** — `dev+clerk_test@openrouter.ai`, then "Use another method" → "Email code" (the widget offers a magic link first), code `424242`. Shared dev-tenant account, seeded with credits, no password or real inbox needed. Google SSO with your own `@openrouter.ai` email also works.
+- Start usage pipelines and confirm their Pub/Sub subscriptions exist before sending requests; earlier messages can be lost.
+- Wait on named resources; unstarted manual resources never become Ready.
+- After restarting a resource, confirm the new run in its logs: `tilt wait` can still observe the previous Ready state.
 
-**Admin** — put your `clerk_user_id` in `.env.development.local` as `DEV_ADMIN_CLERK_USER_ID` and `bun run db:reset`. `SELECT clerk_user_id, email FROM users`.
+## Sign in
 
-## Common problems
+Use `dev+clerk_test@openrouter.ai` → **Use another method** → **Email code** → `424242`. This development account is seeded with credits. Select **Personal** unless the test uses a locally synced organization. [Isolated users](references/isolated_users.md) are an optional path for auth and onboarding tests.
 
-**Parallel workers collide on the inspector port** — if standalone `cfw-api`
-fails with `EADDRINUSE` on `127.0.0.1:9229`, start it with a free
-`WRANGLER_INSPECTOR_PORT` (for example `9234`) rather than killing another
-worktree's process.
+## Mission Control
 
-**Health is not model-data readiness** — before recording a chat test, open
-`/chat` → Add Model and confirm remote models appear. Empty preset cards and
-only local Gemini Nano in the picker do not prove inference is ready, even
-when `/health` and a scheduled warm both return successfully.
-
-**`auth` never starts** — only start `auth` if you're explicitly testing BYOK; a normal chat/image generation doesn't need it. If you do need it, trigger `valkey` first (`tilt trigger valkey && tilt trigger auth`) — both are manual and `auth` depends on it.
-
-**`bun run dev cfw-api` returns 503 `Router config unavailable: could not be read from KV`** — the KV warmer (`warmKVModelsAndEndpoints`) queries ClickHouse for endpoint perf percentiles and fails closed when `:8123` is down, so no models load. `bun run dev` alone does not start ClickHouse: run `docker compose -f packages/clickhouse/docker-compose.yaml up -d && (cd packages/clickhouse && bun run ch:migrate)`, then re-trigger the cron with `curl "localhost:8787/__scheduled?cron=*/5+*+*+*+*"`. Wrangler also does not rebuild on edits to files under `packages/`; restart the dev command to pick up router or instrumentation changes.
-**Embeddings return 404 on `:8787`** — `/api/v1/embeddings` is served by the dedicated `embeddings-api` worker on `:8789`, not by `api`. `TILT_PROFILE=lean` does not start it (nor `dev-fs-logs`); run `tilt enable embeddings-api dev-fs-logs && tilt trigger embeddings-api` and read request captures under `services/dev-fs-logs/.logs/default/embeddings/`.
-
-**Playground shows stale model params after a reseed** — `tilt trigger api-kv-cron`, then `tilt trigger web`. For **image** models specifically, the playground controls come from the image-api worker (`:8797/api/v1/images/models/<author>/<slug>/endpoints`), not the page HTML, so check there rather than grepping the rendered page.
-
-## Testing webhooks and negative auth paths locally
-
-**Real Clerk webhooks do reach localhost.** `bun run dev web` starts a `smee`
-forwarder (`smee -u https://smee.io/openrouter-web-internal-clerk -t
-http://localhost:3000/api/webhooks/clerk`), so genuine signature-verified
-`user.created` / `organization.created` / `organizationMembership.created`
-deliveries land on the real Next route. Check for `POST
-http://localhost:3000/api/webhooks/clerk - 200` in the dev-server stdout before
-assuming you must drive `handleClerkEvent` by hand. It is a shared smee channel,
-so filter log lines by your own org/user id.
-
-**Deleting a `users` row is blocked by design.** The table has a
-`record_user_changelog()` trigger plus several `RESTRICT` FKs
-(`users_changelog`, `entity_achievements`, `organization_members`, …), and the
-running app re-inserts the row between statements. To simulate a
-"missing users row" failure path, bypass triggers and FKs in one shot:
+Mission Control starts automatically in `full`. In `lean`, start it for admin, provider, model, and other internal workflows:
 
 ```bash
-docker exec openrouter-web_db psql -U postgres -d postgres \
-  -c "set session_replication_role = replica; delete from users where clerk_user_id='user_...';"
+tilt enable internal mission-control
+tilt trigger internal
+tilt trigger mission-control
+tilt wait --for=condition=Ready uiresource/internal uiresource/mission-control --timeout=300s
+tilt get uiresources -o json | jq -r '.items[] | select(.metadata.name=="mission-control") | .status.endpointLinks[]?.url'
 ```
 
-Fire the request immediately afterwards — the app may recreate the row.
+Open the reported URL and sign in as above. The signed-in Clerk user needs a matching local `users` row with `is_admin = true`; see [isolated users](references/isolated_users.md#admin-permission-checks) for an explicit test admin grant and revocation.
 
-**Extra Clerk users / roles for permission tests** — mint them straight from the
-Backend API with the dev `sk_test_` key (`infisical secrets get CLERK_SECRET_KEY
---path=/projects/web`): `POST /v1/users`, then `POST
-/v1/organizations/<org_id>/memberships` with `{"role":"org:member"}`, then `POST
-/v1/sign_in_tokens` and open
-`localhost:3000/sign-in#/?__clerk_ticket=<token>`. Type the ticket
-programmatically — a hand-retyped JWT that drops one character fails with "This
-ticket is invalid." Clerk auto-activates the org when the user's only membership
-is that org, which is a convenient way to get a non-admin org-scoped session.
+## Fixtures and checks
 
-Ticket gotchas:
+Scope fixture changes to your test IDs and restore them afterward; local databases are shared.
 
-- **Sign-in tokens are single-use.** A ticket consumed by a failed or partial
-  navigation leaves you on a signed-out page with no error. Mint a fresh token
-  per attempt rather than retrying the same URL.
-- **Send the ticket to `/sign-in#/?__clerk_ticket=`, not `/`.** The root route
-  does not consume the ticket; it just renders the signed-out home page.
-- **Driving a 600-char URL through synthetic keystrokes drops characters.** If
-  no clipboard tool (`xclip`/`xsel`) is installed, write a throwaway
-  `file:///tmp/x.html` whose `<script>` sets `location.href` to the ticket URL
-  and navigate to that short path instead — the JWT is never typed.
+| Surface | Required facts |
+| --- | --- |
+| BYOK pages | `frontend-api` needs a nonempty `/api/frontend/v1/all-providers` response; navigate through the provider list because detail URLs use provider names. Key changes persist with **Save**. |
+| Provider dashboard | The user must be in `providers.owners`; the endpoint must be visible, undeleted, and present in warmed KV. Verify saved values in `endpoints.features`. |
+| Model pricing | Seed `pricing_versions` with an effective date in the past. Verify `pricing.overrides` on the owning model's endpoints API, served by `public-api`. |
+| Notifications | See [notification checks](references/notifications.md) for setup, delivery results, privacy, and polling fallbacks. |
+| Mission Control | Use model permaslugs for model-edit routes. Keep test schedules disabled and financial operations in dry-run mode. Restriction-triggered refunds queue live runs; fake payment fixtures are for read-only previews only. |
+| Speech gallery | Run `bun run storybook`; open `http://localhost:6006/iframe.html?id=benchmarks-speechtakelist--default&viewMode=story`. See [speech gallery checks](references/speech_gallery.md) for fixture and browser-measurement ideas. |
 
-**To reach `JoinedOrgWelcome` you need a *personal*-scoped session.** For a user
-whose only membership is one org, Clerk auto-activates that org, and
-`OnboardingSwitch` skips onboarding entirely for an active org session (no
-overlay at all). Switch the account switcher to "Personal" to exercise the
-invite-path branch.
+After changing catalog or pricing fixtures:
 
-**`cf_*` fields are always null locally** — no Cloudflare edge sits in front of
-wrangler dev, and `cf_ip_hash` is hardcoded null in
-`packages/instrumentation/cf-bot-log-fields.ts`. Do not assert non-null `cf_*`
-values locally; assert the keys are present instead, and make `signup_*`
-assertions falsifiable by seeding unique marker values on the `users` row first.
+1. Run `tilt trigger api` and confirm the new worker starts in `tilt logs api` to clear cached database reads.
+1. Run `tilt trigger api-kv-cron` and confirm that run succeeds in `tilt logs api-kv-cron`.
+1. Run `tilt trigger api`, `tilt trigger frontend-api`, and `tilt trigger web`, then restart any other worker under test to reload warmed KV.
 
-**Onboarding overlay only renders for a user with pending onboarding** — a
-reused Clerk user has `hasPendingOnboarding` cleared, so `OnboardingSwitch`
-renders nothing. Use a fresh user per onboarding run. `OnboardingSwitch` latches
-its joined-org-vs-full-flow branch on entry, so an org created mid-flow keeps the
-flow mounted and `CompleteStep` fires the completion request with the org active.
-Confirm the scope from `organization_id` in the `Onboarding completed` log line
-rather than assuming it either way.
+- Restart the worker under test after edits to shared packages.
+- For KV tests, restart `kv-cache` after local KV writes. Shared state is `.wrangler/shared-state`; Wrangler writes use `--local --persist-to ../../.wrangler/shared-state` from the worker directory.
+- Live-config reads initially use schema defaults while refreshing in the background.
 
-## Handy
+## Verify and trace
 
-| | |
-|---|---|
-| web / api / image / frontend-api / auth | `:3000` / `:8787` / `:8797` / `:8795` / `:8802` |
-| embeddings-api | `:8789` |
-| postgres | `:54322` |
-| secrets | Infisical via `bun run x` / Tilt; overrides in `.env.development.local` |
+Exercise the changed behavior through the real page or API with populated fixtures; verify saved changes after reloading. A health response alone does not prove the feature works. Local API requests can use the seeded key `sk-or-v1-unlimitedkey`.
 
-## Done when
+```bash
+tilt logs --tail=100 --source=runtime web api frontend-api
+tilt logs --since=5m --source=runtime api usage-record dataflow
+```
 
-http://localhost:3000 loads, a signed-in generate succeeds, and `localhost:8787/health` is `ok`.
+Correlate by the internal `gen-*` generation ID; the response ID may be the provider's ID. Captures live under `services/dev-fs-logs/.logs/<generation-id>/`; early route captures use `.logs/default/`. Verify persisted usage in the Spanner emulator.
+
+## Debugging
+
+- If a worker call hangs without reaching the target's logs after a restart, check for a stale Wrangler service binding; restart the target, then the caller.
+- Agents sometimes share a machine and run Tilt from different checkouts; if behavior does not match your changes, check which checkout the serving process uses.
+- FS logging changes the Chat/Responses streaming pipeline; check `isFSLoggingEnabled()` in `packages/clients/fs-logs/send-to-fs-log.ts` before comparing local TTFT or backpressure with production.
+
+## Addendum
+
+- Billing: use the [Spanner queries](references/useful_spanner_queries.md) to check generation tokens, usage rollups, and budgets.

@@ -332,7 +332,7 @@ mid-session system, #22274):
   `fixtures/<provider>/` and a snapshot test (`create-fixtures` skill) —
   no capability change merges on synthetic payloads alone.
 - Stage the model locally (`stage-endpoint`) and send a real request through
-  `bun run dev cfw-api`; inspect dev-fs-logs for the adapter request/response.
+  the stack started with [local-dev-env](../local-dev-env/SKILL.md); inspect dev-fs-logs for the adapter request/response.
 - Before staging, verify every endpoint's effective
   `context_length_override ?? model.context_length` is positive (image-
   generation endpoints use the runtime default).

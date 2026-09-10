@@ -13,26 +13,17 @@ using sample files.
 
 ## Prerequisites
 
-- Tilt stack running (`tilt up`)
+- Local stack ready using [local-dev-env](../local-dev-env/SKILL.md).
 - `api` resource ready (port 8787) — needed for the KV cron
 - `embeddings-api` resource ready (port 8789)
-- `dev-fs-logs` running for debugging (`bun run dev dev-fs-logs`)
+- `dev-fs-logs` running for debugging (`tilt trigger dev-fs-logs`).
 - The target embedding model and endpoint already staged in
   the local DB (see `stage-endpoint` skill if not)
-- Provider API key available — the embeddings-api reads keys
-  from `services/cfw-embeddings-api/.dev.vars`. If missing,
-  copy from `services/cfw-api/.dev.vars` and update the
-  relevant provider key. Do not commit `.dev.vars` files.
+- Provider API key available in the worker's Infisical scope. Its dev script generates `services/cfw-embeddings-api/.dev.vars`; do not copy another worker's file.
 
 ### If embedding models are missing from the local DB
 
-The seed data may be stale. Reset the DB to get fresh seeds:
-
-```bash
-bun run db:reset
-```
-
-Then restart `cfw-api` and re-run the KV cron (step 3).
+Stage the missing model and endpoint using [stage-endpoint](../stage-endpoint/SKILL.md), then refresh KV using local-dev-env. A database reset would also remove test fixtures.
 
 ## Arguments
 
@@ -59,6 +50,7 @@ If `embeddings-api` is not running, enable it:
 
 ```bash
 tilt enable embeddings-api
+tilt trigger embeddings-api
 ```
 
 The embeddings API runs on port **8789** by default

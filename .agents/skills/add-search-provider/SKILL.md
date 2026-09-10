@@ -453,7 +453,8 @@ bun test packages/router/plugins/server-tools/web-search/
 # Manual smoke test
 # 1. Add $API_KEY_ENV to .env.development.local
 # 2. Start the API:
-bun run dev cfw-api
+bun run dev:up
+tilt wait --for=condition=Ready uiresource/api --timeout=300s
 # 3. Send a request:
 curl -X POST localhost:8787/api/v1/chat/completions \
   -H 'Authorization: Bearer sk-or-v1-unlimitedkey' \

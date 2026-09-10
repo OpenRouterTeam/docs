@@ -44,9 +44,9 @@ For an existing skin, the sync side of a parity pair comes from the
 ordinary chat-completions path:
 
 ```bash
-# local cfw-api (bun run dev cfw-api), key from Infisical /tests/e2e
+# Start with local-dev-env; use the seeded key against the local API.
 curl http://localhost:8787/api/v1/chat/completions \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Authorization: Bearer sk-or-v1-unlimitedkey" \
   -H "Content-Type: application/json" \
   -d '{"model": "openai/gpt-4o-mini", "messages": [{"role": "user", "content": "Reply with the word pong."}]}'
 ```

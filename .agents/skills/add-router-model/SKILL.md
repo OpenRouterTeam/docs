@@ -224,10 +224,10 @@ settings UI:
 ### 8. Local e2e verification
 
 ```bash
-bun run db:start
-bun run db:reset
-bun run dev cfw-api
-bun run dev dev-fs-logs
+bun run dev:up
+tilt wait --for=condition=Ready uiresource/api uiresource/api-kv-cron --timeout=300s
+tilt enable dev-fs-logs
+tilt trigger dev-fs-logs
 ```
 
 Send a request:

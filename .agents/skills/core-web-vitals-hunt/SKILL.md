@@ -175,8 +175,7 @@ same baseline:
 
 1. **Route-level lab measurement.** Measure a production build, never `next dev`
    — dev-mode compilation dominates every timing you care about. Bring the
-   backing services up with the `local-dev-env` skill (`tilt-testing` for
-   readiness) but leave Tilt's `web` resource down, since it runs `next dev`
+   backing services up with the `local-dev-env` skill, but leave Tilt's `web` resource down, since it runs `next dev`
    through `projects/web/scripts/dev.ts`. Build `projects/web` with `NODE_ENV=production`
    set explicitly — the Infisical shell carries `NODE_ENV=development`, and a
    build that inherits it fails while prerendering `/404`. Serve that build on
@@ -226,13 +225,29 @@ same baseline:
    hops with a `Location` header are not critical-path failures; a critical
    request that fails, or one that is still pending at LCP, invalidates the run.
    Without this list the harness reports "a request failed" on every run and no
-   reading can be accepted.
+   reading can be accepted. Accept a request by status class rather than by an
+   exact `200`, since auth handshakes on the route answer with a redirect.
+
+   Record every `largest-contentful-paint` entry per run with its selector,
+   `size`, rendered rect and whether it sat in the initial viewport, not just
+   the final LCP value, and hold the page open until the route has hydrated.
+   Under mobile throttling a hydration-gated route can finish long after a
+   fixed short window, and a window that ends inside the candidate sequence
+   reports a different element per arm, which looks bimodal and regressed when
+   only the winning element differs. A same-element comparison across arms is
+   the only LCP claim a lab run can make, and it needs the per-candidate
+   attribution to state it.
 2. **Bundle and payload delta** when the mechanism is asset weight: the size
    change of the affected chunks, and the count and bytes of critical-path
    requests.
 
 A lab result whose direction disagrees with the named mechanism blocks the PR —
 investigate instead of shipping it.
+
+Build the baseline arm by reverting the diff's own files on the current tree
+when the branch has already merged `main`, since a checkout of the branch point
+then carries every unrelated change merged since. Say in the PR that the control
+is diff-scoped.
 
 Add the `preview` label to the PR so the Vercel preview deploys
 (`.github/workflows/preview-vercel.yaml` gates deployment on that label), and
@@ -252,7 +267,16 @@ as `bun test --preload ./bun-test.dom-setup.ts <file>` from `projects/web`;
 without the preload Bun treats the path as a filter and the DOM environment is
 missing. Authenticated VR suites need a working `sign-in` flow against the local
 stack — when `playwright_global_setup_auth_failed` appears, the snapshot did not
-run, so do not report it as passed. When `verify` fails only outside the diff,
+run, so do not report it as passed. The `/tests/e2e` password credentials belong
+to the production Clerk tenant and stall on `/sign-in/factor-one` against a local
+build, so authenticate localhost with a `ticket` from the
+[`clerk-dev-signin-token`](../clerk-dev-signin-token/SKILL.md) script passed as
+`E2E_CLERK_SIGN_IN_TOKEN`. A local run still compares a freshly minted, dataless
+user and the local `/docs` fallback against production baselines, so run the
+dashboard and `/docs` snapshots against the production `BASE_URL` and keep the
+local run for the route the diff touches. `bun run test:vr:dashboard` needs
+`--projectId=771b7bc0-6578-41b0-886e-9fcdb66e9173` on its `infisical run` under
+machine-identity auth. When `verify` fails only outside the diff,
 reproduce the same failure on `main` and report it with that evidence rather
 than fixing unrelated files in a performance PR.
 
@@ -325,7 +349,30 @@ mechanism that recurred, a candidate class that always turns out to be a dead
 end, a threshold that proved wrong. Keep it at the level of what to check next
 time, not the details of one route.
 
+RUM mechanics that cost time:
+
+- Pin the window from the first aggregate: the PR needs epoch-millisecond
+  bounds, and a `now-7d` query has to be re-run to get them.
+- The aggregate endpoint caps the bucket product at 10,000, so two `group_by`
+  facets need per-facet limits of about 90 or less.
+
+Before reserving space for a hydration-time body, group the view by
+`@view.largest_contentful_paint_target_selector` per device: when the LCP
+element is server-rendered copy that sits below the client body, a stencil
+tall enough to stop the shift also pushes that copy below the fold, and LCP
+moves to whatever paints in the viewport after hydration. Report that trade in
+the field success criteria instead of discovering it from the lab LCP, and
+quantify it as the share of that device's views whose winning selector is the
+copy being displaced, since a route usually has several winners and only that
+share is exposed to the trade.
+
 Candidate classes seen so far:
+
+- Public routes that mount a client-only body above server-rendered prose with
+  `loader={null}` on the hidden-until-hydrated wrapper (`Fade` in
+  `packages/frontend/components/ui/Fade`). The prose renders at the top of the
+  page and drops by the body's height when the body mounts; the fix is a
+  stencil the size of the body as the loader.
 
 - Authenticated client-rendered routes (`/chat`, `/settings/*`) whose LCP
   element is static copy inside a loading stencil. The fix is to render that

@@ -36,26 +36,14 @@ service.
 
 ## Running locally
 
-### With Tilt (recommended)
-
-From the repo root:
+Start from the repository root using [local-dev-env](../../.agents/skills/local-dev-env/SKILL.md):
 
 ```bash
-tilt up
+bun run dev:up
+tilt wait --for=condition=Ready uiresource/usage-record --timeout=300s
 ```
 
-Use `TILT_PROFILE=lean tilt up` if encountering OOM.
-
-There is also a k8s-based setup, though this is harder to work
-with:
-
-```bash
-bun run x scripts/tilt-dev.ts
-```
-
-Wait for cfw-api (or "api") to come up on the
-[Tilt dashboard](http://localhost:10350/r/(all)/overview).
-Once up, the DB should be ready to go and seeded.
+The default full profile starts the emulator pipeline. Confirm `dataflow` has started successfully in Tilt before checking generation writes.
 
 The relevant Tilt resources are:
 

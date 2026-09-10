@@ -13,7 +13,7 @@ This skill applies **only** when the screenshot is tied to a PR or branch (e.g. 
 Present a `user_question` with two options. **You must list both options with their descriptions in the message body text itself** (don't rely solely on interactive buttons rendering):
 
 1. **Storybook** — renders the component in isolation with mock data, starts in seconds with no backend/auth/seed dependencies, and the story file persists as living documentation for anyone who needs screenshots later.
-2. **Local dev instance** — runs `bun run dev web` against the local Postgres with seed data. Better when the screenshot requires cross-page navigation, real auth flows, or data that's hard to mock in a story.
+2. **Local dev instance** — uses [local-dev-env](../local-dev-env/SKILL.md) with local Postgres and seed data. Better when the screenshot requires cross-page navigation, real auth flows, or data that's hard to mock in a story.
 
 ## If the user picks Storybook
 
@@ -53,11 +53,11 @@ Wait for a story-specific visible element before capturing (`agent-browser wait 
 1. **Check out the correct branch first.** If the screenshot is for a PR, `git checkout` that PR's branch.
 2. **Check seed data** — before running any server, inspect `postgres/seed.sql` and `postgres/seeds/*.csv` to determine whether the page's data requirements are covered. Look at what tables/entities the target page queries and verify matching seed rows exist.
 3. If seed data is **missing** for the target surface, **stop immediately** and inform the user. Explain which data is missing and suggest switching to Storybook with mock props instead (or ask if they'd like you to create a story file).
-4. Only after confirming seed data exists: run `bun run db:start` then `bun run dev web` (serves on localhost:3000).
+4. Start with [local-dev-env](../local-dev-env/SKILL.md) and use the web URL reported by Tilt.
 5. Navigate to the page and take the screenshot.
 
 ### Guardrails and request-error detail screenshots
 
 - Guardrails are workspace-scoped. `/settings/guardrails` returns a 404; navigate to the workspace first, then open its Guardrails page. To check a policy preview without saving, open the existing Workspace Guardrail → Sensitive Info Detection. A new guardrail wizard can require an API-key assignment before it reaches the policies step. Under Test Your Patterns, toggle Email address and type sample input: Redact renders the preview span, and Flag renders the detected-label span. Don't save a policy when you only need its preview.
-- `/logs` opens on Generations. To exercise `RequestDetailSheet.tsx`, switch to **Upstream Requests**. The raw-response disclosure renders only for a failed request that has stored provider-error metadata; a successful generation doesn't render it. If you have permission to seed local data, insert a ClickHouse `endpoint_requests` row whose creator, entity, generation, and workspace IDs match the authenticated account, then store an ERROR observation in the local private-prompt MinIO bucket. `GcsBucket` and `gcsKeyFullJSON` in `packages/prompt-storage/gcs/index.ts` define the bucket and key shape, `packages/prompt-storage/gcs/client.ts` shows the write path, and `packages/prompt-storage/gcs/extract-prompt-log-error.ts` defines the payload contract. Confirm the bucket exists before writing; `dev/minio-init.sh` doesn't always create the private-prompt bucket.
+- `/logs` opens on Generations. To exercise `RequestDetailSheet.tsx`, switch to **Upstream Requests**. The raw-response disclosure renders only for a failed request that has stored provider-error metadata; a successful generation doesn't render it. If you have permission to seed local data, insert a ClickHouse `endpoint_requests` row whose creator, entity, generation, and workspace IDs match the authenticated account, then store an ERROR observation in the local private-prompt MinIO bucket. `GcsBucket` and `gcsKeyFullJSON` in `packages/prompt-storage/gcs/index.ts` define the bucket and key shape, `packages/prompt-storage/gcs/client.ts` shows the write path, and `packages/prompt-storage/gcs/extract-prompt-log-error.ts` defines the payload contract. Confirm the bucket exists before writing.
 - For Datadog privacy changes, assert the DOM attribute in addition to taking screenshots. A readable screenshot doesn't prove that replay masking works, and a zero count of unprotected nodes proves nothing unless you first confirm the sensitive nodes are rendered.
