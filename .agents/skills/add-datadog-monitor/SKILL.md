@@ -303,6 +303,7 @@ Slack auto-links any bare text that looks like a domain, so a template variable 
 - For once-daily cron tasks, size the log-alert window to at least the cron period (e.g. `last("1d")`) so the alert does not self-clear before anyone sees it.
 - **Breadcrumbs vs Extra**: Properties set via `breadcrumbs()` appear under `@breadcrumbs.*` in logs (e.g., `@breadcrumbs.key_hash_first_ten`, `@breadcrumbs.clerk_user_id`). Properties passed as structured args to `iLog()`/`wLog()`/`eLog()` appear under `@extra.*`. Do not confuse the two — using the wrong prefix will return no results.
 - **Cloud Run vs Cloudflare Workers**: For GCP Cloud Run services (e.g., `batch-api`), structured logs are nested under `@data.jsonPayload.*`. Context fields from `iLog`/`eLog`/`wLog` appear at `@data.jsonPayload.extra.*` (e.g., `@data.jsonPayload.extra.provider_name`), not `@extra.*`. Cloudflare Workers use the standard `@extra.*` prefix. Use the correct prefix based on the service's runtime.
+- **Next.js web app (Vercel)**: `projects/web` server logs land on `service:openrouter-web` with `@extra.*` for `eLog` context, the event name as the message, and `@environment:production` to exclude previews. The web has no preview_slug facet, so filter on `@environment` (see `rankings_server_section_failures.tf`).
 
 ### Datadog URL
 The Datadog site for this org is `us5.datadoghq.com`. Use this for log links and dashboard references.

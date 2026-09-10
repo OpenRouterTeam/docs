@@ -57,7 +57,7 @@ ranges stay disjoint.
 | `src/openrouter_monorepo/usage_record/generation_stream.py` | Generation Pub/Sub → Spanner pipeline |
 | `src/openrouter_monorepo/usage_record/generation_lane.py` | Interactive vs batch lane defaults: subscription, DLQ folder, batcher knobs, write shard range |
 | `src/openrouter_monorepo/usage_record/entity_batcher.py` | Shard-aware reshuffle and stateful batching by billable entity |
-| `src/openrouter_monorepo/usage_record/generation_commits_stream.py` | Runner-sharded (or fixed logical shard) `GroupIntoBatches` for generation-commit batching |
+| `src/openrouter_monorepo/usage_record/generation_commits_stream.py` | Bundle-scoped generation-commit batching: one Spanner read per bundle, split at the batch size cap |
 | `src/openrouter_monorepo/usage_record/post_gen_spanner_reader.py` | `PostGenChecksDoFn` — deduplicates in-DoFn, reads entity totals from Spanner |
 | `src/openrouter_monorepo/usage_record/generation_writer.py` | Spanner generation inserts |
 | `src/openrouter_monorepo/usage_record/async_job.py` | Async job charge handling |
@@ -85,15 +85,17 @@ bun run x scripts/dataflow-deploy.ts
 This will build a new Docker image locally, push it, and trigger a zero-downtime
 upgrade of the Dataflow job.
 
-Generation-commit batching keys every entry to one logical key and lets the
-runner shard it across workers (`GroupIntoBatches.WithShardedKey`), so read
-concurrency follows the autoscaler. `--generation-commits-shard-count <N>`
-switches to N deterministic CRC32 shards instead, for A/B or rollback. Both
-shapes are part of Dataflow's state key space, so a change between them or to
-N must never go out through an in-place `--update`. The deploy
-script rejects `--replace` for this pipeline; omit it and the default path
-rolls the new job out by parallel replacement, which keeps the old job serving
-during the overlap. Do not drain first: that skips the overlap and resets the
+Generation-commit batching is bundle-scoped: each worker thread collects the
+entries of the bundle it is processing in local memory and hands them to the
+Spanner read at the end of the bundle, split at the batch size cap. There is
+no batch key, persisted state, timer or reshuffle, so a batch is whatever one
+bundle delivers, and under light traffic that can be a single entry. Beam's
+own `BatchElements` refuses this shape on runners that declare
+`is_streaming` for that reason (BEAM-2687); the Spanner read is a seek per
+entity, so the extra statements are the accepted cost here. The deploy script
+rejects `--replace` for this pipeline; omit it and the default path rolls the
+new job out by parallel replacement, which keeps the old job serving during
+the overlap. Do not drain first: that skips the overlap and resets the
 job-name counter.
 
 ## Running parallel staging jobs (A/B)

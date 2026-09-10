@@ -556,3 +556,51 @@ Keep machine- and session-specific paths (`/home/ubuntu/...`) out of committed f
 Keep diffs focused: no reformatting or restructuring that the change does not require, and no change that affects neither behavior nor readability. Every line changed is a line to review.
 
 Update the PR description in the same push as follow-up work — when later commits complete something the body lists as pending, or replace a behavior it describes. Correct figures the diff invalidates, such as a row count no longer covered by a partial index.
+
+## Reviewer Norms
+
+Norms our engineers repeatedly ask for in review, across every layer. Apply them while writing the code, not after review. UI-specific norms live next to the code they govern: user-visible copy and in-flight mutations in `projects/web/REVIEW.md`, shared client state in `packages/frontend/REVIEW.md`.
+
+### Every `isErr` Fallback Logs Once, At The Layer That Owns It
+
+The mechanics of `errT` / `inspectErrorT` / `errSA` and `errorToLogFields` are in `AGENTS.md` (Style Principles, Logging). What those sections do not say is which failures get silently dropped:
+
+- `void wrap(...)` and `void promise` discard the failure entirely. Keep the Result and log it.
+- A toast is not a log. A recoverable fallback that hides a feature (returning `null`, dropping a card) still needs `wLog` with `errorToLogFields(error)`.
+- A `null` storage object is a failed write, not a success. Optional chaining inside `wrap()` returns `Ok(undefined)` and silences the log.
+
+### Fixed Sets Fail Closed, And Are Never Hand-Maintained
+
+- An unmodelled value must not read as the permissive case. A predicate over a vendor status, a route allowlist, or a capability gate returns the restrictive answer for anything it does not recognize.
+- Do not mirror a canonical set into a second literal list (filter options against an enum, route allowlists against their consumers). If a mirror is unavoidable, add a completeness test against the canonical set — typecheck will not catch drift.
+- Key on the exported union, not `Record<string, T>`: exhaustiveness turns a new variant into a build error instead of a `??` fallback.
+
+```ts
+// BAD: a new status silently renders as 'secondary'
+const VARIANTS: Record<string, BadgeVariant> = { draft: 'outline' };
+
+// GOOD: adding a status fails the build here
+const VARIANTS: Record<SocialPostStatus, BadgeVariant> = { draft: 'outline' };
+```
+
+### Cover The Path You Changed, And Prove The Test Discriminates
+
+- The new branch gets a colocated test — including error captures and param serializers.
+- Before claiming coverage, mutate the implementation and confirm the test fails. Tests that pass for the wrong reason are why regressions survive a review round: fakes that model behavior the real dependency never performs, counters no local fake increments, an assertion omitted on one case of three.
+- Extract inline serializers and param builders so they can be tested directly.
+- Wait deterministically. Do not tune a `setTimeout` until enough microtasks have flushed — see `packages/frontend/REVIEW.md` → Deterministic timers in tests and `AGENTS.md` → Testing.
+
+### Reuse The Primitive; Keep One Copy Of A Rule
+
+- Search for an existing component, hook, or helper before writing one (`ExternalLink`, the shared validation policy). For UI specifically, `packages/frontend/AGENTS.md` names which library to prefer once you have found it.
+- Async state belongs in TanStack Query via the shared data layer, not in hand-rolled `useState` loading/error triplets.
+- A predicate duplicated at a second call site is two rules that will drift. Extract it and apply it everywhere it belongs — a predicate that is defined but never applied is dead.
+- Presentational components take resolved inputs. Hydration, permission, and data-source decisions belong to their container.
+
+### Fix The Class, Not The Instance
+
+When a defect comes from a pattern, grep for the pattern and fix every reachable site in the same PR. Reviewers audit sibling call sites, and a guarded read next to three unguarded ones in the same tree fixes nothing.
+
+### Delete What Your Change Orphans
+
+Removing the last production consumer of a helper orphans it, and the remaining test keeps it looking alive. CI runs `knip --production`, which drops non-`!` entry patterns — so a test-only export *is* reported as an unused export, but `knip.json` sets `exports: "warn"`, so the run still exits 0 and the warning scrolls past. Remove the helper and its tests, or say why it is being kept.

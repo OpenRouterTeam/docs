@@ -20,8 +20,8 @@ box.
 
 ## What lives here today?
 
-Only the Statsig bootstrap routes below and a dev-only `dev/intern-chat` route
-remain under `app/api/`. Do not use them as a pattern to follow.
+Only the Statsig bootstrap routes below remain under `app/api/`. Do not use
+them as a pattern to follow.
 
 **Exception:** `app/api/frontend/statsig-bootstrap` and
 `app/api/frontend/statsig-customer-bootstrap` are intentionally here, not in

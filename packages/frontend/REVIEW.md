@@ -141,3 +141,44 @@ Form inputs should be visually aligned within their containers; left-aligned
 inputs in centered containers usually read as a mistake.
 
 `<>...</>` around a single child is noise — return the child directly.
+
+## `gap` only spaces flex and grid children
+
+`gap` is not a drop-in for `space-y-*`, and the difference is silent — the
+layout still renders, only the spacing is gone. Before removing a child margin,
+confirm the parent is flex or grid **at that breakpoint** and that the child is
+a direct child.
+
+- An element switched out of flex loses its gap: `hidden md:block` with
+  `gap-y-3` spaces nothing at desktop. Keep it in flex
+  (`hidden md:flex md:flex-col md:gap-y-3`).
+- `gap-y-*` is inert in the default `flex-row`. A caller relying on the row
+  default while a shared base adds `flex-col` gets a stacked layout — pass the
+  direction explicitly.
+- A child inside a plain wrapper `div` is out of reach of the parent's gap; it
+  keeps its own margin.
+- Margins on flex items do not collapse into the gap, they add to it.
+- `tailwind-merge` keeps the caller's class: a caller's `gap-4` replaces a base
+  `gap-y-2`, just as a zero-step sibling-spacing utility replaced a nonzero base
+  one. Check the base component's spacing before assuming yours composes with
+  it.
+- Sibling-spacing and child-divider utilities skip the last child. A `gap` or
+  per-child border replacement needs the equivalent `first:` / `last:` reset
+  (`last:border-b-transparent`).
+
+This file sits under `@source '../../../packages/frontend'`, so Tailwind scans
+its raw text and mints a utility for every class name it finds — including one
+`ban-slow-utilities` rejects, which fails the whole web build. Name the banned
+patterns in prose here, never as the literal class.
+
+## Shared client state has one source
+
+Two mounts of the same key must never be able to disagree.
+
+- Cross-instance notification (storage events, store subscription) fires on
+  every write path, including the failure path — a skipped write that skips
+  the event leaves peer hooks stale.
+- Do not read one quantity from two places with different freshness. Pick the
+  source that enforcement uses and derive the display from it.
+- Prefer reading a store at invocation (`useStore.getState()`) over subscribing
+  when the value is only needed inside a handler.

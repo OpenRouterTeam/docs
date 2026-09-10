@@ -248,6 +248,35 @@ sufficient: such a VM still carries both metadata keys, so it reads as
 eligible and its swap is a no-op that surfaces later as `stalled`. The
 repair is the same re-bootstrap.
 
+The gap is still open — nothing makes the units survive a reboot — but
+since ORI-1771 it is no longer silent. The fleet health sweep names the
+signature (edge answering 530, past the boot grace window, GCE reporting
+the instance Live), emits
+`openrouter.interns.health_sweep_empty_reboot{outcome:rebooted_empty}`,
+and logs `cfw-intern-provisioner: intern rebooted empty` carrying
+`intern_id`, `entity_id`, `previous_live_health` and the repair. A VM
+that is merely still booting serves the same 530 and is excluded by the
+grace window, so the check does not fire on an ordinary slow boot.
+
+The log line fires once per fault, not once per sweep: the sweep
+persists its verdict on the row (`runtime_metadata.empty_reboot`) and
+logs only on entry into the state. That marker is cleared whenever the
+provisioning `/health` gate re-settles, so an intern that is repaired
+and later reboots empty again alerts again.
+
+**There is deliberately no monitor yet.** The metric ships here and the
+monitor follows once the series can be read in Datadog, per
+`configs/terraform-monitors/AGENTS.md` ("a new metric has no baseline to
+set a threshold from, so chart it first"). Two things have to be settled
+against a live series rather than asserted: whether a sustained-window
+gate on a one-point-per-five-minute gauge evaluates at all under
+`require_full_window`, and what a fleet-scalar gauge tagged by outcome
+alone can honestly claim — `min(...) > 0` says "at least one intern was
+in the state throughout the window", never "the same intern for N
+sweeps", because the metric carries no intern id and deliberately never
+will. Until then this condition is detected and logged, and nothing
+pages: search the log line above.
+
 ## Rotating the vault root CA (procedure lives in the vault)
 
 The full runbook is "Root CA rotation runbook" in
@@ -1042,6 +1071,7 @@ the old key.
 Affected columns:
 
 - `interns.openrouter_key_encrypted` (promoted out of `metadata` by migration 20260528160000)
+- `interns.daemon_token_encrypted` (per-VM `ORI_DAEMON_TOKEN`; written by `upsertInternDaemonToken`, read by `fetchInternDaemonToken`, which throws rather than re-mints when a stored envelope fails to decrypt)
 - `intern_credentials.data.*_encrypted` (Slack bot/signing tokens,
   client secret, …)
 
@@ -1067,7 +1097,8 @@ Procedure (no live writers permitted during the swap):
    migration script that scopes to one entity at a time and uses
    the same OCC predicate the worker uses (`WHERE updated_at =
    <observed>`) so a partial failure leaves the row consistent.
-   Walk: `interns.metadata`, then every un-revoked
+   Walk: `interns.openrouter_key_encrypted`,
+   `interns.daemon_token_encrypted`, then every un-revoked
    `intern_credentials` row.
 4. **Update Infisical.** Rotate
    `PROVIDER_ENCRYPTION_KEY` at `/services/cfw-intern-provisioner`
@@ -1075,10 +1106,11 @@ Procedure (no live writers permitted during the swap):
 5. **Redeploy the worker.** Lift the maintenance mode on
    `/api/v1/interns/enqueue`.
 6. **Verification.** Pick a sample intern per entity and run
-   `fetchInternOpenrouterKey` / `fetchInternSlackTokens` /
-   `fetchInternBootstrap` (via the existing health hooks). Any
-   `decryptOrContext` failure means the migration script missed a
-   row — roll back the env var and re-run the script.
+   `fetchInternOpenrouterKey` / `fetchInternDaemonToken` /
+   `fetchInternSlackTokens` / `fetchInternBootstrap` (via the
+   existing health hooks). Any `decryptOrContext` failure means the
+   migration script missed a row — roll back the env var and re-run
+   the script.
 
 Out of scope for this PR: the migration script itself and a
 two-key transitional mode (decrypt with old or new, encrypt with

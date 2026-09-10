@@ -213,18 +213,6 @@ To interactively update all dependencies to latest: `bun run up -irL`
 
 ### Claude Code
 
-#### Local Plugin Marketplace
-
-To view and install local plugins from this repository, add the local
-marketplace:
-
-```bash
-/plugin marketplace add ./
-```
-
-This adds the repository's `.claude-plugin/marketplace.json` to your available
-plugin sources.
-
 #### Recommended MCP Servers
 
 #### Codanna - Semantic Code Search and Analysis

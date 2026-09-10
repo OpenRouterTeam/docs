@@ -15,10 +15,6 @@ Always invoked explicitly — no review skill starts this one for you, since a
 review is frequently wanted without the follow-through. Pairs naturally with
 `thermo-nuclear-code-quality-review`, which produces the comments.
 
-The Claude Code equivalent lives at
-`.claude/plugins/auto-fix-pr-feedback/commands/auto-fix.md` — keep the two in
-sync when you change the fetch/reply mechanics here.
-
 ## Not `ask-perry-babysit`
 
 "Babysit this PR" belongs to `ask-perry-babysit`, not here. The two look
