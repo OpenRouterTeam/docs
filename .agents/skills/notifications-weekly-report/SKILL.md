@@ -43,8 +43,7 @@ prompt invokes this skill; keep them in sync when the procedure changes.
   than asking for a credential:
   `infisical secrets get DD_API_KEY --env=dev --path=/services/cfw-api --plain`
   (the repo-root `.infisical.json` supplies the project). A non-interactive run
-  needs a universal-auth token first — see the `testing-mission-control-local`
-  skill for that login line.
+  needs a universal-auth token first — see [Secret Management](../../../AGENTS.md#secret-management).
 
 ## Guardrails
 

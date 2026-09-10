@@ -59,11 +59,10 @@ Tilt stack the e2e suite uses. No real provider traffic, no production data.
 
 ### Launch
 
-The batch resources are **manual-trigger in the lean profile** — they never
-come up on their own:
+Start with [local-dev-env](../local-dev-env/SKILL.md). Ensure these resources are running, triggering any that have not started:
 
 ```bash
-bun run dev:up                       # lean Tilt stack (does the Infisical bootstrap)
+bun run dev:up
 tilt trigger fake-gcs
 tilt trigger fake-gcs-init
 tilt trigger fake-provider
@@ -107,7 +106,7 @@ curl -s http://localhost:8086/v1/projects/openrouter-dev/subscriptions \
 Failure modes that look like product bugs:
 
 - `429` with `limit_source: openrouter_limiter_unavailable` — the rate limiter
-  cannot reach Redis. `tilt trigger redis serverless-redis-http`. If compose
+  cannot reach Redis. Run `tilt trigger redis`, then `tilt trigger serverless-redis-http`. If compose
   refuses because it references a container that no longer exists, start the
   pair standalone on the `dev_default` network (`redis:7.4.9-alpine` and
   `hiett/serverless-redis-http:0.0.10` with the local `SRH_TOKEN`, published on
@@ -188,7 +187,7 @@ Requirements and conventions:
 - Stack: bring it up and health-check it per
   [Driving the live local stack](#driving-the-live-local-stack) above, and
   validate resource readiness per
-  [`tilt-testing`](../tilt-testing/SKILL.md). The BYOK e2e additionally
+  [`local-dev-env`](../local-dev-env/SKILL.md). The BYOK e2e additionally
   needs the auth service (`tilt trigger valkey && tilt trigger auth`) —
   finalize resolves the key owner through it — plus
   `PROVIDER_ENCRYPTION_KEY` in the env (from
@@ -368,5 +367,5 @@ After tests exist, audit them before hand-off:
 - [`batch-sync-fixtures`](../batch-sync-fixtures/SKILL.md)
 - [`unit-test-writing`](../unit-test-writing/SKILL.md)
 - [`test-audit`](../test-audit/SKILL.md)
-- [`tilt-testing`](../tilt-testing/SKILL.md)
+- [`local-dev-env`](../local-dev-env/SKILL.md)
 - [`e2e-testing`](../e2e-testing/SKILL.md)

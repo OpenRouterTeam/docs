@@ -312,7 +312,7 @@ connection open.
 - `bun run typecheck:clean` drops every `*.tsbuildinfo` when a build needs
   to start cold, `bun run kill-ports` clears orphaned dev-stack listeners,
   and `bun run knip` reports unused exports and dependencies
-- All scripting is TypeScript, run through `bun run x <script>`
+- Use `bun run x <script>` for repository scripts or one-offs that need credentials.
 
 ## Testing
 
@@ -431,6 +431,16 @@ and workflow) and/or `REVIEW.md` (patterns to flag in review)
 in that directory — not in a nested `README.md`. Nested
 `AGENTS.md` / `REVIEW.md` files are automatically picked up
 and enforced by agent tooling; READMEs are not.
+
+## Reviewer Norms
+
+`REVIEW.md` → Reviewer Norms carries the defects reviewers
+repeatedly flag on any layer (swallowed `isErr` fallbacks,
+fail-open fixed sets, non-discriminating tests, duplicated
+rules, orphaned helpers). UI-specific norms — copy that
+outlives its branch, stale snapshots behind in-flight
+mutations, shared client state — live in
+`projects/web/REVIEW.md` and `packages/frontend/REVIEW.md`.
 
 ## Local Postgres
 

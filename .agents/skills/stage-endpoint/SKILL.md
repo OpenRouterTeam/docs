@@ -24,9 +24,8 @@ SQL to drift out of sync.
 
 ## Prerequisites
 
-- Local Postgres running (`tilt up` or `bun run db:start`; use `TILT_PROFILE=lean tilt up` if encountering OOM)
-- cfw-api running (`bun run dev cfw-api`)
-- dev-fs-logs running (`bun run dev dev-fs-logs`) for debugging
+- Local stack ready using [local-dev-env](../local-dev-env/SKILL.md).
+- Confirm `api` and `api-kv-cron` are Ready; enable and trigger `dev-fs-logs` for request captures.
 
 ## Arguments
 
@@ -610,60 +609,11 @@ requests 404 with `No endpoints found`). For local staging, set
 
 ### 7. Refresh the cache
 
-The cfw-api reads models and endpoints from a Cloudflare KV
-cache. After inserting or seeding data, flush and rebuild it:
+Follow the ordered catalog refresh in [local-dev-env](../local-dev-env/SKILL.md#fixtures-and-checks): restart `api`, run `api-kv-cron` successfully, then restart the consumers. Confirm each new run in Tilt.
 
-```bash
-rm -rf services/cfw-api/.wrangler/state/v3/kv
-cd services/cfw-api && bun run test:cron
-```
-
-The `test:cron` script hits
-`http://localhost:8787/__scheduled?cron=*/5+*+*+*+*`
-which triggers the same cron that refreshes the
-endpoints/models KV cache in production.
-
-If cfw-api is not running yet, start it first:
-```bash
-bun run dev cfw-api
-```
-
-If requests still return `<slug> is not a valid model ID` after a
-successful `test:cron` (the api log shows `warmKVModelsAndEndpoints
-completed`), the running worker isolate is serving a stale in-memory
-router config. Restart the worker (`tilt trigger api`, or restart
-`bun run dev cfw-api`) and re-run `test:cron`.
-
-Cache-refresh gotchas:
-
-- `warmKVModelsAndEndpoints` queries ClickHouse; if the local
-  ClickHouse container is down it fails with
-  `Network connection lost.` and workers keep serving stale
-  provider/endpoint config. Fix:
-  `docker start clickhouse-clickhouse-1`, then re-run `test:cron`
-  and check the api log for `warmKVModelsAndEndpoints completed`.
-  On a box that never ran `tilt up`, the container does not exist
-  at all — create it first:
-  `cd packages/clickhouse && docker compose -f docker-compose.yaml
-  -f docker-compose.lean.yaml up -d && bun run ch:migrate`.
-- The same cron writes the `web_models_cache` KV key that
-  `cfw-frontend-api` reads (`services/cfw-frontend-api/src/kv/web-models-cache.ts`).
-  Frontend-api routes such as `/api/frontend/v1/author-models`
-  return 500 with `Web models cache not found in KV` until a
-  cfw-api `test:cron` run has succeeded, even though the DB rows
-  are seeded. Both workers persist to `.wrangler/shared-state`, so
-  no extra wiring is needed — just run cfw-api's cron once.
-- Every `services/<worker>/scripts/dev.ts` defaults `WRANGLER_INSPECTOR_PORT`
-  to 9229, so the second worker you start dies with
-  `Address already in use (127.0.0.1:9229)`. Give it its own:
-  `WRANGLER_INSPECTOR_PORT=9339 bun run dev cfw-api`. The flag
-  cannot be passed through as a CLI arg.
-- When restarting a worker to pick up new config, verify the
-  `workerd` process actually died — killing only the
-  `infisical`/`tsx`/`wrangler` wrappers leaves
-  `workerd ... --socket-addr=entry=localhost:<port>` serving the
-  old isolate. `kill -9 $(pgrep -f "entry=localhost:<port>")` if
-  needed, then start fresh.
+- KV warming queries ClickHouse; check `clickhouse` and `clickhouse-migrate` if the cron fails.
+- The same cron writes `web_models_cache` for `frontend-api`. Seeded Postgres rows alone do not populate that KV key. The workers share `.wrangler/shared-state`.
+- For an occupied port or orphaned worker, use [kill-port](../kill-port/SKILL.md).
 
 ### 8. Test via curl
 

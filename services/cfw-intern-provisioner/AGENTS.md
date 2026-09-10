@@ -21,7 +21,7 @@ dev path and this service reads them itself once the bridge below is intact.
 
 ```bash
 brew bundle                 # installs cloudflared
-bun run dev:ports on        # per-worktree ports, so parallel sessions don't collide
+bun run dev:ports on        # optional service-port overrides; databases and containers remain shared
 ```
 
 Export the tunnel config before `tilt up` — Tilt reads it at load time:
@@ -34,13 +34,28 @@ export DEV_TUNNEL_HOSTNAME=<the-hostname-that-tunnel-serves>
 Then:
 
 ```bash
-tilt up -- web frontend-api intern-provisioner
-tilt trigger dev-tunnel
+bun run dev:up
+tilt trigger dev-tunnel intern-provisioner
+tilt wait --for=condition=Ready uiresource/intern-provisioner --timeout=300s
 ```
 
 Generate a Slack configuration token once per account at [api.slack.com/apps](https://api.slack.com/apps) (*Your App Configuration Tokens* → *Generate Token*, copy the `xoxe-` **refresh** token, not the `xoxe.xoxp-` access token) and save it on the Slack setup page under your workspace's interns section.
 
 Finally, **sign in on the tunnel hostname**, not localhost. Clerk sessions are per-origin, so a localhost session does not carry over.
+
+## Which ports this stack is actually on
+
+`bun run dev:ports on` remaps this worktree into a hashed 20000-29999 block, so every port named in this document is a default your worktree may not be using. Read the effective values with `bun run dev:ports status`. It only *prints* the mapping — it runs in a subprocess and exports nothing, so `$CFW_INTERN_PROVISIONER_PORT` is still empty in your shell afterwards. Source `.env.worktree` when you want the values themselves.
+
+The three that matter here, each resolved by the Tiltfile's `_port()` helper in the order override, then environment, then default:
+
+- **`intern-provisioner`** — `CFW_INTERN_PROVISIONER_PORT`, default `8816`. Health is `/api/v1/interns/health`, not `/health`.
+- **`local-intern`** — `ORI_LOCAL_INTERN_PORT`, default `7070`. Health is `/health`. Started by `tilt up -- --interns`.
+- **`secret-vault`** — `CFW_SECRET_VAULT_PORT`, default `8796`, and never remapped.
+
+That last one is the exception worth understanding rather than memorising. The Tiltfile resolves it through `_port()` like its siblings, but `scripts/worktree-ports.sh` deliberately never writes it into `.env.worktree`, so it falls through to `8796` on every worktree — see [How env vars actually reach a worker](#how-env-vars-actually-reach-a-worker-and-when-they-do-not) for why Infisical pins `SECRET_VAULT_URL` to that port and what moving the vault off it would break. The practical consequence is that two concurrent sessions still contend for `8796` while everything around it is isolated.
+
+**A stale `.env.worktree` is silently partial.** The file is generated once and nothing migrates it afterwards, so a file written before a port variable existed reports `ON` while that service quietly keeps its default. The primary checkout is a live example: its file predates `ORI_LOCAL_INTERN_PORT` entirely, so the local intern sits on `7070` while cfw-api, frontend-api and the provisioner have all moved. Drift runs both ways — that same file still carries three `SAFER_*` ports the script no longer generates. `dev:ports status` greps for the current variable names, so it reveals neither half: it lists the twelve variables the file and the script agree on, and stays silent about both the four it is missing and the three that are dead. The header records the branch the file was generated for, which is the fastest way to spot one that has gone stale; `bun run dev:ports on` regenerates it.
 
 ## Retrying after a failure
 
@@ -119,10 +134,10 @@ The provisioner is starting without its Infisical bridge. See the section below.
 The stored secret ends with a trailing newline. `serializeDevVar` escapes newlines to a literal `\n` and single-quote wraps; dotenv does not unescape single-quoted values, so the worker receives `{...}` followed by two characters `JSON.parse` rejects as trailing non-whitespace. `writeDevVars` trims trailing whitespace for exactly this reason, so check that path first. A `grep -q '^KEY='` check cannot catch this class of bug — parse the value.
 
 **The Credential Vault page says "the vault could not be reached".**
-`secret-vault` is a separate Tilt resource and is not started by `tilt up -- web frontend-api intern-provisioner`. If you filtered resources at startup it is *disabled*, not merely stopped: `tilt enable secret-vault && tilt trigger secret-vault`, then confirm `curl localhost:8796/health` returns `ok` — `misconfigured_environment` means the worker cannot read its own secrets.
+`secret-vault` is a separate Tilt resource. Confirm it is Ready; if it was disabled or has not started, run `tilt enable secret-vault` and `tilt trigger secret-vault`. Its default health URL is `http://localhost:8796/health`; `misconfigured_environment` means the worker cannot read its own secrets.
 
 **A resource you named in `tilt up -- …` never becomes ready.**
-`intern-provisioner`, `secret-vault`, and `dev-tunnel` are all `auto_init=False`. Naming one in the `tilt up` filter *enables* it but does not *start* it, so `tilt wait` sits there until it times out. Trigger them explicitly:
+Naming a manual resource in a `tilt up` filter enables it but does not start it. Filtered startup also excludes resources not named in the filter. Use [local-dev-env](../../.agents/skills/local-dev-env/SKILL.md), then trigger resources that have not started:
 
 ```bash
 tilt trigger intern-provisioner secret-vault
@@ -197,8 +212,8 @@ folder nobody edits can drift from the manifest indefinitely.
 
 Register a name here only once it is confirmed set at `/services/cfw-intern-provisioner`. The names below are the ones deliberately unregistered today — keep this list complete rather than counting it, so a newly added var shows up as absent from it:
 
-- **Config vars with committed defaults**, not secrets, and unset in dev: `INTERN_VM_ZONE`, `INTERN_VM_MACHINE_TYPE`, `INTERN_CLOUD_SDK_IMAGE`, `INTERN_LOGS_GCS_BUCKET`, `INTERN_VAULT_NO_PROXY`, `INTERN_VAULT_PROXY_PORT`, `INTERN_SKIP_CF_TUNNEL`, `SERVICE_NAME`, `INTERN_OTEL_COLLECTOR_IMAGE`, `INTERN_OTEL_COLLECTOR_PORT`, `INTERN_DD_SITE`, `INTERN_VM_REPORT_URL`.
-- **Optional-everywhere secrets**: `INTERN_DD_API_KEY` — telemetry export is opt-in on this key and it is not yet set in any environment. Register it once it is confirmed set at this path in dev.
+- **Config vars with committed defaults**, not secrets, and unset in dev: `INTERN_VM_ZONE`, `INTERN_VM_MACHINE_TYPE`, `INTERN_CLOUD_SDK_IMAGE`, `INTERN_LOGS_GCS_BUCKET`, `INTERN_VAULT_NO_PROXY`, `INTERN_VAULT_PROXY_PORT`, `INTERN_SKIP_CF_TUNNEL`, `SERVICE_NAME`, `INTERN_OTEL_COLLECTOR_IMAGE`, `INTERN_OTEL_COLLECTOR_PORT`, `INTERN_DD_SITE`, `INTERN_VM_REPORT_URL`. `INTERN_OTEL_COLLECTOR_IMAGE` is also a `[vars]` entry in `wrangler.toml` as of ORI-1878, on the same terms as the two images below; it was never bound as a secret on the deployed worker, so that move did not hit the var-vs-secret collision either.
+- **Optional-everywhere secrets**: `INTERN_DD_API_KEY` — telemetry export is opt-in on this key. It is **bound in prod** (confirmed via `wrangler secret list`, ORI-1878), so the collector sidecar does run on production interns; it stays unset in dev, which is what keeps it unregistered here. Register it once it is confirmed set at this path in dev.
 - **E2E-only base-URL overrides**, documented in `env.ts` as staying unset in production: `CF_API_BASE_URL`, `GCP_COMPUTE_API_BASE_URL`, `GCP_STORAGE_API_BASE_URL`, `GCP_ARTIFACT_REGISTRY_API_BASE_URL`.
 - **Prod-only overrides.** Infisical **prod** reads return `403 You are not allowed to readValue on secrets` under ordinary developer credentials, so these cannot be confirmed *from Infisical* on a laptop. `npx wrangler secret list --config wrangler.toml` can: it prints the names bound on the deployed worker with no Infisical prod access at all. Re-run it before trusting this classification of the four names:
   - `INTERN_VAULT_API_KEY`, `INTERN_VAULT_TUNNEL_URL` — **bound in prod**. Genuine prod-only overrides.

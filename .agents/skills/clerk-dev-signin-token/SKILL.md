@@ -1,163 +1,66 @@
 ---
 name: clerk-dev-signin-token
-description: Headless login to the local dev web app (localhost:3000) using Clerk Backend API sign-in tokens (ticket strategy). Use when an agent session needs an authenticated browser session on local dev — avoids the shared password account and email-code flows entirely, so concurrent sessions never trip Clerk account lockouts. Dev Clerk instance only; not for production.
+description: Headless login to the local development app with a Clerk sign-in ticket. Supports the seeded account or an optional isolated user for auth testing.
 ---
 
-# Clerk Dev Sign-In Token Login
+# Clerk development sign-in tokens
 
-Log into the local dev web app without a password or email code by
-minting a one-time sign-in token with the dev Clerk secret key and
-consuming it in the browser via the `ticket` strategy. Each session
-gets its own throwaway `+clerk_test` user, so any number of concurrent
-agent sessions can log in without contention or lockouts.
+Start the app with [local-dev-env](../local-dev-env/SKILL.md). Use this helper when browser automation needs a sign-in ticket; the seeded account's email-code login remains the default manual path.
 
-**Dev instance only.** The script refuses to run unless
-`CLERK_SECRET_KEY` is an `sk_test_` key.
+## Mint a ticket
 
-## 1. Mint a user + ticket
-
-Requires the web dev server running (`bun run dev web`) and Infisical
-machine-identity auth (see `tilt-testing` skill, Section 7):
+From the repository root, with an authenticated Infisical session (see [Secret Management](../../../AGENTS.md#secret-management)):
 
 ```bash
-cd /path/to/openrouter-web
-export INFISICAL_TOKEN=$(infisical login --method=universal-auth \
-  --client-id="$INFISICAL_CLIENT" --client-secret="$INFISICAL_SECRET" \
-  --silent --plain)
-export TICKET_FILE=$(mktemp -t clerk-ticket.XXXXXX.json)  # per-invocation, 0600 perms
-trap 'rm -f "$TICKET_FILE"' EXIT  # every exit path removes the ticket
+export TICKET_FILE=$(mktemp -t clerk-ticket.XXXXXX)
+trap 'rm -f "$TICKET_FILE"' EXIT
 infisical run --projectId=771b7bc0-6578-41b0-886e-9fcdb66e9173 \
   --env=dev --path=/projects/web -- \
-  bun scripts/clerk-dev-signin-token.ts > "$TICKET_FILE"
+  bun run scripts/clerk-dev-signin-token.ts \
+    --email dev+clerk_test@openrouter.ai > "$TICKET_FILE"
 ```
 
-Output: `{ user_id, email, ticket }`. By default it reuses one
-deterministic `devin+clerk_test_<machine-id>@openrouter.ai` user per
-machine, keyed on `/etc/machine-id` so distinct agent VMs get distinct
-users even when they share a hostname. Reuse rather than minting per run
-keeps the shared tenant browsable. Flags:
+The JSON contains `user_id`, `email`, and `ticket`. Tickets are single-use and expire after 10 minutes. The script requires a development `sk_test_` Clerk key.
 
-- `--email <email>` — reuse a specific account (e.g. the one that
-  owns seeded data or an admin grant).
-- `--fresh` — force a new throwaway user when isolation matters.
-- `--cleanup` — delete `devin+clerk_test_*` users with no activity
-  (sign-in or creation) in the last day, instead of minting a token.
-  Every mint also runs this cleanup best-effort (logged to stderr),
-  so the generated population self-prunes without extra invocations.
+| Script option | User selected |
+| --- | --- |
+| `--email <email>` | Reuses that account, creating it if absent. The example selects the seeded account. |
+| No user option | Reuses one generated account per machine, using `/etc/machine-id` or the hostname as a fallback. |
+| `--fresh` | Creates a new account. Use for [isolated auth tests](../local-dev-env/references/isolated_users.md). |
+| `--cleanup` | Deletes generated accounts inactive for over a day instead of minting a ticket. |
 
-Tokens are single-use and expire after 10 minutes.
+Each mint also attempts cleanup of stale generated accounts. Activity includes the last ticket mint, sign-in, or creation; the just-minted user is excluded.
 
-## 2. Consume the ticket in the browser
+## Sign in
 
-**Simplest path: open it as a URL.** Nothing to script, and it works in a human's own browser as well as an agent's:
-
-```text
-<web-origin>/sign-in#/?__clerk_ticket=<ticket>
-```
-
-Note the `#/` — the root route does not consume the ticket, it just renders the signed-out home page. [`local-dev-env`](../local-dev-env/SKILL.md) → "Ticket gotchas" owns this path and the rest of them (single-use tickets, and why a long JWT must never be typed by synthetic keystrokes).
-
-`<web-origin>` is **not** always `localhost:3000` — under Tilt the web app gets a per-branch port. Read the real one rather than assuming:
+Get the actual app origin from Tilt:
 
 ```bash
 tilt get uiresources -o json \
-  | jq -r '.items[]|select(.metadata.name=="web")|.status.endpointLinks[]?.url'
+  | jq -r '.items[] | select(.metadata.name=="web") | .status.endpointLinks[]?.url'
 ```
 
-Use the scripted flow below instead when the session needs to branch on the `status` (e.g. `needs_second_factor`) rather than just land signed in.
+Open `<web-origin>/sign-in`. For manual login, enter the returned email, choose **Use another method** → **Email code**, and enter `424242`.
 
-```bash
-agent-browser connect 29229
-agent-browser open http://localhost:3000
-TICKET=$(python3 -c "import json,os;print(json.load(open(os.environ['TICKET_FILE']))['ticket'])")
-agent-browser eval "(async () => {
-  const res = await window.Clerk.client.signIn.create({ strategy: 'ticket', ticket: '$TICKET' });
-  if (res.status === 'complete') {
-    await window.Clerk.setActive({ session: res.createdSessionId });
-    return 'signed-in:' + window.Clerk.user?.id;
-  }
-  return 'status:' + res.status;
-})()"
+For browser automation that supports page JavaScript, wait for `window.Clerk.loaded` and call the same ticket flow used in `tests/web-e2e/global-setup.ts`:
+
+```javascript
+const result = await window.Clerk.client.signIn.create({
+  strategy: 'ticket',
+  ticket: '<ticket>',
+});
+if (result.status === 'complete') {
+  await window.Clerk.setActive({ session: result.createdSessionId });
+}
 ```
 
-If the browser is already signed in as another user, run
-`agent-browser eval "window.Clerk.signOut()"` first.
+For Mission Control, enable `internal` and `mission-control` using local-dev-env, use its Tilt origin, and run the scripted flow after Clerk loads. The same development Clerk tenant is used; the local user also needs `users.is_admin = true`.
 
-Expect `signed-in:user_...`, then `rm -f "$TICKET_FILE"` (the EXIT trap
-also covers crashed/interrupted runs, but don't leave a still-valid
-ticket lying around longer than needed). Reload any page and the
-session is active. A brand-new user lands on the onboarding flow first — click
-through "Individual" to provision the workspace + API key.
+Confirm the active user and workspace match the test. Select **Personal** for personal-account tests; retain the intended organization for organization tests. Remove the ticket file after use.
 
-If `signIn.create` reports `session_exists` while `window.Clerk.user` is
-null, inspect `window.Clerk.client.sessions` and call
-`window.Clerk.setActive({ session: <active-session-id> })` before reloading.
+## Troubleshooting
 
-`agent-browser eval` of an awaited IIFE can return `CDP error: Promise was
-collected`, or look like it never settles, even when the sign-in already
-succeeded. Kick the call off without awaiting it inside the eval (store the
-outcome on a `window.__*` global, read that global in a follow-up eval), and
-check `window.Clerk.client.sessions` before retrying — retrying against an
-already-created session fails with "Session already exists".
-
-## Notes
-
-- If the script exits with the `CLERK_SECRET_KEY missing` error and you
-  cannot get Infisical access to `/projects/web`, fall back to signing in
-  as `dev+clerk_test@openrouter.ai` with the email code `424242`.
-- Admin gate: after login, grant admin in local Postgres keyed to the
-  printed `user_id` (see `setup-quality-tournament-env` skill).
-- Mission control (`bun run dev mission-control`, localhost:3001) shares the
-  dev Clerk tenant, so mint the ticket the same way and consume it on
-  `http://localhost:3001`. Its pages also need a `users` row for the minted
-  `clerk_user_id` — without one, API routes 401 with "User not found". Note
-  `bun run db:reset` drops that row, so re-insert it after reseeding. For
-  organization-scoped sessions, also insert the Clerk organization ID as an
-  `is_organization` row. With Postgres down entirely
-  (`ECONNREFUSED 127.0.0.1:54322`) pages redirect-loop into
-  `ERR_TOO_MANY_REDIRECTS`, so run `bun run db:start` first. Admin is the
-  `users.is_admin` column.
-- Chatroom (`localhost:3000/chat`) requests from a freshly minted user fail
-  with "Insufficient credits" — insert a `credits` row for the minted
-  `clerk_user_id` (`INSERT INTO credits (created_at, amount, clerk_user_id,
-  note) VALUES (now(), 100, '<user_id>', 'local dev testing')`).
-- Mission control's dev `CLICKHOUSE_URL` points at a local ClickHouse; for
-  pages that read real analytics, override `CLICKHOUSE_*` in the root
-  `.env.development.local` with read-only cluster credentials instead of
-  seeding locally.
-  If `bun run dev mission-control` re-injects the local value, launch
-  `next dev --port 3001 --turbo` directly under the Infisical environment
-  with the read-only `CLICKHOUSE_*` overrides.
-- Settings pages that read `/api/frontend/v1/private/*` (e.g.
-  `/settings/notifications`) 404 with `bun run dev web` alone — start
-  `bun run dev web cfw-frontend-api` so the worker serves those routes.
-- A `--fresh` user's `/api/frontend/v1/private/*` routes return **403**
-  (not the expected 404 "Customer not found" for e.g. `/private/stripe`)
-  until Clerk's `user.created` webhook has inserted the `users` row in local
-  Postgres. Under Tilt, enable/trigger the `clerk-webhook` (smee) resource
-  before minting, or nudge a sync afterwards with a harmless Clerk
-  `user.updated` (metadata) call, and confirm `POST /api/webhooks/clerk - 200`
-  plus `SELECT clerk_user_id FROM users WHERE clerk_user_id = '<user_id>'`.
-  To test the no-Stripe-customer state, do not add a billing address —
-  `users.stripe_customer_id` must stay NULL.
-- Do not use this for `openrouter.ai` / the prod Clerk tenant; use the
-  `/tests/e2e` credentials there.
-- Simplest manual login: `dev+clerk_test@openrouter.ai`, email code
-  `424242`. Seeded with credits, no password. Prefer this skill's tokens
-  when a session needs its own isolated user.
-- The legacy `$CLERK_DEV_USERNAME_PASSWORD` password flow still works
-  for one-off manual logins, but prefer this skill for agent sessions
-  to avoid lockouts on the shared account.
-- Works for Mission Control (localhost:3001) too: mint with
-  `--path=/projects/mission-control` instead of `/projects/web` (same
-  script), consume the ticket on `http://localhost:3001/` (the root —
-  `/sign-in` redirect-loops in the dev server), then grant admin the
-  same way (Mission Control gates on `users.is_admin` in local
-  Postgres; `bun run db:start` if the container is
-  stopped, and wait ~60s for the is-admin cache).
-- If Mission Control pages keep failing with "User not found" even
-  though the `users` row exists, check `window.Clerk.organization` — a
-  session activated into a Clerk organization looks up the org's entity
-  id, not the user's. Switch to the personal account with
-  `window.Clerk.setActive({ session: <session-id>, organization: null })`
-  and reload.
+- If already signed in as another user, sign out before consuming a new ticket. If `session_exists` appears while `window.Clerk.user` is empty, inspect `window.Clerk.client.sessions` and activate the existing session before retrying.
+- A browser automation evaluation can time out after sign-in succeeds. Check the active session before consuming another single-use ticket.
+- A newly created Clerk user is not automatically a fully provisioned local app user. See [isolated users](../local-dev-env/references/isolated_users.md) for webhook sync, onboarding, credits, and permission fixtures.
+- This helper is for the development Clerk tenant. The `/tests/e2e` password credentials are for deployed-site tests.

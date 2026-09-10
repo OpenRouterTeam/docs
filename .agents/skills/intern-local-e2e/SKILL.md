@@ -38,20 +38,15 @@ Order matters: the Tiltfile reads the tunnel hostname at load time, so a tunnel
 started afterwards is invisible to it.
 
 ```bash
-bun run dev:ports on                      # per-worktree ports
-set -a && . ./.env.worktree && set +a     # Tilt does NOT read this by itself
-
-cloudflared tunnel --url http://localhost:$WEB_PORT   # leave running; note the hostname
+cloudflared tunnel --url http://localhost:3000   # use WEB_PORT from .env.worktree if enabled
 export DEV_TUNNEL_HOSTNAME=<hostname-without-scheme>
 
-tilt up -- web frontend-api intern-provisioner api
+bun run dev:up
 tilt trigger intern-provisioner
+tilt wait --for=condition=Ready uiresource/intern-provisioner --timeout=300s
 ```
 
-Include **`api`** if you want the intern's model calls to work against your
-local stack, or if you want `/api/v1/*` served at all. It is not in the minimal
-set but pulls in `clickhouse-migrate`, `usage-record`, `pubsub` and `redis`,
-which take a while the first time.
+Follow [local-dev-env](../local-dev-env/SKILL.md) for service readiness. Tilt reads `.env.worktree` itself; a shell command such as cloudflared needs the matching port explicitly.
 
 Run **exactly one** `cloudflared`. Multiple live tunnels is the most
 disorienting state available here: Slack redirects to whichever hostname was
@@ -194,8 +189,8 @@ gcloud compute instances delete <name> --project=ext-interns-spawner-000 --zone=
 
 - `local-intern-chat` — when you only need a talkable intern with no
   provisioning: `tilt up -- --interns` runs the ori-runtime container locally
-  with a dev-only web chat (no GCP VM, no Slack, no vault)
+  and the chatroom or Chat tab talks to it (no GCP VM, no Slack, no vault)
 - `services/cfw-intern-provisioner/AGENTS.md` — the runbook, indexed by symptom
-- `tilt-testing` — resource readiness, manual-trigger reference
+- `local-dev-env` — resource readiness and service selection
 - `clerk-dev-signin-token` — headless sign-in
 - `ori-testing` — deploys, artifact verification, the vault injection contract

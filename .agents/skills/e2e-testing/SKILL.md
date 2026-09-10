@@ -108,7 +108,7 @@ import { expect, it, vi } from 'vitest';
 import { callChatCompletion } from '@/api/completions/shared';
 import snapshot from './snapshot.json';
 
-vi.setConfig({ testTimeout: 47_000_000 });
+vi.setConfig({ testTimeout: 60_000 });
 
 it('e2e bug', async () => {
   // @ts-expect-error - raw snapshot
@@ -173,7 +173,7 @@ import { TestModelGroups } from '@/config/test-models';
 import { RequestBuilder } from '@/fixtures';
 import { callApi } from '@/utils/call-api';
 import { assertSuccessfulCompletion }
-  from '../../shared/assertions';
+  from '@/api/shared/assertions';
 
 describe('Feature Name', () => {
   describe.each(TestModelGroups.fast)('Model: %s', (model) => {
@@ -210,7 +210,7 @@ describe('Feature Name', () => {
 
 **Running:**
 ```bash
-cd tests/e2e && bun run test:e2e <path-to-test>
+cd tests/e2e && bun run test:e2e run <path-to-test>
 ```
 
 ### Guidelines for writing tests
@@ -225,8 +225,7 @@ cd tests/e2e && bun run test:e2e <path-to-test>
   for type-safe model references
 - Always use `writeJsonToFile` to persist responses — they
   go to `.logs/` and are gitignored
-- Set long timeouts (`47_000_000`) for fusion tests that
-  make multiple LLM round-trips
+- Set timeouts from the test's expected duration; investigate stalls before increasing them
 - Check `isDefinedAndNotNull` when filtering
   `extractAnnotations` results
 
@@ -234,39 +233,28 @@ cd tests/e2e && bun run test:e2e <path-to-test>
 
 ## Running API E2E Tests
 
-### Deterministic upstream via local fake-provider (no Tilt)
+### Setup
 
-To exercise the router against a controllable upstream without Tilt,
-route the seeded private model `openrouter/fake` (FakeProvider) at the
-local fake provider:
+Start and wait for the stack using [local-dev-env](../local-dev-env/SKILL.md). Enable the worker under test and `dev-fs-logs`; enable usage pipelines when checking persisted billing.
 
-1. Start it with `FAKE_PROVIDER_PORT=3002 bun run dev` in
-   `services/fake-provider`, setting `FAKE_PROVIDER_API_KEY` to the value
-   read from Infisical (`infisical secrets get FAKE_PROVIDER_API_KEY`
-   with `--env=dev --path=/services/cfw-api` and the repo project ID from
-   the root AGENTS.md).
-2. Repoint the provider in local Postgres:
-   `update providers set base_url='http://localhost:3002/v1' where provider_name='FakeProvider';`
-3. `openrouter/fake` is `is_private=t`, so grant the seeded dev user:
-   `insert into private_model_access (model_permaslug, entity_id) values ('openrouter/fake-20260806','user_2xyeKet6gI2xZ0U4UoshenrrGi1');`
-4. Warm the KV cache (`rm -rf services/cfw-api/.wrangler/state/v3/kv`,
-   then `cd services/cfw-api && bun run test:cron`) — requires the local
-   ClickHouse container (see stage-endpoint skill) or the warm cron fails.
-   If the warm logs show `Unknown table expression identifier ... _mv`, the
-   ClickHouse container is missing migrations — run
-   `cd packages/clickhouse && bun run ch:migrate`, then re-run `test:cron`.
-   If step 2's UPDATE hits 0 rows, the Postgres seed data is stale/empty
-   even though `db:start` says "Skipping seed.sql (already applied)" —
-   run `bun run db:reset` first, then redo steps 2–3.
-5. Call with `Authorization: Bearer sk-or-v1-unlimitedkey` and
-   `"model": "openrouter/fake"`.
+The harness defaults to `TEST_ENV=local`, API origin `http://127.0.0.1:8787`, and the seeded `sk-or-v1-unlimitedkey`. Set `OPENROUTER_API_BASE` to the actual `api` origin from Tilt when ports differ. It takes an origin without `/api/v1`. Other workers have separate overrides in `tests/e2e/utils/config.ts`, including `OPENROUTER_PUBLIC_API_BASE` and `OPENROUTER_WEBHOOKS_BASE`.
 
-Router `wLog`/`iLog` output (e.g. new observability log lines) appears in
-the `bun run dev cfw-api` wrangler stdout — capture it to a file to grep.
-cfw-api talks to the upstream via SSE by default even for non-streaming
-client requests, so a temporary fake-provider patch that only changes the
-non-streaming JSON branch won't be exercised — patch the streaming chunk
-generator too.
+`tests/e2e/.env.local`, when present, overrides shell values. Check its target and key settings before switching between local and deployed tests. Provider credentials belong in the worker's Infisical scope; the local caller key is not a provider credential.
+
+### Deterministic upstream via local fake-provider
+
+`fake-provider` starts automatically with the stack in both profiles. Wait for it, then run the existing routing helper from the repository root:
+
+```bash
+tilt wait --for=condition=Ready uiresource/fake-provider --timeout=300s
+bun run x scripts/use-local-fake-provider.ts
+```
+
+It changes FakeProvider's base URL, unhides its seeded `openai/gpt-4.1-2025-04-14` endpoint, grants private endpoint access to local API-key owners, warms KV, and requests an API restart. Pass the actual `FAKE_PROVIDER_PORT` and `CFW_API_PORT` if overridden. Check the helper's warnings and confirm the new worker run before testing.
+
+Request `"model": "openai/gpt-4.1-2025-04-14"` with `"provider": {"order": ["fake-provider"], "allow_fallbacks": false}`. The provider restriction keeps the test on the fake upstream. See [Fake Provider](../../../services/fake-provider/README.md) for response controls.
+
+Router logs appear in `tilt logs api`; upstream logs appear in `tilt logs fake-provider`. cfw-api prefers upstream SSE even for a non-streaming caller, so test the relevant upstream transport when changing the fake response generator.
 
 Gotchas when synthesizing upstream logprobs or changing endpoint capabilities:
 
@@ -275,30 +263,9 @@ Gotchas when synthesizing upstream logprobs or changing endpoint capabilities:
   `packages/router/adapters/base/make-output/normalize-logprobs.ts` Zod-guards
   with a required (nullable) `bytes` field and silently drops the whole
   logprobs object if it's missing, making it look like a router bug.
-- Endpoint `supported_parameters` come from `providers.supported_parameters`
-  in local Postgres (not a column on `endpoints`). After changing them,
-  re-warm the running worker with
-  `curl 'http://localhost:8787/__scheduled?cron=*/5+*+*+*+*'` (what
-  `test:cron` runs) — no KV wipe or worker restart needed.
-- `tsx --watch` on fake-provider may not reload reliably; restart the
-  process (in a dedicated shell) after patching and verify with a direct
-  curl to :3002 before testing through the router.
-- HIPAA-workspace keys (`sk-or-v1-hipaaexplicitwskey`) are dispatched from
-  :8787 to the HIPAA mirror, which must be running separately
-  (`cd services/cfw-api && bun run dev:hipaa`, port 8818). The mirror
-  reads the `hipaa-dev` Infisical env, so put the `dev`
-  `FAKE_PROVIDER_API_KEY` in the repo-root `.env.development.local`
-  (gitignored, loaded after Infisical) before starting it, or the eligible
-  path fails with `Provider returned error` 401. Editing `.dev.vars.hipaa`
-  by hand does not reload the running worker. The only models with a
-  BAA-eligible endpoint locally are the `db:seed` fixtures
-  `openrouter/fake-hipaa` (eligible + cheaper ineligible sibling) and
-  `openrouter/fake-hipaa-ineligible`; every other model 403s for a HIPAA
-  key. The mirror itself is invisible on the wire — prove a request was
-  served there from `is_hipaa_generated = true` on its Spanner
-  `generations` row, or run `tests/e2e/api/hipaa` (see
-  `tests/e2e/README.md` → HIPAA Mirror Suite), which covers dispatch,
-  unsupported surfaces, eligibility routing, and sink isolation.
+- After changing endpoint capabilities or pricing, use local-dev-env's cache-refresh steps.
+- Restart `fake-provider` after changing its response generator and verify a direct request before testing through the router.
+- HIPAA tests need the `api-hipaa` resource and its `hipaa-dev` Infisical scope. Use the seeded HIPAA fixtures and the [HIPAA Mirror Suite](../../../tests/e2e/README.md#hipaa-mirror-suite); a missing mirror or credential is not a routing result.
 - To force the supersize/DO-hydration path on a chat request, send
   `x-offload-large-fields: 1`; a large multimodal body alone does not
   route through the Durable Object. Confirm with a `process-stream-json:*`
@@ -317,30 +284,6 @@ Gotchas when synthesizing upstream logprobs or changing endpoint capabilities:
   wait for the reload before capturing a "before" or control run, or the
   worker still serves the patched code.
 
-### Setup
-
-1. Start dev-fs-logs: `bun run dev dev-fs-logs`
-2. Start the API server: `bun run dev cfw-api`
-   - If `CF_API_TOKEN` errors occur, comment out the `[ai]`
-      binding in `cfw-api/wrangler.toml` as a workaround.
-   - If every model returns 400 "not a valid model ID", the
-     local database is unseeded — run `bun run db:seed` first.
-   - For generation-row verification in lean Tilt mode, start
-     `usage-record` with its local Postgres pool variables populated;
-     the default resource can boot without them and then drops rows.
-     Trigger `dataflow`, `insert-generations-clickhouse`, and
-     `dev-fs-logs` before sending requests when those resources are
-     manual or disabled.
-3. Ensure `tests/e2e/.env.local` has a valid
-    `OPENROUTER_API_KEY`. If not, source it from Infisical or
-    the stored secret.
-4. Expect `api/messages/multimodal/file` (PDF-by-URL) to time out
-   against a local worker even on plain main: the offloaded document
-   payload goes through the supersize/DO-hydration path, the Anthropic
-   attempt can 500 with `DO_HYDRATION_ERROR`, and the fallback stalls
-   while the worker streams keepalive whitespace. Reproduce on a main
-   checkout before treating it as a branch regression.
-
 ### Testing billing routes on local cfw-frontend-api (stripe-credit-purchase)
 
 `POST /api/frontend/v1/private/stripe-credit-purchase` needs more than a
@@ -352,10 +295,7 @@ signed-in dev Clerk session before the handler's guards even run:
   customer that has a **name and a US billing address**, or the route
   returns `Customer not found` (500), `Customer name is required` (400),
   or `Billing address is invalid` (400) before the purchase logic.
-- The handler calls the `usage-record` service binding and throws if the
-  worker is absent; start it with its Postgres pool variable and a free
-  inspector port, e.g.
-  `WRANGLER_INSPECTOR_PORT=9230 PG_US_CENTRAL1_POOL_DB_URL=postgres://postgres:postgres@localhost:54322/postgres bun run dev usage-record`.
+- The handler calls the `usage-record` service binding. Confirm that Tilt resource is running; inspect its startup logs and required environment if billing calls fail.
 
 A successful call returns `200 {"data":{"clientSecret":"pi_..."}}` and logs
 `Credit purchase initiated` and `Top Up: triggered` in the worker stdout.
@@ -389,9 +329,7 @@ the `webhooks` Tilt resource on `:8807` (see `tests/e2e/webhooks/`):
 - No inference runs, so `dev-fs-logs` stays empty. Evidence is the test's
   `.logs/*.ignore.json` response captures plus `tilt logs webhooks` for the
   handler's structured log lines.
-- The vitest setup gate requires cfw-api on `:8787` even for webhook-only
-  runs. When only the worker is up (`cd services/cfw-webhooks && bun run dev`),
-  run with `SKIP_CFW_API_CHECK=1`.
+- The Vitest setup gate checks the configured cfw-api origin even for webhook-only runs. `SKIP_CFW_API_CHECK=1` skips that API check; local Postgres is still required.
 - `tests/e2e/webhooks/route-contract.test.ts` pins the Stripe, Coinbase
   Business and Sequence HTTP contract (invalid signature status, empty error
   bodies, `405` + `Allow: POST` on non-POST). The signed cases read
@@ -401,18 +339,13 @@ the `webhooks` Tilt resource on `:8807` (see `tests/e2e/webhooks/`):
 
 ### Batch API Tests
 
-Batch tests require the full batch stack:
+Follow [batch-api-testing](../batch-api-testing/SKILL.md#driving-the-live-local-stack) for the exact resources, rate-limiter check, and Pub/Sub subscription readiness. `cfw-batch-api` depends on `gcp-batch-api`, fake GCS, and the fake upstream; confirm all of them are Ready.
+
 ```bash
-tilt up cfw-batch-api dataflow-async-jobs
+cd tests/e2e && bun run test:e2e run api/batches
 ```
 
-If submissions return a 429 mentioning `openrouter_limiter_unavailable`, enable
-the local `redis` and `serverless-redis-http` resources before retrying.
-
-The tests self-skip when services are unavailable. Run with:
-```bash
-cd tests/e2e && bun run test:e2e api/batches
-```
+Some batch suites skip when dependencies are unavailable. Check that the intended cases executed.
 
 ### Run Tests
 
@@ -420,10 +353,10 @@ cd tests/e2e && bun run test:e2e api/batches
    searching `tests/e2e/api/` for related test names.
 2. Run the relevant subset:
    ```bash
-   cd tests/e2e && bun run test:e2e <path-to-relevant-test>
+   cd tests/e2e && bun run test:e2e run <path-to-relevant-test>
    ```
    If the change is broad (e.g. a core adapter refactor), run
-   the full suite: `cd tests/e2e && bun run test:e2e`
+   the full suite: `cd tests/e2e && bun run test:e2e run`
 3. After tests complete, check dev-fs-logs for the most recent
    generation:
    ```bash
@@ -433,7 +366,7 @@ cd tests/e2e && bun run test:e2e api/batches
    dev-fs-logs writes one `gen-<id>/` directory per inference
    generation only. A change on a non-inference route (auth
    middleware, `/api/v1/credits`, key management) leaves `.logs/`
-   empty; use the wrangler request log from `bun run dev cfw-api`
+   empty; use the worker request log from `tilt logs api`
    as the evidence instead and say so in the PR (PR #39640).
 
 ### Report
@@ -468,22 +401,7 @@ vendor API and reading its usage details.
 
 ### Setup
 
-1. Start the local stack: `tilt up` (use `TILT_PROFILE=lean tilt up` if encountering OOM)
-2. Wait for services:
-   ```bash
-   tilt wait --for=condition=Ready \
-     uiresource/postgres uiresource/postgres-migrate \
-     uiresource/postgres-seed uiresource/web \
-     --timeout=300s
-   ```
-3. Ensure database is seeded: `bun run db:reset`
-4. Log in at `http://localhost:3000` using the
-   [`clerk-dev-signin-token`](../clerk-dev-signin-token/SKILL.md)
-   skill (headless sign-in token against the dev Clerk tenant — no
-   shared password account, no lockouts).
-5. If the flow calls a private `/api/frontend/v1` route, start the
-   local `cfw-frontend-api` service as well; a standalone web server
-   returns 404 for those same-origin paths.
+Start the app and sign in using [local-dev-env](../local-dev-env/SKILL.md). Use the actual web origin from Tilt. For auth or onboarding tests that need a new identity, use the optional [isolated-user workflow](../local-dev-env/references/isolated_users.md).
 
 ### Browser Tool Selection
 
@@ -497,28 +415,23 @@ Use whatever browser tool is available in your environment:
 Do not assume a specific browser tool is connected.
 Check what tools are available before proceeding.
 
-For automated Playwright tests (`tests/web-e2e/`), credentials are
-injected by Infisical at path `/tests/e2e`. Run with:
-```bash
-bun run --filter tests/web-e2e e2e
-```
-These are read by `tests/web-e2e/global-setup.ts` to
-authenticate before Playwright tests. `E2E_CLERK_USER` /
-`E2E_CLERK_PASSWORD` belong to the **prod** Clerk tenant — do not
-use them against localhost.
+For deployed-site Playwright tests (`tests/web-e2e/`), credentials are injected from Infisical at `/tests/e2e`:
 
-To render every route in `projects/web/app` against the local stack
-(Tilt up is the only precondition; it builds and serves the production
-app itself, dev Clerk ticket, runtime fixtures):
+```bash
+bun run --filter @openrouter-monorepo/test-web-e2e e2e
+```
+
+This command defaults to `https://openrouter.ai`; it does not target the local stack. `E2E_CLERK_USER` and `E2E_CLERK_PASSWORD` belong to the deployed Clerk tenant.
+
+For local route smoke tests, use the runner that builds the production app, mints a development ticket, and provisions local fixtures:
+
 ```bash
 cd tests/web-e2e && bun run e2e:local
 ```
-Knobs: `LOCAL_ROUTE_SMOKE_RUNS=3` (repeat for flakiness),
-`LOCAL_ROUTE_SMOKE_WORKERS` (keep the default; the single local
-`next start` is the bottleneck, and higher counts cause hydration
-failures on the activity pages),
-`LOCAL_ROUTE_SMOKE_BUILD=never` to reuse an existing `.next` build.
-Details in `tests/web-e2e/scripts/run-local-route-smoke.ts`.
+
+It requires the local stack and an authenticated Infisical session. `BASE_URL` defaults to `http://localhost:3000`; set it to the local web origin when ports differ. The runner temporarily disables Tilt's web dev server while it builds and serves the app. Set `LOCAL_ROUTE_SMOKE_NEXT_PORT` to a free port if the default (web port + 1) is occupied.
+
+`LOCAL_ROUTE_SMOKE_RUNS=3` repeats for flakiness. `LOCAL_ROUTE_SMOKE_WORKERS` defaults to 4. `LOCAL_ROUTE_SMOKE_BUILD=never` reuses an existing build, so use it only when that is the build under test. See `tests/web-e2e/scripts/run-local-route-smoke.ts` for options and result checks.
 
 Gotchas the runner already handles, worth knowing when you script around it:
 - The `/projects/web` Infisical path injects `NODE_ENV=development`; set
@@ -532,11 +445,9 @@ Gotchas the runner already handles, worth knowing when you script around it:
 
 ### Sign In Flow (local manual browser testing)
 
-1. Mint and consume a sign-in ticket per the
-   [`clerk-dev-signin-token`](../clerk-dev-signin-token/SKILL.md)
-   skill — no sign-in form, password, or email code needed.
-2. Wait for the session to become active (reload any page).
-3. Call `window.Clerk.setActive({ organization: null })` to deactivate any active org, ensuring the saved session runs in personal-account context
+1. Use the seeded email-code login from local-dev-env, or mint a [sign-in ticket](../clerk-dev-signin-token/SKILL.md) for browser automation.
+1. Confirm the session is active.
+1. Select **Personal** for personal-account tests, or the organization required by the test.
 
 **Verify which context is actually active before asserting auth
 behavior** — a restored session can come back with an org active,
@@ -632,41 +543,19 @@ When changes affect the chatroom or playground features
 specifically, follow these additional steps.
 
 ### Local Login
-Use the
-[`clerk-dev-signin-token`](../clerk-dev-signin-token/SKILL.md)
-skill to sign in on localhost (requires Infisical access to
-`/projects/web`; see `AGENTS.md` § Secret Management for the auth
-snippet).
+
+Use the seeded login in [local-dev-env](../local-dev-env/SKILL.md#sign-in), or [Clerk sign-in tokens](../clerk-dev-signin-token/SKILL.md) for headless browser automation.
 
 ### Known Issues
 
-**Docker network causes browser ERR_NETWORK_CHANGED:**
-When tilt starts, Docker creates and modifies networks
-repeatedly. This causes Chrome to throw `ERR_NETWORK_CHANGED`
-errors for several minutes. Wait 3-5 minutes after `tilt up`
-for Docker networking to stabilize. If the browser is stuck,
-restart it and wait before navigating.
+**Browser `ERR_NETWORK_CHANGED` during Docker startup:** wait for the required resources to become ready, then reload. For persistent failures, inspect Docker network events with `docker events --filter type=network`.
 
-To monitor Docker network events (useful for diagnosing
-persistent network issues):
-```bash
-docker events --filter type=network
-```
-
-**Firecracker / lightweight-VM issues:** See the
-[tilt-testing skill § 9](../tilt-testing/SKILL.md#9-firecracker--lightweight-vm-known-issues)
-for Flannel VXLAN crashes, DNS resolution failures, and memory
-constraints on ≤16 GB VMs.
-
-**cfw-api may not start** without `CLOUDFLARE_API_TOKEN`.
-The chatroom UI will load but API requests will fail with
-500 errors. You can still verify frontend behavior (system
-prompt, UI state) but not end-to-end API responses.
+**Chat requests fail while the page loads:** check `tilt logs api` and the API readiness result. Resolve the reported service or credential failure before treating the UI interaction as an end-to-end pass.
 
 ### Testing System Prompt
 
-1. Navigate to `http://localhost:3000/chat`
-2. Login via the [`clerk-dev-signin-token`](../clerk-dev-signin-token/SKILL.md) skill if not already logged in
+1. Navigate to `/chat` on the web origin shown by Tilt
+2. Sign in using local-dev-env if needed
 3. Select a model (click on a model icon in the flagship
    models section)
 4. Click the three-dot menu (`:`) next to the model name
@@ -724,8 +613,7 @@ lint. If the change affects runtime behavior, test it.
 
 ## Related Skills
 
-- `tilt-debug` — trace an inference request through the full
-  local Tilt stack (cfw-api → usage-record → dataflow → Spanner)
+- [`local-dev-env`](../local-dev-env/SKILL.md) — local stack setup, service readiness, and inference tracing
 - `create-fixtures` — create upstream SSE fixtures and snapshot
   tests for the adapter → plugins → skin pipeline
 - `stage-endpoint` — get a model + endpoint into local Postgres

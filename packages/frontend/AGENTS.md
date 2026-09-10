@@ -46,6 +46,10 @@ These apply to `packages/frontend`, `projects/web`, and
   `--leading-body: 1.625`, `--leading-prose: 1.7`. Look values up in
   `theme.css` rather than assuming the framework default.
 
+## Scoped tests
+
+Run `bun test ./path/to/file.test.ts` from the owning package so its `bunfig.toml` preloads apply. In `projects/web` and `projects/mission-control`, `bun run test <path>` still runs the unfiltered Node suite before the DOM suite; use direct `bun test` for a single file. DOM tests in those two apps need `RTL_SKIP_AUTO_CLEANUP=true bun test --preload ./bun-test.dom-setup.ts ./path/to/file.dom.test.tsx`.
+
 ## Text Entry Submits Through a Native `<form>`
 
 Anything that submits — a dialog, sheet, drawer, or inline page section whose
@@ -55,6 +59,13 @@ free and one handler serves both the click and the keypress. Do not hand-roll an
 `onKeyDown` Enter check instead: it skips native validation and fires during IME
 composition. Gate submission with a disabled submit button, which blocks Enter
 too.
+
+A section nested inside another `<form>` cannot itself be a native `<form>`
+(nested forms are invalid HTML), so the wrapper is a plain element, the button
+is `type='button'` with an `onClick`, and Enter is wired through a guarded
+`onKeyDown` (`event.key === 'Enter' && !event.nativeEvent.isComposing`), gated
+on `formState.isSubmitting`. Exemplar:
+`projects/mission-control/app/private-access/PrivateAccessManager.tsx`.
 
 Two things the wrapper changes:
 

@@ -10,10 +10,7 @@ show no activity until rows are seeded.
 
 ## Prerequisites
 
-1. Start a lean stack with the web app and frontend API:
-   `TILT_PROFILE=lean tilt up -- web frontend-api`
-   ClickHouse and its migrations start as dependencies. Export `INFISICAL_TOKEN`
-   before starting Tilt so Postgres migrations can authenticate.
+1. Start the stack using [local-dev-env](../local-dev-env/SKILL.md). Confirm `clickhouse` and `clickhouse-migrate` are Ready.
 2. Sign in through the Clerk dev sign-in token flow.
 3. Record both the Clerk user ID and workspace ID. Rows are filtered by both.
 
@@ -54,12 +51,7 @@ for the same user and workspace (see the 35-day TTL note below), re-seed the
 first window, and confirm the control window's row count and `sum(usage)` are
 unchanged.
 
-The no-argument legacy path seeds every user over a full year and can exhaust a
-small local ClickHouse: it may exit non-zero with
-`(total) memory limit exceeded ... maximum: 921.60 MiB` from an insert. The
-container is capped around 1 GiB by default, so raising that cap (or accepting
-the partial seed) may be the workaround. It only appends, so a failure does not
-delete existing rows, and deterministic mode is unaffected.
+The no-argument legacy path seeds every user over a full year and can exhaust a small local ClickHouse. Lean mode now uses a 2 GiB container with a 1.5 GiB tracked-memory budget; an insert can still report `memory limit exceeded`. This path only appends, so a failure does not delete existing rows. Prefer the scoped deterministic command above for feature tests.
 
 The deterministic command fails with a nonzero exit status when no endpoints
 are available and reports that local setup is incomplete. The legacy no-args

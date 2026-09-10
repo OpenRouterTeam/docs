@@ -56,15 +56,18 @@ From repo root:
 
 ### 2. Start the development server
 
-Run `tilt up` in the repo root.
+Run `bun run dev:up` in the repo root. Startup failures include recovery steps.
 
-> **OOM issues?** If you encounter out-of-memory errors, use `TILT_PROFILE=lean tilt up` to start a reduced stack that disables rarely-needed services and caps container memory. They can still be started on demand via `tilt trigger <resource>`. On machines with ≤16 GB RAM, even lean mode is tight — see the [tilt-testing skill § 9](.agents/skills/tilt-testing/SKILL.md#9-firecracker--lightweight-vm-known-issues) for additional memory-reduction steps and Firecracker-specific fixes.
+Memory capacity below 20 GiB selects the `lean` profile; 20 GiB or more selects `full`. Capacity means total host RAM capped by an OS/container memory allowance, not currently free RAM. Both include the same services; Mission Control starts automatically in `full` and on demand in `lean`. Set `TILT_PROFILE=lean` or `TILT_PROFILE=full` before `bun run dev:up` to override. Lean startup prints commands for Mission Control and further service guidance.
 
-This will bring up some standard infra, and our core services:
-* `web` at http://localhost:3000 for the primary web app (originally, everything lived here)
-* `mission-control` http://localhost:3001 for our admin utilities
-* `cfw-api` at http://localhost:8787 for the primary API, including the router itself
-* `cfw-frontend-api` at http://localhost:8788 for the frontend API (WIP)
+See [Local development](.agents/skills/local-dev-env/SKILL.md) for readiness checks, additional services, login, and testing. Use the URLs reported by Tilt; environment and `.env.worktree` overrides can change ports.
+
+| Tilt resource | Default URL | Startup |
+| --- | --- | --- |
+| `web` | `http://localhost:3000` | Automatic |
+| `api` | `http://localhost:8787` | Automatic |
+| `frontend-api` | `http://localhost:8795` | Automatic |
+| `mission-control` | `http://localhost:3001` | Automatic in `full`, [on demand in `lean`](.agents/skills/local-dev-env/SKILL.md#mission-control); requires `internal` |
 
 There are a number of helpers within the tilt console to perform dev tasks, look for them on each resource's tab.
 
@@ -77,32 +80,23 @@ For example, "Reset DB" on the postgres pane will initialize local postgres. You
 
 ### 3. Create a dev account and log in
 
-Go to [localhost:3000](http://localhost:3000) and log in using your openrouter.ai email with g-suite SSO.
+Use the seeded development account described in [Local development](.agents/skills/local-dev-env/SKILL.md#sign-in). For auth and onboarding tests, see the optional [isolated-user workflow](.agents/skills/local-dev-env/references/isolated_users.md).
 
-To set this user as admin & fund their account with credits, add a `DEV_ADMIN_CLERK_USER_ID` to `.env.development.local` at the repository root with the value of the Clerk user ID you want to use as the admin. You can find the ID in the Clerk dashboard (https://dashboard.clerk.com/), in the Development project, or by querying the local database (`psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c 'SELECT id, clerk_user_id FROM users'`).
+For a personal development account, sign in with your OpenRouter Google account. To select a different seed admin, set `DEV_ADMIN_CLERK_USER_ID` in the root `.env.development.local` before rebuilding the database with `bun run db:reset`. That reset replaces local data.
 
-Then, run `bun run db:reset` to re-initialize the db with your new user as admin. This will now be smoother in all future db resets.
+Playwright's `bun run --filter @openrouter-monorepo/test-web-e2e e2e` defaults to the deployed site and reads its credentials from Infisical at `/tests/e2e`. For local route smoke tests, use `cd tests/web-e2e && bun run e2e:local`; see [e2e-testing](.agents/skills/e2e-testing/SKILL.md#frontend-e2e-testing) for target and authentication settings.
 
-**Note:** There is a `dev@openrouter.ai` user that can log in
-with email and password in
-[our shared 1password vault](https://start.1password.com/open/i?a=WK6A3KRXQRAIBBCLTNBQMDYNAQ&v=k4vuuxhx6e7u5bmzlipmxh6xy4&i=6duhpwj2dfbfhwj6iwxi2kjcym&h=openrouter.1password.com).
-This is the account that is used by default as the admin,
-and the one that Devin uses.
+### Verification
 
-For browser-based e2e testing (Playwright via `tests/web-e2e/`),
-credentials are sourced from Infisical at path `/tests/e2e`.
-Run with: `bun run --filter tests/web-e2e e2e`
-See `tests/web-e2e/package.json` for available scripts.
+Run `bun run verify` for formatting, lint, and typechecking. On macOS outside CI, it runs at low process priority with `GOMAXPROCS=8` and a five-minute typecheck timeout; existing `GOMAXPROCS` and `TYPECHECK_TIMEOUT_MS` overrides are preserved.
 
 ### Troubleshooting
 
-If your initial migrations don't seem to run for some reason, check the `openrouter-web_db` Docker container logs (`docker logs openrouter-web_db`).
+For migration failures, inspect `tilt logs postgres-migrate` and run `bun run db:status`. The local Postgres container is `openrouter-web_db`.
 
-If you get stuck with partial seeds or Docker issues–you can start fresh by clearing out the containers and volumes with `bun run x scripts/teardown.ts`.
+For occupied ports, stop the running Tilt process (Ctrl+C or SIGTERM its PID), run `tilt down`, then `bun run kill-ports` for remaining service listeners. `tilt down` removes Compose-managed resources but leaves the Postgres container running; stop it with `bun run db:stop` when needed.
 
-If you switch back to a pre-dbmate branch (one that still uses the supabase CLI), stop Tilt first (`tilt down` or Ctrl+C) — that stops the `openrouter-web_db` container and frees port 54322 for `supabase start`. If the container is still running (e.g. it was started outside Tilt via `bun run db:start`), stop it with `bun run db:stop`. Coming back to a dbmate branch, `bun run db:start` removes any running supabase containers automatically.
-
-If `tilt up` or `bun run dev` fails with "address already in use" errors (orphaned Node/wrangler processes from a previous Ctrl+C), run `bun run kill-ports` to kill all dev-stack port listeners.
+To discard local database and emulator volumes, use `bun run dev:teardown`, then `bun run dev:up`.
 
 ## Database
 
@@ -164,7 +158,7 @@ Run unapplied migrations: `bun run ch:migrate`
 Some common development targets:
 * `bun run typecheck` to typecheck
 * `bun run format` to run the Oxfmt code formatter
-* `bun run lint` to run the formatter + some heavier linters
+* `bun run lint` to run the linters
 * `bun run test` to run unit tests (always located next to the module they test)
 
 **Note:** If you run node commands directly (e.g., `cd services/cfw-api && bun run test`) instead of through turbo, you may see errors like `Failed to resolve entry for package "@openrouter-monorepo/chat-templates"`. This happens because some packages (like `chat-templates`) require compilation before use. Running `bun run compile` at the repo root will fix this. When using turbo-based commands, compilation happens automatically as a dependency.
@@ -179,7 +173,7 @@ Environment variables are managed through Infisical. See [INFISICAL.md](./script
 **For local development:**
 
 - **Infisical**: Environment variables are automatically injected when running scripts via `infisical run`. This is the primary method for managing secrets.
-- **`.env.development.local`**: Located at the repository root, this file is for local overrides. It can override Infisical values and should contain your personal keys/settings. This file must contain the DB connection variables.
+- **`.env.development.local`**: Located at the repository root, this file is for local overrides. It can override Infisical values and should contain your personal keys/settings. `bun run dev:up` supplies the local Postgres URL automatically.
 
 **Environment variable precedence:**
 1. Repository root `.env.development.local` (local overrides) - highest priority
@@ -195,7 +189,7 @@ Environment variables are managed through Infisical. See [INFISICAL.md](./script
 #### Other environment variables files:
 
 - We use a special `scripts/.env.production.local` file for production scripting/automation/inspection. The scripts that use this file MUST use the prefix `prod-` to avoid confusion with local development.
-- E2E tests use `.env.test` files. See `tests/e2e/README.md` for details.
+- API E2E tests load `tests/e2e/.env.local`, which overrides shell values. See `tests/e2e/README.md` for target settings.
 
 
 ### Working with dependencies

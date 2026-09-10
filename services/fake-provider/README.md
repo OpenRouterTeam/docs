@@ -2,9 +2,9 @@
 
 A minimal OpenAI-compatible API service that returns Lorem Ipsum text, useful for testing streaming behavior, delays, and error handling.
 
-## Leveraging end to end
+## End-to-end testing
 
-You will have to stand up mission control (`bun run dev mission-control`) and un-hide "openai/gpt-4.1-2025-04-14" in the [hidden endpoints page](http://localhost:3001/endpoints/hidden). By default it will hit the [production Cloud Run deployment](https://fake-provider-2gagoduuea-uc.a.run.app/v1) which is seeded in Postgres.
+Start the stack with [local-dev-env](../../.agents/skills/local-dev-env/SKILL.md), enable and trigger `fake-provider`, then run `bun run x scripts/use-local-fake-provider.ts`. The helper points the seeded GPT-4.1 endpoint at the local service, unhides it, grants access to local API-key owners, warms KV, and requests an API restart. Confirm the new API run in Tilt before sending requests. Without this configuration, the seed points at the remote Cloud Run deployment.
 
 You can make requests with the model name `openai/gpt-4.1-2025-04-14` and preference for "fake-provider". Set `X-Completion-Tokens` to the number of tokens you want generated; it defaults to 300 when the header is absent or invalid. The body's `max_tokens` still limits the response, so a smaller `max_tokens` wins, and generation never exceeds 100,000 tokens.
 
@@ -55,7 +55,7 @@ curl http://localhost:8787/api/v1/chat/completions \
 
 Fake-provider requests against production cfw-api support these headers. Router ingress preserves the registered headers, and `FakeAdapter` forwards them to the fake provider. This is used by `tests/performance/scenario/fake-provider/fake-provider-production-load.ts`, which targets the production API URL.
 
-The fake provider admin pane is [here](http://localhost:3001/provider/fake-provider) if you instead want to direct the requests to local (`http://localhost:3002/v1`).
+The provider settings are also available in Mission Control at `/provider/fake-provider`.
 
 ### The "stream" flag is ignored by the fake provider
 
@@ -99,8 +99,10 @@ curl http://localhost:8787/api/v1/chat/completions \
 
 ## Running Locally
 
+`bun run dev:up` starts the fake provider automatically in both profiles. After starting the stack, wait for it before testing:
+
 ```bash
-bun run dev fake-provider
+tilt wait --for=condition=Ready uiresource/fake-provider --timeout=300s
 ```
 
 ## API Headers

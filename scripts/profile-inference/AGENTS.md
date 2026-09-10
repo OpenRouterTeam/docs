@@ -53,10 +53,7 @@ For running-request CPU and memory measurement, use the
 
 ## Local stack and preparation
 
-Start from a seeded local stack with `api` ready. On shared agent hosts, run
-`bun run dev:doctor` first and do not evict another live stack. If no stack is
-running for this worktree, launch `TILT_PROFILE=lean tilt up` and wait for
-`uiresource/api`.
+Start a seeded local stack using [local-dev-env](../../.agents/skills/local-dev-env/SKILL.md) and wait for `uiresource/api`. If startup reports occupied ports, follow its instructions to stop the previous Tilt process and clear remaining service listeners.
 
 Run these before collecting evidence:
 
@@ -380,9 +377,7 @@ Every action exits nonzero on failure and writes a structured result when a
 result path is available. Follow `next_steps` exactly, then retry with a new
 artifact base. Do not bypass preflight merely to obtain an artifact.
 
-Respect other sessions that own local ports and clean up only a stack you
-started. Only one inspector client can attach at a time; close an existing
-DevTools client before retrying.
+Use the startup recovery instructions when another stack holds the required ports. Only one inspector client can attach at a time; close an existing DevTools client before retrying.
 
 ## Interpretation constraints
 
