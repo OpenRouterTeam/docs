@@ -163,15 +163,21 @@ adding an FAQ section, and consider it for relevant new pages going forward.
   only for genuinely personalized or interaction-dependent surfaces.
 - **Follow the server-fetch pattern** in
   `app/[locale]/(marketplace)/providers/fetch-providers-listing.ts`: server-side fetch
-  of the private frontend API, successful-result-only cache, awaited in the
-  RSC, real rows rendered. Auth- or user-dependent variants layer on
-  client-side over the SSR'd public default view. `/providers` uses one-minute ISR.
+  of the public frontend API, deduped per request with React `cache()`,
+  awaited in the RSC, real rows rendered. Auth- or user-dependent variants
+  layer on client-side over the SSR'd public default view. `/providers` uses
+  one-minute ISR.
 - **Use ISR for public indexable listing routes.** Set an explicit `revalidate`
   so HTML is served from the shared cache instead of re-rendering per request.
-- **Pair route caching with a successful-result-only data cache.** The
-  `unstable_cache` callback must throw on error so transient upstream failures
-  are retried rather than stored, following the "Don't cache transient lookup
-  failures" rule in `projects/web/REVIEW.md`.
+- **Do not wrap public frontend API reads in `unstable_cache` on ISR routes.**
+  Those routes are served from Workers Cache, so the ISR interval is the only
+  Vercel-side cache. `unstable_cache` stays for reads that bypass the frontend
+  API (vendor SDKs, Vercel KV catalog caches, private no-store routes) and for
+  `force-dynamic` routes that must keep serving the last successful result
+  through an upstream failure (compare presets, read by the sitemap); its
+  callback must throw on error so transient failures are retried rather than
+  stored, following "Don't cache transient lookup failures" in
+  `projects/web/REVIEW.md`.
 - **Keep guarded routes statically prerenderable.** Routes listed in
   `projects/web/scripts/verify-static-routes.ts` must not use `force-dynamic`
   or server-side request APIs such as `searchParams`, `cookies`, or `headers`.
