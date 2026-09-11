@@ -357,6 +357,7 @@ flowchart LR
   REVIEW --> APPROVED["Approved"]
   APPROVED --> ENACT["Enact"]
   ENACT -->|"user target"| RESTRICTION["System restriction"]
+  ENACT -->|"compromised_account user target"| CLERK_COMP["Clerk password compromised<br/>marker stamped"]
   ENACT -->|"domain target"| DOMAIN_ENACT["Domain restriction<br/>fanout + signup webhook"]
   ENACT -->|"api_key target"| KEY_DISABLE["Key disabled<br/>compromised_at stamped"]
   CASE --> ARCHIVE["Archive case<br/>freeze future ingest"]
@@ -530,9 +531,12 @@ human enacts in Mission Control, which calls Clerk's
 after Clerk accepts, stamps `compromised_account_enacted_at` on the target with
 a conditional write so a retry or a concurrent enactment reports
 `already_active` instead of calling Clerk twice. A Clerk failure leaves the
-marker null so the target can be retried. Clerk owns the compromised-password
-state and the user clears it by resetting their password, so undo reports
-`not_reversible` after enactment and never clears the marker.
+marker null so the target can be retried. A user without a password credential
+(social or passkey only) cannot be forced through a reset, so they are signed
+out by session revocation alone and reported as `partially_enacted` with reason
+`no_password_credential`. Clerk owns the compromised-password state and the
+user clears it by resetting their password, so undo reports `not_reversible`
+after enactment and never clears the marker.
 
 ### Operational safety
 
