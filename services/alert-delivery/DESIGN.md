@@ -83,6 +83,18 @@ accounting for two database connections per concurrently resolved notice-batch
 fallback tenant. Email recipient
 resolution and endpoint lookup start concurrently, so each message can hold
 two database connections before endpoint fan-out.
+Production consumes the topic through
+`alert-delivery-alert-events-transactional`, filtered with
+`NOT attributes.alert_event_class = "notice"`, and
+`alert-delivery-alert-events-notice`, filtered with
+`attributes.alert_event_class = "notice"`. The negative transactional filter
+keeps attribute-less legacy messages on a consumed subscription. Their lease
+budgets are split from the one
+`DELIVERY_MAX_CONCURRENT_MESSAGES` total, with the extra slot going to
+transactional traffic for odd totals. The unfiltered
+`alert-delivery-alert-events` subscription remains declared but unconsumed as
+the rollback path and is removed by a follow-up change after cutover
+confirmation.
 Waiting for a global endpoint-concurrency permit is bounded by
 `DELIVERY_PERMIT_WAIT_TIMEOUT_MS` (default 60000), so a saturated worker
 reports the stall instead of queueing behind slow deliveries indefinitely.
@@ -95,14 +107,41 @@ explicit sub-cap to be at least the per-event cap and at most
 `global - per_event`; a derived default additionally requires
 `global >= 2 x per_event` so the notice window is not empty. Notice-batch bulk email does not take
 endpoint permits; it is bounded only by the Resend pacer, where
-`RESEND_NOTICE_REQUESTS_PER_SECOND` (default 7) caps the notice share of
-`RESEND_REQUESTS_PER_SECOND` (default 10) and validation keeps at least 1
-request/s for transactional email.
+`RESEND_NOTICE_REQUESTS_PER_SECOND` (default 4) caps the notice share of
+`RESEND_REQUESTS_PER_SECOND` (default 6) and validation keeps at least 1
+request/s for transactional email. `RESEND_BURST_CAPACITY` (default 2) is
+configured separately from the steady rate so the worst-case sliding-second
+load remains below Resend's shared team limit. These defaults leave 2 request/s
+of steady transactional headroom, narrower than the 3 request/s left by the
+previous 10 and 7 pair, chosen so the worst case in any sliding second stays
+at 8 against the shared team limit of 10. The burst allowance is not reserved
+for transactional email, because both limiters are constructed with
+`RESEND_BURST_CAPACITY` and a notice send takes a notice token and then a global
+token, so notice traffic can drain the global burst. The only transactional
+reservation is the steady-rate gap
+`RESEND_REQUESTS_PER_SECOND - RESEND_NOTICE_REQUESTS_PER_SECOND`.
 The consumer prefers the published `alert_event_class` attribute and falls
 back to its computed class when the attribute is absent or unsupported. A
 recognized publisher/consumer divergence uses the published class, matching
 the subscription routing decision. Notice-batch envelopes remain notice by
 their envelope discriminant and do not consult the attribute.
+
+Notice shards are published at a maximum of 250 tenants. The wire/schema
+ceiling deliberately remains 1_000 tenants so messages published before this
+deploy continue to validate. The subscription explicitly pins Pub/Sub's
+60-minute lease-extension ceiling. One endpoint wave costs
+`60_000 + 10_000 + 30_000 = 100_000 ms`; a fallback tenant costs
+`ceil(100 / 4) × 100_000 = 2_500_000 ms`, and the bulk stage costs
+`ceil(1_000 / 100) × 100_000 = 1_000_000 ms`. The largest single stage estimate
+is `max(2_500_000, 1_000_000) = 2_500_000 ms`, within `3_600_000 ms`. This is
+not a whole-shard bound. Fallback tenants run at
+`DELIVERY_NOTICE_FALLBACK_CONCURRENCY`, so several fallback tenants add their
+costs across a shard. Recipient count is also unbounded in code, since every
+active organization admin is resolved. A shard can therefore exceed the
+largest-stage estimate and the lease. A whole-shard bound needs a runtime
+deadline that defers untouched tenants, which is deliberately not implemented
+at the current audience size. An overrun causes a deduplicated redelivery
+rather than a duplicate send.
 
 Preferring the published class makes both the subscription routing and the
 notice sub-cap only as strong as what the publisher stamps: a publisher that
