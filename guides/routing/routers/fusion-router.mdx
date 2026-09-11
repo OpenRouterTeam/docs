@@ -157,10 +157,10 @@ const completion = await openRouter.chat.send({
         id: 'fusion',
         analysisModels: [
           '~anthropic/claude-opus-latest',
-          '~openai/gpt-latest',
+          '~openai/gpt-sol-latest',
           '~google/gemini-pro-latest',
         ],
-        model: '~openai/gpt-latest',
+        model: '~openai/gpt-sol-latest',
       },
     ],
     messages: [
@@ -182,8 +182,8 @@ curl https://openrouter.ai/api/v1/chat/completions \
     "plugins": [
       {
         "id": "fusion",
-        "analysis_models": ["~anthropic/claude-opus-latest", "~openai/gpt-latest", "~google/gemini-pro-latest"],
-        "model": "~openai/gpt-latest"
+        "analysis_models": ["~anthropic/claude-opus-latest", "~openai/gpt-sol-latest", "~google/gemini-pro-latest"],
+        "model": "~openai/gpt-sol-latest"
       }
     ],
     "messages": [
@@ -216,10 +216,10 @@ const completion = await openRouter.chat.send({
         parameters: {
           analysisModels: [
             '~anthropic/claude-opus-latest',
-            '~openai/gpt-latest',
+            '~openai/gpt-sol-latest',
             '~google/gemini-pro-latest',
           ],
-          model: '~openai/gpt-latest',
+          model: '~openai/gpt-sol-latest',
         },
       },
     ],
@@ -240,8 +240,8 @@ curl https://openrouter.ai/api/v1/chat/completions \
       {
         "type": "openrouter:fusion",
         "parameters": {
-          "analysis_models": ["~anthropic/claude-opus-latest", "~openai/gpt-latest", "~google/gemini-pro-latest"],
-          "model": "~openai/gpt-latest"
+          "analysis_models": ["~anthropic/claude-opus-latest", "~openai/gpt-sol-latest", "~google/gemini-pro-latest"],
+          "model": "~openai/gpt-sol-latest"
         }
       }
     ]
@@ -252,7 +252,7 @@ curl https://openrouter.ai/api/v1/chat/completions \
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `analysis_models` | Quality preset (`~anthropic/claude-opus-latest`, `~openai/gpt-latest`, `~google/gemini-pro-latest`) | Models that form the panel. Each runs in parallel with `openrouter:web_search` and `openrouter:web_fetch` enabled. 1–8 models allowed. |
+| `analysis_models` | Quality preset (`~anthropic/claude-opus-latest`, `~openai/gpt-sol-latest`, `~google/gemini-pro-latest`) | Models that form the panel. Each runs in parallel with `openrouter:web_search` and `openrouter:web_fetch` enabled. 1–8 models allowed. |
 | `model` | Your outer model | The analyst model that produces the structured analysis JSON. Defaults to the same model handling your request. |
 | `max_tool_calls` | `4` | Max tool-calling steps each panel model and the analyst may take in their `openrouter:web_search` / `openrouter:web_fetch` loop before they must return text. Range 1–16. |
 | `max_completion_tokens` | `16000` | Max output tokens (including reasoning) per inner panel/analyst call. Keeps reasoning-heavy models from exhausting their budget before producing visible text. |
