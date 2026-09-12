@@ -150,6 +150,24 @@ An absent reason with a `null` value means provider usage was simply unavailable
 
 See the [S3 field locations](/guides/features/broadcast/s3#billing-quantities) and [OTEL attribute mappings](/guides/features/broadcast/otel-collector#billing-quantities) for destination-specific examples.
 
+### Large Trace Values
+
+This applies to the OpenTelemetry-based destinations (Arize, Grafana, Langfuse, LangSmith, New Relic, OpenInference, OTel Collector, Phoenix, Ramp, Sentry, and Webhook). Other destinations are not bounded this way and emit no truncation markers.
+
+Large agent transcripts are normal, so broadcast delivery keeps the rest of the trace when an individual trace or observation value exceeds the per-attribute character limit (currently 10,000,000 characters). The oversized value is shortened rather than causing the trace to be dropped, and a boolean `<key>.truncated` attribute is added alongside it.
+
+The shortened value carries an `openrouter_truncated` marker in one of three shapes, depending on what was cut:
+
+```json
+{ "openrouter_truncated": { "omitted_items": 12 } }
+{ "openrouter_truncated": { "omitted_keys": 3 } }
+{ "openrouter_truncated": { "reason": "too_large" } }
+```
+
+An array keeps its leading elements and appends the `omitted_items` marker; an object keeps its leading entries and appends `omitted_keys`; a string keeps its longest fitting prefix and ends in `[truncated]`; and a value that cannot be shortened in place (or cannot be serialized at all) is replaced by the `reason` marker (`too_large` or `unserializable`).
+
+The span includes an `openrouter.trace_truncated` event with the affected attribute keys, truncation reason, and character limit. The event also includes a plain-language message explaining that part of the trace was shortened. The remainder of the trace is still delivered to the destination.
+
 ### Optional Trace Data
 
 You can enrich your traces with additional context by including these optional fields in your API requests:
