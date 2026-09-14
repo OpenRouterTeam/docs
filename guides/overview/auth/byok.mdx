@@ -157,7 +157,7 @@ BYOK keys in your
 
 Some providers host region-pinned endpoints for a model alongside a standard one, for example `amazon-bedrock/us` or `google-vertex/europe-west1`. Providers charge a premium for these regional endpoints, so requests to the global API (`openrouter.ai`) skip them unless you target one explicitly with `provider.order` or `provider.only` (see [Targeting Specific Provider Endpoints](/guides/routing/provider-selection#targeting-specific-provider-endpoints)).
 
-With a prioritized BYOK key, the regional premium is billed to your own provider account rather than to OpenRouter credits, so the rule relaxes in one case: if a provider has **no** standard-priced endpoint for the model, only regional ones, your prioritized key for that provider can route to the regional endpoint. When the provider offers both a standard and a regional endpoint for the model, your key is routed to the standard endpoint, the same as a non-BYOK request. Fallback keys never unlock regional endpoints. Requests to the regional APIs (`us.openrouter.ai`, `eu.openrouter.ai`) are unaffected, since they route to in-region endpoints by design.
+With a prioritized BYOK key, the regional premium is billed to your own provider account rather than to OpenRouter credits, so the rule relaxes in one case: if a provider has **no** standard-priced endpoint for the model, only regional ones, your prioritized key for that provider can route to the regional endpoint. When the provider offers both a standard and a regional endpoint for the model, your key is routed to the standard endpoint, the same as a non-BYOK request. Fallback keys never unlock regional endpoints. Requests to the regional APIs (`us.openrouter.ai`, `eu.openrouter.ai`) are unaffected, since they route to in-region endpoints by design. To make a key eligible on a regional API when the provider's shared endpoint is outside that region, see [Declaring a Data Region on a Key](#declaring-a-data-region-on-a-key).
 
 ### BYOK with Data Policies
 
@@ -203,6 +203,40 @@ The declaration follows these rules:
 <Warning>
 **Video generation is not covered.** A video provider keeps the generated video until you download it. A video endpoint retains data by design. OpenRouter treats every video endpoint as retaining. A ZDR declaration on your key does not change that. A guardrail that enforces ZDR also blocks video models on your key.
 </Warning>
+
+#### Declaring a Data Region on a Key
+
+On a regional domain, OpenRouter routes only to endpoints it has onboarded for that region (see [In-Region Routing](/guides/features/in-region-routing)). OpenRouter cannot see where your own OpenAI account processes requests, so you tell OpenRouter. The **Provider agreement** section on an OpenAI key card has a **Data region** setting, next to the ZDR setting, on the [OpenAI provider detail page](https://openrouter.ai/workspaces/default/byok/openai). It has three options, each labelled with the OpenRouter hostname it applies to:
+
+| Option | Hostname | Effect |
+|---|---|---|
+| **Global** (default) | `openrouter.ai` | The key follows the region OpenRouter tracks for the endpoint. An undeclared key behaves the same way. |
+| **European Union** | `eu.openrouter.ai` | Requests sent to `eu.openrouter.ai` may use this key for a model on that provider even when OpenRouter has no in-region record for the provider's shared endpoint (see the exceptions below). |
+| **United States** | `us.openrouter.ai` | Requests sent to `us.openrouter.ai` may use this key for a model on that provider even when OpenRouter has no in-region record for the provider's shared endpoint (see the exceptions below). |
+
+The declaration is your attestation about where your own OpenAI account processes requests. OpenRouter does not verify it. The selection also sends requests made with that key to the matching OpenAI API host. Sending requests to a regional OpenRouter domain still requires a plan that includes in-region routing.
+
+The setting does not change key priority. OpenRouter first removes keys that cannot serve the request's data region, then tries the remaining keys in the order configured on the BYOK page. On the default `openrouter.ai` domain, Global, EU, and US keys are all eligible and keep that configured order.
+
+The declaration follows these rules:
+
+- OpenRouter judges each key on its own declaration. If you hold two keys for the same provider and declare a region on only one of them, only the declared key can serve a shared endpoint that is outside the region; the other key keeps serving the endpoints it is eligible for anyway.
+- Prioritized and Fallback keys both count, and their order is unchanged. A declared Prioritized key ranks ahead of the shared endpoints that are eligible for the region; a declared Fallback key ranks behind them.
+- A Fallback key with a region declaration has the same limit as with ZDR. A Prioritized key for the same provider can have no declaration and the **Never use shared capacity for models this key applies to** setting. In that case, OpenRouter removes shared capacity for the model and does not use the Fallback key. The request fails with a data region error.
+- An OpenAI regional key is pinned to its matching OpenAI API host. A US key can serve `openrouter.ai` and `us.openrouter.ai`, but not `eu.openrouter.ai`; an EU key follows the inverse rule. A Global OpenAI key uses `api.openai.com` and does not satisfy a regional request by declaration.
+- The declaration applies only when the key can serve the request. If the key's **This key applies to** filters exclude the request, the declaration has no effect.
+- A region declaration does not change your key's retention policy. Under ZDR enforcement, the key still needs a ZDR declaration or a ZDR endpoint.
+- A saved or cleared declaration takes effect within a few minutes. Routing reads your keys from a short-lived per-account cache, so requests sent right after you save can still use the previous value.
+- The setting is not yet available through the [BYOK management API](/api/api-reference/byok). Change it in your workspace BYOK settings.
+
+OpenRouter fails closed where it cannot rely on your account alone to keep the request in the region. A region declaration is **not** honored for:
+
+- [Private endpoints](/guides/routing/private-models). A private endpoint keeps the region OpenRouter recorded for that deployment.
+- Endpoints that OpenRouter itself pins to a specific cloud region outside the declared one (for example a shared Bedrock or Azure endpoint in a US region when you declare the EU). OpenRouter sends those requests to that location regardless of your account, so honoring the declaration would move data out of the region.
+- Cross-region inference profiles, such as Bedrock `global.` profiles, which can process a request in any region.
+- Video generation models.
+
+A [guardrail](/guides/features/guardrails) that restricts `allowed_data_regions` does not yet recognize the declaration. It judges every endpoint, including your key's, by OpenRouter's own classification, so under such a guardrail the key's endpoint for a shared endpoint outside the region is removed even though the region declaration would otherwise allow it. Until the guardrail learns about declarations, a region declaration only widens routing for requests whose guardrails do not restrict `allowed_data_regions`.
 
 ### BYOK and Guardrail Budgets
 
