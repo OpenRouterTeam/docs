@@ -107,8 +107,6 @@ The full scan reports pre-existing failures from other rules too; grep for your 
 
 ```bash
 bun run test:oxlint-rules   # fixture counts (local only, not in CI)
-bun run stylecheck          # oxlint over changed files, as CI runs it
-bun run verify              # format + lint + typecheck
 ```
 
 `bun run lint` (CI) runs oxlint as its "Style Checks (Oxlint)" task; the `scripts`

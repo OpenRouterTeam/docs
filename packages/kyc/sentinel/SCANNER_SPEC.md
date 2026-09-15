@@ -446,10 +446,10 @@ API for the user and stamps `compromised_account_enacted_at` on the target.
 Undo cannot reverse it; the user clears the state by resetting their password.
 
 When the gate trips on a target already enacted, escalate the undo in the
-same run: the agent CLI has no `undo` command, so name those targets to the
-human and let them undo through Mission Control, and never report such a target
-as handled. Undo revokes the restriction and leaves the target approved; it does
-not return it to `pending_review`.
+same run: name those targets to the human and let them undo through Mission
+Control, and never report such a target as handled. Undo revokes the
+restriction and leaves the target approved; it does not return it to
+`pending_review`.
 
 ## Materiality gate — only clusters with a shared pattern between actors
 
@@ -1831,7 +1831,7 @@ Only these differ between scanners; everything above is shared.
   holder their key permanently. Holder notification and the negative balance
   stay human. Name in the thread every target another run already restricted on
   what this run classifies as a victim, so a human can undo it in Mission
-  Control — the agent CLI has no `undo`.
+  Control.
 - **`ruleKey` naming:** name the durable relay or replay pattern and carry the
   do-not-enact framing in the key itself, e.g.
   `<relay>_replayed_key_burst_watch_do_not_enact`. Keep operator-classed members

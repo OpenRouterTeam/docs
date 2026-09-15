@@ -67,7 +67,6 @@ through the `getBenchmarkDatasetSize` activity.
 ## 5. Verify
 
 ```bash
-bun run verify
 bun run --filter @openrouter-monorepo/temporal test
 bun run --filter @openrouter-monorepo/mission-control test
 ```

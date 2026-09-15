@@ -160,6 +160,13 @@ Write down what you expect the fix to move, and roughly by how much, before
 writing it. If the expected effect is not visible in the mechanism you named,
 you have the wrong mechanism.
 
+For a shared chunk, list every client-reachable importer of the offending
+module before editing. Turbopack keeps the chunk alive while any importer
+remains and re-groups the surviving routes into a new chunk, so cutting one
+chain of several can show as growth on routes that still carry another. After
+the change, grep the built chunks for a symbol unique to the removed module to
+confirm zero matches.
+
 ## 3. Implement one change
 
 One narrowly scoped change per run, in the layer the mechanism lives in, with no
@@ -261,8 +268,9 @@ above and discard the measurement if one of those failed — a route whose criti
 an unattached API cannot be measured in this lab, and the run's evidence has to
 rest on the mechanism and payload deltas instead.
 
-Run `bun run verify` plus the scoped tests for what you touched, and the visual
-regression suite when a UI surface moves. A single `projects/web` DOM test runs
+Run the scoped tests for what you touched and the visual regression suite when a UI surface moves.
+
+A single `projects/web` DOM test runs
 as `bun test --preload ./bun-test.dom-setup.ts <file>` from `projects/web`;
 without the preload Bun treats the path as a filter and the DOM environment is
 missing. Authenticated VR suites need a working `sign-in` flow against the local

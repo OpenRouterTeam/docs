@@ -84,6 +84,11 @@ reply). Skim `gh pr view <PR> --json comments` for context; treat a
 conversation-level comment as actionable only if it contains an explicit
 unaddressed request.
 
+`perry-the-pr-reviewer` also puts findings in the review *body* with no inline
+thread (two "observations" on #41585 next to an empty thread list). They need
+a verdict like any thread; give it in the layer's top-level resolution comment,
+since there is nothing to resolve.
+
 cortex is the exception worth reading every pass (seen on #32072): it keeps one
 consolidated issue comment that it rewrites in place on every push, and a
 finding listed there can be genuinely open while the matching review thread is
@@ -121,9 +126,7 @@ with reasoning about it, and the reply carries that evidence.
 
 ### 3. Fix in batches, then push
 
-Group related fixes into one commit; push after each batch so replies can cite
-a real SHA. Run `bun run lint`, `bun run typecheck`, `bun run format` before
-pushing — a batch that breaks CI costs more than the fixes saved.
+Group related fixes into one commit; push after each batch so replies can cite a real SHA. On a fresh checkout, `bun run format` needs the Node in `.node-version` (oxfmt refuses `packages/bench-harness/oxfmt.config.ts` on an older Node), and `services/batch-api` tests need `bun run --filter @openrouter-monorepo/chat-templates compile` first or every suite that reaches token-utils dies with `Cannot find module` (seen on #41583–#41588).
 
 Add or update a test whenever a fix changes behavior (see AGENTS.md Testing).
 
@@ -173,6 +176,21 @@ verify. For escalations, reply `@<human> <question>` and skip the mutation.
 If the resolve mutation 403s (insufficient permissions on the repo), say so in
 the reply and leave the thread unresolved rather than pretending it is done.
 
+The two halves can have different permissions. On a Cursor cloud agent the
+`gh` token is read-only for REST writes — the `/replies` POST and the
+`/reactions` POST both 403 with `Resource not accessible by integration` —
+while the GraphQL `resolveReviewThread` mutation succeeds, so a chained
+`reply && resolve` leaves a bare resolve with no verdict on it (seen on
+#41917). There, post the reply through the agent's PR tool (`in_reply_to`
+= the comment's `databaseId`) and only then run the mutation; if the reply
+half fails, do not resolve.
+
+A Cursor cloud agent's `gh` is read-only (`Resource not accessible by
+integration` on every POST) and it cannot edit a PR description it did not
+create ("not agent-managed"): post, reply, and resolve through the agent's PR
+tool instead, and put the resolution-log rows in your report for the author
+to paste (seen on #42123).
+
 Run these from a shell, not from a scripted subprocess: the `gh` on PATH is a
 wrapper that resolves the token from the shell environment, and a subprocess
 that misses it fails with `gh auth login` instead of a permissions error. A
@@ -198,6 +216,11 @@ the end of every batch — not once at the end. One row per thread:
 This is the deliverable the human actually reads; keep it accurate over
 complete-looking.
 
+On a Cursor cloud agent neither half can write the description: `gh pr edit`
+403s (`updatePullRequest`) and the agent's PR tool refuses a body it did not
+author. Post the same log as one top-level PR comment per layer instead, and
+say in it that the description could not be edited (seen on #40939–#40942).
+
 ### 6. Re-check
 
 Pushing triggers re-review (Devin Review, CI, humans), which produces new
@@ -216,6 +239,32 @@ onto main), sync every local branch to its remote tip first —
 committing or pushing anything; a push from the stale local tip silently
 undoes the rewrite (seen on the ENT-2003 stack, #40253–#40278).
 
+While restacking, re-check `git merge-base --is-ancestor origin/main <bottom>`
+right before the push: tooling in the session (the `gh` wrapper on a Cursor
+cloud agent) can run `git fetch origin main --deepen=200` behind you, and a
+per-layer `git diff --name-only origin/main <branch>` then counts main's new
+files as the layer's (seen on #41583, 20 files reading as 36). Restack once
+more if main moved; the rebase is cheap when the layers touch no shared file.
+
+When you are the one restacking a GitHub-native stack whose bottom layer was
+squash-merged, `gh stack checkout <pr>` imports it but `gh stack rebase` then
+stops with `could not determine the previous base` on every layer. Rebase each
+layer by hand, bottom up, with `git rebase --onto <new base tip> <old base tip>
+<branch>` — the old base tip is the parent branch's previous remote head, and a
+layer whose history still carries copies of lower layers' commits needs the
+range cut at the last such copy — then `gh stack push` (per-branch
+`--force-with-lease`) and `gh stack unstack --local && gh stack checkout <pr>`
+so `gh stack view --json` reads the new heads (seen on the ECO-3188 stack,
+#40939–#40942).
+
+CI on a red layer may be red for a reason its own diff cannot show: the
+`lint-typecheck-test` runner resolves `.python-version` `3.12` to Ubuntu's
+CPython 3.12.3 while `uv python install` gives a later patch release, and
+`datetime.replace()` on a subclass behaves differently between them. Build a
+second venv on `/usr/bin/python3` (`UV_PROJECT_ENVIRONMENT=... uv sync --frozen
+--python /usr/bin/python3`, after `apt-get install python3-dev`) and reproduce
+there before touching the code (seen on #40940).
+
 Read CI from the runs, not only from `statusCheckRollup`. A force-push can
 trigger two runs for the same head SHA one second apart; the concurrency
 group cancels the first, and the rollup reports `FAILURE` for that SHA even
@@ -224,6 +273,16 @@ though the surviving run is green. Before calling a PR red, list
 and disregard a cancelled run only when the same workflow completed
 successfully on the same SHA; a success from a different workflow does not
 clear it (seen on #40269).
+
+On a stacked PR, a red check can also be stack drift rather than your
+change: `refs/pull/<N>/merge` merges into the base PR's own merge ref, and so
+on down to `main`, so a lower layer's fix (or a `main` change a lower layer
+already adapted to) that has not been merged upward yet fails only on the upper
+PR's CI. Before debugging, diff the failing file between the PR head and the
+merge commit CI checked out (`HEAD is now at <sha> Merge <head> into <base>` in
+the checkout log) and check `git log HEAD..origin/<lower-layer-branch>` for the
+fix; the remedy is a restack, not a commit on the upper layer (seen on #42123,
+whose `unit` failure was fixed in the routing layer's `ed5d990f436`).
 
 On a stacked PR, a thread can land on the wrong layer: a stale merge base (or
 a base branch force-updated mid-review) makes a lower layer's files appear in

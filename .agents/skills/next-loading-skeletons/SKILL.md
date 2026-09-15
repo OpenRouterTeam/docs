@@ -28,6 +28,7 @@ Skip it when:
 - The page is purely static (no async work in `page.tsx`)
 - A parent route group already provides an adequate loading state
 - The page is so fast that a skeleton would flash and feel worse
+- The route is gated (feature flag, `notFound()`) — resolve the gate in the segment's `layout.tsx`; a `loading.tsx` fallback streams to an ungated visitor before `page.tsx`'s gate resolves
 
 ## Choosing a Loading Strategy: Skeleton vs Spinner
 
