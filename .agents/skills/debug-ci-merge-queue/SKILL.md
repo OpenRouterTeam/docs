@@ -35,6 +35,15 @@ running the named test files locally on the branch and by checking whether
 another PR's merge-group run on the same base SHA passed the same job; if it
 did, the entry only needs re-queuing.
 
+A PR that deletes or renames a module can pass its own `pull_request` CI
+and still fail `typecheck` on the merge-group commit when `main` gained a
+new caller of the deleted symbol in the meantime. Git auto-merges that
+without a textual conflict, so GitHub reports the PR mergeable. Reproduce
+locally with `git merge --no-commit origin/main` on the branch followed by
+`bun run typecheck`, then fix the new call sites in a merge commit. This
+check needs no `gh` auth, so run it first when the GraphQL query below is
+unavailable.
+
 ### 1. Read the merge-queue removal reason
 
 GitHub reports a required check cancelled by a timeout as `failed_checks`. Inspect the PR timeline directly:
@@ -88,7 +97,7 @@ If the job was cancelled at its `timeout-minutes` boundary after printing `Resol
 
 ### 3. Compare sticky-disk and cache-based installs
 
-This check applies to Blacksmith jobs only. WarpBuild jobs use `.github/actions/setup-environment-warpbuild` (WarpCache for the bun store and turbo cache, no sticky disks); a stalled `bun install` there points at WarpCache restore or the WarpBuild fleet, so compare the `Cache bun store (WarpCache)` and `Cache turbo (WarpCache)` step timings against a recent healthy WarpBuild run of the same job and escalate to WarpBuild, not Blacksmith.
+This check applies to Blacksmith jobs only. WarpBuild jobs use `.github/actions/setup-environment-warpbuild` (WarpCache for the bun store, no sticky disks); a stalled `bun install` there points at WarpCache restore or the WarpBuild fleet, so compare the `Restore bun store (WarpCache)` step timings against a recent healthy WarpBuild run of the same job and escalate to WarpBuild, not Blacksmith. A `Data corruption detected` / `Unexpected EOF in archive` line in that restore step means WarpCache served a corrupt archive; the `Discard partially restored bun store` step then wipes the partial store, `Delete unrestorable bun store entry (WarpCache)` removes the exact-key entry in the job's ref scope (WarpCache keys are immutable, so the rebuilt store could not replace it otherwise), and the job installs cold and saves. That delete step warns instead of failing, so a `Failed to delete cache` annotation on it means the corrupt exact-key entry survived and every later same-scope job will discard and install cold again until the entry is deleted by hand. If a Cloudflare test job instead fails every file with `write EPIPE` from miniflare before any test runs, check that job's bun-store restore line for the same corruption, then check whether a PR-scoped `Linux-bun-store-*` entry is smaller than main's for the same key (a truncated store that was saved back); deleting that entry is the recovery.
 
 `fatal: could not read Username for 'https://github.com'` in a `lint` job is an anonymous `git fetch` outside the checkout being refused on the fleet's shared egress addresses, not a permissions problem. Such fetches must authenticate with the job's `GITHUB_TOKEN` through `GIT_CONFIG_*` environment variables (never argv, which leaks into `ps` and error text); `scripts/check-subtree-integrity.ts` is the reference implementation. A branch that predates that fix fails until it merges `main`.
 

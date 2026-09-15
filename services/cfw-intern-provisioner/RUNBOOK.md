@@ -17,9 +17,9 @@ prefix; the worker matches the full pathname literally.
 
 ## Slack app: minted + installed BEFORE enqueue (web tier)
 
-The per-intern Slack app is **not** created inside this workflow.
-The web tier mints it and gates VM creation on a completed OAuth
-install:
+Slack is optional per intern. When an intern links a Slack workspace,
+the per-intern Slack app is **not** created inside this workflow; the
+web tier mints it and gates VM creation on a completed OAuth install:
 
 1. `POST /api/frontend/interns` creates the intern row
    (`status=awaiting_slack_install`) and immediately mints the
@@ -33,10 +33,13 @@ install:
    which is **hard-gated on `installed_at != null` + a present
    encrypted bot token** before it dispatches the enqueue.
 
-By the time `enqueue` reaches this worker the real Slack tokens are
-already in the DB — there is no placeholder boot, no in-workflow
-`create-slack-app` step, and no async resync (the retired #22702
-path). `create-gcp-vm` always bakes the real tokens into the VM.
+By the time `enqueue` reaches this worker the real Slack tokens for
+a Slack-linked intern are already in the DB — there is no
+placeholder boot, no in-workflow `create-slack-app` step, and no
+async resync (the retired #22702 path). `create-gcp-vm` bakes the
+real tokens into the VM when the intern has a Slack app; an intern
+created without a Slack workspace is born `queued` and boots without
+Slack.
 
 ## Workflow
 
@@ -44,13 +47,16 @@ path). `create-gcp-vm` always bakes the real tokens into the VM.
 
 1. `ensure-openrouter-api-key` — fetch-or-mint per-intern OR sk.
 2. `create-cf-tunnel` — `cfd_tunnel` + DNS CNAME.
-3. `create-gcp-vm` — GCE create instance. Reads the REAL
+3. `create-gcp-vm` — GCE create instance. For an intern with a
+   linked Slack app, reads the REAL
    `intern_slack_apps.bot_token_encrypted` (guaranteed present by
    the pre-enqueue install gate) and bakes the bot token + signing
-   secret into `/etc/<bot>/env` and instance metadata. If the token
-   is somehow absent it fails loudly (`NonRetryableError`) rather
-   than booting a half-configured VM. Then polls `/health` and flips
-   status to `running`.
+   secret into `/etc/<bot>/env` and instance metadata; an intern
+   created without a Slack workspace boots with no Slack env or
+   token-sync timer. A linked credential whose token is somehow
+   absent (install incomplete or revoked) fails loudly
+   (`NonRetryableError`) rather than booting a half-configured VM.
+   Then polls `/health` and flips status to `running`.
 
 ## VM runtime (Container-Optimized OS + Docker)
 
@@ -88,9 +94,9 @@ reboots:
    re-fetch it from npm on every restart).
 4. **install-ori-runtime** — a systemd unit whose `ExecStart` is a
    foreground `docker run --rm --name ori-<bot> --network host
-   --env-file /etc/<bot>/env -v /var/lib/interns/<bot>/workspace:/workspace
-   ${ORI_RUNTIME_IMAGE} start --features /workspace/<bot>/features --host
-   127.0.0.1 --port 7070 --auto-update-restart exit`.
+--env-file /etc/<bot>/env -v /var/lib/interns/<bot>/workspace:/workspace
+${ORI_RUNTIME_IMAGE} start --features /workspace/<bot>/features --host
+127.0.0.1 --port 7070 --auto-update-restart exit`.
    `--network host` + loopback bind means cloudflared is the only
    ingress. `Restart=always`; `systemctl restart` recreates the
    container so `--env-file` is re-read (the Slack rotation path).
@@ -102,16 +108,16 @@ reboots:
    every 60s and moves the intern onto a new runtime image. See
    "Upgrading an intern's runtime image" below.
 7. **install-cloudflared** — a systemd unit running `docker run
-   --rm --name cloudflared-<bot> --network host --env-file
-   /etc/cloudflared-<bot>/env <INTERN_CLOUDFLARED_IMAGE> tunnel
-   --no-autoupdate run`. The connector token is fed via env-file
+--rm --name cloudflared-<bot> --network host --env-file
+/etc/cloudflared-<bot>/env <INTERN_CLOUDFLARED_IMAGE> tunnel
+--no-autoupdate run`. The connector token is fed via env-file
    (never argv). Skipped when `INTERN_SKIP_CF_TUNNEL=true`.
 8. **self-cleanup-metadata** — strips the secret-bearing
    `startup-script` metadata key (happy path) or `startup-script`
-   + `SLACK_*_B64` (partial-failure). COS has no host python3/gcloud,
-   so the strip runs `gcloud compute instances remove-metadata`
-   inside the `INTERN_CLOUD_SDK_IMAGE` container (`--network host`
-   so gcloud auto-auths as the VM service account).
+   - `SLACK_*_B64` (partial-failure). COS has no host python3/gcloud,
+     so the strip runs `gcloud compute instances remove-metadata`
+     inside the `INTERN_CLOUD_SDK_IMAGE` container (`--network host`
+     so gcloud auto-auths as the VM service account).
 
 Per-intern uniqueness is the bind-mounted `/workspace/<bot>` volume
 only; every intern runs the SAME generic runtime image (no per-intern
@@ -153,7 +159,23 @@ installs the missing units. The instance is reset, never deleted, so
 the boot disk survives, and the workspace seed is skipped when the
 directory already exists (`startup-script/features.ts`, and
 `archive.ts` logs "workspace already restored on a previous boot").
-**Restart** in the dashboard is exactly this request.
+
+**Restart** in the dashboard is NOT this request. It re-requests the
+running image through the runtime-image endpoint and the VM's reconcile
+timer bounces the agent's unit in place, so it needs the timer and
+never touches the instance. The dashboard's reprovision route 409s a
+`running` intern, and the provisioner refuses one at the dispatch stamp
+(`running_refused`, checked under OCC so a VM that came up between the
+route's read and the dispatch is not reset). To re-bootstrap a live VM
+on purpose, enqueue with both flags (the shared-secret header is the
+legacy auth path `authenticateEnqueue` still accepts):
+
+```bash
+curl -X POST "$INTERN_PROVISIONER_URL/enqueue" \
+  -H "X-Provisioner-Secret: $INTERN_PROVISIONER_ENQUEUE_SECRET" \
+  -H 'content-type: application/json' \
+  -d '{"internId":"<uuid>","entityId":"<entity>","clerkUserId":"<user>","reprovision":true,"allowLiveVmReset":true}'
+```
 
 The destructive reading applies to a VM that is NOT live: a dead or
 unreachable instance goes down the `recreating_dead_vm` branch, which
@@ -179,8 +201,9 @@ Observed across the fleet on 2026-08-19: of the nine intern VMs in
 `ext-interns-spawner-000`, the two created after the subsystem shipped
 carried both keys and the other seven carried neither.
 
-For an intern without the timer, restart it (a live-VM reprovision, as
-above) and then upgrade it. The swap endpoint refuses such a VM with
+For an intern without the timer, re-bootstrap it (the `allowLiveVmReset`
+enqueue above; dashboard Restart needs the timer it lacks) and then
+upgrade it. The swap endpoint refuses such a VM with
 **422 `no_reconcile_timer`** rather than accepting a request nothing
 will read, and the dashboard withholds Update and says the same thing
 before the click (ORI-1461).
@@ -193,14 +216,14 @@ dead, where recovery genuinely rebuilds the machine.
 `sync-runtime-image-<bot>.timer` polls two instance-metadata keys every
 60s:
 
-| Key | Direction | Meaning |
-| --- | --- | --- |
-| `RUNTIME_IMAGE_VERSION` | provisioner → VM | ISO stamp, bumped on every write |
-| `RUNTIME_IMAGE` | provisioner → VM | desired image ref |
+| Key                                    | Direction        | Meaning                            |
+| -------------------------------------- | ---------------- | ---------------------------------- |
+| `RUNTIME_IMAGE_VERSION`                | provisioner → VM | opaque token, bumped on every write |
+| `RUNTIME_IMAGE`                        | provisioner → VM | desired image ref                  |
 | `intern-runtime-image-applied-version` | VM → provisioner | version the last reconcile ran for |
-| `intern-running-runtime-image` | VM → provisioner | ref actually running afterwards |
-| `intern-runtime-image-state` | VM → provisioner | `applied` / `unchanged` / `failed` |
-| `intern-runtime-image-observed-at` | VM → provisioner | ISO stamp of the read-back |
+| `intern-running-runtime-image`         | VM → provisioner | ref actually running afterwards    |
+| `intern-runtime-image-state`           | VM → provisioner | `applied` / `unchanged` / `failed` |
+| `intern-runtime-image-observed-at`     | VM → provisioner | ISO stamp of the read-back         |
 
 The version key is separate from the ref for a reason: the VM's
 `/var/lib/<bot>/last-runtime-image-version` marker keys on the VERSION,
@@ -277,35 +300,125 @@ sweeps", because the metric carries no intern id and deliberately never
 will. Until then this condition is detected and logged, and nothing
 pages: search the log line above.
 
-## Rotating the vault root CA (procedure lives in the vault)
+### Testing an unreleased build on one intern
 
-The full runbook is "Root CA rotation runbook" in
-`services/cfw-secret-vault/AGENTS.md`. It is written there because the
-vault is the authority — its `ROOT_CA_CERT` is the bundle whose FIRST
-certificate signs. Do not run a rotation from this side alone: the two
-worker copies are unlinked records, and a bundle updated in only one
-place means every intern provisioned in between distrusts the tunnel it
-is pinned to (`src/env.ts:315-321`).
+Moving `:stable` is the release path, it is fleet-wide, and cutting one is reserved to a single person (see ori's `docs/engineering/releasing.md`). None of that is what you want when you are verifying a fix. The two downward keys above are writable by hand, so a candidate build can be put on exactly ONE intern, watched, and taken off again, without a release and without touching a moving tag.
 
-This service owns two steps of that procedure.
+This is the loop to reach for whenever the question is "does this change work on a real VM". It was reconstructed during the 2026-09-11 egress outage, where the bug was in the sidecar and a Tilt run could not see it.
 
-- **`INTERN_VAULT_ROOT_CA_CERT`** is what newly provisioned interns are
-  born trusting. It must be set to the same bundle as the vault's
-  `ROOT_CA_CERT`, in lockstep.
-- **The `INTERN_VAULT_ROOT_CA` instance-metadata attribute** is what
-  moves an *already running* intern onto a new bundle. Pushing it is
-  manual; everything after is not — the on-VM reconcile polls every 60s,
-  validates, writes, and restarts the units
-  (`src/clients/gcp-startup-script-vault-ca.ts`).
+**1. Build the candidate for GCE.** Intern VMs are x86, so this is NOT the arm64 recipe used for a local Tilt run — the target, the platform and the bun asset all change. `.github/workflows/runtime-image.yml` in the ori repo is the authority; from an ori checkout on the branch under test:
 
-Never reprovision to pick up a new root. A reprovision destroys the
-intern's workspace, and the metadata push exists precisely so it is not
-necessary. The same "upgrade a running VM in place" reasoning as the
-runtime-image section above applies.
+```sh
+STAGE="$HOME/.cache/ori-runtime-candidate-amd64"
+rm -rf "$STAGE" && mkdir -p "$STAGE"
+bun run compile:cli -- --compile --target=bun-linux-x64-baseline \
+  --outfile="$STAGE/ori" --version=<candidate-version> </dev/null
+chmod +x "$STAGE/ori"
+docker build --platform linux/amd64 --file Dockerfile \
+  --tag us-central1-docker.pkg.dev/ext-interns-spawner-000/interns/ori-runtime:<scratch-tag> \
+  "$STAGE"
+```
 
-Verification is `openrouter.intern_vault.ca_distribution` by
-`cert_count` — `2` during an overlap, `1` once the outgoing root is
-retired (`src/vault-ca-metrics.ts`).
+Three things that will waste your time otherwise:
+
+- **`--target` takes a *bun* target, and the x64 one is the `-baseline` variant.** `findCliReleaseTarget` keys the table on `bunTarget`, so `bun-linux-x64` and the release-target name `ori-linux-x64` are both rejected with the same unhelpful "requires one of the supported release targets". The accepted values are the `bunTarget` fields in `tools/scripts/release-targets/index.ts`.
+- **The build context is the staging directory, not the repo.** The image wants exactly one file. The Dockerfile's default `BUN_ASSET` is already `bun-linux-x64-baseline`, so unlike the arm64 build there is no build-arg to override.
+- **On Apple Silicon the amd64 image runs under emulation.** The build is fine, but `docker run` against it is slow enough that a verification step can look like a hang. Confirm the compiled binary is `ELF 64-bit LSB executable, x86-64` with `file` before blaming the image.
+
+**2. Prove the image is what you think before it leaves your machine.** Two checks, because the first one alone has been wrong:
+
+```sh
+docker run --rm -e ORI_OUTPUT=json <tag> --version     # the version you compiled
+docker run --rm --entrypoint ori <tag> vault-tunnel --help
+```
+
+The second is the one that catches a stale layer: read which behaviour the help text describes, or run the command with no environment and read which variable it demands. A tag is a label, not evidence.
+
+**3. Push it under a scratch tag.** Never `:stable`, never `:alpha` — nothing else consumes a scratch tag, so the blast radius is whatever you point at it:
+
+```sh
+docker push us-central1-docker.pkg.dev/ext-interns-spawner-000/interns/ori-runtime:<scratch-tag>
+```
+
+The VM pulls with `docker-credential-gcr`, minting from its own service account, so any tag in this repository works with no additional grant.
+
+**4. Point one intern at it.** Both keys, one command. The ref may be a tag or a digest; prefer the digest the push reports, since a scratch tag is as movable as any other:
+
+```sh
+gcloud compute instances add-metadata intern-<bot> \
+  --project=ext-interns-spawner-000 --zone=us-central1-a \
+  --metadata "RUNTIME_IMAGE=<ref>,RUNTIME_IMAGE_VERSION=<any-new-token>"
+```
+
+`RUNTIME_IMAGE_VERSION` is **opaque to the VM** — it is compared as a string against `/var/lib/<bot>/last-runtime-image-version` and nothing parses it. The provisioner happens to write `provisioned:<ref>`, but any value the VM has not already applied forces a reconcile. Use something that says who wrote it and why, for example `manual-<ticket>-1:<ref>`, so the next person reading instance metadata can tell a hand-driven swap from a provisioner-driven one.
+
+**5. Watch it land.** The timer fires every 60s and reports back into metadata, so this needs no SSH:
+
+```sh
+gcloud compute instances describe intern-<bot> \
+  --project=ext-interns-spawner-000 --zone=us-central1-a \
+  --format='value(metadata.items)' | tr ';' '\n' | grep -i 'runtime-image'
+```
+
+Wait for `intern-runtime-image-state`. Read `applied` / `unchanged` / `failed` exactly as the section above defines them — `unchanged` in particular is the one that will otherwise waste an afternoon, because the intern looks healthy while running the old bits.
+
+**6. Roll back the same way.** Write the previous ref with ANOTHER new version token. Re-writing the old ref with the OLD token does nothing, because the VM's marker still matches it:
+
+```sh
+gcloud compute instances add-metadata intern-<bot> \
+  --project=ext-interns-spawner-000 --zone=us-central1-a \
+  --metadata "RUNTIME_IMAGE=<previous-ref>,RUNTIME_IMAGE_VERSION=<another-new-token>"
+```
+
+Three things to know before relying on this:
+
+- **A reprovision resets it.** As noted above, `createComputeInstance`'s 409 branch re-merges create-time metadata, so `RUNTIME_IMAGE` reverts to the deployment's `INTERN_RUNTIME_IMAGE`. A hand-written swap is a test fixture, not a durable pin.
+- **The sidecar is swapped too, and first.** In vault mode both the `ori vault-tunnel` sidecar and the agent run off the same image, and the reconcile restarts the sidecar before the agent so the two cannot end up on different builds. A sidecar-only change still goes through this same loop.
+- **Confirm the container was actually replaced**, not just that the state says `applied`. The agent container's PID changes across the restart, which is visible in Cloud Logging as the `docker[<pid>]` prefix on its log lines.
+
+Verified end to end on 2026-09-11 against a live intern: a hand-written token reconciled within 60s, metadata reported `applied` with the token echoed into `intern-runtime-image-applied-version`, and the agent container's pid changed.
+
+## The vault CA (there is nothing to rotate)
+
+Since ORI-1912 there is no shared root, and so no rotation procedure.
+The `ori vault-tunnel` sidecar terminates the agent's TLS itself, under
+a CA it MINTS on its own VM at first boot, into
+`/etc/intern-vault/root.crt` + `root.key`. Every intern therefore has a
+CA of its own, trusted by one agent on one host and by nothing else.
+
+What this service still owns is the directory, and only the directory.
+The `prepare-vault-ca-dir` step creates `/etc/intern-vault` root-owned
+755 and the sidecar bind-mounts it writable, because it mints there.
+The agent bind-mounts `root.crt` ALONE, read-only
+(`src/startup-script/service.ts`). It runs as uid 0, so `root.key` being
+mode 600 root does not keep the sidecar's CA private key from it, and
+`:ro` bars writes rather than reads — leaving the key outside the mount
+is the only thing that protects it (ORI-1943). Anything able to write
+that directory could also substitute a CA the agent would then trust,
+which is why the asymmetry is deliberate.
+
+The agent unit carries an `ExecStartPre` refusing to start when
+`root.crt` is absent, ordered AFTER the sidecar readiness probe. That
+guard is what makes naming a file safe: `docker run -v` materialises a
+missing bind source as an empty DIRECTORY, so a start reaching `docker
+run` with no certificate would put a directory where the sidecar must
+write a file, and the next mint would fail `EgressCaStateError`. An
+agent held at `ExecStartPre` is the wanted outcome — with no trust
+anchor it fails every outbound call anyway, because
+`NODE_EXTRA_CA_CERTS` is read once at process start.
+
+That step also removes a certificate left by a pre-ORI-1912 boot of the
+same VM, and only when no key sits beside it — exactly the half-written
+state a distributed certificate leaves behind. The sidecar refuses to
+mint over that state (`EgressCaStateError`), so without the cleanup an
+in-place re-bootstrap would crash-loop the sidecar and take the agent
+down with it. A complete pair is never touched.
+
+Gone with the shared root: the worker's PEM-bundle setting, the
+`INTERN_VAULT_ROOT_CA` instance-metadata attribute with its on-VM
+reconcile timer, and the `openrouter.intern_vault.ca_distribution`
+metric. Anything still pointing at one of those is describing the
+architecture this replaced (ORI-1921 deleted all three).
 
 ## HTTP surface
 
@@ -338,6 +451,12 @@ retired (`src/vault-ca-metrics.ts`).
   `mcp.json`. Same auth and identity-only body as `/instructions`; the
   list is re-read from the credential rows, not the wire. 200 means
   "requested", never "applied".
+- `POST /api/v1/interns/archive-now` — operator request for a workspace
+  archive on a VM that is still Live. Same body and auth as `/enqueue`;
+  stamps the request and returns 202. It does NOT reprovision and does
+  NOT clear the teardown gate — it produces the bytes in GCS so the loss
+  can be accepted with the archive in hand (ORI-1775), and it is step 3
+  of [Transferring an intern](#transferring-an-intern-workspace-move-account-handover).
 
 `cfw-frontend-api` proxies both intern-scoped `/runtime-image` routes
 (GET + POST) at `/api/frontend/v1/private/interns/:internId/runtime-image`
@@ -361,7 +480,7 @@ not list it (checked 2026-08-19). So every request falls through to the
 shared secret, and that secret then rides in a header on every call,
 including the ~2/min `/runtime-image/current` poll. Anything that
 observes one request obtains the credential that authorises
-provisioning *and* deprovisioning.
+provisioning _and_ deprovisioning.
 
 **The evidence is a metric, not a log.** It used to be a per-request
 warning: `request authenticated with the legacy shared secret` carried
@@ -391,7 +510,7 @@ callers inline, the rest through `buildProvisionerAuthHeaders`. So the
 only thing standing between today and a signed fleet is the bind; there
 is no caller-side code left to write.
 
-Note what is *not* a caller: the on-VM `sync-runtime-image` poller
+Note what is _not_ a caller: the on-VM `sync-runtime-image` poller
 never had the shared secret. `buildEnvFileSection` does not write
 `INTERN_PROVISIONER_ENQUEUE_SECRET` to the VM env file, and the poller
 reports via a GCP instance identity token (`Authorization: Bearer`) on
@@ -423,12 +542,12 @@ The three ways this goes wrong are distinguishable on
 `openrouter.intern_provisioner.enqueue_auth`, so check it rather than
 guessing:
 
-| What happened | What you see |
-| --- | --- |
-| Bound correctly on both sides | `outcome:signature` |
-| Bound on both, values differ | `outcome:signature_rejected` with `reason:signature_mismatch`, then `outcome:legacy` — plus an `enqueue signature rejected` log line |
-| Bound on the verifier only | `outcome:legacy` with `had_signing_key:true` |
-| Not bound anywhere | `outcome:legacy` with `had_signing_key:false` |
+| What happened                 | What you see                                                                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Bound correctly on both sides | `outcome:signature`                                                                                                                  |
+| Bound on both, values differ  | `outcome:signature_rejected` with `reason:signature_mismatch`, then `outcome:legacy` — plus an `enqueue signature rejected` log line |
+| Bound on the verifier only    | `outcome:legacy` with `had_signing_key:true`                                                                                         |
+| Not bound anywhere            | `outcome:legacy` with `had_signing_key:false`                                                                                        |
 
 Repeat per environment with `--env=staging` and `--env=prod`, minting a
 fresh `KEY` for each — one leaked key must not authorise another
@@ -529,13 +648,13 @@ below.
 
 Five hops, each owned by a different file:
 
-| # | Hop | Owned by |
-|---|-----|----------|
-| 1 | COS fluent-bit ships serial console + container stdout/stderr to the Cloud Logging API | `google-logging-enabled = true` in `REQUIRED_INSTANCE_METADATA` (`src/clients/gcp-instance.ts:472`) |
-| 2 | Cloud Logging accepts the write, in `ext-interns-spawner-000` | Already working — see [Which project the VMs are in](#which-project-the-vms-are-in-resolved). No action needed. |
-| 3 | The `datadog-export-sink-interns` project sink exports `gce_instance` entries from that project to the `datadog-log-export-topic` Pub/Sub topic in `openrouter-core` | `google_logging_project_sink.datadog_export_sink_interns`, `services/datadog/infra/logging-pipeline.tf` |
-| 4 | A Dataflow job drains that topic into Datadog | same file |
-| 5 | A Datadog pipeline relabels the VM logs onto `service:interns` | `datadog_logs_custom_pipeline.gce_interns`, `services/datadog/infra/log-pipelines.tf` |
+| #   | Hop                                                                                                                                                                  | Owned by                                                                                                        |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 1   | COS fluent-bit ships serial console + container stdout/stderr to the Cloud Logging API                                                                               | `google-logging-enabled = true` in `REQUIRED_INSTANCE_METADATA` (`src/clients/gcp-instance.ts:472`)             |
+| 2   | Cloud Logging accepts the write, in `ext-interns-spawner-000`                                                                                                        | Already working — see [Which project the VMs are in](#which-project-the-vms-are-in-resolved). No action needed. |
+| 3   | The `datadog-export-sink-interns` project sink exports `gce_instance` entries from that project to the `datadog-log-export-topic` Pub/Sub topic in `openrouter-core` | `google_logging_project_sink.datadog_export_sink_interns`, `services/datadog/infra/logging-pipeline.tf`         |
+| 4   | A Dataflow job drains that topic into Datadog                                                                                                                        | same file                                                                                                       |
+| 5   | A Datadog pipeline relabels the VM logs onto `service:interns`                                                                                                       | `datadog_logs_custom_pipeline.gce_interns`, `services/datadog/infra/log-pipelines.tf`                           |
 
 Hop 1 is unconditional — not vault-gated — because no intern should
 silently discard its own logs, and `createComputeInstance`'s 409 branch
@@ -543,19 +662,19 @@ merges the key over an existing VM's metadata, so **reprovisioning an
 older intern turns its logging on**. That is the recovery path for any
 VM created before the key existed.
 
-Hop 3 is a *second* project sink, added alongside the pre-existing
+Hop 3 is a _second_ project sink, added alongside the pre-existing
 `datadog-export-sink` (which covers `openrouter-core` only). Both write
 to the same topic, so hop 4 and everything downstream of it — Dataflow
 job, dead-letter topic, Datadog API key — is shared and unchanged.
 
 The two sinks use different filters on purpose. `openrouter-core`'s is
-an *exclusion* list:
+an _exclusion_ list:
 
 ```
 NOT resource.type="k8s_container" AND NOT resource.type="k8s_pod" AND NOT resource.type="k8s_node"
 ```
 
-The interns sink is an *allow* list, `resource.type="gce_instance"`.
+The interns sink is an _allow_ list, `resource.type="gce_instance"`.
 Reusing the exclusion list there would export the whole interns project
 (Artifact Registry, Cloud Build, audit logs) at Datadog ingest cost for
 lines nobody reads. If a future intern-adjacent resource type needs
@@ -567,7 +686,7 @@ exporting, widen that filter deliberately rather than swapping in the
 The provisioner sets **no GCP resource labels** on the instance —
 `CreateInstanceBody` (`src/clients/gcp-instance.ts:419`) has no `labels`
 field at all. Everything it does stamp lands somewhere that a log entry
-does *not* carry:
+does _not_ carry:
 
 - `tags: { items: ['intern-vm'] }` (`gcp-instance.ts:591`) is a GCE
   **network tag** for firewall targeting (`infra/firewall.tf`). Network
@@ -683,7 +802,7 @@ working log path as evidence that metrics work.
 ## Tests
 
 - Hermetic E2E: `bun run --filter @openrouter-monorepo/tests-e2e
-  test -- intern-provisioner` (uses the stub server in
+test -- intern-provisioner` (uses the stub server in
   `tests/e2e/intern-provisioner/stubs/`).
 - Manual real-resources: `tests/manual/intern-provisioner/` —
   gated behind `MANUAL_E2E_RUN=1`. See the file headers for the
@@ -712,17 +831,17 @@ Resource-step order lives in `DESTROY_RESOURCE_STEP_ORDER`
 purge live in `runDestroySequence`
 (`src/steps/destroy/destroy-plan.ts:83`).
 
-| # | Step | What it releases |
-|---|------|------------------|
-| 0 | `fence-provisioning` | Nothing. Terminates any in-flight provisioning Workflow and polls until it settles. |
-| 1 | `revoke-openrouter-key` | The intern's OpenRouter key — soft revoke (`deleted` + `disabled` on `api_keys`). |
-| 2 | `delete-vault-secrets` | Every secret the intern held in the vault. No-ops when the deployment has no vault (it is opt-in). |
-| 3 | `delete-gcp-vm` | The GCE instance and its boot disk. This is what actually stops in-flight inference. |
-| 4 | `delete-cf-dns` | The tunnel's DNS CNAME, freeing the hostname. |
-| 5 | `delete-cf-tunnel` | The `cfd_tunnel` (connections cleaned up, then delete). |
-| 6 | `delete-slack-app` | The per-intern Slack app — `auth.revoke`, then `apps.manifest.delete`. |
-| 7 | `delete-log-objects` | The GCS objects that `intern_logs` rows point at. |
-| 8 | `purge` | The `interns` row and the credential rows it exclusively owned. |
+| #   | Step                    | What it releases                                                                                   |
+| --- | ----------------------- | -------------------------------------------------------------------------------------------------- |
+| 0   | `fence-provisioning`    | Nothing. Terminates any in-flight provisioning Workflow and polls until it settles.                |
+| 1   | `revoke-openrouter-key` | The intern's OpenRouter key — soft revoke (`deleted` + `disabled` on `api_keys`).                  |
+| 2   | `delete-vault-secrets`  | Every secret the intern held in the vault. No-ops when the deployment has no vault (it is opt-in). |
+| 3   | `delete-gcp-vm`         | The GCE instance and its boot disk. This is what actually stops in-flight inference.               |
+| 4   | `delete-cf-dns`         | The tunnel's DNS CNAME, freeing the hostname.                                                      |
+| 5   | `delete-cf-tunnel`      | The `cfd_tunnel` (connections cleaned up, then delete).                                            |
+| 6   | `delete-slack-app`      | The per-intern Slack app — `auth.revoke`, then `apps.manifest.delete`.                             |
+| 7   | `delete-log-objects`    | The GCS objects that `intern_logs` rows point at.                                                  |
+| 8   | `purge`                 | The `interns` row and the credential rows it exclusively owned.                                    |
 
 Two bookkeeping steps sit alongside these: `claim-destroying` flips
 the row to `destroying` before anything is probed, and
@@ -738,7 +857,7 @@ resources with nothing to pick them up.
 ### Why fencing is step 0
 
 Without it, a still-running provisioning workflow's `create-gcp-vm`
-can create a VM *after* `delete-gcp-vm` has already run — producing an
+can create a VM _after_ `delete-gcp-vm` has already run — producing an
 orphaned VM with no DB row pointing at it, which is exactly the state
 this feature exists to prevent.
 
@@ -770,7 +889,7 @@ cache (`services/cfw-api/src/routes/keys/delete-api-key.ts:105`).
 
 So the revoke is not the kill switch — **`delete-gcp-vm` is**. Killing
 the VM is what stops in-flight inference. Revocation runs first only so
-that its propagation window elapses *during* the rest of teardown: if
+that its propagation window elapses _during_ the rest of teardown: if
 `delete-gcp-vm` then fails, the orphaned VM's credential still dies
 within ~90s instead of staying live until somebody retries.
 
@@ -795,7 +914,7 @@ row, for three independent reasons
 the row is stamped `destroy_failed` with the failure list and **kept**.
 
 Deleting it would erase the only record that a resource leaked. There
-is no reconciler in this release, so the row *is* the ledger — and the
+is no reconciler in this release, so the row _is_ the ledger — and the
 user's retry, which is the recovery path, needs the row to exist.
 
 ### What cascades and what does not
@@ -809,8 +928,8 @@ user's retry, which is the recovery path, needs the row to exist.
   `intern_connection_credentials_intern_id_fkey` (`:7959`)
 
 There is **no FK from `interns` to `intern_credentials`**. The junction
-cascade removes the *link* and leaves the credential row orphaned and
-unreachable. So `purgeIntern` snapshots the junction rows *before* the
+cascade removes the _link_ and leaves the credential row orphaned and
+unreachable. So `purgeIntern` snapshots the junction rows _before_ the
 delete, then removes those credentials explicitly — and only the ones
 **no other intern still links**. Credentials are entity-scoped and
 deliberately shared (`mintInternSlackApp` reuses one per
@@ -858,9 +977,14 @@ retry cannot reuse the previous id. `decideDestroyDispatch`
 builds `intern-destroy-<internId>-<attempt>` — a namespace disjoint
 from provisioning's `intern-<internId>-<attempt>`, so a teardown can
 never collide with the run it is fencing. A destroy that is already
-in flight is skipped rather than double-dispatched.
+in flight is not double-dispatched. A request that adds a consent the
+running one lacks (`acknowledge_workspace_loss` or
+`acknowledge_orphans`) **supersedes** it: attempt+1 is minted
+carrying the union of recorded and requested consents, and the new
+run's step 0 fences the old one until it settles, before any resource
+step. A request that adds nothing skips, as a double-click always has.
 
-Note that `delete-slack-app` covers the app minted for a *provisioned*
+Note that `delete-slack-app` covers the app minted for a _provisioned_
 intern. It does not close the orphaned-Slack-app window described
 under [Abandoned interns](#abandoned-interns-minted-slack-app-never-installed)
 — an app minted before its credential row landed is not reachable from
@@ -885,13 +1009,13 @@ id as attempt 0.
 
 The dispatch matrix (`decideWorkflowDispatch`):
 
-| Probed status | `reprovision` | Action |
-|---------------|---------------|--------|
-| `not_found`, persisted versioned id | any | Re-create under the SAME id — persist-then-create crash recovery, or CF GC'd a terminal instance. Don't burn an attempt. |
-| `not_found`, no versioned id | any | Mint attempt+1. The cold-start path. |
-| `in_flight` | any | Skip. Never double-dispatch a live workflow; wait for it to settle. |
-| `terminal` | `false` | Skip. A duplicate plain `/enqueue` stays a no-op. |
-| `terminal` | `true` | Mint attempt+1. |
+| Probed status                       | `reprovision` | Action                                                                                                                   |
+| ----------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `not_found`, persisted versioned id | any           | Re-create under the SAME id — persist-then-create crash recovery, or CF GC'd a terminal instance. Don't burn an attempt. |
+| `not_found`, no versioned id        | any           | Mint attempt+1. The cold-start path.                                                                                     |
+| `in_flight`                         | any           | Skip. Never double-dispatch a live workflow; wait for it to settle.                                                      |
+| `terminal`                          | `false`       | Skip. A duplicate plain `/enqueue` stays a no-op.                                                                        |
+| `terminal`                          | `true`        | Mint attempt+1.                                                                                                          |
 
 Reprovisioning reuses the already-stored Slack tokens. The Slack
 app is immutable for the intern's lifetime and the OAuth install
@@ -906,6 +1030,133 @@ dashboard **Delete** button — see
 hand-delete the `interns` row in Postgres: that leaves the VM, the
 Cloudflare tunnel, the Slack app, the GCS log objects, and the
 OpenRouter key live with nothing pointing at them.
+
+## Transferring an intern (workspace move, account handover)
+
+Two different operations hide behind the word "transfer" and they are not the same size. An intern row carries both `entity_id` (the Clerk account that owns it) and `workspace_id` (the workspace inside that account). Moving between workspaces of one account is three UPDATEs and no reboot. Moving between accounts re-tenants every entity-scoped resource the intern holds — the row, the OpenRouter key, its credentials, its vault — while keeping the intern's id, slug, URLs, VM, boot disk and Slack app exactly as they are. `POST /api/v1/internal/interns/:internId/transfer` on `cfw-internal` does this in one staff-triggered call (ORI-1928); see below.
+
+### Between workspaces of the same account
+
+Nothing baked onto the VM references `interns.workspace_id`. The only tenant id on the VM is `ORI_VAULT_WORKSPACE_ID` in `/etc/<bot>/env`, and despite the name it holds the ENTITY id — `buildVaultProvisioning` passes `entityId` (`src/clients/vault-provisioning.ts`), and so does the vault agent token, `hex(HMAC-SHA256(entityId NUL internId))`. A workspace move inside one account is therefore a database-only change: no reprovision, no downtime, nothing to re-stamp.
+
+```sql
+-- the destination must belong to the same entity and still be live
+SELECT id, entity_id, deleted_at FROM workspaces WHERE id = :to_workspace;
+
+UPDATE interns SET workspace_id = :to_workspace
+  WHERE id = :intern_id AND entity_id = :entity_id;
+UPDATE api_keys SET workspace_id = :to_workspace
+  WHERE id = (SELECT openrouter_key_id FROM interns WHERE id = :intern_id);
+UPDATE intern_archives SET workspace_id = :to_workspace
+  WHERE intern_id = :intern_id;
+```
+
+Three things to check before running it:
+
+1. `interns_entity_name_uq_v2` is UNIQUE on `(entity_id, workspace_id, creator_user_id, name)` WHERE `archived_at IS NULL`. A same-named intern by the same creator already in the destination collides.
+2. Visibility is per creator. A member who does not administer the destination workspace sees only rows whose `creator_user_id` is them (`internVisibilityPredicate`, `packages/db/interns/queries.ts`), so repoint `creator_user_id` too if the intern should belong to someone else after the move.
+3. The API key row follows the intern so it lists next to it. Leave it behind and the key stays live but invisible in the workspace view — the case ENT-1784 closed.
+
+### Between accounts: the transfer endpoint
+
+`POST /api/v1/internal/interns/:internId/transfer` on `cfw-internal` (`services/cfw-internal/src/routes/interns/`) re-tenants one intern from the account that built it to the account that will own it. It is staff-only: both the shared admin key (`x-openrouter-admin-key`) and a verified Clerk employee bearer token are required, the same chained gate `org-hipaa`'s `/enable` route uses for a destructive action, so the trail names a person and not just a shared secret. Body:
+
+```json
+{ "fromEntityId": "…", "toEntityId": "…", "toWorkspaceId": "…", "toCreatorUserId": "…", "dryRun": false }
+```
+
+`fromEntityId` is the caller's belief about who currently owns the intern, not a value the route derives itself — deriving it by reading the row would compare that value against itself and the guard below would be vacuous. `transferInternTenant` opens its transaction by locking the intern row `FOR UPDATE` on `fromEntityId` plus the workspace, creator, `running` status and unarchived state pre-flight approved, so if the intern moved, changed workspace or creator, or left `running` in the meantime, nothing is written and the route answers 409 `source_changed` instead of proceeding from a source that is no longer current.
+
+`dryRun: true` runs every pre-flight check and returns the same response shape with nothing written, so a transfer can be checked before committing to the outage window described below.
+
+Pre-flight refuses, naming every failing check in one response, when:
+
+- the intern is not `Running`. A healthy agent that the health sweep just saw serving is NOT a refusal: moving a working intern is the whole point of a whiteglove handover, and the transfer re-bootstraps the VM by design, so schedule it with the customer instead (see the outage window below);
+- the destination workspace is missing, soft-deleted, or its `entity_id` does not match `toEntityId`;
+- `toCreatorUserId` is not a member of the destination workspace. Both destination checks run again inside the move transaction, with the workspace and membership rows locked `FOR SHARE` so neither can be deleted until the move commits; a destination that changed after pre-flight refuses with nothing written, and the route answers 409 `destination_workspace_invalid` or `destination_creator_not_member`;
+- a live intern already holds `(toEntityId, toWorkspaceId, toCreatorUserId, name)` — the same collision `interns_entity_name_uq_v2` enforces in the same-account section above;
+- any credential the intern holds (`runtime_credential_id`, `vcs_credential_id`, or one bound through `intern_connection_credentials`) is also referenced by any other intern — in any account, archived or not. A shared OpenRouter-owned credential is never cloned into the destination — the transfer refuses instead of silently forking it. The same check runs again inside the move transaction with the candidate credential rows locked `FOR UPDATE` (binding a credential takes `FOR KEY SHARE` on it through the foreign key, which that lock blocks), so a binding added after pre-flight still refuses the whole move with nothing written, and the route answers 409 `shared_credential`;
+- `fromEntityId` equals `toEntityId`. This route moves an intern between accounts; a move between workspaces of one account needs no vault or VM change and is the SQL in the section above.
+
+A shared vault in the source entity (`agent_id IS NULL`, holding secrets other interns in that account may also read) is reported in the response rather than refused on: whether this intern actually reads one of those secrets is not knowable from the data, so the endpoint names it instead of blocking a healthy transfer on an unknowable dependency.
+
+Write order, every step guarded on the intern's CURRENT tenant so a re-run after a partial failure resumes rather than repeats: intern row → `api_keys` (repointed, never re-minted or revoked — `api_keys.hash` is globally UNIQUE and the intern's `sk` derives deterministically from `internId`, so a fresh mint in the destination is impossible. The key is owned by the ENTITY, not the creator — `insertApiKey` mints it under `ctx.entityId` — so `clerk_user_id` moves from `fromEntityId` to `toEntityId`. A legacy key minted under a person is not owned by the source entity, is left where it is, and is named in the response's `warnings`, because it keeps billing its current owner until repointed by hand) → `intern_credentials` → `intern_archives` → the vault → reprovision. The vault moves LAST, immediately before the reprovision enqueue, via `POST /v1/vaults/retenant` on `cfw-secret-vault` (`{ agent_id, to_workspace_id }`, admin-keyed) — it re-wraps the vault key's envelope under the destination's AAD identity; no secret ciphertext is re-encrypted, because a secret's AAD is `(vaultId, name)` and the vault row keeps its id. The reprovision is enqueued on `cfw-intern-provisioner` with `reprovision: true, allowLiveVmReset: true` (required — the row is `running`, and without it the provisioner's OCC stamp refuses), naming the verified employee as `clerkUserId`.
+
+A failed reprovision enqueue does NOT fail the transfer. Every row and the vault have already moved by that point, so the response reports `reprovision: "failed"` alongside `ok: true`, and a re-run retries only that step. A re-run whose reprovision was recorded but whose `completed_at` stamp did not land retries only the stamp.
+
+Between the row move and the recorded `vault` step, the vault refuses every intern-scoped secret write for that intern with 409 `conflict` (`isInternVaultTransferPending` in `packages/db/interns/queries-transfer.ts`, checked in `putSecret`). A vault created at the destination in that window would collide with the source vault the transfer is about to move, and every retry would then fail as `vault_conflict`. So a customer adding a secret to the intern mid-transfer sees an error until the transfer finishes, and the transfer holds the reprovision (`reprovision: "failed"`, re-run) if the vault moved but its step did not record, since the reprovision writes secrets the vault would refuse.
+
+A 202 from the provisioner is not enough to count as `succeeded`. `/enqueue` also answers 202 when it decides not to start a workflow (for example `in_flight`, when one is already running for this intern, whose payload still names the source entity), so the 202 body carries the decision as `dispatch: { action: "create" }` or `dispatch: { action: "skip", reason }`. Only `create` records the reprovision step. A skip reports `reprovision: "failed"` with `reprovisionFailureReason` naming the reason; re-run the transfer once the intern's current workflow has finished.
+
+Besides `steps` and `reprovision`, the 200 body carries `vault` (`moved`, `secretCount`, `originCount` — `null` when this call did not run the vault step), `didMoveApiKey`, and `warnings`. Read the warnings: they name a shared vault left behind, an API key that was not repointed, an origin the destination already held with different injection routes or permissions (the destination's rules are kept, so those credentials now inject where the destination allows), and a step that ran but whose progress stamp did not land (a re-run repeats it).
+
+A completed transfer does not block a later one: an intern handed to account X can be transferred on to account Y. A transfer still in progress resumes only for the same source and destination: `runtime_metadata.transfer` records `from_entity_id`, because once the rows move the intern row no longer names the source, and a re-run that names a different source or destination is refused with 409 `different_transfer_in_progress`. That keeps a mistyped `fromEntityId` on a retry from sending the vault a source that holds nothing and recording the vault step as done.
+
+**The outage window opens at the first write, not at the vault step.** `findInternWorkspace` (`services/cfw-secret-vault/src/queries/agent-vault-reads.ts`) authorises an intern's vault access by `interns.id = agentId AND interns.entity_id = workspaceId` — it reads `interns` and never touches `agent_vaults`, so where the vault row happens to sit has no bearing on this check. The window opens the instant `transferInternTenant`'s first write lands — `interns.entity_id` moving to the destination — because from that moment the VM's baked `ORI_VAULT_WORKSPACE_ID` still names the old entity, which no longer matches, and every vault request the VM makes 403s as `VAULT_AGENT_WORKSPACE_MISMATCH`; the intern's model calls and every other vault-backed credential stop resolving right there, before the vault or anything else in the write order has moved. It closes only once the reprovision lands and re-stamps the VM with the new entity id, and nothing in the write order can make it zero — the reprovision is a separate call to a separate service, not a step that folds into the same transaction as the row move. That is why the response's `reprovision` field exists (`null` on a dry run, `"succeeded"` or `"failed"` once the real transfer has run), so the caller knows the intern's outbound credentials stay unavailable until it reports back, and why this is something you run with the customer watching, not behind their back.
+
+What travels with the intern: its id, slug and URLs, the VM and boot disk, the Slack app and its install, the OpenRouter key (repointed) and every vault secret (re-wrapped, not re-encrypted). What does not move, because neither carries a tenant column: `intern_logs` and `intern_icons`, both keyed by `intern_id` alone.
+
+**Break-glass**, for when the endpoint refuses on a check that does not apply here, or `cfw-internal` cannot reach the provisioner: the row moves can be run by hand with the guarded UPDATEs in `packages/db/interns/queries-transfer.ts` (`transferInternTenant`), which is the same shape as the same-account SQL above extended to `interns.entity_id`, `api_keys.clerk_user_id` (the owning entity, not the creator) and `intern_credentials.entity_id`. Follow with `POST /v1/vaults/retenant` on the vault directly, and finish with a manual `/enqueue` to the provisioner carrying `reprovision: true, allowLiveVmReset: true`, checking that the 202 body says `dispatch.action` is `create`. Move the vault only after the row move has landed. Doing it the other way round strands the vault: with the vault moved first but `interns.entity_id` still the source, `findInternWorkspace` fails for the destination too (the intern still belongs to the source entity), so the vault is unreadable from both sides — the destination doesn't own the intern yet, and the source no longer owns the vault — and a crash between the two steps leaves it sitting under an entity that owns no intern at all.
+
+Exercise the whole path locally with `tilt trigger intern-transfer-smoke` under `tilt up -- --interns` (`services/cfw-internal/scripts/local-transfer-smoke.ts`). It builds its own org-owned source intern carrying an API key minted under the org entity, a runtime credential, an archive and a vault secret, moves it to a second org as a dry run and then for real, asserts every one of those rows and the secret landed at the destination, and removes everything it created. It never touches the shared `seed-local` fixture.
+
+Keep the `intern-provisioner` resource off (its Tilt default) while you run it; the smoke refuses otherwise. The transfer ends with a reprovision, and the local provisioner runs with real dev GCP credentials, so an enqueue that reaches it dispatches a real provisioning workflow. With it off, the enqueue fails fast and the route reports `reprovision: "failed"` alongside `ok: true`, which is the expected local result.
+
+## A VM that never passed `/health` (health-gate ladder)
+
+`create-gcp-vm` polls `https://<tunnel>/health` for up to ~9 minutes
+after the VM is inserted. When that budget runs out the step no longer
+fails and leaves the instance running behind a row that later reads
+`running`. It climbs a ladder recorded on `interns.runtime_metadata`
+so every step retry lands on the same rung, whether the retry re-enters
+through the create path or resumes against a VM an earlier step attempt
+already stamped (`src/provisioning/steps/health-gate-recovery.ts`):
+
+1. **Reset once.** The step records
+   `runtime_refresh_reset = { attempt, reason: 'health_gate', requested_at }`
+   and throws a retryable error. The retry re-enters the create path,
+   409s on the existing name, re-stamps the boot script and secrets the
+   failure strip removed, then issues `instances.reset`. The operation
+   name is written to `reset_operation_name` before it is polled, so a
+   crash mid-poll resumes it instead of resetting again.
+   `completed_at` is written only after `/health` passes.
+2. **Stop, do not delete.** If `/health` is still not up after the reset
+   this attempt issued, the step records
+   `vm_stop = { attempt, reason: 'health_gate' }`, issues `instances.stop`,
+   records `stop_operation_name` before polling, and stamps
+   `confirmed_at` once the operation is `DONE`. Only then does it throw
+   the terminal error that lets the workflow stamp `failed`. An
+   unconfirmed stop stays retryable. The boot disk (and `/workspace`) is
+   kept. A retry that re-enters the step with a `vm_stop` for the
+   current attempt finishes that stop before it reads the GCE status,
+   so a `STOPPING` instance is never taken for a stopped one and started
+   again, and a still-`RUNNING` one is never health-polled.
+3. **Start on the next attempt.** A reprovision finds the instance
+   `TERMINATED` with a `vm_stop` record from an earlier attempt, writes
+   `runtime_refresh_reset` with `reason: 'stopped_vm_start'`, re-stamps
+   the boot script through the same 409 path, and issues
+   `instances.start` instead of deleting and recreating. `vm_stop` is
+   cleared only after `/health` passes on the started VM. A dead VM with
+   no `vm_stop` record still goes through the archive-gated recreate.
+
+A dead-origin streak (the tunnel is enrolled but the origin answers
+`origin_unhealthy` six probes in a row) is a different failure and keeps
+its own repair. Uncertain reads never climb the ladder: an unreadable
+GCE status, a failed record write, or a stop or reset GCE did not confirm
+leave the VM as it is and the step retryable.
+
+The dashboard does not show either provisioner reboot as a Restart:
+`isInternRestarting` (`projects/web/utils/interns/restart.ts`) only
+counts a `runtime_refresh_reset` without a `reason`.
+
+Triage: `intern_health_gate_recovery` logs the rung chosen
+(`action: request_reset | stop | rethrow`) with the last probe failure
+reason, `intern_health_gate_vm_stopped` logs the confirmed stop, and
+`intern_step_repairing` with `repair: starting_stopped_vm` logs the
+later start. To bring a stopped intern back, reprovision it from the
+dashboard. To find out why the VM never answered, read its serial
+console or Cloud Logging under the instance name before starting it,
+since the start re-stamps the boot script and reboots.
 
 ## Abandoned interns (minted Slack app, never installed)
 
@@ -931,21 +1182,21 @@ real Slack app in the operator's workspace that was never used.
   retry, network retry, direct API hit) could both see no credential and
   both mint. The `idx_intern_credentials_slack_label_unique` partial
   unique index on `(entity_id, label) WHERE type='slack' AND label IS
-  NOT NULL` (migration `20260601000000`) collapses that race: the losing
+NOT NULL` (migration `20260601000000`) collapses that race: the losing
   `createCredential` insert fails with `23505`, and `mintInternSlackApp`
   recovers by re-reading and reusing the winner's row, so the caller
   still succeeds idempotently. At most one non-revoked `slack` credential
   (and one linked app) survives per `(entity, slug)`. The loser's
   already-minted app falls into the same residual-orphan window below
   (logged `lost concurrent mint race; reusing winner (this app
-  orphaned)`), since preventing the duplicate mint entirely needs the
+orphaned)`), since preventing the duplicate mint entirely needs the
   pre-mint reservation row the schema can't represent yet.
 - **Residual orphan window:** if the Slack `apps.manifest.create`
   call succeeds but the immediately-following `createCredential` DB
   write fails, nothing records the minted app id, so a retry mints a
   fresh app and leaves the first orphaned. This is logged with
   `slack_app_id` (`mintInternSlackApp: credential write failed after
-  Slack app minted (orphaned app)`) for manual cleanup. Fully closing
+Slack app minted (orphaned app)`) for manual cleanup. Fully closing
   the window needs a pre-mint reservation row, which the shared
   `SlackCredentialDataSchema` can't represent today (it requires the
   post-mint `slack_app_id` + secret fields) — tracked as follow-up.
@@ -993,12 +1244,12 @@ does not manage the infrastructure interns actually run on.
 intern VMs are in **`ext-interns-spawner-000`**. The resource names
 match across the two projects, which is what makes the mistake so easy:
 
-| `infra/` declares | in | Live interns use | in |
-| --- | --- | --- | --- |
-| `intern-vm` service account | `openrouter-core` | `intern-vm@ext-interns-spawner-000` | `ext-interns-spawner-000` |
-| `interns` VPC + subnet + NAT | `openrouter-core` | `interns` VPC | `ext-interns-spawner-000` |
-| `interns-allow-iap-ssh`, `interns-deny-all-internal` (tag `intern-vm`) | `openrouter-core` | same names, same tag | `ext-interns-spawner-000` |
-| `intern-provisioning-logs` bucket | `openrouter-core` | no such bucket is reachable | — |
+| `infra/` declares                                                      | in                | Live interns use                    | in                        |
+| ---------------------------------------------------------------------- | ----------------- | ----------------------------------- | ------------------------- |
+| `intern-vm` service account                                            | `openrouter-core` | `intern-vm@ext-interns-spawner-000` | `ext-interns-spawner-000` |
+| `interns` VPC + subnet + NAT                                           | `openrouter-core` | `interns` VPC                       | `ext-interns-spawner-000` |
+| `interns-allow-iap-ssh`, `interns-deny-all-internal` (tag `intern-vm`) | `openrouter-core` | same names, same tag                | `ext-interns-spawner-000` |
+| `intern-provisioning-logs` bucket                                      | `openrouter-core` | no such bucket is reachable         | —                         |
 
 Verified 2026-08-19 by reading a running instance: every intern VM is
 attached to `intern-vm@ext-interns-spawner-000.iam.gserviceaccount.com`
@@ -1021,7 +1272,7 @@ that file says so in its own comments.
 
 **No CI applies `ci/infra`.** The Terraform workflows are scoped to
 `projects/mission-control/infra`, `configs/terraform-monitors`, and
-`services/<name>/infra`. The trap: `ci/infra/gcp.tf` *defines*
+`services/<name>/infra`. The trap: `ci/infra/gcp.tf` _defines_
 `terraform-plan` and `terraform-apply`, so it reads like the state
 those identities apply — they exist for the other states. Reasoning
 about permissions for a `ci/infra` change by reading those bindings
@@ -1096,7 +1347,7 @@ Procedure (no live writers permitted during the swap):
    NEW key, write atomically per row.** Drive this from an offline
    migration script that scopes to one entity at a time and uses
    the same OCC predicate the worker uses (`WHERE updated_at =
-   <observed>`) so a partial failure leaves the row consistent.
+<observed>`) so a partial failure leaves the row consistent.
    Walk: `interns.openrouter_key_encrypted`,
    `interns.daemon_token_encrypted`, then every un-revoked
    `intern_credentials` row.
