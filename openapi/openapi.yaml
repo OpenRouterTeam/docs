@@ -4630,6 +4630,7 @@ components:
         - 'anthropic'
         - 'anthropic/2'
         - 'arcee-ai'
+        - 'assemblyai'
         - 'atlas-cloud'
         - 'avian'
         - 'azure'
@@ -10870,9 +10871,12 @@ components:
         stream:
           description: 'If true, partial images are streamed as SSE events as they become available. Only supported by providers with native streaming (currently OpenAI). Non-streaming providers ignore this flag and return a buffered response.'
           type: 'boolean'
+        trace:
+          $ref: '#/components/schemas/TraceConfig'
         user:
           description: 'A stable identifier for your end-users. Used to help detect and prevent abuse. Never sent to providers verbatim: for providers whose data policy requires user IDs, it is folded into a hashed, per-account upstream user identifier.'
           example: 'end-user-abc123'
+          maxLength: 256
           type: 'string'
       required:
         - 'model'
@@ -14253,6 +14257,7 @@ components:
                 - 'Amazon Nova'
                 - 'Anthropic'
                 - 'Arcee AI'
+                - 'AssemblyAI'
                 - 'AtlasCloud'
                 - 'Avian'
                 - 'Azure'
@@ -21455,6 +21460,7 @@ components:
         - 'Amazon Nova'
         - 'Anthropic'
         - 'Arcee AI'
+        - 'AssemblyAI'
         - 'AtlasCloud'
         - 'Avian'
         - 'Azure'
@@ -21597,6 +21603,9 @@ components:
           additionalProperties: {}
           type: 'object'
         arcee-ai:
+          additionalProperties: {}
+          type: 'object'
+        assemblyai:
           additionalProperties: {}
           type: 'object'
         atlas-cloud:
@@ -22209,6 +22218,7 @@ components:
             - 'Amazon Nova'
             - 'Anthropic'
             - 'Arcee AI'
+            - 'AssemblyAI'
             - 'AtlasCloud'
             - 'Avian'
             - 'Azure'
@@ -24423,6 +24433,13 @@ components:
           example: 1
           format: 'double'
           type: 'number'
+        trace:
+          $ref: '#/components/schemas/TraceConfig'
+        user:
+          description: 'A unique identifier representing your end-user. Forwarded to Broadcast and private logging as the end-user id; never sent to the provider.'
+          example: 'user-1234'
+          maxLength: 256
+          type: 'string'
         voice:
           description: 'Voice identifier (provider-specific).'
           example: 'en_paul_neutral'
@@ -24923,6 +24940,13 @@ components:
           items:
             $ref: '#/components/schemas/STTTimestampGranularity'
           type: 'array'
+        trace:
+          $ref: '#/components/schemas/TraceConfig'
+        user:
+          description: 'A unique identifier representing your end-user. Forwarded to Broadcast and private logging as the end-user id; never sent to the provider.'
+          example: 'user-1234'
+          maxLength: 256
+          type: 'string'
       required:
         - 'model'
         - 'input_audio'
@@ -27053,12 +27077,19 @@ components:
           description: 'Exact pixel dimensions of the generated video in "WIDTHxHEIGHT" format (e.g. "1280x720"). Interchangeable with resolution + aspect_ratio.'
           example: '1280x720'
           type: 'string'
+        trace:
+          $ref: '#/components/schemas/TraceConfig'
         upscale_factor:
           description: 'Upscale factor for video upscaling models only. This parameter is not supported by video generation models.'
           example: 2
           exclusiveMinimum: true
           minimum: 0
           type: 'number'
+        user:
+          description: 'A unique identifier representing your end-user. Forwarded to Broadcast and private logging as the end-user id; never sent to the provider.'
+          example: 'user-1234'
+          maxLength: 256
+          type: 'string'
       required:
         - 'model'
       type: 'object'
@@ -29506,6 +29537,7 @@ paths:
               - 'anthropic'
               - 'anthropic/2'
               - 'arcee-ai'
+              - 'assemblyai'
               - 'atlas-cloud'
               - 'avian'
               - 'azure'
@@ -31420,6 +31452,8 @@ paths:
                   allOf:
                     - $ref: '#/components/schemas/ProviderPreferences'
                     - description: 'Provider routing preferences for the request.'
+                trace:
+                  $ref: '#/components/schemas/TraceConfig'
                 user:
                   description: 'A unique identifier for the end-user'
                   example: 'user-1234'
@@ -33116,7 +33150,7 @@ paths:
                   message: 'Only management keys can perform this operation'
               schema:
                 $ref: '#/components/schemas/ForbiddenResponse'
-          description: 'Forbidden - Authentication successful but insufficient permissions'
+          description: 'The workspace is not owned by this account, or the guardrail would give a HIPAA-enabled workspace a person-name or address sensitive-info filter, which is not available there.'
         '500':
           content:
             application/json:
@@ -33334,6 +33368,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/UnauthorizedResponse'
           description: 'Unauthorized - Authentication required or invalid credentials'
+        '403':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 403
+                  message: 'Only management keys can perform this operation'
+              schema:
+                $ref: '#/components/schemas/ForbiddenResponse'
+          description: 'The update would give a HIPAA-enabled workspace a person-name or address sensitive-info filter, which is not available there.'
         '404':
           content:
             application/json:
@@ -33518,6 +33562,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/UnauthorizedResponse'
           description: 'Unauthorized - Authentication required or invalid credentials'
+        '403':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 403
+                  message: 'Only management keys can perform this operation'
+              schema:
+                $ref: '#/components/schemas/ForbiddenResponse'
+          description: 'The guardrail has no workspace and carries a person-name or address sensitive-info filter, and at least one target key belongs to a HIPAA-enabled workspace, where that filter is not available.'
         '404':
           content:
             application/json:
@@ -39009,6 +39063,13 @@ paths:
                   example: 3
                   minimum: 1
                   type: 'integer'
+                trace:
+                  $ref: '#/components/schemas/TraceConfig'
+                user:
+                  description: 'A unique identifier representing your end-user. Forwarded to Broadcast and private logging as the end-user id; never sent to the provider.'
+                  example: 'user-1234'
+                  maxLength: 256
+                  type: 'string'
               required:
                 - 'model'
                 - 'query'
