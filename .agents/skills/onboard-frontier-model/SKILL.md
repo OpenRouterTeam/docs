@@ -324,8 +324,6 @@ mid-session system, #22274):
 
 ## Verification
 
-- `bun run typecheck` at workspace root (never bare `tsc`).
-- `bun run lint && bun run format`.
 - Targeted tests: `bun test packages/router/adapters/<adapter>` plus
   model-mapper / slug tests.
 - Every new upstream behavior from Pass 2 has a captured raw fixture in

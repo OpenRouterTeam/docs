@@ -444,8 +444,6 @@ Create/update the following test files:
 ### 16. Local verification
 
 ```bash
-bun run verify
-
 # Run relevant tests
 bun test packages/router/plugins/web-search/
 bun test packages/router/plugins/server-tools/web-search/

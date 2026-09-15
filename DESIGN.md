@@ -416,7 +416,7 @@ Surface distinction is **dark-dominant**: in light, `card` (`#FFFFFF`) and `back
 **Applying the elevation tint — alpha vs. composite.** A raised surface is the page color lifted by a small tint (in dark, `Cloud` at the `05` step). *How* that tint is applied depends on whether the surface lies on the page or floats above it:
 
 - **In-flow** (lies on the page — cards, tables, chrome): layer the tint as **alpha**. The opaque page shows through it — that translucency *is* the hierarchy. → `card` / `surface` / `doc-surface`.
-- **Floating overlay** (a portal that pops *over* arbitrary content — *popovers, dropdowns, selects, dialogs, sheets, tooltips*): composite the **same** tint onto an **opaque base**, so page content can't bleed through. → `popover` (= the `card` tint flattened into `background`; opaque in both themes).
+- **Floating overlay** (a portal that pops *over* arbitrary content — *popovers, dropdowns, selects, dialogs, sheets*): composite the **same** tint onto an **opaque base**, so page content can't bleed through. → `popover` (= the `card` tint flattened into `background`; opaque in both themes). **Tooltips are the exception:** a tooltip is an inverted micro-surface, `inverse` / `inverse-foreground` with no border, so it reads dark on the light theme and light on the dark theme.
 - **Sticky chrome** (a header / sub-nav / TOC that stays pinned while the page scrolls *under* it — not a portal): may be a **high-opacity translucent** `background` with `backdrop-blur-sm` (`background/95`; `/80` where the blur is supported, `/50` for a thin mobile action bar). It reads as "the page, frosted," which is the intent — distinct from a portal overlay, which must be fully opaque. Any **fade/scrim gradient** (edge masks, sticky fades) must originate from a **surface token** (`background`/`card`), never raw `white`/`black` or a Radix step.
 
 Same elevation, two methods. A floating surface separates from the page by **tone + border + shadow**, never by transparency. The rule generalizes: *if it overlaps the page, its base is opaque* — don't reach for a translucent token (`card`/`surface`) on anything that floats.
@@ -678,7 +678,7 @@ Shadows are used **sparingly** — only where something **floats above the page*
 
 ### Motion
 
-Motion is **restrained and functional** — it confirms a state change, never decorates. Three durations: `fast` 150ms (hover/color shifts), `base` 200ms (most enter/exit, expand/collapse), `slow` 300ms (larger overlays — sheets, dialogs). Default hover transition is `transition-colors`; reserve transform/opacity transitions for overlays and disclosure. Always honor `prefers-reduced-motion` (drop transforms, keep opacity).
+Motion is **restrained and functional** — it confirms a state change, never decorates. Durations and curves come from the [transitions.dev](https://transitions.dev) scale in `theme.css`, picked by **usage, not nearest number**: `quick` 150ms (hover/color shifts, tooltip appear, dropdown/modal *close*), `fast` 250ms (dropdown/modal *open*, tabs, icon swap), `medium` 350ms (panel/toast close), `slow` 400ms (panel/sheet open), `very-slow` 500ms (emphasis only), `micro` 80ms / `stagger` 40ms (delays and per-item offsets). Closes are always quicker than opens. Default curve is `ease-smooth-out`; `ease-in-out-strong` for on-screen movement (tab indicator, morph), `ease-drawer` for sheets, `ease-bounce` only for playful hover-out. Entrances scale from `scale-large` 0.96 (modals) / `scale-medium` 0.97 (dropdowns) / `scale-small` 0.98 (tooltips), never from 0. Default hover transition is `transition-colors`; reserve transform/opacity transitions for overlays and disclosure. Always honor `prefers-reduced-motion` (drop transforms, keep opacity).
 
 ## Shapes
 
@@ -832,7 +832,7 @@ A row (or column) of buttons fused into one control: shared variant (usually `ou
 
 ### Accordion
 
-Collapsible disclosure: each item is `border-b border-border`; the trigger is a full-width row (`py-3`, `body` at the Nav weight `font-medium` — a marketing FAQ accordion may step up to `section` size, per Tier assignments) with a trailing `icon-sm` chevron in `muted-foreground` that rotates on open (`transition-transform`, `base` duration); content is `body`, animates open/closed. Same focus ring as everything. Use for FAQs, advanced/optional settings, long option lists — not for primary navigation.
+Collapsible disclosure: each item is `border-b border-border`; the trigger is a full-width row (`py-3`, `body` at the Nav weight `font-medium` — a marketing FAQ accordion may step up to `section` size, per Tier assignments) with a trailing `icon-sm` chevron in `muted-foreground` that rotates on open (`transition-transform`, `fast` duration, `ease-smooth-out`); content is `body`, animates open/closed. Same focus ring as everything. Use for FAQs, advanced/optional settings, long option lists — not for primary navigation.
 
 ### Banner / toast
 
@@ -840,7 +840,7 @@ Background: status color at `14` (the `-bg` tokens). Border: status color at `30
 
 **Neutral banner** — the **default** for any banner with no status meaning (orientation, onboarding, "how this page works", info-without-status): `muted` bg + standard `border`, same anatomy as a status banner — leading `icon-sm` in `muted-foreground`, optional `font-medium` title in `foreground`, `body` copy in `muted-foreground`, and the **same underlined link CTA as every other banner** — just in `foreground` instead of a status color (never accent). When in doubt about a banner's flavor, it's neutral.
 
-**Toasts** are the transient form: an opaque `popover` surface (they float — see surfaces), bottom-right stack on desktop / top on mobile, `z-notification`. Auto-dismiss ~5s (longer if they carry an action); errors persist until dismissed. Enter/exit at `base` (200ms).
+**Toasts** are the transient form: an opaque `popover` surface (they float — see surfaces), bottom-right stack on desktop / top on mobile, `z-notification`. Auto-dismiss ~5s (longer if they carry an action); errors persist until dismissed. Enter at `slow` (400ms), exit at `medium` (350ms).
 
 **Callout flavor.** A non-status callout defaults to **neutral** (the neutral banner above). The only colored exception is **promotional**: announcing a launch, upgrade, or "New" uses **Royal** (`promo`). There is **no accent-tinted callout** — accent tint on a surface is the *selected-state* treatment, so painting it on a banner reads as selection, not information. Status banners always win — promo applies only when there's no positive/negative/warning/info meaning to convey; everything else is neutral.
 

@@ -304,14 +304,13 @@ connection open.
 
 ## Verification
 
-- Run `bun run verify` (format, lint, typecheck) before committing. It is
-  fast, run it as often as you like
+- Run `bun run verify` before every push.
 - Run formatting through `bun run format`, not the formatter binary on a
   hand-built file list. There is no type-aware lint mode, `bun run typecheck`
   catches type errors
 - `bun run typecheck:clean` drops every `*.tsbuildinfo` when a build needs
   to start cold, `bun run kill-ports` clears orphaned dev-stack listeners,
-  and `bun run knip` reports unused exports and dependencies
+  and `bun run fallow` reports unused exports and dependencies
 - Use `bun run x <script>` for repository scripts or one-offs that need credentials.
 
 ## Testing

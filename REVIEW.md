@@ -293,6 +293,11 @@ When a fallback is genuinely correct, say which condition makes it so, in the co
 <!-- src: #39425 talos 2026-09-02 -->
 <!-- src: #39285 Cybourgeoisie 2026-09-01 -->
 <!-- src: #39511 talos 2026-09-02 -->
+<!-- src: #31139 talos 2026-09-09 -->
+<!-- src: #41142 talos 2026-09-09 -->
+<!-- src: #40732 talos 2026-09-10 -->
+<!-- src: #41476 talos 2026-09-10 -->
+<!-- src: #40938 talos 2026-09-10 -->
 
 Prefer self-documenting code over comments: if a comment feels necessary, first check whether better naming or structure would carry it. Use JSDoc for multi-line documentation of public APIs and complex algorithms rather than a stack of inline comments. When referencing an RFC, design doc, or external resource, include the title and URL so it can be found later. Scripts and tools that need setup (authentication, environment configuration) document the exact commands in their README.
 
@@ -318,6 +323,12 @@ Documentation should cite durable locations: a `package.json` line reference sur
 - **Use `safeParseJson`** rather than `try`/`catch` around `JSON.parse`; it returns a Result.
 
 ## Avoid Dead and Speculative Code
+
+<!-- src: #40938 talos 2026-09-10 -->
+<!-- src: #41476 talos 2026-09-10 -->
+<!-- src: #41335 charlesrockhead-OR 2026-09-10 -->
+<!-- src: #40733 talos 2026-09-12 -->
+<!-- src: #42308 talos 2026-09-12 -->
 
 Flag an option, parameter, or export that no caller uses — one only tests exercise, or an export nothing outside the file imports. Drop it and add it in the PR that needs it (this mirrors Minimal Interface Design in `AGENTS.md`).
 
@@ -391,9 +402,19 @@ return err(parsed.error.message);
 
 ## Naming Consistency
 
+<!-- src: #40737 talos 2026-09-12 -->
+<!-- src: #42308 talos 2026-09-12 -->
+<!-- src: #41335 charlesrockhead-OR 2026-09-10 -->
+
+**Keep names distinguishable.** Two exports from one module must not differ by a single letter (`requireStrictMfa...` next to `requiresStrictMfa...`): a reader cannot tell the enforcer from the predicate, and a typo imports the wrong one and typechecks. Do not reuse a name a dependency exports with a different meaning (a local `ReverificationConfig` that means something narrower than the `ReverificationConfig` the Clerk SDK exports). Spell a file name and the symbol it exports the same way (`reevaluate-after-byok.ts` exports `createReevaluateAfterByokStep`, not `re-evaluate-after-byok.ts`).
+
 Prefer short but still descriptive prefixes for generated IDs (`gen-anon-` over `gen-anonymous-`). Match function and output terminology: `generateFakeId` emits "fake", not "anonymous". Rename artifacts when their contents change — a migration filename, constant, or `must-not-be-called` sentinel renamed mid-PR keeps its old name in the diff and misleads whoever greps for it later.
 
 ## Single-Sourcing and Drift Prevention
+
+<!-- src: #41142 talos 2026-09-09 -->
+<!-- src: #38430 talos 2026-09-09 -->
+<!-- src: #41228 talos 2026-09-10 -->
 
 **Hoist repeated literals into a shared constant** when the same ID, label, fallback, or regex bound appears at two or more sites that must agree. Exception: keep assertion-side literals in tests independent of fixture constants, so expectations do not silently track the fixture.
 
@@ -423,6 +444,8 @@ When a value cannot be derived (a prose description of enum modes, say), add a s
 <!-- src: #39070 talos 2026-09-01 -->
 <!-- src: #37787 talos 2026-09-01 -->
 <!-- src: #38969 jamespsterling 2026-08-31 -->
+<!-- src: #38430 talos 2026-09-09 -->
+<!-- src: #41876 talos 2026-09-11 -->
 
 **Assert success explicitly** with `assertOk(result)` before reading `result.value`, rather than wrapping assertions in `if (isOk(result))`.
 
@@ -508,7 +531,7 @@ eLog('charge failed', errorToLogFields(result.error));
 const authors = await Promise.all(models.map((m) => getModelAuthor(m.author)));
 
 // GOOD: batch
-const authorsMap = await findCachedAuthors(models.map((m) => m.author));
+const authorsMap = await dedupedFindCatalogAuthors(models.map((m) => m.author));
 ```
 
 **Select only the columns the caller uses.** Avoid `selectAll()` and `.returningAll()` when the consumer reads a subset, so the row shape matches the type it feeds. Drop `.returningAll()` entirely on a write whose caller discards the row — use `.execute()`.
@@ -603,4 +626,4 @@ When a defect comes from a pattern, grep for the pattern and fix every reachable
 
 ### Delete What Your Change Orphans
 
-Removing the last production consumer of a helper orphans it, and the remaining test keeps it looking alive. CI runs `knip --production`, which drops non-`!` entry patterns — so a test-only export *is* reported as an unused export, but `knip.json` sets `exports: "warn"`, so the run still exits 0 and the warning scrolls past. Remove the helper and its tests, or say why it is being kept.
+Removing the last production consumer of a helper orphans it, and the remaining test keeps it looking alive. The Fallow dead-code check in `bun run lint` fails on test-only exports that are not in `scripts/fallow-dead-code-baseline.json`. Remove the helper and its tests, or add the export to the baseline and say in the PR why it is being kept.

@@ -10,275 +10,93 @@ description: >-
 user-invocable: true
 ---
 
-# Mutation Testing
+# Mutation testing
 
-Coverage proves a line ran. Mutation testing proves a test would
-notice if that line were wrong: Stryker edits the source (flips a
-comparison, empties a block, drops a `cancel()`) and reports every
-mutant no test killed.
+Coverage proves that a line ran. Mutation testing proves that a test notices when that line is wrong: Stryker edits the source (flips a comparison, empties a block, drops a `cancel()`) and reports every mutant that no test killed.
 
-Run it on the files you touched, not the repo.
+## Run it once
+
+Run the harness once per session on the source files you changed, named explicitly:
 
 ```bash
-# every source file changed on this branch vs origin/main
-bun run test:mutation --in-place
-
-# specific files
-bun run test:mutation --in-place packages/mcp/src/json-rpc.ts
-
-# add --incremental when iterating on the same file: mutants
-# nothing invalidated are read from the last run's verdicts
-bun run test:mutation --in-place --incremental packages/mcp/src/json-rpc.ts
+bun run test:mutation --in-place --max-minutes 5 <changed-source-file>...
 ```
 
-Every run is capped at 10 minutes of wall clock (`--max-minutes`, `0`
-lifts it). At the cap the harness kills the engine, restores the mutated
-files, and exits non-zero naming the packages it did not finish. Treat that
-exit as "narrow the file list", not as a reason to rerun the whole scope or
-to raise the cap: pass the files you changed and add `--incremental`, and
-classify the survivors you have. Do not spend more than one capped run on
-mutation testing per PR.
+The run is a report, not a gate. If it hits the cap, refuses a file, finds no mutable sources, fails on tests you did not touch, or errors, record `not measured` (or `partial` with the packages it named) and stop. Do not rerun, narrow and retry, raise `--max-minutes`, wrap the command in `timeout`, use `--scope package` or `--incremental`, invoke Stryker directly, or read the harness source.
 
-The harness selects tests by the mutated source file's basename; indirect
-coverage in another colocated test (for example, `registry.test.ts` covering
-`vercel.ts`) is not included automatically. Use a direct Stryker config with
-the relevant test command when those assertions need to be measured.
-Nested route sources can likewise be refused when their regression test lives
-in a parent directory; point a direct in-place config at that parent-level test.
-The same blind spot applies to your own pre-push test run: when a change alters
-a module's output shape, grep the package for every test that imports the
-module and run the whole package's tests, not only the source file's directory.
+Triage the first three survivors in one batch of assertion edits, verify the batch with the package's own test script run from its directory (the same non-mutation command the harness printed), list the remaining survivors by file and line, and stop.
 
-When the worktree changes are unstaged, the default diff scope sees only
-committed files and may report no mutable source files; pass the changed paths
-explicitly (including newly added files) or stage the intended files first.
+Stop immediately when the user asks to finish or messages while a run is in flight: kill the run or let it hit its cap, run `git status --porcelain`, and restore any source change you did not make.
 
-`--in-place` is required in this monorepo: without it Stryker mutates a
-sandbox copy that loses the workspace links the tests import. It edits
-your checkout and restores it afterwards, so commit or stash first.
-The restore can drop the executable bit on `.ts` files in the mutated
-workspace (mode-only `100755 -> 100644` changes in `git status`), so
-`chmod +x` them back before committing.
-A dev server watching the same worktree hot-reloads every mutant, so do not
-capture browser or dev-log evidence while a run is in progress.
-The harness only accepts mutable sources inside workspace package
-directories; for targets under `.agents/skills/`, run Stryker directly
-with an in-place config and a command-runner test command.
+Skip the run when the diff touches only tooling (`scripts/`, lint rules and their fixtures, CI and config files), touches no source file, or no changed source file has a colocated test. Record `not measured`.
 
-A hand-written in-place config must keep the harness's `ignorePatterns`
-(`'**'` plus the package allowlist) and a `tempDirName` inside the repo:
-without the ignore list Stryker rewrites every `.ts` in the checkout (it
-prepends `// @ts-nocheck`), and a backup on another filesystem such as
-`/tmp` fails to restore with `EXDEV: cross-device link not permitted`.
-If that happens, `cp -a <backup>/. <repo>/` puts the files back, but file
-modes are lost, so re-run `git status` and `chmod` the scripts it lists.
+## Harness behavior
 
-Reports land in `reports/mutation/` (git-ignored); the HTML report
-shows survivors inline. The directory is excluded from ls-lint
-(`.ls-lint.yml`), so leaving reports around does not fail
-`bun run verify`. The harness runs Stryker with the command runner
-and no TypeScript checker, but Stryker's sandbox preprocessor still
-does `import('typescript')` and calls the classic API
-(`ts.parseConfigFileTextToJson`), which the repository's hoisted
-TypeScript 7 package drops. The harness therefore launches Stryker's
-node process with `--import scripts/stryker-typescript-alias.mjs`, a
-resolve hook that redirects bare `typescript` imports to the root
-`typescript-api` alias (classic TypeScript 6); do not downgrade
-repository dependencies to "fix" Stryker.
-The repository harness may still run a package-wide initial test suite for a
-path-scoped target; if unrelated baseline tests fail before Stryker starts,
-preserve the exact failure evidence and report that mutation could not start
-instead of changing unrelated tests.
+The harness selects tests by the mutated source file's basename. Indirect coverage in another colocated test (for example, `registry.test.ts` covering `vercel.ts`) is not included, and a sibling variant of the same basename (`foo.route.test.ts` next to `foo.ts`) is not selected either, so its assertions score as survivors. Name the test `foo.test.ts` instead. The same blind spot applies to scoped test selection: when a change alters a module's output shape, find every test in the package that imports the module and run the whole package's tests, not only the source file's directory.
 
-The harness builds the command-runner test command without quoting
-(`scripts/mutation-test.ts` `buildTestCommand`), so source files under
-parenthesized route directories (e.g.
-`projects/web/app/[locale]/(user)/...`) fail the dry run with
-`/bin/sh: Syntax error: "(" unexpected`. Workaround: run Stryker
-directly, keeping the resolve hook
-(`node --import ./scripts/stryker-typescript-alias.mjs node_modules/.bun/@stryker-mutator+core@*/node_modules/.bin/stryker run <config>.json`)
-with a config mirroring `buildStrykerConfig` and a test command that
-filters by bare test-file name (e.g.
-`cd projects/web && bun run test::node export-date-windows.test.ts` —
-note `bun run test <filter>` appends the filter only to the last
-chained script, so target `test::node`/`test::dom` directly).
+`--in-place` is required in this monorepo. Without it, Stryker mutates a sandbox copy that loses the workspace links the tests import. The flag edits your checkout and restores it afterwards, so commit or stash first. The restore can drop the executable bit on `.ts` files in the mutated workspace (mode-only `100755 -> 100644` changes in `git status`), so run `chmod +x` on them before committing. A dev server watching the same worktree hot-reloads every mutant, so do not capture browser or dev-log evidence while a run is in progress.
 
-The default run mutes `StringLiteral` and `ObjectLiteral` mutants and reports them as "ignored", not as survivors. For a serializer or decoder whose observable output is a string, those mutants are behavioural, so add `--all-mutators` and read that score.
+The harness accepts mutable sources only inside workspace package directories. Anything else is `not measured`.
 
-A test-only diff gives the CI mutation job nothing to mutate. Run the harness locally on the source the new tests cover and put the result in the PR.
+Reports land in `reports/mutation/` (git-ignored), and the HTML report shows survivors inline. The directory is excluded from ls-lint (`.ls-lint.yml`).
 
-The harness runs tests through `bun run`, which puts `node_modules/.bin`
-first on `PATH`, so they execute under the `bun` package the root
-`package.json` pins rather than the global Bun. A fixture whose verdict
-depends on runtime parsing behaviour can pass under bare `bun test` and
-fail the dry run. Reproduce with `node_modules/.bin/bun test <file>` and
-use input both versions treat the same.
+The harness runs Stryker with the command runner and no TypeScript checker, but Stryker's sandbox preprocessor still calls `import('typescript')` and the classic API (`ts.parseConfigFileTextToJson`), which the repository's hoisted TypeScript 7 package drops. The harness therefore launches Stryker's Node process with `--import scripts/stryker-typescript-alias.mjs`, a resolve hook that redirects bare `typescript` imports to the root `typescript-api` alias (classic TypeScript 6). Do not downgrade repository dependencies to fix Stryker.
 
-Service-local Bun tests may require the package's `bunfig.toml` preload
-configuration (for example, Cloudflare Worker mocks); run those test
-commands from the service directory rather than from the repository root.
+The harness might run a package-wide initial test suite for a path-scoped target. If unrelated baseline tests fail before Stryker starts, keep the exact failure output and report that mutation could not start instead of changing unrelated tests.
 
-The default engine downloads a `stryker-rs` binary from GitHub on first
-use (`stryker-rs:downloading-binary`); in a sandbox without GitHub egress
-the target fails with `exit_code: null` before any mutant runs. Pass
-`--legacy-stryker` to run the StrykerJS engine already in `node_modules`.
+The default run mutes `StringLiteral` and `ObjectLiteral` mutants and reports them as ignored, not as survivors. For a serializer or decoder whose observable output is a string, those mutants are behavioral, so add `--all-mutators` and read that score.
 
-`--incremental` is safe to leave on while you iterate: the harness
-discards the cache whenever the test command or any test file
-changes, so a new assertion is always really executed. It is skipped
-under `--scope package`.
+A test-only diff gives the CI mutation job nothing to mutate. Name the source that the new tests cover in your one local run and put the result in the PR.
 
-CI runs the same command on every PR and posts the survivors as a
-sticky comment (`.github/workflows/mutation-report.yaml`). The
-comment is a report only. A survivor does not fail the build. CI
-mutates every changed file the harness accepts; the comment lists
-the refused ones under "Not run". A local run before CI lets you
-classify the survivors while you know the code. The comment counts
-survivors for the whole changed file, so a small addition to a large
-existing module (a new `case` in a 700-line handler) inherits hundreds
-of pre-existing survivors. Triage by line: download the run's
-`mutation-report` artifact (`gh run download <run-id> -n mutation-report`)
-and filter `reports/mutation/<package>.json` mutants to the line ranges
-your diff added; classify only those, and state the split in the PR.
+The harness runs tests through `bun run`, which puts `node_modules/.bin` first on `PATH`, so tests execute under the `bun` package that the root `package.json` pins rather than the global Bun. A fixture whose verdict depends on runtime parsing behavior can pass under bare `bun test` and fail the dry run. Reproduce with `node_modules/.bin/bun test <file>` and use input that both versions treat the same.
 
-On a PR whose base is another PR's branch (a stack), CI checks out
-`refs/pull/<n>/merge`, which GitHub builds on the lower PR's own merge
-ref (its branch merged into `main`'s tip), so the harness's diff against
-the merge base also contains every `main` commit since the bottom of the
-stack last synced with `main`, and the job fails on packages the PR never
-touched (`packages/helpers`, `projects/web`, ...). Syncing the bottom PR
-with `main` clears the drift until `main` moves again; otherwise expect
-"failed to produce a report" on stacked layers, run the harness locally
-with `--base <merge-base sha>`, and record the score in the PR body.
+Service-local Bun tests can require the package's `bunfig.toml` preload configuration (for example, Cloudflare Worker mocks). Run those test commands from the service directory rather than from the repository root.
 
-`projects/web` cannot be narrowed by the harness: its `test` script
-runs the whole node and dom suites and ignores the file arguments
-`buildTestCommand` passes, and a handful of those tests read files the
-Stryker sandbox allowlist excludes, so the dry run fails with "failed
-tests in the initial test run". Mutate a web file by pointing Stryker
-at the colocated test directly, e.g. a config whose `commandRunner`
-command is `cd projects/web && bun test '<relative test path>'` with
-the same `mutate` and `ignorePatterns` the harness builds.
+The default engine downloads a `stryker-rs` binary from GitHub on first use (`stryker-rs:downloading-binary`). In a sandbox without GitHub egress, the target fails with `exit_code: null` before any mutant runs. Pass `--legacy-stryker` to run the StrykerJS engine already in `node_modules`.
 
-`packages/router` has the same file-argument limitation for
-`index.ts`: its `bun run test` script still launches the package-wide
-suite, so a file-scoped mutation run can fail its initial test run
-before producing a score. Treat that as a harness limitation and use a
-disposable in-place checkout for a manually narrowed `bun test
-index.test.ts` command; do not change production tests to accommodate
-the mutation runner. For a small diff inside `index.ts`, a direct
-Stryker run with a line-scoped mutate glob
-(`"mutate": ["packages/router/index.ts:<start>-<end>"]`) and a
-command that targets the colocated test file keeps the run fast and
-the survivor list relevant.
+## CI report
 
-The harness runs every selected colocated test file in one `bun test`
-process, so a test that installs `mock.module()` over a sibling module
-leaks that mock into the sibling's own test file and the dry run fails
-with "failed tests in the initial test run". Treat that CI report as a
-harness artifact: run the targets locally and report that score instead
-of moving the mock.
+CI runs the same command on every PR and posts the survivors as a sticky comment (`.github/workflows/mutation-report.yaml`). The comment is a report only, and a survivor does not fail the build. CI mutates every changed file the harness accepts and lists the refused ones under "Not run". A local run before CI lets you classify the survivors while you know the code.
 
-`packages/provider-monitors` is refused outright by the harness: its `test`
-script is a bash wrapper the runner cannot narrow, and the package has more
-test files than `MAX_FALLBACK_TEST_FILES`, so file-scoped targets report
-`refusing-sources-nothing-could-measure`. Run Stryker directly with an
-in-place config whose command runner is
-`cd packages/provider-monitors && bun test <colocated test file>` and a
-line-scoped mutate glob for the diff.
+The comment counts survivors for the whole changed file, so a small addition to a large existing module inherits its pre-existing survivors. Triage by line: download the run's `mutation-report` artifact (`gh run download <run-id> -n mutation-report`), filter the `reports/mutation/<package>.json` mutants to the line ranges your diff added, classify only those, and state the split in the PR. The comment's "missed" count sums `Survived` and `NoCoverage`, so a file whose colocated test exercises only part of it reads as a large regression. Read the statuses from the artifact JSON before triaging, because an unreached line and an unasserted one need different answers.
 
-Check whether a package test script is narrowable before mutation testing: a non-narrowable wrapper prices every source as a whole-suite fallback, so packages over the 100-test-file cap are refused with `no-mutable-source-files-in-scope`; use a direct in-place Stryker config with a narrowed test command.
+On a PR whose base is another PR's branch (a stack), CI checks out `refs/pull/<n>/merge`, which GitHub builds on the lower PR's own merge ref, so the harness's diff against the merge base also contains every `main` commit since the bottom of the stack last synced with `main`. The job then fails on packages the PR never touched. Syncing the bottom PR with `main` clears the drift until `main` moves again. Otherwise expect "failed to produce a report" on stacked layers and rely on your one local run for the score in the PR body.
 
-`packages/batch` can likewise fail its package-wide initial suite on unrelated
-baseline Mistral tests. When mutating a batch parser, run Stryker directly with
-an in-place config whose command targets the colocated test file, then classify
-survivors from that narrowed report rather than changing unrelated tests.
+The harness narrows a file-scoped run through the package's `test:mutation` script when the manifest defines one, and otherwise through a `test` script that accepts file arguments. A package whose `test` script is a non-narrowable wrapper (for example, `packages/provider-monitors`) falls back to the whole suite, and when that suite has more than 100 test files the harness refuses the target with `refusing-sources-nothing-could-measure` or `no-mutable-source-files-in-scope`. A refused target, or one whose initial run fails on unrelated baseline tests, is `not measured`. Do not change production tests to accommodate the runner.
 
-A colocated test that drives the source through a child process (for
-example `packages/stt/lifecycle/submit.test.ts` spawning `submit.harness.ts` with
-`execFile`) leaves the in-process coverage probe blind: every mutant in
-that source reports `NoCoverage` and the file scores 0% even though the
-harness exercises it. Classify those as a file-scope artifact and prove
-the behaviour with the harness run itself, do not add in-process tests
-to satisfy the mutation runner.
+The harness runs every selected colocated test file in one `bun test` process, so a test that installs `mock.module()` over a sibling module leaks that mock into the sibling's own test file and the dry run fails with "failed tests in the initial test run". Bun keeps that override live for the rest of the process, and re-mocking the real exports in `afterAll` is a no-op. A test that needs a dependency real in a later file must use a prop, an injected seam, or the shared process-wide stub instead of `mock.module()`. If the leaking test is not one you touched, treat the CI report as a harness artifact and record `not measured`.
+
+A run with a few hundred survivors can pass every mutant and still end with `mutation-test:target-failed` (`exit_code: 101`) and a "failed to produce a report" comment: `stryker-rs` panics with `failed printing to stdout: Resource temporarily unavailable (os error 11)` while listing survivors on CI's inherited stdout pipe, after the report is already written. Read the score from the job log's final `tested N/N` line.
+
+A colocated test that drives the source through a child process (for example, a test that spawns a harness script with `execFile`) leaves the in-process coverage probe blind: every mutant in that source reports `NoCoverage` and the file scores 0% even though the harness exercises it. Classify those as a file-scope artifact and prove the behavior with the harness run itself. Do not add in-process tests to satisfy the mutation runner.
 
 ## When to run it
 
-- After writing or modifying tests for a pure function, parser,
-  serializer, estimator, or reducer.
-- Before you open or finish a PR that adds or changes tests or
-  logic-heavy code.
-- Before claiming a module is well tested.
-
-Skip it for DB-backed functions (they need integration tests — see
-`db-integration-tests`), React components, and thin glue code.
+Run it once, before you finish a PR that adds or changes tests or logic-heavy code. Survivors in DB-backed functions need integration tests (see `db-integration-tests`); note them and move on.
 
 ## Acting on survivors
 
-Classify every survivor, then fix only the first kind:
+Classify the first three survivors, then fix only the first kind:
 
-1. **Missing assertion** — the test drives the line but never checks
-   its effect. Add the assertion or the missing case.
-2. **Equivalent mutant** — the edit cannot change observable
-   behavior (a defensive re-check, a redundant guard, a log
-   payload). Leave it. If a guard is provably unreachable, that is a
-   finding about the source, not the test. Recurring shapes: the
-   `false` arm of a conditional spread
-   `...(x === undefined ? {} : { x })` (spreading `{ x: undefined }`
-   is indistinguishable downstream), and an `?? []` fallback whose
-   mutant array still takes the same length-guarded branch. The
-   `true` arm of the same spread (value silently dropped) IS
-   behavioral — assert the propagation. Before classifying, apply the
-   mutant by hand and print the result: a `["Stryker was here"]`
-   sentinel that the next `.map` projects to `undefined`, or a
-   null-guard whose only effect is a `TypeError` swallowed by an
-   enclosing `try/catch` returning the same fallback, is equivalent.
-   A surviving `status !== 200` arm usually means every non-200
-   fixture also fails the shape check — serve a well-formed body on a
-   tolerated error status to kill it.
-3. **Wrong level** — only an integration or E2E test can kill it.
-   Note it; do not contort the unit test.
+1. **Missing assertion**: the test drives the line but never checks its effect. Add the assertion or the missing case.
+2. **Equivalent mutant**: the edit cannot change observable behavior (a defensive re-check, a redundant guard, a log payload). Leave it. If a guard is provably unreachable, that is a finding about the source, not the test.
+3. **Wrong level**: only an integration or end-to-end test can kill it. Note it and do not contort the unit test.
+4. **Harness false positive**: the engine can report `Survived` for a whole-condition `ConditionalExpression` mutant (`if (a || b)` to `if (false)`) that an existing assertion kills. When the covering test already looks decisive, apply the mutant by hand and run the colocated test file with the harness command. If it fails, record the survivor as a harness false positive in the PR instead of adding a duplicate test.
 
-A survivor on an error branch whose test asserts a message that also
-appears as a literal in the source is a missing assertion, not a wrong-level
-one: an uncaught crash prints the surrounding source lines, so the literal
-matches even when the branch never ran. Assert on the emitted form (the
-structured log field or annotation), not the bare message text.
+Recurring equivalent shapes: the `false` arm of a conditional spread `...(x === undefined ? {} : { x })` (spreading `{ x: undefined }` is indistinguishable downstream), and an `?? []` fallback whose mutant array still takes the same length-guarded branch. The `true` arm of the same spread (value silently dropped) is behavioral, so assert the propagation. Before classifying, apply the mutant by hand and print the result: a `["Stryker was here"]` sentinel that the next `.map` projects to `undefined`, or a null guard whose only effect is a `TypeError` swallowed by an enclosing `try/catch` that returns the same fallback, is equivalent. A surviving `status !== 200` arm usually means every non-200 fixture also fails the shape check; serve a well-formed body on a tolerated error status to kill it.
 
-Survivors clustered in a function that spawns a process or reads a
-file are not automatically wrong-level. Check whether the decision it
-makes (what to compare, when to throw) is separable from the I/O it
-performs: taking that I/O as a parameter defaulting to the real
-implementation makes the decision unit-killable while leaving only the
-spawn wiring at integration level.
+A survivor on an error branch whose test asserts a message that also appears as a literal in the source is a missing assertion, not a wrong-level one: an uncaught crash prints the surrounding source lines, so the literal matches even when the branch never ran. Assert on the emitted form (the structured log field or annotation), not the bare message text.
 
-A survivor on a line inside a callback the unit test injects into a
-mocked collaborator is a missing assertion, not wrong level: have the
-mock capture the callback and call it from the test, then assert what
-it passes downstream. Route tests that mock a query orchestrator are
-the common case (PR #39232).
+Survivors clustered in a function that spawns a process or reads a file are not automatically wrong level. Check whether the decision it makes (what to compare, when to throw) is separable from the I/O it performs: taking that I/O as a parameter that defaults to the real implementation makes the decision unit-killable while leaving only the spawn wiring at the integration level.
 
-A surviving condition that gates a rendered element whose DOM test
-asserts absence with `expect(screen.queryBy*(...)).toBeNull()` is a
-missing assertion, not an equivalent mutant: Bun's `toBeNull()` and
-`toBe(null)` pass against a React-attached element inside a large
-tree, so that assertion cannot fail. Assert absence with
-`expect(screen.queryAllBy*(...)).toHaveLength(0)` instead (PR #40669).
+A survivor on a line inside a callback that the unit test injects into a mocked collaborator is a missing assertion, not wrong level: have the mock capture the callback and call it from the test, then assert what it passes downstream. Route tests that mock a query orchestrator are the common case.
 
-A surviving default or fallback that feeds a list is likewise a missing
-assertion when the test checks the list with `toEqual`: Bun's `toEqual`
-treats `[undefined]` as equal to `[]`, so a mutant that pushes an
-`undefined` element passes. Assert lists with `toStrictEqual`
-(PR #40473).
+A surviving condition that gates a rendered element whose DOM test asserts absence with `expect(screen.queryBy*(...)).toBeNull()` is a missing assertion, not an equivalent mutant: Bun's `toBeNull()` and `toBe(null)` pass against a React-attached element inside a large tree, so that assertion cannot fail. Assert absence with `expect(screen.queryAllBy*(...)).toHaveLength(0)` instead.
 
-A surviving optional chain or nullish fallback (`a?.b ?? d`) on a
-recovery path is a missing assertion, not an equivalent mutant, when no
-test reaches it with the left operand actually `undefined`: the suite
-only ever exercised the happy operand, so the mutant's `TypeError`
-never fires. Add the case where the operand is absent (for a cache
-fallback, the cold or empty state) and assert the recovered value.
+A surviving default or fallback that feeds a list is likewise a missing assertion when the test checks the list with `toEqual`: Bun's `toEqual` treats `[undefined]` as equal to `[]`, so a mutant that pushes an `undefined` element passes. Assert lists with `toStrictEqual`.
 
-Never change production code, weaken a test, or assert a value you
-know is wrong to raise the score. The score is triage, not a target.
+A surviving optional chain or nullish fallback (`a?.b ?? d`) on a recovery path is a missing assertion, not an equivalent mutant, when no test reaches it with the left operand actually `undefined`: the suite only exercised the happy operand, so the mutant's `TypeError` never fires. Add the case where the operand is absent (for a cache fallback, the cold or empty state) and assert the recovered value.
 
-Full flag reference and cost model: `docs/runbooks/mutation-testing.md`.
+Never change production code, weaken a test, or assert a value you know is wrong to raise the score. The score is triage, not a target.
+
+For the full flag reference and cost model, see `docs/runbooks/mutation-testing.md`. The runbook documents every flag for human and CI use; the limits in this skill override its suggestions to add `--incremental`, use `--scope package`, or raise the cap.
