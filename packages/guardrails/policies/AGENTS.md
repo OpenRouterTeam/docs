@@ -1,0 +1,11 @@
+# Typed guardrail conversion
+
+These schemas represent persisted legacy compatibility configurations. Optional properties preserve fields omitted from historical v1 responses; null, empty arrays, disabled flags, duplicate list entries, and list order remain distinct. Conversion does not apply today's create-form budget refinements, expand deprecated fields, activate inert fields, or insert nested defaults. Validate new authoring operations separately, including requiring a supported reset interval with a budget limit.
+
+`LEGACY_GUARDRAIL_FIELDS` classifies every generated legacy column. Metadata and assignment identity remain owned by retained legacy rows; conversion returns only an in-memory projection of that metadata. Policies never own copies of legacy names, descriptions, timestamps, nullable workspace metadata, or actors.
+
+Only identical configurations of the same type within the same account may share a policy. `getGuardrailPolicyIdentity` consumes validated policies from conversion; it canonicalizes object key order and preserves list order. Conversion rejects unsupported fields and non-JSON values rather than dropping them. A legacy edit must use copy-on-write and move only its owned mappings/selections; pure conversion must never mutate an existing shared policy. Preserve customer policy renames using `is_name_generated`.
+
+Run `bun test ./policies` from `packages/guardrails`. The conversion candidate traverses the full frozen A1 corpus, including copied subject defaults, preserves source rows through a JSON storage round trip, and compares enforcement against the unchanged independent reference. Do not edit A1 cases or expected values to make conversion pass.
+
+Run the read-only inventory with `bun run x scripts/guardrail-policy-dry-run.ts --output .context/guardrail-policy-inventory.json`. It scans bounded pages within one repeatable-read, read-only transaction, reports complete configuration counts and account distributions, and exits nonzero after writing the report if a source row cannot be converted exactly. Names are generated from configurations, not customer names. The report contains account IDs and belongs in a private local artifact. This inventory is evidence for reviewed migration planning, not authorization to write production policies or take the B5 watermark.
