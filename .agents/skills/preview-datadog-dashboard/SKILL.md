@@ -163,6 +163,17 @@ Everything a reviewer would eyeball can be asserted through the API:
   helper cannot provide aggregate counts or grouped numeric sums/averages. The logs analytics
   endpoint is rate-limited to two requests per ten seconds in this workspace, so serialize or
   throttle aggregate calls and retry `429` responses before classifying a query as broken.
+  Dashboard-persisted `group_by.sort` objects may omit `type` and be rejected by the replay API
+  with `input_validation_error(Field 'aggregation' is invalid: Unrecognized parameter)`.
+  Preserve the persisted facet and limit, but omit that sort for replay or add
+  `"type": "measure"` to the sort object. HCL `log_query` widgets persist as
+  `requests[].log_query.search.query` / `.compute` / `.group_by` (not `search_query`), and a
+  persisted `compute.aggregation: "median"` must be replayed as `pc50`; the aggregate API
+  rejects `median`. Strip `$template_vars` from the persisted search before replaying.
+- **A quoted log-message phrase is not an exact match.** It also matches other log lines
+  that share the words. When replaying a log query, group by a facet only the intended line
+  sets and check for values the emitting code cannot produce. Anchor the search on such a
+  facet (`@extra.<field>:*`) rather than on the message text alone.
 - **Widget numbers**: pull `requests[].queries` and `requests[].formulas` verbatim out of the
   returned definition and replay them with an absolute `from`/`to` window. Use
   `POST /api/v2/query/scalar` for scalar and toplist metric requests. Use
@@ -174,6 +185,8 @@ Everything a reviewer would eyeball can be asserted through the API:
   mixed with a distribution in one formula" bug.
 - **Layout**: rasterize each `layout` `{x,y,width,height}` into 12-column grid cells and assert
   zero double-covered cells and zero uncovered cells inside the bounding box.
+  On a tabbed dashboard every tab starts at `y = 0`, so rasterize per tab (the widgets in one
+  `tabs[].widget_ids`), not across the whole `widgets` array.
 - **Tab membership**: the persisted `tabs[].widget_ids` come back as integer widget ids, not the
   `@N` positional refs the source uses. Map `widgets[i].id` to its index before asserting which
   tab a widget landed in, and check every widget appears in exactly one tab.
@@ -212,6 +225,10 @@ Everything a reviewer would eyeball can be asserted through the API:
   found" in a Devin sandbox. For the production-mode check, run
   `terraform plan -var preview_mode=false` in the `$HOME/tf-preview` workspace instead, which has
   a local backend and already holds the module.
+- **A `query_value` metrics query without `"aggregator"` renders the time-average, not the total.**
+  `sum:metric{*}.as_count()` in a scalar request still averages the per-interval sums across the
+  window unless the query object carries `"aggregator": "sum"`. Every count tile needs it
+  (`monitoring/reverification/dashboard.json`, PR #43284); `moderation_content_block` is a reference.
 - **Dashboard `tags` must use `team:` or `ai:` keys.** `team:preview` and `team:inference` are fine.
 - **Never build a filtered and an unfiltered widget list in the two arms of a `? :` conditional.**
   Terraform type-unifies both arms regardless of which is taken, so a 11-element tuple against a
@@ -238,11 +255,43 @@ Everything a reviewer would eyeball can be asserted through the API:
   Actions `TF_DATADOG_API_KEY` / `TF_DATADOG_APP_KEY` (not in Infisical). Do not treat Infisical
   validate-success as write access.
 
+- **Modules that also declare `datadog_logs_metric` resources fail the preview apply with
+  `403 Forbidden` on those resources** (session keys are dashboard-scoped). The dashboards are
+  still created and land in state, so read `terraform output` after the failure and `destroy`
+  as usual. Sourcing such a module (e.g. `monitoring/ori`) by absolute path is still the right
+  call: it exercises every `.tf` in the module, including generated locals. To skip the 403s
+  outright, `terraform apply -target=module.<name>.datadog_dashboard_json.<name>` creates only
+  the dashboard (`monitoring/spend_guard`, which also ships `datadog_logs_metric` resources).
+
+- **Divide only series that share a counting unit.** A retry loop makes `*.attempted` count
+  RPC dispatches while the outcome counters count admissions, so `fail_open / attempted`
+  silently shrinks as retries rise. Replay the numerator and each candidate denominator over
+  the same window and pick the one that reconciles (`spend_guard`: `allowed + denied +
+  fail_open + fail_closed` matched `reserve.attempted` within 0.01% with retries off, while
+  `gated_share{gated:true} - cheap_skipped - entity_limited` was 0.6% high because disarmed
+  attempts never dispatch).
+
 - **`.as_rate()` and `.as_count()` are no-ops on gauge metrics.** The CF GraphQL sync metrics
   (`openrouter.cloudflare.*.sum.*`) are per-minute sums stored as gauges, so all three spellings
   replay to the same per-minute value. To chart them per second, divide in the formula
   (`query1 / 60`) and check `GET /api/v1/metrics/<name>` reports `type: gauge` before trusting a
   rate modifier on any metric.
+
+- **A template variable bound to a log facet cannot scope a metric query.** `{$rule}` with
+  `prefix: "@breadcrumbs.abuse_rule_names"` persists, but replays as `Rule 'scope_or' didn't
+  match at '@breadcrumbs...'` via `/api/v2/query/timeseries`. One variable has one prefix, so
+  either declare a second variable with the metric tag prefix or leave metric widgets at `{*}`
+  (`monitoring/abuse_rules/dashboard.json`).
+
+- **Multi-facet `query_table` group-bys multiply.** Three facets at `limit: 50` each replay as
+  `Cannot generate more than 10000 groups across all dimensions`; size each facet's limit to its
+  real cardinality (e.g. mode 2 × restriction 2 × rule 25) so the product stays under 10000.
+
+- **A `$var` bound to a facet the code has not shipped yet is a risk to every widget it is in.**
+  Replaying the literal `@facet:*` expansion of the `*` default returns zero logs when the
+  attribute does not exist on any line, so verify the rest of the query with that variable
+  dropped, and state the deploy dependency in the PR. Whether the UI drops the clause for `*`
+  is unverified from the API.
 
 - **Percentile queries on a `distribution()` metric return empty series** when percentile
   aggregation is not enabled for that metric in Datadog. Probe with `avg:` before charting
