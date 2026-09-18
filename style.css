@@ -253,3 +253,25 @@ html.dark .changelog-status-badge[data-color="gray"] {
 .mermaid > svg {
   margin-inline: auto;
 }
+
+/* ── Compact support matrices ──
+ * Mintlify gives every table cell a 150px minimum width, which forces a
+ * six-column check/dash table to scroll horizontally in the content column.
+ * Cells in a support matrix hold an icon or a short field name, so let them
+ * shrink to their content. */
+.support-matrix table {
+  font-size: 0.8125rem;
+}
+
+.support-matrix td,
+.support-matrix th {
+  min-width: 0;
+  padding-right: 0.5rem;
+  white-space: nowrap;
+}
+
+.support-matrix th code {
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  font-size: 0.6875rem;
+}
