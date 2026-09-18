@@ -16,6 +16,8 @@ icon: compass
 sidebarTitle: Overview
 ---
 
+import BroadcastFieldMatrix from "/snippets/broadcast-field-matrix.mdx";
+
 Broadcast allows you to automatically send traces from your OpenRouter requests to external observability and analytics platforms. This feature enables you to monitor, debug, and analyze your LLM usage across your preferred tools without any additional instrumentation in your application code.
 
 ## Enabling Broadcast
@@ -304,6 +306,12 @@ Each observability platform may recognize different metadata keys. See the desti
 - [ClickHouse](/guides/features/broadcast/clickhouse#custom-metadata) - Queryable via JSONExtract functions
 - [Google BigQuery](/guides/features/broadcast/bigquery#custom-metadata) - Queryable via JSON functions
 - [S3](/guides/features/broadcast/s3#custom-metadata) - Stored in trace JSON files
+
+### Fields Exported by Destination
+
+Every destination receives the same trace, but each maps a different subset of fields into its payload. Open a group to see which fields reach each destination.
+
+<BroadcastFieldMatrix />
 
 ## API Key Filtering
 

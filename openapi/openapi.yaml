@@ -23532,6 +23532,26 @@ components:
           additionalProperties: false
           description: 'Endpoint performance over the last 30 minutes, keyed by the kind of request served (e.g. `text_generation`, `image_generation`). Additive to the legacy singular latency and throughput fields; image and video generation report end-to-end latency. Only visible when authenticated with an API key or cookie.'
           properties:
+            decisions:
+              properties:
+                latency:
+                  allOf:
+                    - $ref: '#/components/schemas/PercentileStats'
+                    - description: 'Latency percentiles in milliseconds for this workload. Image and video generation report full end-to-end generation time, because their raw latency only measures request acknowledgement; every other workload reports time to first token or result.'
+                request_count:
+                  description: 'Total requests admitted for this workload in the window.'
+                  type:
+                    - 'integer'
+                    - 'null'
+                throughput:
+                  allOf:
+                    - $ref: '#/components/schemas/PercentileStats'
+                    - description: 'Throughput percentiles in tokens per second. Only meaningful for text generation; null for workloads without token throughput.'
+              required:
+                - 'latency'
+                - 'throughput'
+                - 'request_count'
+              type: 'object'
             embeddings:
               properties:
                 latency:
@@ -28137,7 +28157,7 @@ components:
         total_tokens: 35
     VaultSecret:
       additionalProperties: false
-      description: 'Metadata for one stored secret. The secret value is never returned. `fingerprint` is a keyed SHA-256 digest of the value: equal fingerprints within one scope mean equal values, but a workspace secret and its intern copy carry different fingerprints. `hosts` and `fingerprint` are `null` only for legacy rows written before host binding was required; storing the secret again assigns hosts.'
+      description: 'Metadata for one stored secret. The secret value is never returned. `fingerprint` is an HMAC-SHA-256 of the value keyed with that vault''s own data key, so it is comparable only within one vault: equal fingerprints in one vault mean equal values, and rewriting the same value keeps its fingerprint. The same value stored in two vaults (for example a workspace secret and its intern copy) carries different fingerprints, so comparing fingerprints across vaults cannot show that a copy matches or that a rotation propagated. `hosts` and `fingerprint` are `null` only for legacy rows written before host binding was required; storing the secret again assigns hosts.'
       example:
         created_at: '2026-09-15T17:44:00.000Z'
         fingerprint: 'sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08'
@@ -29988,6 +30008,32 @@ paths:
       requestBody:
         content:
           application/json:
+            example:
+              model: 'typesafe/jev-1.13'
+              questions:
+                is_bug:
+                  criteria:
+                    'false': 'The customer is asking a question or requesting a feature.'
+                    'true': 'The customer describes broken or unexpected product behavior.'
+                  instructions: 'Is the customer reporting a software defect?'
+                  type: 'noul'
+                team:
+                  criteria:
+                    account: 'Login, permissions, or profile issues.'
+                    frontend: 'Rendering, layout, or browser compatibility issues.'
+                    payments: 'Checkout, billing, or payment processing issues.'
+                  instructions: 'Which team should own this ticket?'
+                  type: 'choice'
+                urgency:
+                  criteria:
+                    - 'Can wait for the next release'
+                    - 'Should be fixed this week'
+                    - 'Blocking revenue right now'
+                  instructions: 'How urgent is this ticket?'
+                  type: 'score'
+              state:
+                customer_tier: 'enterprise'
+                ticket: 'My checkout page shows a blank screen after I click Pay. I have tried two browsers.'
             schema:
               $ref: '#/components/schemas/DecisionsRequest'
         required: true
@@ -29995,6 +30041,38 @@ paths:
         '200':
           content:
             application/json:
+              example:
+                answers:
+                  is_bug:
+                    noul: 0.96
+                    type: 'noul'
+                  team:
+                    choice: 'payments'
+                    confidence: 0.75
+                    probabilities:
+                      account: 0
+                      frontend: 0.16
+                      payments: 0.84
+                    type: 'choice'
+                  urgency:
+                    confidence: 0.99
+                    legend:
+                      '0': 'Can wait for the next release'
+                      '1': 'Should be fixed this week'
+                      '2': 'Blocking revenue right now'
+                    probabilities:
+                      '0': 0
+                      '1': 0.01
+                      '2': 0.99
+                    score: 1.99
+                    type: 'score'
+                id: 'gen-dec-1789738314-X5e5eKGQdvR9rblyX250'
+                model: 'typesafe/jev-1.13-20260917'
+                provider: 'TypeSafe'
+                usage:
+                  cost: 0.000019992
+                  input_tokens: 476
+                  output_tokens: 70
               schema:
                 $ref: '#/components/schemas/DecisionsResponse'
           description: 'Decisions response'
