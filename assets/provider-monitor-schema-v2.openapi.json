@@ -906,6 +906,54 @@
               "type": {
                 "type": "string",
                 "enum": [
+                  "decisions"
+                ]
+              },
+              "supported_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "passthrough_parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterDescriptor"
+                }
+              },
+              "pricing": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OutputPricingEntry"
+                },
+                "description": "Entries must be unique by type together with the qualifier fields (utc_start, utc_end)"
+              },
+              "capacity": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OutputCapacityEntry"
+                },
+                "description": "Entries must be unique by type, unit, and window"
+              }
+            },
+            "required": [
+              "type",
+              "supported_parameters"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
                   "audio"
                 ]
               },
