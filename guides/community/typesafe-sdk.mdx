@@ -4,7 +4,7 @@ description: Using the TypeSafe SDK with OpenRouter
 seoTitle: 'TypeSafe SDK Integration | OpenRouter SDK Support'
 og:site_name: OpenRouter Documentation
 og:title: 'TypeSafe SDK Integration - OpenRouter SDK Support'
-og:description: 'Point the official TypeSafe JavaScript or Python SDK at OpenRouter to run Jev and other System One models through the Decisions API.'
+og:description: 'Point the official TypeSafe JavaScript or Python SDK at OpenRouter to run Jev and other System One models through the System One API.'
 og:image: https://openrouter.ai/dynamic-og?title=TypeSafe%20SDK&description=TypeSafe%20SDK%20Integration
 og:image:width: 1200
 og:image:height: 630
@@ -18,11 +18,11 @@ icon: puzzle-piece
 {/* <llms-ignore> */}
 ## TypeSafe SDK
 
-You can point an existing [TypeSafe](https://docs.typesafe.ai) client at OpenRouter by changing its base URL. System One requests such as Jev evaluations are then billed to your OpenRouter account and routed through OpenRouter's [Decisions API](/api/api-reference/alphadecisions/submit-a-decisions-questions-and-answers-request).
+You can point an existing [TypeSafe](https://docs.typesafe.ai) client at OpenRouter by changing its base URL. Requests to System One models such as Jev are then billed to your OpenRouter account and routed through OpenRouter's System One API.
 
 ### Base URL
 
-The TypeSafe-compatible API is available at the following base URL:
+OpenRouter's System One API is available at the following base URL:
 
 ```text
 https://openrouter.ai/api
@@ -106,23 +106,23 @@ print(result.answers["refund"])
 
 ### Model IDs
 
-The compatibility endpoint accepts TypeSafe's bare model IDs and maps them onto OpenRouter's `typesafe/` namespace before routing:
+The System One API accepts TypeSafe's bare System One model IDs and maps them onto OpenRouter's `typesafe/` namespace before routing:
 
 - `jev-1.13` is routed as `typesafe/jev-1.13`.
 - `jev-latest` is routed as `~typesafe/jev-latest`, OpenRouter's alias for the newest Jev release.
 - IDs that already carry an author prefix, such as `typesafe/jev-1.13`, are used as-is.
 
-The `model` field in the response contains the OpenRouter model ID that served the request.
+The `model` field in the response contains the OpenRouter model ID of the System One model that served the request.
 
 ### Supported endpoints
 
-- `POST /api/v1/systemone` evaluates state against typed questions. It accepts the same request body and returns the same response as `POST /api/alpha/decisions`.
+- `POST /api/v1/systemone` sends state and typed questions to a System One model and returns its answers.
 
-The TypeSafe SDK's model listing (`client.models.list()` in JavaScript) calls `GET /api/v1/models`, which is OpenRouter's [Models API](/api/api-reference/models/list-all-models-and-their-properties) and returns OpenRouter's response shape rather than TypeSafe's, so the SDK rejects it. Browse [OpenRouter's TypeSafe models](https://openrouter.ai/typesafe) or call the Models API directly instead.
+The TypeSafe SDK's model listing (`client.models.list()` in JavaScript) calls `GET /api/v1/models`, which is OpenRouter's [Models API](/api/api-reference/models/list-all-models-and-their-properties) and returns OpenRouter's response shape rather than TypeSafe's, so the SDK rejects it. Browse [OpenRouter's System One models](https://openrouter.ai/typesafe) or call the Models API directly instead.
 
 ### Request and response format
 
-The endpoint implements TypeSafe's request and response shapes. Requests require `model`, `state`, and `questions`, and responses contain `model`, `answers`, and `usage`. OpenRouter additionally returns `id`, `provider`, and `usage.cost`, which both SDKs pass through without error.
+The System One API implements TypeSafe's request and response shapes. Requests require `model`, `state`, and `questions`, and responses contain `model`, `answers`, and `usage`. OpenRouter additionally returns `id`, `provider`, and `usage.cost`, which both SDKs pass through without error.
 
 ```bash title="systemone.sh" lines
 curl https://openrouter.ai/api/v1/systemone \
@@ -151,8 +151,4 @@ curl https://openrouter.ai/api/v1/systemone \
   "usage": { "input_tokens": 275, "output_tokens": 20, "cost": 0.00003 }
 }
 ```
-
-### Using the native Decisions API
-
-`POST /api/v1/systemone` is an alias for OpenRouter's native `POST /api/alpha/decisions` endpoint, which remains the canonical route and is what the [OpenRouter SDKs](/client-sdks/overview) call. Use the alias when you want to keep using the TypeSafe SDK, and the [Decisions API](/api/api-reference/alphadecisions/submit-a-decisions-questions-and-answers-request) directly when you want OpenRouter's SDKs, provider routing options, and full model IDs.
 {/* </llms-ignore> */}
