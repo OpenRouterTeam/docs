@@ -1,6 +1,14 @@
 {/* Manually derived from a local sentinel-trace capture of packages/broadcast destinations. Source revision: 7c7c1a1495f4a30abe4f7b95b86f715d4291f471 (2026-09-15). Not yet generated; see ENT-2066. */}
 
-<Icon icon="check" color="#16a34a" /> exported · <Icon icon="eye-slash" color="#ca8a04" /> exported, redacted in [privacy mode](#privacy-mode) · — not exported. Fields are trace-level or span-level (`observations[]`) fields of the [trace payload](#trace-data).
+**How to read the tables**
+
+Each row is a destination. Each column is a field from the [trace payload](#trace-data). The cell tells you whether that destination receives that field:
+
+- <Icon icon="check" color="#16a34a" /> **Sent.** The destination receives this field.
+- <Icon icon="eye-slash" color="#ca8a04" /> **Sent unless Privacy Mode is on.** The destination receives this field normally, but it is stripped when [Privacy Mode](#privacy-mode) is enabled for that destination.
+- — **Not sent.** The destination never receives this field, even though it is present in the trace.
+
+Some field names appear at both the top level of the trace and inside each `observations[]` entry (the per-request span). Where that matters, the column header says `(trace)` or `(span)`.
 
 <div className="support-matrix">
 <AccordionGroup>
