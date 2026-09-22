@@ -309,7 +309,7 @@ Each observability platform may recognize different metadata keys. See the desti
 
 ### Fields Exported by Destination
 
-Every destination receives the same trace, but each maps a different subset of fields into its payload. Open a group to see which fields reach each destination.
+OpenRouter builds one trace per request, but not every destination stores every field in it. Use the tables below to check whether a specific field (for example `sessionId`, `totalCost`, or the prompt content) will show up in a given destination. Fields are grouped by topic; open a group to see its table.
 
 <BroadcastFieldMatrix />
 
