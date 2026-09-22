@@ -1,11 +1,12 @@
 ---
-title: TypeSafe SDK
-description: Using the TypeSafe SDK with OpenRouter
-seoTitle: 'TypeSafe SDK Integration | OpenRouter SDK Support'
+title: Jev SDK for TypeScript and Python (TypeSafe SDK)
+sidebarTitle: TypeSafe SDK (Jev)
+description: Point the official TypeSafe JavaScript or Python SDK at OpenRouter to call Jev with your OpenRouter API key
+seoTitle: 'Jev SDK for TypeScript and Python | TypeSafe SDK on OpenRouter'
 og:site_name: OpenRouter Documentation
-og:title: 'TypeSafe SDK Integration - OpenRouter SDK Support'
+og:title: 'Jev SDK for TypeScript and Python (TypeSafe SDK) - OpenRouter'
 og:description: 'Point the official TypeSafe JavaScript or Python SDK at OpenRouter to run Jev and other System One models through the System One API.'
-og:image: https://openrouter.ai/dynamic-og?title=TypeSafe%20SDK&description=TypeSafe%20SDK%20Integration
+og:image: https://openrouter.ai/dynamic-og?title=Jev%20SDK%20for%20TypeScript%20and%20Python&description=Use%20the%20TypeSafe%20SDK%20with%20your%20OpenRouter%20API%20key
 og:image:width: 1200
 og:image:height: 630
 twitter:card: summary_large_image
@@ -18,7 +19,9 @@ icon: puzzle-piece
 {/* <llms-ignore> */}
 ## TypeSafe SDK
 
-You can point an existing [TypeSafe](https://docs.typesafe.ai) client at OpenRouter by changing its base URL. Requests to System One models such as Jev are then billed to your OpenRouter account and routed through OpenRouter's System One API.
+You can point an existing [TypeSafe](https://docs.typesafe.ai) client at OpenRouter by changing its base URL. Requests to System One models such as [Jev](https://openrouter.ai/typesafe/jev-1.13) are then billed to your OpenRouter account and routed through OpenRouter's System One API. The TypeSafe SDK is available for JavaScript and TypeScript (`@typesafe-ai/sdk`) and for Python (`typesafe_sdk`).
+
+If you would rather call Jev without the TypeSafe SDK, use the [Decisions API](/api/api-reference/alphadecisions/submit-a-decisions-questions-and-answers-request) directly or through the OpenRouter [TypeScript](/client-sdks/typescript/sdks/decisions/README), [Python](/client-sdks/python/sdks/decisions/README), or [Go](/client-sdks/go/sdks/decisions/README) SDK.
 
 ### Base URL
 
@@ -151,4 +154,12 @@ curl https://openrouter.ai/api/v1/systemone \
   "usage": { "input_tokens": 275, "output_tokens": 20, "cost": 0.00003 }
 }
 ```
+
+### Jev resources on OpenRouter
+
+- [Jev model page](https://openrouter.ai/typesafe/jev-1.13) for pricing, context length, and provider details
+- [Gate Agent Tool Calls with Jev](/cookbook/building-agents/gate-tool-calls-with-jev) for approving, blocking, or escalating agent tool calls
+- [Cut LLM Cost with a Jev-Verified Cascade](/cookbook/evaluate-and-optimize/jev-verified-cascade) for verifying cheap-model answers before escalating
+- [Jev Lab](https://openrouter.ai/labs/jev) for interactive demos of Jev's triage, extraction, and oversight patterns
+- [TypeSafe documentation](https://docs.typesafe.ai) for System One concepts, question types, and SDK reference
 {/* </llms-ignore> */}
