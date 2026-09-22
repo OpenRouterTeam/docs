@@ -4559,6 +4559,7 @@ components:
         allowed_models: null
         allowed_user_ids: null
         created_at: '2025-08-24T10:30:00Z'
+        declared_zdr: null
         disabled: false
         id: '11111111-2222-3333-4444-555555555555'
         is_byok_only: false
@@ -4602,6 +4603,12 @@ components:
           description: 'ISO timestamp of when the credential was created.'
           example: '2025-08-24T10:30:00Z'
           type: 'string'
+        declared_zdr:
+          description: 'Your declaration of whether the upstream provider account behind this credential has zero data retention (ZDR). `null` inherits OpenRouter''s data policy for the provider''s endpoint; `true` declares the account ZDR so requests that require ZDR may route to this credential even when the shared endpoint retains data; `false` declares it non-ZDR so such requests never route to it. Self-declared and not verified by OpenRouter.'
+          example: null
+          type:
+            - 'boolean'
+            - 'null'
         disabled:
           description: 'Whether this credential is currently disabled.'
           example: false
@@ -4655,6 +4662,7 @@ components:
         - 'is_fallback'
         - 'is_required'
         - 'is_byok_only'
+        - 'declared_zdr'
         - 'allowed_models'
         - 'allowed_api_key_hashes'
         - 'allowed_user_ids'
@@ -6380,14 +6388,14 @@ components:
         type: 'web_search_preview'
       properties:
         allowed_domains:
-          description: 'Limit search results to these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, and most native providers (Anthropic, OpenAI, xAI). Cannot be used with excluded_domains.'
+          description: 'Limit search results to these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, and most native providers (Anthropic, OpenAI, SpaceXAI). Cannot be used with excluded_domains.'
           items:
             type: 'string'
           type: 'array'
         engine:
           $ref: '#/components/schemas/WebSearchEngineEnum'
         excluded_domains:
-          description: 'Exclude search results from these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, Anthropic, OpenAI, and xAI. Cannot be used with allowed_domains.'
+          description: 'Exclude search results from these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, Anthropic, OpenAI, and SpaceXAI. Cannot be used with allowed_domains.'
           items:
             type: 'string'
           type: 'array'
@@ -6422,6 +6430,8 @@ components:
           type: 'string'
         user_location:
           $ref: '#/components/schemas/WebSearchUserLocationServerTool'
+        x_search:
+          $ref: '#/components/schemas/XSearchOptions'
       required:
         - 'type'
       type: 'object'
@@ -7351,6 +7361,12 @@ components:
           type:
             - 'array'
             - 'null'
+        declared_zdr:
+          description: 'Your declaration of whether the upstream provider account behind this credential has zero data retention (ZDR). `null` inherits OpenRouter''s data policy for the provider''s endpoint; `true` declares the account ZDR so requests that require ZDR may route to this credential even when the shared endpoint retains data; `false` declares it non-ZDR so such requests never route to it. Self-declared and not verified by OpenRouter. Defaults to `null`.'
+          example: null
+          type:
+            - 'boolean'
+            - 'null'
         disabled:
           description: 'Whether this credential should be created in a disabled state.'
           example: false
@@ -7397,6 +7413,7 @@ components:
           allowed_models: null
           allowed_user_ids: null
           created_at: '2025-08-24T10:30:00Z'
+          declared_zdr: null
           disabled: false
           id: '11111111-2222-3333-4444-555555555555'
           is_byok_only: false
@@ -7956,6 +7973,29 @@ components:
           type:
             - 'string'
             - 'null'
+        disabled_server_tools:
+          description: 'OpenRouter server tools that requests in this workspace may not invoke. Requests naming a disabled tool are rejected with 403. An empty array or null clears the list.'
+          example:
+            - 'openrouter:web_search'
+            - 'openrouter:bash'
+          items:
+            enum:
+              - 'openrouter:advisor'
+              - 'openrouter:apply_patch'
+              - 'openrouter:bash'
+              - 'openrouter:datetime'
+              - 'openrouter:fusion'
+              - 'openrouter:image_generation'
+              - 'openrouter:experimental__search_models'
+              - 'openrouter:shell'
+              - 'openrouter:subagent'
+              - 'openrouter:tool_search'
+              - 'openrouter:web_fetch'
+              - 'openrouter:web_search'
+            type: 'string'
+          type:
+            - 'array'
+            - 'null'
         io_logging_api_key_ids:
           description: 'Optional array of API key IDs to filter I/O logging'
           example: null
@@ -8008,6 +8048,7 @@ components:
           default_provider_sort: 'price'
           default_text_model: 'openai/gpt-4o'
           description: 'Production environment workspace'
+          disabled_server_tools: null
           id: '550e8400-e29b-41d4-a716-446655440000'
           include_byok_in_budgets: false
           io_logging_api_key_ids: null
@@ -10487,6 +10528,7 @@ components:
           allowed_models: null
           allowed_user_ids: null
           created_at: '2025-08-24T10:30:00Z'
+          declared_zdr: null
           disabled: false
           id: '11111111-2222-3333-4444-555555555555'
           is_byok_only: false
@@ -10675,6 +10717,7 @@ components:
           default_provider_sort: 'price'
           default_text_model: 'openai/gpt-4o'
           description: 'Production environment workspace'
+          disabled_server_tools: null
           id: '550e8400-e29b-41d4-a716-446655440000'
           include_byok_in_budgets: false
           io_logging_api_key_ids: null
@@ -12683,6 +12726,7 @@ components:
         message: 'That question is no longer waiting for an answer.'
         metadata:
           reason: 'interaction_not_pending'
+          retryable: false
       properties:
         code:
           description: 'The HTTP status of the response.'
@@ -12699,6 +12743,7 @@ components:
       description: 'Machine-readable detail for the failure.'
       example:
         reason: 'interaction_not_pending'
+        retryable: false
       properties:
         reason:
           description: 'A stable reason a client can branch on.'
@@ -12720,8 +12765,12 @@ components:
             - 'timeout'
             - 'turn_failed'
           type: 'string'
+        retryable:
+          description: 'Whether the same request may be sent again unchanged. Always `true` for the transient refusals — `busy`, `intern_not_ready`, `intern_unreachable`, `rate_limited`, `stream_severed` and `timeout` — and always `false` for the ones a retry cannot fix. For `turn_failed` it varies by failure and is the intern''s own classification of what went wrong: `true` for an upstream overload, rate limit, timeout or transport fault, `false` for an authentication or bad-request failure that would be rejected the same way again. Branch on this field rather than on `reason` when deciding whether to retry. A `429`, and a `409` or `503` with reason `busy`, also carry a `Retry-After` header saying how long to wait.'
+          type: 'boolean'
       required:
         - 'reason'
+        - 'retryable'
       type: 'object'
     InternChatErrorResponse:
       description: 'A refusal before the stream opens. Once the response is `200` and streaming, failures arrive as a chunk with `finish_reason: "error"` instead.'
@@ -12731,6 +12780,7 @@ components:
           message: 'That question is no longer waiting for an answer.'
           metadata:
             reason: 'interaction_not_pending'
+            retryable: false
       properties:
         error:
           $ref: '#/components/schemas/InternChatError'
@@ -12801,6 +12851,7 @@ components:
         message: 'The intern could not continue this run.'
         metadata:
           reason: 'attachment_failed'
+          retryable: false
       properties:
         code:
           description: 'The HTTP status this failure would have had before the stream opened.'
@@ -12986,8 +13037,11 @@ components:
       description: 'Intern lifecycle request failure.'
       example:
         error:
-          code: 'not_found'
+          code: 404
           message: 'Intern not found'
+          metadata:
+            reason: 'not_found'
+            retryable: false
       properties:
         error:
           additionalProperties: false
@@ -12998,6 +13052,17 @@ components:
                 - type: 'integer'
             message:
               type: 'string'
+            metadata:
+              additionalProperties: false
+              properties:
+                reason:
+                  type: 'string'
+                retryable:
+                  type: 'boolean'
+              required:
+                - 'reason'
+                - 'retryable'
+              type: 'object'
           required:
             - 'code'
             - 'message'
@@ -13175,6 +13240,8 @@ components:
           type: 'string'
         user_location:
           $ref: '#/components/schemas/WebSearchUserLocation'
+        x_search:
+          $ref: '#/components/schemas/XSearchOptions'
       required:
         - 'type'
       type: 'object'
@@ -13185,6 +13252,7 @@ components:
             allowed_models: null
             allowed_user_ids: null
             created_at: '2025-08-24T10:30:00Z'
+            declared_zdr: null
             disabled: false
             id: '11111111-2222-3333-4444-555555555555'
             is_byok_only: false
@@ -13591,6 +13659,7 @@ components:
             default_provider_sort: 'price'
             default_text_model: 'openai/gpt-4o'
             description: 'Production environment workspace'
+            disabled_server_tools: null
             id: '550e8400-e29b-41d4-a716-446655440000'
             include_byok_in_budgets: false
             io_logging_api_key_ids: null
@@ -22439,6 +22508,8 @@ components:
           type: 'string'
         user_location:
           $ref: '#/components/schemas/Preview_WebSearchUserLocation'
+        x_search:
+          $ref: '#/components/schemas/XSearchOptions'
       required:
         - 'type'
       type: 'object'
@@ -22469,6 +22540,8 @@ components:
           type: 'string'
         user_location:
           $ref: '#/components/schemas/Preview_WebSearchUserLocation'
+        x_search:
+          $ref: '#/components/schemas/XSearchOptions'
       required:
         - 'type'
       type: 'object'
@@ -27632,6 +27705,12 @@ components:
           type:
             - 'array'
             - 'null'
+        declared_zdr:
+          description: 'Your declaration of whether the upstream provider account behind this credential has zero data retention (ZDR). `null` inherits OpenRouter''s data policy for the provider''s endpoint; `true` declares the account ZDR so requests that require ZDR may route to this credential even when the shared endpoint retains data; `false` declares it non-ZDR so such requests never route to it. Self-declared and not verified by OpenRouter. Omit to leave the stored value unchanged; `null` clears the declaration.'
+          example: null
+          type:
+            - 'boolean'
+            - 'null'
         disabled:
           description: 'Whether this credential is disabled.'
           example: false
@@ -27668,6 +27747,7 @@ components:
           allowed_models: null
           allowed_user_ids: null
           created_at: '2025-08-24T10:30:00Z'
+          declared_zdr: null
           disabled: false
           id: '11111111-2222-3333-4444-555555555555'
           is_byok_only: false
@@ -28060,6 +28140,29 @@ components:
           type:
             - 'string'
             - 'null'
+        disabled_server_tools:
+          description: 'OpenRouter server tools that requests in this workspace may not invoke. Requests naming a disabled tool are rejected with 403. An empty array or null clears the list.'
+          example:
+            - 'openrouter:web_search'
+            - 'openrouter:bash'
+          items:
+            enum:
+              - 'openrouter:advisor'
+              - 'openrouter:apply_patch'
+              - 'openrouter:bash'
+              - 'openrouter:datetime'
+              - 'openrouter:fusion'
+              - 'openrouter:image_generation'
+              - 'openrouter:experimental__search_models'
+              - 'openrouter:shell'
+              - 'openrouter:subagent'
+              - 'openrouter:tool_search'
+              - 'openrouter:web_fetch'
+              - 'openrouter:web_search'
+            type: 'string'
+          type:
+            - 'array'
+            - 'null'
         io_logging_api_key_ids:
           description: 'Optional array of API key IDs to filter I/O logging'
           example: null
@@ -28109,6 +28212,7 @@ components:
           default_provider_sort: 'price'
           default_text_model: 'openai/gpt-4o'
           description: 'Production environment workspace'
+          disabled_server_tools: null
           id: '550e8400-e29b-41d4-a716-446655440000'
           include_byok_in_budgets: false
           io_logging_api_key_ids: null
@@ -28956,14 +29060,14 @@ components:
         search_context_size: 'medium'
       properties:
         allowed_domains:
-          description: 'Limit search results to these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, and most native providers (Anthropic, OpenAI, xAI). Cannot be used with excluded_domains.'
+          description: 'Limit search results to these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, and most native providers (Anthropic, OpenAI, SpaceXAI). Cannot be used with excluded_domains.'
           items:
             type: 'string'
           type: 'array'
         engine:
           $ref: '#/components/schemas/WebSearchEngineEnum'
         excluded_domains:
-          description: 'Exclude search results from these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, Anthropic, OpenAI, and xAI. Cannot be used with allowed_domains.'
+          description: 'Exclude search results from these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, Anthropic, OpenAI, and SpaceXAI. Cannot be used with allowed_domains.'
           items:
             type: 'string'
           type: 'array'
@@ -28989,6 +29093,8 @@ components:
           $ref: '#/components/schemas/SearchQualityLevel'
         user_location:
           $ref: '#/components/schemas/WebSearchUserLocationServerTool'
+        x_search:
+          $ref: '#/components/schemas/XSearchOptions'
       type: 'object'
     WebSearchDomainFilter:
       example:
@@ -29109,6 +29215,8 @@ components:
                 type: 'approximate'
               required:
                 - 'type'
+        x_search:
+          $ref: '#/components/schemas/XSearchOptions'
       required:
         - 'id'
       type: 'object'
@@ -29143,6 +29251,8 @@ components:
           type: 'string'
         user_location:
           $ref: '#/components/schemas/WebSearchUserLocation'
+        x_search:
+          $ref: '#/components/schemas/XSearchOptions'
       required:
         - 'type'
       type: 'object'
@@ -29169,14 +29279,14 @@ components:
         search_context_size: 'medium'
       properties:
         allowed_domains:
-          description: 'Limit search results to these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, and most native providers (Anthropic, OpenAI, xAI). Cannot be used with excluded_domains.'
+          description: 'Limit search results to these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, and most native providers (Anthropic, OpenAI, SpaceXAI). Cannot be used with excluded_domains.'
           items:
             type: 'string'
           type: 'array'
         engine:
           $ref: '#/components/schemas/WebSearchEngineEnum'
         excluded_domains:
-          description: 'Exclude search results from these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, Anthropic, OpenAI, and xAI. Cannot be used with allowed_domains.'
+          description: 'Exclude search results from these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, Anthropic, OpenAI, and SpaceXAI. Cannot be used with allowed_domains.'
           items:
             type: 'string'
           type: 'array'
@@ -29202,6 +29312,8 @@ components:
           $ref: '#/components/schemas/SearchQualityLevel'
         user_location:
           $ref: '#/components/schemas/WebSearchUserLocationServerTool'
+        x_search:
+          $ref: '#/components/schemas/XSearchOptions'
       type: 'object'
     WebSearchSource:
       example:
@@ -29297,6 +29409,7 @@ components:
         default_provider_sort: 'price'
         default_text_model: 'openai/gpt-4o'
         description: 'Production environment workspace'
+        disabled_server_tools: null
         id: '550e8400-e29b-41d4-a716-446655440000'
         include_byok_in_budgets: false
         io_logging_api_key_ids: null
@@ -29346,6 +29459,14 @@ components:
           example: 'Production environment workspace'
           type:
             - 'string'
+            - 'null'
+        disabled_server_tools:
+          description: 'OpenRouter server tools (e.g. openrouter:web_search) that requests in this workspace may not invoke. Null means no tools are disabled.'
+          example: null
+          items:
+            type: 'string'
+          type:
+            - 'array'
             - 'null'
         id:
           description: 'Unique identifier for the workspace'
@@ -29512,6 +29633,47 @@ components:
         - 'user_id'
         - 'role'
         - 'created_at'
+      type: 'object'
+    XSearchOptions:
+      additionalProperties: false
+      description: 'Enable SpaceXAI X (Twitter) search alongside native web search, with optional filters. Only applies to SpaceXAI endpoints with native search; omit to search the web only. X search is billed separately by SpaceXAI, per post and per user profile fetched.'
+      example:
+        allowed_x_handles:
+          - 'OpenRouterAI'
+        from_date: '2025-01-01'
+      properties:
+        allowed_x_handles:
+          description: 'Only include posts from these X handles (max 20). Cannot be used with excluded_x_handles.'
+          example:
+            - 'OpenRouterAI'
+          items:
+            type: 'string'
+          maxItems: 20
+          type: 'array'
+        enable_image_understanding:
+          description: 'Analyze images attached to matching posts.'
+          type: 'boolean'
+        enable_video_understanding:
+          description: 'Analyze videos attached to matching posts.'
+          type: 'boolean'
+        excluded_x_handles:
+          description: 'Exclude posts from these X handles (max 20). Cannot be used with allowed_x_handles.'
+          example:
+            - 'spamaccount'
+          items:
+            type: 'string'
+          maxItems: 20
+          type: 'array'
+        from_date:
+          description: 'Start of the post date range (ISO 8601 date, e.g. "2025-01-01").'
+          example: '2025-01-01'
+          format: 'date'
+          type: 'string'
+        to_date:
+          description: 'End of the post date range (ISO 8601 date, e.g. "2025-12-31").'
+          example: '2025-12-31'
+          format: 'date'
+          type: 'string'
       type: 'object'
   securitySchemes:
     apiKey:
@@ -31300,6 +31462,7 @@ paths:
                     allowed_models: null
                     allowed_user_ids: null
                     created_at: '2025-08-24T10:30:00Z'
+                    declared_zdr: null
                     disabled: false
                     id: '11111111-2222-3333-4444-555555555555'
                     is_byok_only: false
@@ -31382,6 +31545,7 @@ paths:
                   allowed_models: null
                   allowed_user_ids: null
                   created_at: '2025-08-24T10:30:00Z'
+                  declared_zdr: null
                   disabled: false
                   id: '11111111-2222-3333-4444-555555555555'
                   is_byok_only: false
@@ -31519,6 +31683,7 @@ paths:
                   allowed_models: null
                   allowed_user_ids: null
                   created_at: '2025-08-24T10:30:00Z'
+                  declared_zdr: null
                   disabled: false
                   id: '11111111-2222-3333-4444-555555555555'
                   is_byok_only: false
@@ -31598,6 +31763,7 @@ paths:
                   allowed_models: null
                   allowed_user_ids: null
                   created_at: '2025-08-24T10:30:00Z'
+                  declared_zdr: null
                   disabled: false
                   id: '11111111-2222-3333-4444-555555555555'
                   is_byok_only: false
@@ -31631,6 +31797,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/UnauthorizedResponse'
           description: 'Unauthorized - Authentication required or invalid credentials'
+        '403':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 403
+                  message: 'Only management keys can perform this operation'
+              schema:
+                $ref: '#/components/schemas/ForbiddenResponse'
+          description: 'Forbidden - Authentication successful but insufficient permissions'
         '404':
           content:
             application/json:
@@ -36022,13 +36198,13 @@ paths:
             maximum: 500
             minimum: 1
             type: 'integer'
-        - description: 'Comma-separated lifecycle statuses to include.'
+        - description: 'Comma-separated lifecycle statuses to include, at most 8. Repeats are collapsed.'
           explode: false
           in: 'query'
           name: 'status'
           required: false
           schema:
-            description: 'Comma-separated lifecycle statuses to include.'
+            description: 'Comma-separated lifecycle statuses to include, at most 8. Repeats are collapsed.'
             example:
               - 'queued'
               - 'running'
@@ -36043,6 +36219,7 @@ paths:
                 - 'destroying'
                 - 'destroy_failed'
               type: 'string'
+            maxItems: 8
             type: 'array'
           style: 'form'
         - description: 'The opaque `next_cursor` of the previous page. Returns the interns that come after it in the newest-first order. A malformed cursor is a 400.'
@@ -36091,8 +36268,11 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'invalid_body'
+                  code: 400
                   message: 'Invalid list query'
+                  metadata:
+                    reason: 'invalid_body'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The list filters are invalid.'
@@ -36121,8 +36301,11 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'not_found'
+                  code: 404
                   message: 'Intern not found'
+                  metadata:
+                    reason: 'not_found'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The caller is outside the Intern API programme, the intern is hidden, or lifecycle writes are disabled.'
@@ -36132,36 +36315,43 @@ paths:
               example:
                 error:
                   code: 408
-                  message: 'Request timed out'
+                  message: 'Operation timed out after 10s. Please try again later.'
+                  metadata:
+                    reason: 'timeout'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request exceeded its route deadline.'
+          description: 'The request exceeded its route deadline. The deadline quoted in the message is the route''s own, so it differs between operations.'
         '500':
           content:
             application/json:
               example:
                 error:
-                  code: 'internal_error'
+                  code: 500
                   message: 'The request could not be completed'
+                  metadata:
+                    reason: 'internal_error'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request could not be completed.'
+          description: 'The request could not be completed. `metadata.reason` says whether to try again: `internal_error` is a transient failure and carries `metadata.retryable: true`, so the same request may be sent again, while `configuration_error` carries `retryable: false` because the next attempt reads the same missing binding or unusable stored credential.'
       security:
         - apiKey: []
       summary: 'List interns'
       tags:
         - 'Interns'
     post:
-      description: 'Creates an intern in an explicit workspace. The operation also creates its private vault. It can start provisioning immediately or wait for a later provision call. A retry with the same idempotency key and body resumes unfinished work. The request body is capped at 1048576 bytes and a larger body is refused with 413. The API key selects the caller, workspace and visible interns. There is no default workspace fallback. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
+      description: 'Creates an intern in an explicit workspace. The operation also creates its private vault. It can start provisioning immediately or wait for a later provision call. A retry with the same idempotency key and body resumes unfinished work. The request body is capped at 1048576 bytes and a larger body is refused with 413. A non-empty body must declare `Content-Type: application/json` or it is refused with 415. The API key selects the caller, workspace and visible interns. There is no default workspace fallback. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
       operationId: 'createIntern'
       parameters:
-        - description: 'Key that makes retries resume the same create operation. Without one, the server derives a stable key from the request body.'
+        - description: 'Key that makes retries resume the same create operation, from 1 through 255 characters. An empty or longer key is refused with 400. Without the header, the server derives a stable key from the request body.'
           in: 'header'
           name: 'Idempotency-Key'
           required: false
           schema:
-            description: 'Key that makes retries resume the same create operation. Without one, the server derives a stable key from the request body.'
+            description: 'Key that makes retries resume the same create operation, from 1 through 255 characters. An empty or longer key is refused with 400. Without the header, the server derives a stable key from the request body.'
             example: 'create-research-assistant-2026-09-16'
+            maxLength: 255
             minLength: 1
             type: 'string'
       requestBody:
@@ -36222,8 +36412,11 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'invalid_body'
+                  code: 400
                   message: 'Invalid request body'
+                  metadata:
+                    reason: 'invalid_body'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The request body is invalid.'
@@ -36242,8 +36435,11 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'no_acting_user'
+                  code: 403
                   message: 'This key acts as the organization and has no member to own a new intern'
+                  metadata:
+                    reason: 'no_acting_user'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The key acts as an organization and has no member who can own the intern, or regional access is refused.'
@@ -36252,8 +36448,11 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'not_found'
+                  code: 404
                   message: 'Intern not found'
+                  metadata:
+                    reason: 'not_found'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The caller is outside the Intern API programme, the intern is hidden, or lifecycle writes are disabled.'
@@ -36263,10 +36462,13 @@ paths:
               example:
                 error:
                   code: 408
-                  message: 'Request timed out'
+                  message: 'Operation timed out after 10s. Please try again later.'
+                  metadata:
+                    reason: 'timeout'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request exceeded its route deadline.'
+          description: 'The request exceeded its route deadline. The deadline quoted in the message is the route''s own, so it differs between operations.'
         '409':
           content:
             application/json:
@@ -36274,13 +36476,19 @@ paths:
                 idempotency_key_reused:
                   value:
                     error:
-                      code: 'idempotency_key_reused'
+                      code: 409
                       message: 'This Idempotency-Key was already used with a different request'
+                      metadata:
+                        reason: 'idempotency_key_reused'
+                        retryable: false
                 name_taken:
                   value:
                     error:
-                      code: 'name_taken'
+                      code: 409
                       message: 'An intern named "research-assistant" already exists in this workspace'
+                      metadata:
+                        reason: 'name_taken'
+                        retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The idempotency key was reused, the intern name is already taken in the workspace, the member reached the intern limit, or the requested vault cannot be attached.'
@@ -36289,28 +36497,50 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'payload_too_large'
+                  code: 413
                   message: 'Request body exceeds 1048576 bytes'
+                  metadata:
+                    reason: 'payload_too_large'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The request body is larger than 1048576 bytes.'
+        '415':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 415
+                  message: 'Request body must be sent as application/json'
+                  metadata:
+                    reason: 'unsupported_media_type'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is non-empty and its Content-Type is not application/json.'
         '500':
           content:
             application/json:
               example:
                 error:
-                  code: 'internal_error'
+                  code: 500
                   message: 'The request could not be completed'
+                  metadata:
+                    reason: 'internal_error'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request could not be completed.'
+          description: 'The request could not be completed. `metadata.reason` says whether to try again: `internal_error` is a transient failure and carries `metadata.retryable: true`, so the same request may be sent again, while `configuration_error` carries `retryable: false` because the next attempt reads the same missing binding or unusable stored credential.'
         '502':
           content:
             application/json:
               example:
                 error:
-                  code: 'upstream_unavailable'
+                  code: 502
                   message: 'The intern was created but setup is not ready yet, retry the request'
+                  metadata:
+                    reason: 'upstream_unavailable'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The vault or provisioner did not complete a recoverable create step. Retry the same request.'
@@ -36321,7 +36551,7 @@ paths:
         - 'Interns'
   /interns/{internId}:
     delete:
-      description: 'Starts safe teardown of the intern, its runtime and its private vault. The body is optional. Send `{"acknowledge_workspace_loss": true}` to delete a `destroy_failed` intern whose `last_failure_message` names `workspace_archive_failed`, accepting that its workspace is not backed up. The request body is capped at 1048576 bytes and a larger body is refused with 413. The API key selects the caller, workspace and visible interns. There is no default workspace fallback. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
+      description: 'Starts safe teardown of the intern, its runtime and its private vault. The body is optional. Send `{"acknowledge_workspace_loss": true}` to delete a `destroy_failed` intern whose `last_failure_message` names `workspace_archive_failed`, accepting that its workspace is not backed up. The request body is capped at 1048576 bytes and a larger body is refused with 413. A non-empty body must declare `Content-Type: application/json` or it is refused with 415. The API key selects the caller, workspace and visible interns. There is no default workspace fallback. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
       operationId: 'deleteIntern'
       parameters:
         - description: 'ID of an intern visible to the authenticated API key.'
@@ -36355,8 +36585,11 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'invalid_body'
+                  code: 400
                   message: 'Invalid request body'
+                  metadata:
+                    reason: 'invalid_body'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The request body is invalid.'
@@ -36385,8 +36618,11 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'not_found'
+                  code: 404
                   message: 'Intern not found'
+                  metadata:
+                    reason: 'not_found'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The caller is outside the Intern API programme, the intern is hidden, or lifecycle writes are disabled.'
@@ -36396,17 +36632,23 @@ paths:
               example:
                 error:
                   code: 408
-                  message: 'Request timed out'
+                  message: 'Operation timed out after 10s. Please try again later.'
+                  metadata:
+                    reason: 'timeout'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request exceeded its route deadline.'
+          description: 'The request exceeded its route deadline. The deadline quoted in the message is the route''s own, so it differs between operations.'
         '409':
           content:
             application/json:
               example:
                 error:
-                  code: 'intern_busy'
+                  code: 409
                   message: 'The intern is not in a state that allows this operation'
+                  metadata:
+                    reason: 'intern_busy'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The intern is not in a state that allows this operation.'
@@ -36415,28 +36657,50 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'payload_too_large'
+                  code: 413
                   message: 'Request body exceeds 1048576 bytes'
+                  metadata:
+                    reason: 'payload_too_large'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The request body is larger than 1048576 bytes.'
+        '415':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 415
+                  message: 'Request body must be sent as application/json'
+                  metadata:
+                    reason: 'unsupported_media_type'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is non-empty and its Content-Type is not application/json.'
         '500':
           content:
             application/json:
               example:
                 error:
-                  code: 'internal_error'
+                  code: 500
                   message: 'The request could not be completed'
+                  metadata:
+                    reason: 'internal_error'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request could not be completed.'
+          description: 'The request could not be completed. `metadata.reason` says whether to try again: `internal_error` is a transient failure and carries `metadata.retryable: true`, so the same request may be sent again, while `configuration_error` carries `retryable: false` because the next attempt reads the same missing binding or unusable stored credential.'
         '502':
           content:
             application/json:
               example:
                 error:
-                  code: 'upstream_unavailable'
+                  code: 502
                   message: 'The intern service could not be reached, retry the request'
+                  metadata:
+                    reason: 'upstream_unavailable'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The intern service could not accept the operation.'
@@ -36505,8 +36769,11 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'not_found'
+                  code: 404
                   message: 'Intern not found'
+                  metadata:
+                    reason: 'not_found'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The caller is outside the Intern API programme, the intern is hidden, or lifecycle writes are disabled.'
@@ -36516,27 +36783,33 @@ paths:
               example:
                 error:
                   code: 408
-                  message: 'Request timed out'
+                  message: 'Operation timed out after 10s. Please try again later.'
+                  metadata:
+                    reason: 'timeout'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request exceeded its route deadline.'
+          description: 'The request exceeded its route deadline. The deadline quoted in the message is the route''s own, so it differs between operations.'
         '500':
           content:
             application/json:
               example:
                 error:
-                  code: 'internal_error'
+                  code: 500
                   message: 'The request could not be completed'
+                  metadata:
+                    reason: 'internal_error'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request could not be completed.'
+          description: 'The request could not be completed. `metadata.reason` says whether to try again: `internal_error` is a transient failure and carries `metadata.retryable: true`, so the same request may be sent again, while `configuration_error` carries `retryable: false` because the next attempt reads the same missing binding or unusable stored credential.'
       security:
         - apiKey: []
       summary: 'Get an intern'
       tags:
         - 'Interns'
     patch:
-      description: 'Changes the intern name, description, instructions or model. Omitted fields stay unchanged. The request body is capped at 1048576 bytes and a larger body is refused with 413. The API key selects the caller, workspace and visible interns. There is no default workspace fallback. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
+      description: 'Changes the intern name, description, instructions or model. Omitted fields stay unchanged. The request body is capped at 1048576 bytes and a larger body is refused with 413. A non-empty body must declare `Content-Type: application/json` or it is refused with 415. The API key selects the caller, workspace and visible interns. There is no default workspace fallback. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
       operationId: 'updateIntern'
       parameters:
         - description: 'ID of an intern visible to the authenticated API key.'
@@ -36584,8 +36857,11 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'invalid_body'
+                  code: 400
                   message: 'Invalid request body'
+                  metadata:
+                    reason: 'invalid_body'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The request body is invalid.'
@@ -36614,8 +36890,11 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'not_found'
+                  code: 404
                   message: 'Intern not found'
+                  metadata:
+                    reason: 'not_found'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The caller is outside the Intern API programme, the intern is hidden, or lifecycle writes are disabled.'
@@ -36625,30 +36904,65 @@ paths:
               example:
                 error:
                   code: 408
-                  message: 'Request timed out'
+                  message: 'Operation timed out after 10s. Please try again later.'
+                  metadata:
+                    reason: 'timeout'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request exceeded its route deadline.'
+          description: 'The request exceeded its route deadline. The deadline quoted in the message is the route''s own, so it differs between operations.'
+        '409':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 409
+                  message: 'An intern named "research-assistant" already exists in this workspace'
+                  metadata:
+                    reason: 'name_taken'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The new name is already taken by an intern in this workspace.'
         '413':
           content:
             application/json:
               example:
                 error:
-                  code: 'payload_too_large'
+                  code: 413
                   message: 'Request body exceeds 1048576 bytes'
+                  metadata:
+                    reason: 'payload_too_large'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The request body is larger than 1048576 bytes.'
+        '415':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 415
+                  message: 'Request body must be sent as application/json'
+                  metadata:
+                    reason: 'unsupported_media_type'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is non-empty and its Content-Type is not application/json.'
         '500':
           content:
             application/json:
               example:
                 error:
-                  code: 'internal_error'
+                  code: 500
                   message: 'The request could not be completed'
+                  metadata:
+                    reason: 'internal_error'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request could not be completed.'
+          description: 'The request could not be completed. `metadata.reason` says whether to try again: `internal_error` is a transient failure and carries `metadata.retryable: true`, so the same request may be sent again, while `configuration_error` carries `retryable: false` because the next attempt reads the same missing binding or unusable stored credential.'
       security:
         - apiKey: []
       summary: 'Update an intern'
@@ -36719,6 +37033,7 @@ paths:
                   message: 'The intern did not accept that answer for this tool_call_id.'
                   metadata:
                     reason: 'bad_request'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternChatErrorResponse'
           description: 'The body is not a valid request (`bad_request`), or the intern did not accept the answer for the pending question, such as a permission option it did not offer.'
@@ -36751,9 +37066,23 @@ paths:
                   message: 'No pending question has this tool_call_id.'
                   metadata:
                     reason: 'interaction_unknown'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternChatErrorResponse'
           description: 'The caller is outside the interns programme, the intern does not exist for this key (`not_found`), or no pending question has this `tool_call_id` in this session (`interaction_unknown`).'
+        '408':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 408
+                  message: 'Operation timed out after 300s. Please try again later.'
+                  metadata:
+                    reason: 'timeout'
+                    retryable: true
+              schema:
+                $ref: '#/components/schemas/InternChatErrorResponse'
+          description: 'The request exceeded the route''s own deadline before the handler answered (`timeout`). Distinct from the 504, which is the intern failing to answer within the turn budget.'
         '409':
           content:
             application/json:
@@ -36763,9 +37092,18 @@ paths:
                   message: 'The run that asked this question has already ended.'
                   metadata:
                     reason: 'interaction_not_pending'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternChatErrorResponse'
           description: 'The intern is not running (`intern_not_ready`), another turn is already running on this intern for a different session, for no session, or for a `tool` reply (`busy`), the question is no longer waiting (`interaction_not_pending`), or another request is already attached to the run (`attachment_failed`). The turn lock is per intern, not per session. `intern_not_ready` and `busy` report `retryable: true`, and a `busy` refusal carries `Retry-After`.'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before retrying this request. Present only on a `busy` refusal.'
+              required: false
+              schema:
+                description: 'Seconds to wait before retrying this request. Present only on a `busy` refusal.'
+                example: '5'
+                type: 'string'
         '410':
           content:
             application/json:
@@ -36775,6 +37113,7 @@ paths:
                   message: 'The run produced more output than the intern retains for replay.'
                   metadata:
                     reason: 'attachment_failed'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternChatErrorResponse'
           description: 'The run produced more output than the intern retains, so the paused stream cannot be resumed (`attachment_failed`).'
@@ -36787,6 +37126,7 @@ paths:
                   message: 'Request body exceeds 1048576 bytes'
                   metadata:
                     reason: 'payload_too_large'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternChatErrorResponse'
           description: 'The body exceeds 1 MiB (`payload_too_large`).'
@@ -36799,9 +37139,18 @@ paths:
                   message: 'Too many intern turns. Please wait a moment.'
                   metadata:
                     reason: 'rate_limited'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternChatErrorResponse'
-          description: 'Too many turns for the user or organization this key acts as (`rate_limited`).'
+          description: 'Too many turns for the user or organization this key acts as (`rate_limited`). It reports `retryable: true` and carries `Retry-After`.'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before retrying this request.'
+              required: true
+              schema:
+                description: 'Seconds to wait before retrying this request.'
+                example: '60'
+                type: 'string'
         '502':
           content:
             application/json:
@@ -36811,9 +37160,10 @@ paths:
                   message: 'The intern could not be reached.'
                   metadata:
                     reason: 'intern_unreachable'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternChatErrorResponse'
-          description: 'The intern could not be reached or rejected the request (`intern_unreachable`, `intern_rejected`), the intern refused the turn before any output (`turn_failed`), or its stream ended before the turn started (`stream_severed`).'
+          description: 'The intern could not be reached or rejected the request (`intern_unreachable`, `intern_rejected`), the intern refused the turn before any output (`turn_failed`), or its stream ended before the turn started (`stream_severed`). `intern_unreachable` and `stream_severed` are transient and report `retryable: true`; `intern_rejected` reports `false`. A `turn_failed` varies by failure and carries the intern''s own classification of what went wrong, so read `metadata.retryable` rather than assuming from the reason.'
         '503':
           content:
             application/json:
@@ -36823,9 +37173,18 @@ paths:
                   message: 'The intern cannot hold another run open across a question right now. Retry later.'
                   metadata:
                     reason: 'busy'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternChatErrorResponse'
-          description: 'The intern cannot hold another run open across a question right now (`busy`). Retry later.'
+          description: 'The intern cannot hold another run open across a question right now (`busy`). It reports `retryable: true` and carries `Retry-After`.'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before retrying this request.'
+              required: true
+              schema:
+                description: 'Seconds to wait before retrying this request.'
+                example: '5'
+                type: 'string'
         '504':
           content:
             application/json:
@@ -36835,6 +37194,7 @@ paths:
                   message: 'The intern did not answer in time.'
                   metadata:
                     reason: 'timeout'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternChatErrorResponse'
           description: 'The intern did not answer within the request budget (`timeout`).'
@@ -36847,7 +37207,7 @@ paths:
       x-speakeasy-name-override: 'chat'
   /interns/{internId}/provision:
     post:
-      description: 'Starts the first boot, or resumes an intern after suspension. The API key selects the caller, workspace and visible interns. There is no default workspace fallback. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
+      description: 'Starts the first boot, or resumes an intern after suspension. This operation takes no request body. A body carrying any field is refused with 400 rather than ignored. The API key selects the caller, workspace and visible interns. There is no default workspace fallback. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
       operationId: 'provisionIntern'
       parameters:
         - description: 'ID of an intern visible to the authenticated API key.'
@@ -36868,6 +37228,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProvisionInternResponse'
           description: 'The operation was accepted.'
+        '400':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 400
+                  message: 'Invalid request body'
+                  metadata:
+                    reason: 'invalid_body'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is invalid.'
         '401':
           content:
             application/json:
@@ -36893,8 +37266,11 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'not_found'
+                  code: 404
                   message: 'Intern not found'
+                  metadata:
+                    reason: 'not_found'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The caller is outside the Intern API programme, the intern is hidden, or lifecycle writes are disabled.'
@@ -36904,37 +37280,75 @@ paths:
               example:
                 error:
                   code: 408
-                  message: 'Request timed out'
+                  message: 'Operation timed out after 10s. Please try again later.'
+                  metadata:
+                    reason: 'timeout'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request exceeded its route deadline.'
+          description: 'The request exceeded its route deadline. The deadline quoted in the message is the route''s own, so it differs between operations.'
         '409':
           content:
             application/json:
               example:
                 error:
-                  code: 'intern_busy'
+                  code: 409
                   message: 'The intern is not in a state that allows this operation'
+                  metadata:
+                    reason: 'intern_busy'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The intern is not in a state that allows this operation.'
+        '413':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 413
+                  message: 'Request body exceeds 1048576 bytes'
+                  metadata:
+                    reason: 'payload_too_large'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is larger than 1048576 bytes.'
+        '415':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 415
+                  message: 'Request body must be sent as application/json'
+                  metadata:
+                    reason: 'unsupported_media_type'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is non-empty and its Content-Type is not application/json.'
         '500':
           content:
             application/json:
               example:
                 error:
-                  code: 'internal_error'
+                  code: 500
                   message: 'The request could not be completed'
+                  metadata:
+                    reason: 'internal_error'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request could not be completed.'
+          description: 'The request could not be completed. `metadata.reason` says whether to try again: `internal_error` is a transient failure and carries `metadata.retryable: true`, so the same request may be sent again, while `configuration_error` carries `retryable: false` because the next attempt reads the same missing binding or unusable stored credential.'
         '502':
           content:
             application/json:
               example:
                 error:
-                  code: 'upstream_unavailable'
+                  code: 502
                   message: 'The intern service could not be reached, retry the request'
+                  metadata:
+                    reason: 'upstream_unavailable'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The intern service could not accept the operation.'
@@ -36945,7 +37359,7 @@ paths:
         - 'Interns'
   /interns/{internId}/suspend:
     post:
-      description: 'Stops the intern runtime while keeping its disk and configuration for a later provision call. The API key selects the caller, workspace and visible interns. There is no default workspace fallback. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
+      description: 'Stops the intern runtime while keeping its disk and configuration for a later provision call. This operation takes no request body. A body carrying any field is refused with 400 rather than ignored. The API key selects the caller, workspace and visible interns. There is no default workspace fallback. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
       operationId: 'suspendIntern'
       parameters:
         - description: 'ID of an intern visible to the authenticated API key.'
@@ -36966,6 +37380,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuspendInternResponse'
           description: 'Intern suspended.'
+        '400':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 400
+                  message: 'Invalid request body'
+                  metadata:
+                    reason: 'invalid_body'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is invalid.'
         '401':
           content:
             application/json:
@@ -36991,8 +37418,11 @@ paths:
             application/json:
               example:
                 error:
-                  code: 'not_found'
+                  code: 404
                   message: 'Intern not found'
+                  metadata:
+                    reason: 'not_found'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The caller is outside the Intern API programme, the intern is hidden, or lifecycle writes are disabled.'
@@ -37002,37 +37432,75 @@ paths:
               example:
                 error:
                   code: 408
-                  message: 'Request timed out'
+                  message: 'Operation timed out after 10s. Please try again later.'
+                  metadata:
+                    reason: 'timeout'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request exceeded its route deadline.'
+          description: 'The request exceeded its route deadline. The deadline quoted in the message is the route''s own, so it differs between operations.'
         '409':
           content:
             application/json:
               example:
                 error:
-                  code: 'intern_busy'
+                  code: 409
                   message: 'The intern is not in a state that allows this operation'
+                  metadata:
+                    reason: 'intern_busy'
+                    retryable: false
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The intern is not in a state that allows this operation.'
+        '413':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 413
+                  message: 'Request body exceeds 1048576 bytes'
+                  metadata:
+                    reason: 'payload_too_large'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is larger than 1048576 bytes.'
+        '415':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 415
+                  message: 'Request body must be sent as application/json'
+                  metadata:
+                    reason: 'unsupported_media_type'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is non-empty and its Content-Type is not application/json.'
         '500':
           content:
             application/json:
               example:
                 error:
-                  code: 'internal_error'
+                  code: 500
                   message: 'The request could not be completed'
+                  metadata:
+                    reason: 'internal_error'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
-          description: 'The request could not be completed.'
+          description: 'The request could not be completed. `metadata.reason` says whether to try again: `internal_error` is a transient failure and carries `metadata.retryable: true`, so the same request may be sent again, while `configuration_error` carries `retryable: false` because the next attempt reads the same missing binding or unusable stored credential.'
         '502':
           content:
             application/json:
               example:
                 error:
-                  code: 'upstream_unavailable'
+                  code: 502
                   message: 'The intern service could not be reached, retry the request'
+                  metadata:
+                    reason: 'upstream_unavailable'
+                    retryable: true
               schema:
                 $ref: '#/components/schemas/InternLifecycleError'
           description: 'The intern service could not accept the operation.'
@@ -40217,9 +40685,13 @@ paths:
         '403':
           content:
             application/json:
+              example:
+                error:
+                  code: 403
+                  message: 'Only management keys can perform this operation'
               schema:
                 $ref: '#/components/schemas/ForbiddenResponse'
-          description: 'Privacy settings are locked'
+          description: 'Forbidden - Authentication successful but insufficient permissions'
         '404':
           content:
             application/json:
@@ -42843,6 +43315,205 @@ paths:
       tags:
         - 'SCIM'
       x-speakeasy-name-override: 'getSyncJob'
+  /systemone:
+    post:
+      description: 'Sends state and typed questions to a System One model such as Jev and returns its answers. Compatible with the TypeSafe SDKs. Bare System One model IDs such as `jev-1.13` and `jev-latest` are mapped onto the `typesafe/` namespace.'
+      operationId: 'createSystemone'
+      requestBody:
+        content:
+          application/json:
+            example:
+              model: 'typesafe/jev-1.13'
+              questions:
+                is_bug:
+                  criteria:
+                    'false': 'The customer is asking a question or requesting a feature.'
+                    'true': 'The customer describes broken or unexpected product behavior.'
+                  instructions: 'Is the customer reporting a software defect?'
+                  type: 'noul'
+                team:
+                  criteria:
+                    account: 'Login, permissions, or profile issues.'
+                    frontend: 'Rendering, layout, or browser compatibility issues.'
+                    payments: 'Checkout, billing, or payment processing issues.'
+                  instructions: 'Which team should own this ticket?'
+                  type: 'choice'
+                urgency:
+                  criteria:
+                    - 'Can wait for the next release'
+                    - 'Should be fixed this week'
+                    - 'Blocking revenue right now'
+                  instructions: 'How urgent is this ticket?'
+                  type: 'score'
+              state:
+                customer_tier: 'enterprise'
+                ticket: 'My checkout page shows a blank screen after I click Pay. I have tried two browsers.'
+            schema:
+              $ref: '#/components/schemas/DecisionsRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                answers:
+                  is_bug:
+                    noul: 0.96
+                    type: 'noul'
+                  team:
+                    choice: 'payments'
+                    confidence: 0.75
+                    probabilities:
+                      account: 0
+                      frontend: 0.16
+                      payments: 0.84
+                    type: 'choice'
+                  urgency:
+                    confidence: 0.99
+                    legend:
+                      '0': 'Can wait for the next release'
+                      '1': 'Should be fixed this week'
+                      '2': 'Blocking revenue right now'
+                    probabilities:
+                      '0': 0
+                      '1': 0.01
+                      '2': 0.99
+                    score: 1.99
+                    type: 'score'
+                id: 'gen-dec-1789738314-X5e5eKGQdvR9rblyX250'
+                model: 'typesafe/jev-1.13-20260917'
+                provider: 'TypeSafe'
+                usage:
+                  cost: 0.000019992
+                  input_tokens: 476
+                  output_tokens: 70
+              schema:
+                $ref: '#/components/schemas/DecisionsResponse'
+          description: 'Decisions response'
+        '400':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 400
+                  message: 'Invalid request parameters'
+              schema:
+                $ref: '#/components/schemas/BadRequestResponse'
+          description: 'Bad Request - Invalid request parameters or malformed input'
+        '401':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 401
+                  message: 'Missing Authentication header'
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+          description: 'Unauthorized - Authentication required or invalid credentials'
+        '402':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 402
+                  message: 'Insufficient credits. Add more using https://openrouter.ai/credits'
+              schema:
+                $ref: '#/components/schemas/PaymentRequiredResponse'
+          description: 'Payment Required - Insufficient credits or quota to complete request'
+        '403':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 403
+                  message: 'Only management keys can perform this operation'
+              schema:
+                $ref: '#/components/schemas/ForbiddenResponse'
+          description: 'Forbidden - Authentication successful but insufficient permissions'
+        '404':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 404
+                  message: 'Resource not found'
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+          description: 'Not Found - Resource does not exist'
+        '413':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 413
+                  message: 'Request payload too large'
+              schema:
+                $ref: '#/components/schemas/PayloadTooLargeResponse'
+          description: 'Payload Too Large - Request payload exceeds size limits'
+        '429':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 429
+                  message: 'Rate limit exceeded'
+              schema:
+                $ref: '#/components/schemas/TooManyRequestsResponse'
+          description: 'Too Many Requests - Rate limit exceeded'
+        '500':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 500
+                  message: 'Internal Server Error'
+              schema:
+                $ref: '#/components/schemas/InternalServerResponse'
+          description: 'Internal Server Error - Unexpected server error'
+        '502':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 502
+                  message: 'Provider returned error'
+              schema:
+                $ref: '#/components/schemas/BadGatewayResponse'
+          description: 'Bad Gateway - Provider/upstream API failure'
+        '503':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 503
+                  message: 'Service temporarily unavailable'
+              schema:
+                $ref: '#/components/schemas/ServiceUnavailableResponse'
+          description: 'Service Unavailable - Service temporarily unavailable'
+        '524':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 524
+                  message: 'Request timed out. Please try again later.'
+              schema:
+                $ref: '#/components/schemas/EdgeNetworkTimeoutResponse'
+          description: 'Infrastructure Timeout - Provider request timed out at edge network'
+        '529':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 529
+                  message: 'Provider returned error'
+              schema:
+                $ref: '#/components/schemas/ProviderOverloadedResponse'
+          description: 'Provider Overloaded - Provider is temporarily overloaded'
+      summary: 'Submit a System One request'
+      tags:
+        - 'SystemOne'
+      x-speakeasy-name-override: 'create'
   /vault/interns/{internId}/secrets:
     get:
       description: 'Lists secret metadata stored for one intern. Responses contain names, bound hosts, fingerprints and creation times, never secret values. Results are ordered by name and paginated with `limit` and `offset`. The scope is selected by the API key: workspace routes act on the key''s active workspace and intern routes act on one intern inside that workspace. There is no default workspace and no fallback to another scope. Every vault route, including reads, requires access to the Intern API programme and returns 404 outside it. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
@@ -44690,6 +45361,7 @@ paths:
                     default_provider_sort: 'price'
                     default_text_model: 'openai/gpt-4o'
                     description: 'Production environment workspace'
+                    disabled_server_tools: null
                     id: '550e8400-e29b-41d4-a716-446655440000'
                     include_byok_in_budgets: false
                     io_logging_api_key_ids: null
@@ -44768,6 +45440,7 @@ paths:
                   default_provider_sort: 'price'
                   default_text_model: 'openai/gpt-4o'
                   description: 'Production environment workspace'
+                  disabled_server_tools: null
                   id: '550e8400-e29b-41d4-a716-446655440000'
                   include_byok_in_budgets: false
                   io_logging_api_key_ids: null
@@ -44940,6 +45613,7 @@ paths:
                   default_provider_sort: 'price'
                   default_text_model: 'openai/gpt-4o'
                   description: 'Production environment workspace'
+                  disabled_server_tools: null
                   id: '550e8400-e29b-41d4-a716-446655440000'
                   include_byok_in_budgets: false
                   io_logging_api_key_ids: null
@@ -45022,6 +45696,7 @@ paths:
                   default_provider_sort: 'price'
                   default_text_model: 'openai/gpt-4o'
                   description: 'Production environment workspace'
+                  disabled_server_tools: null
                   id: '550e8400-e29b-41d4-a716-446655440000'
                   include_byok_in_budgets: false
                   io_logging_api_key_ids: null
@@ -45745,6 +46420,9 @@ tags:
   - description: 'Speech-to-text endpoints'
     name: 'STT'
     x-displayName: 'Transcriptions'
+  - description: 'System One endpoints for models such as Jev, compatible with the TypeSafe SDKs. See https://openrouter.ai/docs/guides/community/typesafe-sdk.'
+    name: 'SystemOne'
+    x-displayName: 'System One'
   - description: 'Text-to-speech endpoints'
     name: 'TTS'
     x-displayName: 'Speech'
