@@ -1,15 +1,15 @@
 ---
-title: GPT-6 Astra Migration Guide
-description: Adopt async tool calling and mid-conversation reasoning effort changes with configuration_update for GPT-6 Astra
-seoTitle: "GPT-6 Astra Migration Guide | OpenRouter"
+title: GPT-6 Migration Guide
+description: Adopt async tool calling and mid-conversation reasoning effort changes with configuration_update for the GPT-6 model family
+seoTitle: "GPT-6 Migration Guide | OpenRouter"
 og:site_name: OpenRouter Documentation
-og:title: "GPT-6 Astra Migration Guide"
+og:title: "GPT-6 Migration Guide"
 og:description: >-
   Learn how to use async tool calling on the Responses API, change
   reasoning effort mid-conversation with configuration_update, and handle
-  safety policy blocks on GPT-6 Astra across the Chat Completions,
+  safety policy blocks on GPT-6 Astra, Sol, and Luna across the Chat Completions,
   Responses, and Anthropic Messages APIs on OpenRouter.
-og:image: https://openrouter.ai/dynamic-og?title=GPT-6%20Astra%20Migration%20Guide&description=Async%20tool%20calling%20and%20mid-conversation%20reasoning%20effort
+og:image: https://openrouter.ai/dynamic-og?title=GPT-6%20Migration%20Guide&description=Async%20tool%20calling%20and%20mid-conversation%20reasoning%20effort%20for%20Astra%2C%20Sol%2C%20and%20Luna
 og:image:width: 1200
 og:image:height: 630
 twitter:card: summary_large_image
@@ -21,26 +21,34 @@ icon: arrow-right-arrow-left
 
 ## What's New
 
-OpenAI's GPT-6 Astra can keep working after it calls a tool, and it accepts a reasoning effort change partway through a conversation. On earlier OpenAI models every tool call paused the turn until your application returned the result, and effort was a request-level setting. Raising it for one hard turn and lowering it on the next changed the request prefix and invalidated the prompt cache for the whole conversation.
+OpenAI's [GPT-6 family](https://developers.openai.com/api/docs/guides/latest-model) ships in three tiers, each with a pro variant. All three can keep working after they call a tool, and all three accept a reasoning effort change partway through a conversation. On earlier OpenAI models every tool call paused the turn until your application returned the result, and effort was a request-level setting. Raising it for one hard turn and lowering it on the next changed the request prefix and invalidated the prompt cache for the whole conversation.
 
-| Model                    | Tier                     |
-| ------------------------ | ------------------------ |
-| `openai/gpt-6-astra`     | Flagship capability      |
-| `openai/gpt-6-astra-pro` | Astra with pro reasoning |
+| Model                    | Tier                                |
+| ------------------------ | ----------------------------------- |
+| `openai/gpt-6-astra`     | Highest capability                  |
+| `openai/gpt-6-astra-pro` | Astra with pro reasoning            |
+| `openai/gpt-6-sol`       | Strong reasoning on demanding tasks |
+| `openai/gpt-6-sol-pro`   | Sol with pro reasoning              |
+| `openai/gpt-6-luna`      | Efficient, repeatable work at scale |
+| `openai/gpt-6-luna-pro`  | Luna with pro reasoning             |
+
+The tiers share one API. Sol and Luna accept `none` as a reasoning effort, Astra does not. Pro reasoning is selected with `reasoning.mode: "pro"` on a standard slug or by using the `-pro` slug, the same as the [GPT-5.6 family](/cookbook/evaluate-and-optimize/model-migrations/gpt-5-6#pro-mode-with-reasoningmode).
 
 There are no breaking changes. Existing requests keep working as-is. This guide covers the two additive pieces worth adopting and one behavior to handle:
 
-- [Async tool calling](#async-tool-calling): let Astra continue its turn after calling a tool and return the result in a later Responses request
+- [Async tool calling](#async-tool-calling): let the model continue its turn after calling a tool and return the result in a later Responses request
 - [Mid-conversation effort with `configuration_update`](#mid-conversation-effort-with-configuration_update): change reasoning effort from a point in the conversation onward without invalidating the prompt cache
 - [Safety policy blocks](#safety-policy-blocks): how OpenAI's biology and cybersecurity classifier blocks surface on OpenRouter
 
+The examples below use `openai/gpt-6-astra` for async tools and `openai/gpt-6-sol` for effort updates. Every request shape is the same on `openai/gpt-6-luna`.
+
 <Note>
-OpenAI supports `configuration_update` on `gpt-6-astra` in standard, single-agent mode only. In pro mode (`reasoning.mode: "pro"`, or the `openai/gpt-6-astra-pro` slug) OpenAI rejects the item with `The 'configuration_update' item type is not supported with pro or tournament models.` Keep mid-conversation effort changes on the standard model. On OpenRouter, a request that carries an update is routed only to endpoints that accept it, and a request for a model that does not support it is rejected with a 400 rather than sent with the update silently dropped.
+OpenAI supports `configuration_update` on the standard GPT-6 models (`gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`) in single-agent mode only. In pro mode (`reasoning.mode: "pro"`, or a `-pro` slug such as `openai/gpt-6-sol-pro`) OpenAI rejects the item with `The 'configuration_update' item type is not supported with pro or tournament models.` Keep mid-conversation effort changes on the standard models. On OpenRouter, a request that carries an update is routed only to endpoints that accept it, and a request for a model that does not support it is rejected with a 400 rather than sent with the update silently dropped.
 </Note>
 
 ## Async Tool Calling
 
-An ordinary function call pauses the model's turn until your application returns the tool output. Set `async: true` on a `function` or `custom` tool definition and Astra can issue the call, keep working on the rest of the request, and pick the result up when you deliver it in a later request. Your application still executes the tool. The flag only changes when the model waits.
+An ordinary function call pauses the model's turn until your application returns the tool output. Set `async: true` on a `function` or `custom` tool definition and the model can issue the call, keep working on the rest of the request, and pick the result up when you deliver it in a later request. Your application still executes the tool. The flag only changes when the model waits.
 
 OpenRouter supports async tools on the [Responses API](/api/api-reference/responses/create-a-response). Chat Completions and Anthropic Messages requests run every tool call synchronously. A Chat Completions tool that carries `async` is accepted, but the flag is removed before the request is routed and the call behaves like any other tool call.
 
@@ -160,7 +168,7 @@ Append the previous response's `output` items to `input` in the order they were 
 }
 ```
 
-Keep the `async: true` flag on the replayed `function_call` and keep the same `tools` and `instructions` in the continuation request. OpenRouter forwards the items in the order you send them, so Astra sees the call, the text it produced while the job ran, and then the result. The live continuation above completed with a single assistant message that used the delivered snapshot:
+Keep the `async: true` flag on the replayed `function_call` and keep the same `tools` and `instructions` in the continuation request. OpenRouter forwards the items in the order you send them, so the model sees the call, the text it produced while the job ran, and then the result. The live continuation above completed with a single assistant message that used the delivered snapshot:
 
 ```text
 **Paris demo weather:** 22°C and clear.
@@ -175,9 +183,9 @@ A call whose output has not arrived yet stays pending. You can append further us
 
 ### Routing
 
-OpenAI and Azure OpenAI honor async tools for GPT-6 Astra. When a request declares an async tool and one of those endpoints is a routing candidate, OpenRouter narrows routing to them. When none is, the request keeps its normal candidate pool and the `async` flag is removed before the request is sent, so the call runs synchronously and the returned `function_call` carries no `async` field. Amazon Bedrock accepts the flag but runs the tool synchronously, so it is treated as a non-async transport.
+OpenAI and Azure OpenAI honor async tools for the GPT-6 family. When a request declares an async tool and one of those endpoints is a routing candidate, OpenRouter narrows routing to them. When none is, the request keeps its normal candidate pool and the `async` flag is removed before the request is sent, so the call runs synchronously and the returned `function_call` carries no `async` field. Amazon Bedrock accepts the flag but runs the tool synchronously, so it is treated as a non-async transport.
 
-OpenAI rejects `async: true` with a 400 on earlier models, so add the flag only on requests to GPT-6 Astra.
+OpenAI rejects `async: true` with a 400 on earlier models, so add the flag only on requests to GPT-6 models.
 
 ## Mid-Conversation Effort with `configuration_update`
 
@@ -185,7 +193,7 @@ Keep the request-level `reasoning.effort` as the baseline for the whole conversa
 
 Use it to raise effort for one difficult turn, or to lower it for routine follow-ups, without touching the request-level field.
 
-All three OpenRouter APIs expose the update in the shape native to that API. OpenRouter normalizes each into one internal representation and re-emits it as the Responses `configuration_update` input item that Astra expects.
+All three OpenRouter APIs expose the update in the shape native to that API. OpenRouter normalizes each into one internal representation and re-emits it as the Responses `configuration_update` input item that GPT-6 expects.
 
 ### Responses API
 
@@ -193,7 +201,7 @@ This is OpenAI's own shape, forwarded as-is. Add a `configuration_update` item t
 
 ```json lines
 {
-  "model": "openai/gpt-6-astra",
+  "model": "openai/gpt-6-sol",
   "reasoning": { "effort": "medium" },
   "input": [
     { "role": "user", "content": "Summarize the incident report." },
@@ -212,11 +220,11 @@ OpenRouter's Responses API is stateless and rejects `previous_response_id`, so r
 
 ### Chat Completions API
 
-OpenAI's Chat Completions API has no per-message effort control, so this form is an OpenRouter extension. Place `configuration_update` on a content-less system message (`content: ""`) directly before the user message it applies to. OpenRouter translates it into the Responses `configuration_update` item before forwarding to Astra.
+OpenAI's Chat Completions API has no per-message effort control, so this form is an OpenRouter extension. Place `configuration_update` on a content-less system message (`content: ""`) directly before the user message it applies to. OpenRouter translates it into the Responses `configuration_update` item before forwarding to the model.
 
 ```json lines
 {
-  "model": "openai/gpt-6-astra",
+  "model": "openai/gpt-6-sol",
   "reasoning": { "effort": "medium" },
   "messages": [
     { "role": "user", "content": "Summarize the incident report." },
@@ -235,11 +243,11 @@ The field is accepted only on `system` and `developer` messages. A `configuratio
 
 ### Anthropic Messages API
 
-The Messages API uses Anthropic's per-message `output_config.effort` on a content-less system message. OpenRouter translates it into the Responses `configuration_update` item when the request routes to Astra.
+The Messages API uses Anthropic's per-message `output_config.effort` on a content-less system message. OpenRouter translates it into the Responses `configuration_update` item when the request routes to a GPT-6 model.
 
 ```json lines
 {
-  "model": "openai/gpt-6-astra",
+  "model": "openai/gpt-6-sol",
   "max_tokens": 4096,
   "output_config": { "effort": "medium" },
   "messages": [
@@ -253,7 +261,7 @@ The Messages API uses Anthropic's per-message `output_config.effort` on a conten
 
 ### Effort values
 
-Effort values in an update are translated to Astra's vocabulary the same way request-level effort is, using the model's [supported reasoning efforts](/guides/best-practices/reasoning-tokens#discovering-per-model-reasoning-options). An update whose effort has no supported equivalent is rejected with a 400. Astra does not accept `none`.
+Effort values in an update are translated to the model's vocabulary the same way request-level effort is, using the model's [supported reasoning efforts](/guides/best-practices/reasoning-tokens#discovering-per-model-reasoning-options). An update whose effort has no supported equivalent is rejected with a 400. Sol and Luna accept `none`, Astra does not, so an update to `none` is accepted on `openai/gpt-6-sol` and `openai/gpt-6-luna` and rejected on `openai/gpt-6-astra`.
 
 ### Placement rules
 
@@ -271,7 +279,7 @@ Because the update is an item in the conversation history rather than a request-
 
 ## Safety Policy Blocks
 
-OpenAI can decline a GPT-6 Astra request on biological or cybersecurity risk grounds. Instead of model output, OpenAI returns an error with code `bio_policy` or `cyber_policy`, sometimes after the response has already started. This is different from a refusal the model writes itself, and OpenRouter surfaces the two differently.
+OpenAI can decline a GPT-6 request on biological or cybersecurity risk grounds. Instead of model output, OpenAI returns an error with code `bio_policy` or `cyber_policy`, sometimes after the response has already started. This is different from a refusal the model writes itself, and OpenRouter surfaces the two differently.
 
 A policy block is an HTTP 403 with `error_type: "refusal"` on every OpenRouter API. The provider's message is carried verbatim. When the block arrives after the stream has started, the status is the `code` inside the error body instead, because the HTTP line was already committed. On Chat Completions the provider code is `error.metadata.provider_code`:
 
@@ -290,18 +298,19 @@ A policy block is an HTTP 403 with `error_type: "refusal"` on every OpenRouter A
 
 On the Responses API the same block is a `response.failed` event with `response.error.code` set to the provider code and `error_type: "refusal"` on the response. On Anthropic Messages the error envelope carries `error.error_type: "refusal"` next to the native `error.type`, and the provider code is not exposed. OpenRouter does not resend a declined prompt to another endpoint serving the same model, and the block does not count against the provider's health. Treat a 403 `refusal` as a prompt problem rather than a transient failure. Retrying the same input returns the same block.
 
-A refusal that Astra produces as its own completed output is not an error. The Responses API returns `status: "completed"` with a `refusal` content part, and Chat Completions returns `message.refusal` with `finish_reason: "content_filter"`. See [Errors and Debugging](/api/api-reference/errors-and-debugging#content-policy) for the full contract.
+A refusal that the model produces as its own completed output is not an error. The Responses API returns `status: "completed"` with a `refusal` content part, and Chat Completions returns `message.refusal` with `finish_reason: "content_filter"`. See [Errors and Debugging](/api/api-reference/errors-and-debugging#content-policy) for the full contract.
 
 ## Migration Checklist
 
-1. Swap the model slug to `openai/gpt-6-astra`.
-2. On the Responses API, add `async: true` to tools whose result the model does not need immediately. Start the job when the call item arrives, replay the transcript with the `function_call` and its `function_call_output` on the same `call_id`, and check `async` on the returned call before deciding whether to wait.
-3. Keep your existing request-level `reasoning.effort` as the baseline. Do not change it per turn.
-4. Where one turn needs more or less reasoning, insert a `configuration_update` (Responses), a content-less system message carrying `configuration_update` (Chat Completions), or a content-less system message carrying `output_config.effort` (Messages) directly before that user turn.
-5. Keep every update at its original position when you replay history, and never place two updates back to back.
-6. Remove `truncation: "auto"` from Responses requests that carry updates.
-7. Watch `cached_tokens` in usage to confirm the prompt prefix is still reused.
-8. Handle HTTP 403 `refusal` errors as policy blocks: surface the message and do not retry the same prompt. The provider code is `error.metadata.provider_code` on Chat Completions and `response.error.code` on Responses. Messages exposes only `error.error_type`.
+1. Pick your tier. `openai/gpt-6-astra` for the highest capability, `openai/gpt-6-sol` for strong reasoning on demanding tasks, `openai/gpt-6-luna` for efficient work at scale. Add `-pro` to the slug, or set `reasoning.mode: "pro"`, for pro reasoning.
+2. Check your reasoning effort. `none` works on Sol and Luna but not on Astra, so move Astra requests to `low`.
+3. On the Responses API, add `async: true` to tools whose result the model does not need immediately. Start the job when the call item arrives, replay the transcript with the `function_call` and its `function_call_output` on the same `call_id`, and check `async` on the returned call before deciding whether to wait.
+4. Keep your existing request-level `reasoning.effort` as the baseline. Do not change it per turn.
+5. Where one turn needs more or less reasoning, insert a `configuration_update` (Responses), a content-less system message carrying `configuration_update` (Chat Completions), or a content-less system message carrying `output_config.effort` (Messages) directly before that user turn. Send updates only to the standard slugs, not the `-pro` variants.
+6. Keep every update at its original position when you replay history, and never place two updates back to back.
+7. Remove `truncation: "auto"` from Responses requests that carry updates.
+8. Watch `cached_tokens` in usage to confirm the prompt prefix is still reused.
+9. Handle HTTP 403 `refusal` errors as policy blocks: surface the message and do not retry the same prompt. The provider code is `error.metadata.provider_code` on Chat Completions and `response.error.code` on Responses. Messages exposes only `error.error_type`.
 
 ## Breaking Changes
 
@@ -313,7 +322,9 @@ None. Async tools and `configuration_update` are both optional:
 
 ## Resources
 
-- [Using GPT-6 Astra](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6-astra), OpenAI's model guidance with migration and prompting best practices for GPT-6 Astra
+- [Using GPT-6](https://developers.openai.com/api/docs/guides/latest-model), OpenAI's model guidance with migration and prompting best practices for GPT-6 Astra, Sol, and Luna
+- [Introducing GPT-6 Sol and Luna](https://openai.com/index/introducing-gpt-6-sol-and-luna/), OpenAI's announcement of the Sol and Luna tiers
+- [GPT-5.6 Migration Guide](/cookbook/evaluate-and-optimize/model-migrations/gpt-5-6) for `reasoning.mode`, `reasoning.context`, and explicit prompt caching, which carry over to GPT-6
 - [Async tool calling](https://developers.openai.com/api/docs/guides/async-tool-calling), OpenAI's guide including the wait-tool pattern
 - [Change reasoning mid-conversation](https://developers.openai.com/api/docs/guides/reasoning?api-mode=responses#change-reasoning-mid-conversation) in OpenAI's reasoning guide
 - [Tool Calling on the Responses API](/api/api-reference/responses/tool-calling) on OpenRouter
