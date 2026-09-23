@@ -758,6 +758,31 @@ For each supported model, there are two equivalent ways to request pro mode on O
   - Pro mode bills at the same per-token rates as standard mode, but typically consumes more tokens.
 </Note>
 
+<span id="anthropic-messages-api"></span>
+
+## Reasoning with the Anthropic Messages API
+
+Requests sent through the [Anthropic Messages API](/api/api-reference/anthropic-messages/create-a-message) control reasoning with Anthropic's native `thinking` and `output_config.effort` fields. OpenRouter normalizes both into the unified `reasoning` parameter, so they work on every reasoning model, not only Claude.
+
+| Messages API request | Unified `reasoning` equivalent |
+| --- | --- |
+| `output_config: { effort }` | `reasoning: { effort }` |
+| `thinking: { type: "enabled", budget_tokens }` | `reasoning: { max_tokens: budget_tokens }` |
+| `thinking: { type: "adaptive" }` | `reasoning: { enabled: true }` |
+| `thinking: { type: "disabled" }` | `reasoning: { enabled: false }` |
+
+`output_config.effort` takes precedence over `thinking.type: "adaptive"`. Sending `thinking: { type: "adaptive" }` together with `output_config: { effort: "high" }` means high effort on every model. Claude receives both fields unchanged, while a model such as GPT-5 or MiniMax receives `reasoning_effort: "high"` in its own vocabulary, translated the same way as request-level `reasoning.effort`.
+
+When `thinking: { type: "enabled", budget_tokens }` and `output_config.effort` are sent together, Claude receives both unchanged. The unified `reasoning` parameter accepts either `effort` or `max_tokens` but not both, so every other model receives `reasoning.effort` and the budget is not forwarded. Send only `thinking.budget_tokens` to control other models by token budget.
+
+`thinking: { type: "adaptive" }` without an `output_config.effort` leaves the effort to the model. Claude runs its native adaptive thinking, and other models use their default reasoning effort, which the models endpoint reports as [`reasoning.default_effort`](#discovering-per-model-reasoning-options).
+
+`thinking: { type: "disabled" }` disables reasoning even when an `output_config.effort` is also present. Claude still receives the `output_config.effort`, since Anthropic applies it to the whole response, and other models receive no reasoning effort.
+
+<Note title='OpenAI Verbosity'>
+  OpenAI models expose two knobs, `reasoning.effort` and `text.verbosity`, and the Messages API request shape has one. `output_config.effort` maps to `reasoning.effort` only, and it is not sent as `text.verbosity`. Anthropic's `xhigh` and `max` levels stay reasoning efforts and are translated to the model's [supported reasoning efforts](#discovering-per-model-reasoning-options). To set OpenAI response verbosity, use the [`verbosity`](/api_reference/parameters#verbosity) parameter on the Chat Completions or Responses API.
+</Note>
+
 <span id="mid-conversation-effort"></span>
 
 ## Changing Effort Mid-Conversation
