@@ -134,7 +134,7 @@ Inter-token latency is the mean gap between output tokens, matching vLLM's
 | Arize AX | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 | Braintrust | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 | ClickHouse | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
-| Comet Opik | — | — |
+| Comet Opik | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 | Datadog | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 | Google BigQuery (beta) | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 | Grafana Cloud | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
@@ -146,15 +146,12 @@ Inter-token latency is the mean gap between output tokens, matching vLLM's
 | Raindrop (beta) | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 | Ramp | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 | S3 / S3-Compatible | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
-| Sentry | — | — |
+| Sentry | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 | Snowflake | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 | W&B Weave | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 | Webhook | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 
-Two destinations never receive them. **Sentry** drops every `trace.*` attribute
-during ingestion, which is where its OpenRouter metadata lives. **Comet Opik**
-builds its own payload shape and forwards only the trace and observation
-identifiers from OpenRouter's metadata.
+Every documented destination receives both.
 
   </Accordion>
   <Accordion title="Prompt and completion content">
