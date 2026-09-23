@@ -65,6 +65,7 @@ You must implement an endpoint that returns all models that should be served by 
       "deprecation_date": "2025-06-01T15:00:00Z", // ISO 8601 date or UTC hour
       "is_ready": true, // false to keep the model staged-but-hidden on OpenRouter
       "is_free": false, // true to mark as a free endpoint
+      "service_tier": "priority", // "flex", "priority", or "fast"; omit for the default tier
       "discount_to_user": 0, // fractional discount on user-facing pricing (0 = none)
       "capacity_tpm": 1000000, // input tokens per minute capacity for this model (optional)
       "openrouter": {
@@ -272,6 +273,30 @@ Behavior:
 - `is_free: false` or an omitted field preserves the default behavior (standard paid variant).
 
 You can list both a free and a paid version of the same model — just always set `is_free: true` on the free one.
+
+#### Service tiers with `service_tier`
+
+If you sell more than one grade of capacity for a model, list one entry per tier under the same `id` and mark each non-default entry with `service_tier`:
+
+```json lines
+[
+  { "id": "your-org/your-model", "pricing": { "prompt": "0.000001", "completion": "0.000002" } },
+  { "id": "your-org/your-model", "service_tier": "flex", "pricing": { "prompt": "0.0000005", "completion": "0.000001" } },
+  { "id": "your-org/your-model", "service_tier": "priority", "pricing": { "prompt": "0.000002", "completion": "0.000004" } }
+]
+```
+
+Accepted values are `flex`, `priority`, and `fast`. `fast` is an alias for `priority`, so list one or the other for a given `id`, not both. An omitted field means the default tier. Any other value fails validation and the entry is dropped.
+
+Behavior:
+
+- OpenRouter creates a separate endpoint for each tier entry, using that entry's own pricing, context length, limits, and capabilities.
+- A tier entry is staged only once OpenRouter serves the default tier of the same `id`. List the default entry first, or alongside the tier entries. Tier endpoints then go through the standard staging, baseline test, and unhide flow.
+- Tier endpoints appear to users as [service tier endpoints](/guides/features/service-tiers) and stay out of default routing.
+- `service_tier` is OpenRouter's vocabulary, not your API's. If your API names a tier differently, still publish it as `flex` or `priority` here. The mapping to your wire format lives in OpenRouter's integration for your API.
+- An entry cannot combine `is_free: true` with `service_tier`.
+
+For OpenRouter to serve a tier endpoint, your inference API must accept `service_tier` on the request and report the tier that served the request in the response, and OpenRouter's integration for your API must forward it. Tier endpoints stay hidden until that integration is in place, so coordinate with us before publishing tier entries.
 
 #### Capacity with `capacity_tpm`
 
