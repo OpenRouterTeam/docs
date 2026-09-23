@@ -13,6 +13,8 @@ twitter:site: '@OpenRouter'
 noindex: false
 nofollow: false
 icon: shield-check
+models:
+  - typesafe/jev
 ---
 
 In this recipe you'll add a draft-verify-escalate cascade to a retrieval app. A cheap model drafts an answer from your retrieved context, Jev checks whether that context actually supports the draft, and your frontier model rewrites the answer only when the check fails. Most questions never reach the frontier model, so you pay its rate only for the drafts that needed it.
