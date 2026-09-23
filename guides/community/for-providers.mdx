@@ -37,7 +37,7 @@ Below is an example of the response format:
 {
   "data": [
     {
-      "schema_version": "2.4",
+      "schema_version": "2.5",
 
       // Identity (required)
       "id": "anthropic/claude-sonnet-4",
@@ -713,6 +713,7 @@ The operational fields control model availability and routing:
 | `deprecation_date` | ISO 8601 date or UTC hour. See [Deprecation Date](#deprecation-date) |
 | `is_ready` | Launch control. See [Controlling Launch with `is_ready`](#controlling-launch-with-is_ready) |
 | `is_free` | Free variant marker. See [Free Model Variants with `is_free`](#free-model-variants-with-is_free) |
+| `service_tier` | Service tier this document describes. See [Service tiers with `service_tier`](#service-tiers-with-service_tier) |
 | `discount_to_user` | Fractional user-facing discount. See [Discounts with `discount_to_user`](#discounts-with-discount_to_user) |
 | `openrouter.slug` | The OpenRouter slug this model maps to |
 
@@ -767,6 +768,24 @@ Behavior:
 - `is_free: false` explicitly marks the entry as paid. If OpenRouter currently serves that model id only as a free endpoint (because you previously sent `is_free: true`), the free endpoint is hidden and a new standard (paid) endpoint is staged in its place. Use this to convert a free model to paid.
 
 You can list both a free and a paid version of the same model. Just always set `is_free: true` on the free one.
+
+#### Service tiers with `service_tier`
+
+If you serve the same model at more than one service tier with its own pricing or capacity, publish one document per tier and set the optional `service_tier` field on every non-default one:
+
+```json lines
+{
+  "id": "your-org/your-model",
+  "service_tier": "priority"
+}
+```
+
+Behavior:
+
+- Accepted values are `flex`, `priority`, and `fast`. `fast` is an alias of `priority`: it is displayed as declared but routed and billed as the priority tier, so a feed must not list both for the same model id.
+- An omitted field describes the default tier.
+- Each tier becomes its own endpoint on OpenRouter, so a document with `service_tier` is never matched against, or treated as a duplicate of, the default-tier document for the same `id`. Pricing and capacity on a tier document apply only to that tier.
+- `is_free` combines with `service_tier` per tier: a free variant of a tier document is a free endpoint of that tier.
 
 #### Discounts with `discount_to_user`
 
