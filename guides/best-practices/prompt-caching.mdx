@@ -142,7 +142,7 @@ Caching price changes:
 
 [Click here to view OpenAI's cache pricing per model.](https://platform.openai.com/docs/pricing)
 
-Prompt caching with OpenAI is automated and does not require any additional configuration. There is a minimum prompt size of 1024 tokens.
+Prompt caching with OpenAI is automated and does not require any additional configuration. There is a minimum prompt size of 1024 tokens. On GPT-5.6 and later you can [turn caching off per request](#disabling-prompt-caching) to avoid the cache-write charge on prompts you will not send again.
 
 [Click here to read more about OpenAI prompt caching and its limitation.](https://platform.openai.com/docs/guides/prompt-caching)
 
@@ -231,6 +231,27 @@ The block-level markers are interchangeable: a text block marked with Anthropic-
 </Note>
 
 Cache activity is reported in `usage.input_tokens_details` (Responses) and `usage.prompt_tokens_details` (Chat Completions): `cache_write_tokens` counts prompt tokens written to the cache, and `cached_tokens` counts prompt tokens read from it.
+
+### Disabling prompt caching
+
+Because GPT-5.6 and later bill cache writes at 1.25x the input price whether or not the cached prefix is ever read again, a prompt of 1024 tokens or more that is only sent once costs more with caching on than off. To turn caching off for a request, set `prompt_cache_options.mode` to `"explicit"` and do not mark any content block with `prompt_cache_breakpoint`. Explicit mode disables OpenAI's automatic breakpoints, and with no explicit breakpoints the request has no cacheable prefix, so it is billed at the plain input rate with no cache write.
+
+```json
+{
+  "model": "openai/...",
+  "prompt_cache_options": {
+    "mode": "explicit"
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "<ONE_OFF_PROMPT>"
+    }
+  ]
+}
+```
+
+The same `prompt_cache_options` field works on the Responses API. Prompts under the 1024-token minimum are never cached, so they carry no cache write with either mode. Models before GPT-5.6 have no cache-write cost, so there is nothing to turn off there. When caching is disabled, `cache_write_tokens` in the response usage reads `0`.
 
 ## Grok
 

@@ -200,7 +200,7 @@ Cache activity is reported in `usage.input_tokens_details` (Responses) and `usag
 - `cache_write_tokens`: prompt tokens written to the cache
 - `cached_tokens`: prompt tokens read from the cache
 
-Track both to understand net caching cost. If your traffic rarely re-reads cached prefixes, explicit mode lets you avoid unnecessary cache writes.
+Track both to understand net caching cost. If your traffic rarely re-reads cached prefixes, explicit mode lets you avoid unnecessary cache writes. To turn caching off entirely for a one-off request of 1024 tokens or more, send `prompt_cache_options: { "mode": "explicit" }` with no `prompt_cache_breakpoint` markers. See [Disabling prompt caching](/guides/best-practices/prompt-caching#disabling-prompt-caching).
 
 ## Migration Checklist
 
