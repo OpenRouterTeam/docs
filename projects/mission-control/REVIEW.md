@@ -21,7 +21,7 @@ and
 
 ## Paginate server-action scans until an empty page
 
-Long-running admin scans (e.g. delete-r2-logs preview and deletion) call the
+Long-running admin scans (e.g. delete-logs preview and deletion) call the
 cfw-internal generations route, which has a 30-second upstream request timeout,
 within a 300-second Mission Control Cloud Run request budget. Break the work
 into small batch pages and only terminate the loop when a page comes back empty
