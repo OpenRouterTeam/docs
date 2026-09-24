@@ -186,6 +186,8 @@ Our numbers show the shape of the trade-off. To set a production threshold you n
 
 The [Jev model page](/typesafe/jev-1.13) has current pricing and limits, the [TypeSafe SDK guide](/docs/guides/community/typesafe-sdk) has the full Decisions API shape, and the [LLM-as-a-judge post](/blog/tutorials/llm-as-a-judge-evaluate-ai-agents) covers how to write the rubric in the first place.
 
+If Jev is new to you, [What Is Jev?](/blog/insights/what-is-jev) explains the model and its three question types, and [Jev vs LLM](/blog/tutorials/jev-vs-llm-when-to-use-each) covers the broader question of when a decision model replaces a generative call. For a second accuracy measurement on a different task, [Is Jev as Accurate as Frontier Models at Classification?](/blog/insights/jev-vs-claude-opus-5-classification) runs Jev against Claude Opus 5 on Banking77. The [Jev documentation hub](/docs/guides/community/jev) lists every Jev guide and cookbook on OpenRouter.
+
 ## FAQ
 
 ### Is Jev a calibrated judge model?

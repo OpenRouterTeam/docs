@@ -14,6 +14,8 @@ twitter:site: '@OpenRouter'
 noindex: false
 nofollow: false
 icon: scale-balanced
+models:
+  - typesafe/jev
 ---
 
 {/* <llms-ignore> */}
@@ -80,6 +82,9 @@ Step-by-step recipes with runnable code:
 
 - [Gate Agent Tool Calls with Jev](/cookbook/building-agents/gate-tool-calls-with-jev) checks each risky agent tool call against the user's request so safe calls run, unsupported calls are refused, and only ambiguous calls pause for a human.
 - [Cut LLM Cost with a Jev-Verified Cascade](/cookbook/evaluate-and-optimize/jev-verified-cascade) drafts with a cheap model, verifies the draft against retrieved context with Jev, and escalates to a stronger model only when the check fails.
+- [Classify and Tag Text at Scale with Jev](/cookbook/evaluate-and-optimize/jev-classification) labels each item in a batch with one category and any number of tags, picks a threshold per tag from a small labeled sample, and computes cost per 1,000 items from `usage.cost`.
+- [Classify Reddit and YouTube Comments with Jev and ScrapeCreators](/cookbook/evaluate-and-optimize/classify-reddit-comments-with-jev) scrapes comments, scores each one for relevance and sentiment, and stores the raw judgments so you can re-tune thresholds without new requests.
+- [Auto-Approve Coding Agent Permission Prompts with Jev](/cookbook/coding-agents/auto-approve-permission-prompts-with-jev) answers the permission prompts from Claude Code, Codex, Cursor, and OpenCode with a Jev reversibility check, so routine commands run and risky ones still ask.
 
 ### Interactive demos
 
