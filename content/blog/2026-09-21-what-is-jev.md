@@ -484,6 +484,9 @@ Now it's time to see all this with your very own [OpenRouter API key](https://op
 - If you would rather use TypeSafe's client, read the [TypeSafe SDK guide](/docs/guides/community/typesafe-sdk).
 - Work through how to [gate tool calls with Jev](/docs/cookbook/building-agents/gate-tool-calls-with-jev), putting a Noul in front of an agent action.
 - Read [Jev vs LLM: when to use each](/blog/tutorials/jev-vs-llm-when-to-use-each/) for benchmarks, and the route-then-write pattern.
+- Follow [How to Use Jev](/blog/tutorials/how-to-use-jev) to build a full moderation pipeline in TypeScript, with Choice, Score, and Noul questions in one request.
+- See how Jev scored against a frontier model in [Is Jev as Accurate as Frontier Models at Classification?](/blog/insights/jev-vs-claude-opus-5-classification), and where it fits next to a judge model in [Jev vs LLM-as-a-Judge](/blog/tutorials/jev-vs-llm-as-a-judge).
+- The [Jev documentation hub](/docs/guides/community/jev) lists every Jev guide and cookbook on OpenRouter.
 - And before you budget, check the [model page](https://openrouter.ai/typesafe/jev-1.13) to see what the current pricing looks like for that model!
 
 ## FAQ

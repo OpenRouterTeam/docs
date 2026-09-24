@@ -108,6 +108,8 @@ If three points in accuracy outweigh $2.42 per thousand requests, go with Opus. 
 
 The [Decisions API reference](https://openrouter.ai/docs/api/api-reference/alphadecisions/submit-a-decisions-request) walks through the basic request shape. The [Jev cookbook](https://openrouter.ai/docs/cookbook/evaluate-and-optimize/classify-reddit-comments-with-jev) walks you through a working Choice question in TypeScript. The [Jev-verified cascade cookbook](https://openrouter.ai/docs/cookbook/evaluate-and-optimize/jev-verified-cascade) has the escalation pattern in code, with a cheap model drafting, Jev checking the draft, and a frontier model handling only what fails the check. The Banking77 test split is a 3,080-line CSV in the [PolyAI repository](https://github.com/PolyAI-LDN/task-specific-datasets/tree/master/banking_data).
 
+To run a labeling job like this one over your own backlog, the [Classify and Tag Text at Scale with Jev cookbook](https://openrouter.ai/docs/cookbook/evaluate-and-optimize/jev-classification) covers batching within rate limits, picking a threshold per label from a labeled sample, and computing cost per 1,000 items. If Jev is new to you, start with [What Is Jev?](https://openrouter.ai/blog/insights/what-is-jev), then [Jev vs LLM](https://openrouter.ai/blog/tutorials/jev-vs-llm-when-to-use-each) for when a decision model replaces a generative call. The [Jev documentation hub](https://openrouter.ai/docs/guides/community/jev) lists every Jev guide and cookbook on OpenRouter.
+
 ## Frequently Asked Questions
 
 ### How accurate is Jev compared to Claude Opus 5 on intent classification?
