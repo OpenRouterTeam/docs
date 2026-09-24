@@ -257,6 +257,32 @@ For expressive synthesis, pass `style` and optionally `styledegree` via provider
 | `style` | string | Expressive speaking style (e.g., `cheerful`, `sad`, `angry`, `excited`). Available styles depend on the voice. |
 | `styledegree` | number | Intensity of the style effect. Default is `1.0`; higher values increase expressiveness. |
 
+#### Google (Gemini TTS)
+
+Gemini 3.8 TTS models read `input` verbatim, so delivery directions written into the text may be spoken aloud. Pass the style as `speech_metadata` in provider options instead. It is attached to the input text part of the upstream request, and any other options are forwarded as generation config:
+
+```json lines
+{
+  "model": "google/gemini-3.8-flash-lite-tts",
+  "input": "Have a wonderful day!",
+  "voice": "Kore",
+  "response_format": "pcm",
+  "provider": {
+    "options": {
+      "google-ai-studio": {
+        "speech_metadata": {
+          "style": "warm and friendly"
+        }
+      }
+    }
+  }
+}
+```
+
+| Option | Type | Description |
+|---|---|---|
+| `speech_metadata.style` | string | Sustained delivery style for the input (e.g., `cheerful and friendly`, `whispering`). |
+
 ## Response Format
 
 The TTS endpoint returns a **raw audio byte stream**, not JSON. The response includes the following headers:
