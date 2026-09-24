@@ -434,6 +434,8 @@ When a value cannot be derived (a prose description of enum modes, say), add a s
 
 **Match the established sibling pattern.** A new adapter, branch, guard, or parity-test helper mirrors its siblings' structure, naming, and idioms even when an alternative is equally correct: one adapter inlining a predicate the others hoist to a named const, mixed `?? undefined` and `isDefinedAndNotNull(...)` guards for the same field, mixed `.slice()` and `.subarray()` for the same byte cap, an error message naming the concrete endpoint in one guard and saying "use the other API" in its mirror. Consistency beats local elegance — align first, improve across the board later. Apply a refactor to all parallel cases in the same PR, or say why not.
 
+**Externally authored schemas are append-only.** A Zod schema that outside parties publish documents against (the provider model document in `packages/provider-monitors/classes/model-schema-v2`, any public request body) may only gain optional fields. Flag any PR that removes, renames, narrows, or makes required an existing field, or that makes the parser accept only the version literal we currently publish (`z.literal(SCHEMA_VERSION)`) instead of the whole compatible family: the counterparties do not redeploy when we merge, so each of those rejects their documents until they do. A "breaking changes documented" checkbox does not clear this. See `packages/provider-monitors/AGENTS.md`.
+
 ## Testing Precision
 
 <!-- src: #38431 jamespsterling 2026-08-30 -->
