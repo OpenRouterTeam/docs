@@ -82,6 +82,20 @@ When adding or changing a page:
   page in the live sitemap (and samples each dynamic route family), so it is
   covered automatically once it enters the sitemap.
 
+## Smoke-test route fixtures
+
+Every `page.tsx` under `projects/web/app` is discovered by the inventory-driven all-routes smoke suite (`tests/web-e2e/suites/smoke/all-routes-navigation.test.ts`), so a new page needs a matching entry in `tests/web-e2e/suites/smoke/all-routes-fixtures.ts` in the same PR. The suite runs against production after release, not on the PR, so a missing entry surfaces as a red release run rather than a failing check on your branch.
+
+- **New page** — add a `ROUTE_FIXTURES` entry keyed by the route pattern with a heading matcher for the page's `h1`:
+
+  ```ts
+  '/for-ai': { heading: h1(/^OpenRouter for AI crawlers$/) },
+  ```
+
+- **Dynamic route** — also give `params` for every segment, plus `expectedPathname` when the route redirects.
+- **Page the suite cannot reach** (auth-gated, gated by a flag, or intentionally excluded) — set `blocked` with the reason instead of a heading.
+- **Deleted or renamed page** — prune or repoint its entry; a fixture whose route no longer exists fails the same test.
+
 ## Page-level SEO principles
 
 Apply these when creating a page; when editing an existing page, only add
