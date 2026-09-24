@@ -37,7 +37,7 @@ Below is an example of the response format:
 {
   "data": [
     {
-      "schema_version": "2.5",
+      "schema_version": "2.4",
 
       // Identity (required)
       "id": "anthropic/claude-sonnet-4",
@@ -824,6 +824,8 @@ Send `discount_to_user` as a number, not a string. Unlike the `cost_usd` fields,
 The full schema is available as an OpenAPI 3.1 document, in which every closed value domain (modality types, pricing types and units, capacity windows, descriptor types, media sources, formats) surfaces as an explicit `enum`:
 
 [Download the provider schema (OpenAPI 3.1 JSON)](/assets/provider-monitor-schema-v2.openapi.json)
+
+The schema only gains optional fields. Existing fields are never removed, renamed, narrowed, or made required, so a document you publish today keeps validating when we add fields. `schema_version` marks a V2 document: we publish `2.4` in these docs, and any `2.x` value is accepted, so you never need to republish to track it.
 
 ### 9. Auto top up or invoicing
 

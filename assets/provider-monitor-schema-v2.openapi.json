@@ -12,9 +12,8 @@
         "properties": {
           "schema_version": {
             "type": "string",
-            "enum": [
-              "2.4"
-            ]
+            "pattern": "^2\\.\\d+$",
+            "description": "V2 document marker. Any \"2.x\" value is accepted; OpenRouter publishes \"2.4\"."
           },
           "id": {
             "type": "string"
@@ -102,6 +101,14 @@
           },
           "is_free": {
             "type": "boolean"
+          },
+          "service_tier": {
+            "type": "string",
+            "enum": [
+              "flex",
+              "priority",
+              "fast"
+            ]
           },
           "discount_to_user": {
             "type": "number",
