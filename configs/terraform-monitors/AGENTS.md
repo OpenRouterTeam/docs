@@ -1,7 +1,9 @@
 # configs/terraform-monitors — agent guide
 
-Terraform for our Datadog monitors, dashboards, and SLOs. Applied by CI, so a
-change that only works with your local credentials still has to plan cleanly.
+Terraform for our Datadog monitors, dashboards, and SLOs, run with OpenTofu
+(`tofu`, never `terraform`: the lock files pin `registry.opentofu.org`
+providers that Terraform ignores). Applied by CI, so a change that only works
+with your local credentials still has to plan cleanly.
 
 ## Dashboards ship as JSON, not HCL
 
@@ -44,6 +46,7 @@ JSON details the Datadog API rejects or silently drops:
   `response_format` (`"timeseries"` for timeseries, `"scalar"` for toplist and
   query values). Omitting it fails apply with "is not valid under any of the
   given schemas".
+- Every metrics query inside a `query_value` request needs an explicit `aggregator` (JSON `queries[].aggregator`, HCL `metric_query { aggregator = "..." }`). Datadog persists the widget without one and silently reduces the window with `avg`, so a `sum:...as_count()` count tile shows the per-interval average instead of the total. Pick `sum` for count totals, `avg` for averages and percentile queries, `max`/`min` for peaks, `last` for current-state gauges. Details and the replay check are in `.agents/skills/preview-datadog-dashboard/SKILL.md`.
 - The legacy `custom_unit` field is accepted on `query_value` only, never on
   `timeseries` or `toplist`. Label units on every widget type through the
   formula's `number_format.unit` (type `custom_unit_label`) instead.
@@ -114,14 +117,65 @@ promote it once it has proven quiet. See
 
 Delete a monitor that no longer earns its channel. That needs no justification.
 
+## Paging the on-call
+
+A paging monitor carries `@oncall-engineers` in its message and `priority = 1` or `priority = 2` on the resource; the mechanism, the Engineers team's routing-rule table and the example are in [README.md → Paging the on-call](./README.md#paging-the-on-call). What matters when editing:
+
+- Both or neither. `scripts/check-monitor-paging.ts` (in `bun run lint`) fails a monitor with only one of them. A Slack-only monitor sets no `priority`.
+- Only the monitor that notifies carries the handle and the priority. In a gate-and-rate composite that is the composite; the constituents keep their "does not notify directly" message and no `priority`.
+- The priority must match the severity the runbook in the message claims. `priority` 3 to 5 does not page, and no `priority` falls through to the default policy at low urgency.
+- Pair the page with the matching high-impact Slack channel (`@slack-OpenRouter-alerts-p2-high-impact` for a P2) and say "pages the engineering on-call" in the alert text.
+- The routing rules live in Datadog On-Call, not in this repo. When the README table and a page disagree, re-read the rules there and fix the README.
+
 ## Terraform expressions
 
 Never build two different-length widget lists in the arms of a `? :`. Terraform
 type-unifies both arms whichever is taken, so a filtered/unfiltered pair fails
-`terraform validate` in production mode too. Filter in a `local` with one
-`[for ... if ...]` comprehension. Run `terraform validate` and
-`terraform plan -var preview_mode=false` (plan only) so the production-mode
+`tofu validate` in production mode too. Filter in a `local` with one
+`[for ... if ...]` comprehension. Run `tofu validate` and
+`tofu plan -var preview_mode=false` (plan only) so the production-mode
 expression is exercised as well.
+
+## HIPAA-covering monitors carry identifiers and counts only
+
+No notification destination here is BAA-covered (Slack is not), so a monitor
+whose query can match a HIPAA service's telemetry may render identifiers and
+counts and nothing else: no `enable_logs_sample`, no free-text or
+person-identifying group-by facet (`@extra.message`, `@extra.alert.markdown`,
+`@error.message`, `@extra.user_email`, `@extra.client_ip`), no template
+variable that quotes the sampled event (`log.*`, `issue.attributes.error.message`,
+`issue.attributes.error.stack`). `bun run check:hipaa-monitor-payloads` enforces
+it as part of `bun run lint`; the rule, the inventory and the destination
+assessment are in [`HIPAA.md`](./HIPAA.md).
+
+A monitor is covering when its name contains `[HIPAA]` or its tags contain
+`hipaa`, or when it is log-derived (log alert, error-tracking alert, CI, RUM,
+event, audit) and its filter does not rule out `service:api-hipaa`.
+`service:api` is an exact match and already rules it out; a monitor with no
+service term, a glob like `service:api*`, or a `type` / `query` the lint cannot
+read does not. The lint reads literals, locals in the same module directory,
+and `for_each = local.<map>` / `var.<flag> ? {} : local.<map>` over a literal
+map whose every value is an object literal (one `merge(...)` value leaves the
+whole map unexpanded); a `query`, `message` or `escalation_message` that is
+wholly some other expression, a log query whose `.by()` chain sits inside
+`${...}`, a metric query whose whole selector is one interpolation, or a facet
+or handle class that still contains `${...}`, is reported as opaque on a
+covering monitor. Declared metric monitors are checked on their `by {...}` tags too, and
+handles are read after `{{...}}` tags are rendered away, so
+`{{#is_alert}}@slack-...{{/is_alert}}` counts.
+
+The `[HIPAA]` name or `hipaa` tag must itself be readable by the lint — a
+literal, a same-module string local, or a literal `for_each` map entry — because
+a declaration hidden behind an unresolvable expression is not a declaration.
+
+To satisfy the lint on a monitor that must render free text, add
+`-service:api-hipaa` to the filter with a one-line comment naming the ticket;
+on a declared `[HIPAA]` monitor, render the identifier instead. Add a second
+HIPAA worker to `HIPAA_TELEMETRY_PRODUCERS` in
+`scripts/check-hipaa-monitor-payloads.ts`. A `@webhook-` handle is accepted only
+when its `datadog_webhook` resource posts to `${var.cfw_internal_url}`; `@team-`,
+pager, ticketing and other webhook handles fail assessment. Assess any other
+destination class in `HIPAA.md` before teaching `classifyDestination` about it.
 
 ## Monitor ownership is not the Datadog `creator`
 
