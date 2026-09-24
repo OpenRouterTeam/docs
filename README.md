@@ -84,11 +84,11 @@ Use the seeded development account described in [Local development](.agents/skil
 
 For a personal development account, sign in with your OpenRouter Google account. To select a different seed admin, set `DEV_ADMIN_CLERK_USER_ID` in the root `.env.development.local` before rebuilding the database with `bun run db:reset`. That reset replaces local data. The same identity is the dev employee actor `cfw-internal` records on employee-authenticated internal routes (for example `user_entitlements.granted_by` when the Mission Control HIPAA toggle grants an entitlement), so it must keep a seeded `users` row; `bun run dev:doctor` warns when it has none, and `bun run x scripts/sync-clerk.ts` restores it without a full reset. It reaches the worker through `bun run dev` → `.dev.vars`, so restart the `internal` Tilt resource after changing the override; in a linked worktree without its own `.env.development.local`, seeding, the worker, and the doctor all read the main checkout's file.
 
-Playwright's `bun run --filter @openrouter-monorepo/test-web-e2e e2e` defaults to the deployed site and reads its credentials from Infisical at `/tests/e2e`. For local route smoke tests, use `cd tests/web-e2e && bun run e2e:local`; see [e2e-testing](.agents/skills/e2e-testing/SKILL.md#frontend-e2e-testing) for target and authentication settings.
+Playwright's `bun run --filter @openrouter-monorepo/test-web-e2e e2e` defaults to the deployed site and reads its credentials from Infisical at `/tests/e2e`. For local route smoke tests, use `cd tests/web-e2e && bun run e2e:local`; see [e2e-frontend-testing](.agents/skills/e2e-frontend-testing/SKILL.md#setup) for target and authentication settings.
 
 ### Verification
 
-Lefthook installs during `bun install`; `bun run hooks:install` repairs installation. Standard pre-commit hooks format code and scan staged changes for secrets, and standard pre-push hooks block direct pushes to `main` (except when `CI=true`). `bun run devin:setup` selects the existing Devin checks through a gitignored `lefthook-local.yml`: format and style checks before committing, then formatting checks, syncpack, lint, and style checks before pushing. Remove that local file to return to the standard hooks.
+Lefthook installs during `bun install`; `bun run hooks:install` repairs installation. Standard pre-commit hooks format code and scan staged changes for secrets, and standard pre-push hooks block direct pushes to `main` (except when `CI=true`). `bun run devin:setup` selects the existing Devin checks through a gitignored `lefthook-local.yml`: format and style checks plus the secret scan (which fails if the Infisical CLI is missing) before committing, then formatting checks, syncpack, lint, and style checks before pushing. Remove that local file to return to the standard hooks.
 
 Run `bun run verify` for formatting, lint, and typechecking. On macOS outside CI, it runs at low process priority with `GOMAXPROCS=8` and a five-minute typecheck timeout; existing `GOMAXPROCS` and `TYPECHECK_TIMEOUT_MS` overrides are preserved.
 
@@ -162,6 +162,10 @@ Some common development targets:
 * `bun run format` to run the Oxfmt code formatter
 * `bun run lint` to run the linters
 * `bun run test` to run unit tests (always located next to the module they test)
+* `bun run typecheck:clean` to drop every `*.tsbuildinfo` for a cold typecheck
+* `bun run fallow:lint` to report unused exports and policy violations
+* `bun run kill-ports` to clear orphaned dev-stack listeners
+* `bun run x <script>` to run repository scripts that need credentials
 
 **Note:** If you run node commands directly (e.g., `cd services/cfw-api && bun run test`) instead of through turbo, you may see errors like `Failed to resolve entry for package "@openrouter-monorepo/chat-templates"`. This happens because some packages (like `chat-templates`) require compilation before use. Running `bun run compile` at the repo root will fix this. When using turbo-based commands, compilation happens automatically as a dependency.
 

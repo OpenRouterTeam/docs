@@ -42,7 +42,7 @@ Ask what the series *is*, in this order. Stop at the first match.
 
 In a deck or an exported asset these come from the rebrand tokens. In a Recharts context they come from the chart-colors hook's neutral keys, because Recharts sets SVG attributes in a way that makes custom-property resolution unreliable. Hand-authored drawing markup must put paint tokens in stylesheet declarations, not directly on presentation attributes. The capture browser resolves the attribute form, but other renderers do not consistently do so, and `DESIGN.md` records that it does not resolve where our charts are built. The stylesheet path behaves consistently across the renderers these assets pass through.
 
-Token syntax follows the source stylesheet. Chart tokens and extended tokens such as `--text-faint` are complete colors and must be used bare. HSL component tokens, including `--background`, `--foreground`, `--muted-foreground`, `--border`, `--primary`, and `--accent`, must be wrapped as `hsl(var(--token))`. The harness injects the product's Geist Mono face as `var(--font-mono)`, which is allowed for chart micro-type and code labels alongside the injected brand sans.
+Token syntax follows the source stylesheet. Chart tokens, status tokens (`--positive`, `--negative`, `--warning` and their `-text` and `-bg` variants), and extended tokens such as `--text-faint` are complete colors and must be used bare. HSL component tokens, including `--background`, `--foreground`, `--muted-foreground`, `--border`, `--primary`, and `--accent`, must be wrapped as `hsl(var(--token))`. The harness injects the product's Geist Mono face as `var(--font-mono)`, which is allowed for chart micro-type and code labels alongside the injected brand sans.
 
 ## Source line
 
