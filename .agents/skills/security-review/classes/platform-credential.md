@@ -19,6 +19,7 @@ This class applies when a change:
 - Passes a validated URL, host, or destination field across a serialization
   boundary (Temporal activity args, a queue payload, a Durable Object RPC)
   before a credential is attached to a request against it.
+- Reads the acting user, reviewer, or editor from a request body or header on a route authenticated by a shared key, a static header match, or a possession-only bearer token, or writes such a value into an attribution or audit column.
 
 ## Rule
 
@@ -142,6 +143,12 @@ handler method. Evidence: `requireInternalAdmin` in
 and its use at the top of every method in
 `projects/mission-control/app/api/demo-hub/demos/workspaces/route.ts`.
 
+### The caller names the actor, the shared credential vouches for it
+
+A route authenticated by a shared key, a static header match, or a bearer token that proves only possession also read the acting user, reviewer, or editor from the request body or a header, and wrote that value into attribution columns and audit rows. Any holder of the shared credential could act as any admin (PR [#45194](https://github.com/OpenRouterTeam/openrouter-web/pull/45194)). Possession of a shared credential proves membership in the credential's population, never which member is calling, so an identity field the caller fills in is unproven authority lent by the platform's own trust in that credential.
+
+The accepted remedy derives the actor from the credential the server verified (a Clerk session cookie or an issuer-signed OIDC claim), mints it into a branded type at that gate, and rejects a body or header that names one. Evidence: `mintActingClerkUserId` and `mintDevinSessionActor` in `packages/db/restrictions/index.ts`, `resolveAuthenticatedActor` in `services/cfw-internal/src/routes/ban-candidates/acting-actor.ts`, and the `.strict()` request schemas in `packages/db/restrictions/schemas.ts`. A request field or header named `actingClerkUserId`, `reviewerId`, `acting_clerk_user_id`, `X-*-Actor-*`, or similar on a route whose credential is shared is the finding, even when the field is validated for shape. Current-branch evidence of the open shape: `getBuddyActor` in `services/cfw-internal/src/routes/buddy-api/buddy-actor.ts` attributes to `X-Buddy-Actor-Email` on both the static-key branch and, when the header is present, the Devin OIDC branch, because the OIDC requester is the session starter rather than the approver; the header is bounded by the catalog-editor allowlist, and the verified requester is logged beside it when they differ.
+
 ## What the primitives do not give you
 
 Retrieve-and-compare proves ownership of one object for one call; it does not
@@ -162,7 +169,7 @@ cases proving an unpinned algorithm and a foreign issuer are both rejected;
 copy `packages/oidc/verify-google-oidc-token.test.ts`. For an admin-gated route
 handler, add a non-admin denial test per method, copying
 `projects/mission-control/app/admin-utils/demo-hub/lib/internalAdminGate.test.ts`.
-Report a missing test as `TEST GAP`, never as a vulnerability finding.
+For an actor-derivation change, add a test in which the request body or header names an actor and the write is proven to carry the credential-derived actor or the request is rejected. Report a missing test as `TEST GAP`, never as a vulnerability finding.
 
 ## Calibration
 
