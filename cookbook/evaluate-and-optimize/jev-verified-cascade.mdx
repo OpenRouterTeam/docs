@@ -272,7 +272,7 @@ Another thing `supported` requires is that the answer addresses `customer_questi
 The following are things to check about the behavior you've implemented.
 
 - **Decisions response.** `answers.support.type` equals `'choice'`, `answers.support.choice` is one of `'supported'`, `'unsupported'`, or `'declined'`, `confidence` is between 0 and 1, and `probabilities` has one entry per label, including labels at 0.
-- **Endpoint.** Requests from the `decisions` client reach `https://openrouter.ai/api/alpha/decisions`. A client without `serverURL` gets a 404 for this call in `@openrouter/sdk` 1.2.146.
+- **Endpoint.** Requests from the `decisions` client reach `https://openrouter.ai/api/alpha/decisions`. A client without `serverURL` gets a 404 for this call.
 - **Routing.** A `supported` draft at or above `ACCEPT_CONFIDENCE` returns `route: 'send'` with one verdict entry and `model` equal to `DRAFT_MODEL`.
 - **Declined.** A `declined` draft returns `route: 'handoff'` with one verdict entry and no call to `ESCALATION_MODEL`.
 - **Escalation.** A wrong draft returns `choice: 'unsupported'`, and the result then has two verdict entries and `model` equal to `ESCALATION_MODEL`.
