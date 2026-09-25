@@ -212,6 +212,8 @@ returns 404 `resource not found` (live).
 
 ## Irregularities observed live
 
+Missing-resource deletion was rechecked on 2026-09-12. `DELETE /v1/accounts/{account}/batchInferenceJobs/{id}` returns HTTP `404` with code `5` and message `BatchInferenceJob accounts/{account}/batchInferenceJobs/{id} not found`; missing dataset DELETE and resource GET return code `5` with `resource not found`. Both are terminal absence receipts. The job-specific message must match the requested account and job exactly; permission errors, other status/code combinations, and ambiguous messages remain errors. The job-specific match requires an unredirected response URL. Its raw capture is `fixtures/fireworks/2026-09-12-batch-inference-jobs-missing-delete.json`, collected by `fixtures/scripts/collect-fireworks-missing-resources.ts`. Accepting the missing job lets deletion continue to provider dataset cleanup instead of repeatedly returning `502`.
+
 1. Dataset creation requires `exampleCount`, which the create-dataset docs
    do not mention (`400 example_count is required for uploaded datasets`).
 2. `exampleCount` is **not validated** against the uploaded file: a dataset
@@ -774,3 +776,7 @@ sanitized; no other edits). Auth on every call:
 ### error-data file
 
 Downloaded alongside the output; empty (0 bytes) for the happy-path job.
+
+## Deletion verification — 2026-09-11
+
+[capture] Live captures from 2026-09-11 confirm job and dataset DELETE return HTTP 200 with an empty object. Job deletion may remain in DELETING_CLEANING_UP before GET returns the provider-specific code-5 404. Cleanup confirms absence within a bounded poll budget and returns a retryable error while a resource remains. Persisted dataset handles remain necessary when the native job is already gone. Fixtures: `packages/batch/adapters/fixtures/provider-deletion-20260911.json`.
