@@ -131,7 +131,7 @@ Invalid or unsafe patterns are rejected at creation time with a descriptive erro
 
 ### Via the Dashboard
 
-1. Navigate to your workspace's **Privacy & Guardrails** page, or go to [Settings > Privacy](https://openrouter.ai/settings/privacy).
+1. Navigate to your workspace's **Guardrails** page (for the default workspace, [Workspaces > Default > Guardrails](https://openrouter.ai/workspaces/default/guardrails)).
 2. Create a new guardrail or edit an existing one.
 3. Expand the **Sensitive Info** section.
 4. Enable the desired built-in presets and/or add custom patterns.
