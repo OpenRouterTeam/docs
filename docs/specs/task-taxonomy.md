@@ -2,7 +2,7 @@
 
 **Status:** Layer 1 (contracts and compatibility) implemented; shadow runtime not yet built
 **Code:** `packages/db/classifiers/task-taxonomy/`
-**Registry version:** `2.0.0-draft.4`
+**Registry version:** `2.0.0-draft.5`
 
 ---
 
@@ -29,24 +29,19 @@ any consumer is allowed to depend on it.
 | `execution_surface` | `execution.surfaces`       | 0..n, tied to `uses_tools` |
 | `domain`            | `domain.primary/secondary` | 1 primary, up to 2 extra |
 | `input`             | `input.modalities`         | 1..4                     |
+| `output`            | `output.modalities`        | 1..4                     |
+| `visual_style`      | `output.visual_style`      | 0..1                     |
 | `language`          | `input.language`, `output.language` | 1 input, 0..1 output |
 | `complexity`        | `complexity`               | 1                        |
 | `response_entropy`  | `response_entropy`         | 1                        |
 
 The three scalar facets were added in `2.0.0-draft.3`. They describe the request independently of what it asks for. `language` is bound twice: `input.language` is the natural language of the supplied text or audio and `output.language` is the natural language the response is expected in, `null` when the output is not language (an image, a number, code with no prose). Both draw from one vocabulary of stable lowercase registry ids inspired by BCP-47 conventions, with `_` for subtags (`en`, `zh_hans`, `zh_hant`, ...) and the legacy ISO 639-3 id `als`; they are not guaranteed to be valid BCP-47 locale tags. The set covers the 58 languages of the legacy spoken-language tagger plus `mixed` and `unknown`. `complexity` is the reasoning depth and constraint count the request demands (`trivial`, `simple`, `moderate`, `complex`, `expert`). `response_entropy` is how open the space of acceptable responses is (`low`, `medium`, `high`, `very_high`). Each is a registry dimension with the same status, alias, hash, and facet-signal treatment as the other facets, so a candidate value such as a new language surfaces through `learning.facet_signals` and is promoted by the same policy.
 
-Image, document, and audio/video understanding are **input** facets, not
-tasks. The draft.1 task leaves for them are deprecated and aliased with
-`kind: 'move'` to the corresponding input values. Speech synthesis and
-speech transcription are tasks (`media.speech_synthesis`,
-`media.speech_transcription`, added in `2.0.0-draft.4`) because the request
-asks for them; the surface they arrive on is recorded by the producer, not
-inferred by the model.
+`2.0.0-draft.5` renames the input values to content modalities and adds the two output facets. `input.modalities` draws from `text`, `image`, `audio`, `video`, `code`, and `structured_data`, sharing ids with the model catalog's `InputModality` where the meaning matches (the draft.4 `natural_language`, `image_processing`, `document_processing`, and `audio_video_processing` ids are gone, with documents recorded by their content and audio/video split into atomic values). `output.modalities` is the kind of artifact the response produces, drawing from `text`, `image`, `video`, `audio`, `speech`, and `transcription` (ids shared with `OutputModality`), and `output.visual_style` is the dominant look of a generated image or video (`photoreal`, `anime`, `cartoon`, `painterly`, `sketch`, `graphic`, `pixel_art`, `other_stylized`). Values name the look a viewer would describe, never the production technique: a 3D animated film is `cartoon`, photoreal CGI is `photoreal`. `output.visual_style` is a single nullable value and must be `null` unless `output.modalities` includes `image` or `video`.
 
-Explicit-content classification and response style are out of scope for the taxonomy
-(style is low signal). The label schema is `strict()` and rejects
-`content.explicit` and `style` fields; the response JSON schema never emits
-them.
+Image, document, and audio/video understanding are **input** facets, not tasks. The draft.1 task leaves for them are deprecated and aliased with `kind: 'move'` to the corresponding input values. Speech synthesis, speech transcription, image generation, and video generation are tasks (`media.speech_synthesis`, `media.speech_transcription`, added in `2.0.0-draft.4`, and `media.video_generation`, added in `2.0.0-draft.5` beside the existing `media.image_generation_editing`) because the request asks for them; the surface they arrive on is recorded by the producer, not inferred by the model.
+
+Explicit-content classification and the register or tone of text responses are out of scope for the taxonomy (prose style is low signal). The label schema is `strict()` and rejects `content.explicit` and `style` fields; the response JSON schema never emits them. Visual style of generated images and video is in scope as `output.visual_style` because it describes the artifact, not the writing.
 
 ## 3. Registry
 
@@ -86,7 +81,7 @@ resolve `source` → `target`, moving the value to `target.dimension` for
 (`field_moves`, `removed_fields`) and the dimensions whose meaning changed
 enough to require **semantic backfill** (`backfill_dimensions`) rather than a
 mechanical rename. `2.0.0-draft.1 → 2.0.0-draft.2` requires semantic backfill
-for `task`, `domain`, and `input`. `2.0.0-draft.2 → 2.0.0-draft.3` moves or removes no fields and requires backfill of `language`, `complexity`, and `response_entropy`, which draft.2 labels do not carry. `2.0.0-draft.3 → 2.0.0-draft.4` moves or removes no fields and requires backfill of `task` for the two speech tasks, which draft.3 labels cannot carry.
+for `task`, `domain`, and `input`. `2.0.0-draft.2 → 2.0.0-draft.3` moves or removes no fields and requires backfill of `language`, `complexity`, and `response_entropy`, which draft.2 labels do not carry. `2.0.0-draft.3 → 2.0.0-draft.4` moves or removes no fields and requires backfill of `task` for the two speech tasks, which draft.3 labels cannot carry. `2.0.0-draft.4 → 2.0.0-draft.5` moves or removes no fields and requires backfill of `task`, `input`, `output`, and `visual_style`: draft.4 labels carry the retired input ids and no output facets. The `media.audio_video_understanding → input.audio` alias is a required single-target placeholder for a value that covered both media: backfill of `input` decides `audio`, `video`, or both from the request, and the alias must not be read as a claim that every historical occurrence was audio.
 
 ## 4. Label validation
 
@@ -100,11 +95,11 @@ violations are reported together in the error string.
 
 ### Surface facts: classify only unknown values
 
-`surfaceFacts(surface)` returns the label fields an API surface fixes for every generation, or `undefined` when the model judges the whole label. Today `tts` fixes `media.speech_synthesis` with a `natural_language` input and `stt` fixes `media.speech_transcription` with an `audio_video_processing` input. No language override is involved: the model classifies language directly.
+`surfaceFacts(surface)` returns the label fields an API surface fixes for every generation, or `undefined` when the model judges the whole label. Today `tts` fixes `media.speech_synthesis` with a `speech` output, `stt` fixes `media.speech_transcription` with a `transcription` output, `image` fixes `media.image_generation_editing` with an `image` output, and `video` fixes `media.video_generation` with a `video` output. Input modalities come from the producer's message. No language override is involved: the model classifies language directly.
 
-`factBoundClassifierLabelSchema(options, facts)` is the response schema for a surface with facts. The model returns task summary and a nullable abstention decision, domain, one language, complexity, response entropy, sufficiency, confidence, decision notes, and learning signals for the inferred facets. It does not return task identifiers (other than an abstention), secondary tasks, execution, modalities, output language, or task-learning fields. Those fields are not in the model's response schema, and extra fields are rejected rather than overwritten or discarded.
+`factBoundClassifierLabelSchema(options, facts)` is the response schema for a surface with facts. The model returns task summary and a nullable abstention decision, domain, one language, a nullable visual style, complexity, response entropy, sufficiency, confidence, decision notes, and learning signals for the inferred facets. The visual style is kept only when the surface's fixed output is `image` or `video` and is forced to `null` otherwise. It does not return task identifiers (other than an abstention), secondary tasks, execution, modalities, output language, or task-learning fields. Those fields are not in the model's response schema, and extra fields are rejected rather than overwritten or discarded.
 
-`applyFacts(judgment, facts)` assembles the complete label: the surface task is the primary unless the model abstains; execution is `answer_only` without tools; modalities come from the facts; and both language fields use the model's single language judgment. Task learning is derived (`clear_fit`, the chosen primary as the sole nearest task, and no task candidate). Facet signals are retained unchanged and validated, not repaired. The full label and versioned result formats remain shared with other classifiers.
+`applyFacts(judged, facts)` assembles the complete label: the surface task is the primary unless the model abstains; execution is `answer_only` without tools; modalities come from the facts; `input.language` uses the model's single language judgment, and `output.language` repeats it unless the fixed output is `image` or `video`, where it is `null`. Task learning is derived (`clear_fit`, the chosen primary as the sole nearest task, and no task candidate). Facet signals are retained unchanged and validated, not repaired. The full label and versioned result formats remain shared with other classifiers.
 
 Use the same schema for the model request and local response parsing:
 
@@ -200,7 +195,7 @@ Both of the following, from one validated result:
    `task_taxonomy:execution_surface`, `task_taxonomy:domain`,
    `task_taxonomy:domain_secondary`, `task_taxonomy:input`, `task_taxonomy:input_language`, `task_taxonomy:output_language`, `task_taxonomy:complexity`, `task_taxonomy:response_entropy`. Primary task,
    domain, execution mode, input language, complexity, and response entropy each produce exactly one row, so per-tagger
-   request counts in `tags_activity_daily_v2` stay additive. `output_language` produces no row when `output.language` is `null`. Summary,
+   request counts in `tags_activity_daily_v2` stay additive. `output_language` produces no row when `output.language` is `null`, and `visual_style` produces no row when `output.visual_style` is `null`. Summary,
    decision notes, sufficiency, learning, version, and hash are not tags.
 2. **Raw results in `task_taxonomy_results`.** One row per
    classification: `taxonomy_version`, `registry_hash`, promoted

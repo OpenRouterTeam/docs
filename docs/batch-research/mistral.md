@@ -90,11 +90,11 @@ All paths are relative to `https://api.mistral.ai` (the adapter's
 | Retrieve job | `GET /v1/batch/jobs/{job_id}` (official docs: https://docs.mistral.ai/api/endpoint/batch#operation-jobs_api_routes_batch_get_batch_job) | `batch-poller.ts` | 200 job object (**live capture** `status-*.json`) |
 | List jobs | `GET /v1/batch/jobs` with `status`/`metadata` filters (official docs: https://docs.mistral.ai/api/endpoint/batch#operation-jobs_api_routes_batch_get_batch_jobs) | not used | 200 `{data: [...], object: "list", total}` (**live capture** `list-jobs.json`) |
 | Cancel job | `POST /v1/batch/jobs/{job_id}/cancel` (official docs: https://docs.mistral.ai/api/endpoint/batch#operation-jobs_api_routes_batch_cancel_batch_job) | not used | 200 job object; `CANCELLED` immediately when nothing had started, `CANCELLATION_REQUESTED` when running (**live capture** `cancel-200-before-start.json`, `cancel-200-cancellation-requested.json`) |
-| Delete job | `DELETE /v1/batch/jobs/{job_id}` (official docs: https://docs.mistral.ai/api/endpoint/batch#operation-jobs_api_routes_batch_delete_batch_job) | not used | **unconfirmed** (not exercised) |
+| Delete job | `DELETE /v1/batch/jobs/{job_id}` (official docs: https://docs.mistral.ai/api/endpoint/batch#operation-jobs_api_routes_batch_delete_batch_job) | terminal cleanup | **capture** (2026-09-11) |
 | File metadata | `GET /v1/files/{file_id}` (official docs: https://docs.mistral.ai/api/endpoint/files#operation-files_api_routes_retrieve_file) | not used | 200; output files carry `sample_type: "batch_result"`, `source: "mistral"`, `expires_at: null` (**live capture** `file-metadata-output.json`, `file-metadata-error.json`) |
 | Download results | `GET /v1/files/{file_id}/content` (official docs: https://docs.mistral.ai/api/endpoint/files#operation-files_api_routes_download_file) | `file-downloader.ts` | 200 JSONL body (**live capture** `output-*.jsonl`, `error-*.jsonl`) |
 | Signed URL | `GET /v1/files/{file_id}/url?expiry=<hours>` (official docs: https://docs.mistral.ai/api/endpoint/files#operation-files_api_routes_get_signed_url) | not used | **unconfirmed** (not exercised) |
-| Delete file | `DELETE /v1/files/{file_id}` (official docs: https://docs.mistral.ai/api/endpoint/files#operation-files_api_routes_delete_file) | not used | **unconfirmed** (not exercised) |
+| Delete file | `DELETE /v1/files/{file_id}` (official docs: https://docs.mistral.ai/api/endpoint/files#operation-files_api_routes_delete_file) | terminal cleanup | **capture** (2026-09-11) |
 
 The create operation also accepts inline `requests: BatchRequest[]` as an
 alternative to `input_files` (official docs:
@@ -294,8 +294,10 @@ Row shape, identical in both files (**live capture** `output-happy-5.jsonl`,
   https://docs.mistral.ai/api/endpoint/files#operation-files_api_routes_delete_file)
   and jobs can be deleted (official docs:
   https://docs.mistral.ai/api/endpoint/batch#operation-jobs_api_routes_batch_delete_batch_job).
-  The adapter deletes nothing; input and result files accumulate in the
-  workspace indefinitely.
+  The adapter deletes the job via `nativeDeletion.deleteBatch` and the
+  uploaded input and result files via `deleteFiles` when a batch is
+  delete-requested; files of batches that are not delete-requested still
+  accumulate.
 - Signed URLs default to 24 hours and accept 1 to 168 (official docs:
   https://docs.mistral.ai/api/endpoint/files#operation-files_api_routes_get_signed_url_parameters_expiry).
 - OpenRouter's own copy of the artifact expires after 30 days
@@ -662,3 +664,7 @@ Quirks a test writer needs (**live capture**):
 - BYOK, ZDR, bad platform key: need a workspace-attached Mistral key, a
   ZDR-enforced test key, and control of the service env.
 - Job-size and rate limits (section 6): no 429 seen, no burst attempted.
+
+## Deletion verification — 2026-09-11
+
+[capture] Live captures from 2026-09-11 confirm native batch DELETE receipts and provider-specific absence responses. File DELETE can race and return HTTP 200 with deleted:false; cleanup verifies absence with GET before accepting that receipt. The adapter now implements file and native batch deletion. Fixtures: `packages/batch/adapters/fixtures/provider-deletion-20260911.json`.

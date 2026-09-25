@@ -476,3 +476,7 @@ Expiry behavior (needs a 30-day-old batch); multi-page result traversal
 genuinely pending request yields a `cancelled` result row or only a
 counter; `batch_request_id` uniqueness across add calls; billing for
 failed lines; rate limits.
+
+## Deletion verification — 2026-09-11
+
+[capture] Live captures from 2026-09-11 confirm uploaded input files support DELETE /v1/files/:id with an id/deleted:true receipt. Repeated deletion returns the captured not-found envelope. The adapter now removes input files; native batch deletion remains unsupported. Batch-ID-addressed results are separate from the uploaded input file. Fixtures: `packages/batch/adapters/fixtures/provider-deletion-20260911.json`.

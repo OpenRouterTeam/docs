@@ -165,6 +165,17 @@ Caveats (why the dashboard fallback above exists):
   ignoring too) and enablement falls back to the dashboard procedure
   until this is revisited.
 
+## IdP-initiated flow (LEN-170)
+
+Whether a SAML connection accepts unsolicited SAML responses (sign-in launched from the identity provider's app tile rather than from OpenRouter) is self-serve per connection. Ops no longer flips **"Allow IdP-Initiated flow"** in the Clerk dashboard for a customer.
+
+1. The org admin opens the SSO tab (`/settings/organization-members?tab=sso`); every listed connection has an **"Allow IdP-initiated sign-in"** switch, off by default (Clerk labels the flow "not recommended", so the UI says so and links to Clerk's SAML flow docs).
+2. Flipping it calls `POST /api/frontend/v1/private/organization-sso/connections/idp-initiated` with `{ clerkConnectionId, allowIdpInitiated }` (org admins only; 404 for personal accounts, unentitled orgs, and connection IDs that belong to another org).
+3. The route calls `PATCH /v1/enterprise_connections/{id}` with `{ "saml": { "allow_idp_initiated": <bool> } }`, checks that Clerk echoes the applied value, and then refreshes the mirror in the same request on a best-effort basis. The switch never flips optimistically: it shows the echo-confirmed value (with a "Saved — this page may take a moment to reflect it" note if the mirror refresh lagged) until the next status load reconciles.
+4. The change is audited as `sso_idp_initiated_changed` (source `admin_action`, actor = the admin, `details: { clerk_connection_id, domain, enabled }`) and rendered on the organization audit log as "turned IdP-initiated sign-in on/off for &lt;domain&gt;".
+
+The current value is mirrored in `organization_sso_connections.allow_idp_initiated`; Clerk remains the source of truth and reconciliation refreshes the column on every SSO tab load. A flip made directly in the Clerk dashboard is picked up by reconciliation but is not audited.
+
 ## Coexistence with manually-created connections (Eastman)
 
 Existing enterprise customers (e.g. Eastman) have connections our
@@ -292,3 +303,4 @@ modal, not our code:
   for the connection; the user has no pre-provisioned account. Either
   re-enable "Create users during sign-in" or provision the user via
   invitation/Directory Sync.
+- **Users launching from the IdP app tile see `saml_response_relaystate_missing`:** the connection's IdP-initiated flow is off, so Clerk rejects the unsolicited SAML response. Point the org admin at the **"Allow IdP-initiated sign-in"** switch on the SSO tab (see [IdP-initiated flow](#idp-initiated-flow-len-170)); sign-in started from OpenRouter keeps working either way.

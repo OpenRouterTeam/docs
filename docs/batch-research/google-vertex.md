@@ -229,7 +229,7 @@ BYOK (`[code]` `vertex-byok-adapter.ts`, `vertex-byok-gcs.ts`, `projects/docs/ba
 - `upstream_batch_id`: full resource name `projects/<project>/locations/<location>/batchPredictionJobs/<int64>` `[capture 2026-09-02]`.
 - `output_file_id`: `outputInfo.gcsOutputDirectory` prefix. Shards listed at read time `[code]`.
 - `error_file_id`: always `null` `[code]`.
-- Delete: `batchPredictionJobs.delete` exists `[docs: https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.batchPredictionJobs/delete]`; the adapter does not call it, and output objects follow bucket lifecycle `[code]`.
+- Delete: `batchPredictionJobs.delete` exists `[docs: https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.batchPredictionJobs/delete]`; the adapter calls it through `nativeDeletion.deleteBatch` (the platform adapter also purges the job's own output prefix; BYOK leaves customer output in place), and output objects otherwise follow bucket lifecycle `[code]`.
 
 ## 14. Native remote image / file URL support
 
