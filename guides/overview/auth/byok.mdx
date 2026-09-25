@@ -33,7 +33,7 @@ Using provider keys enables direct control over rate limits and costs via your p
 
 Your provider keys are securely encrypted and used for all requests routed through the specified provider.
 
-Manage keys in your [workspace BYOK settings](https://openrouter.ai/workspaces/default/byok).
+Manage keys in your [workspace BYOK settings](https://openrouter.ai/integrations).
 
 The cost of using custom provider keys on OpenRouter is
 **{BYOK_FEE_PERCENTAGE}% of what the same model/provider would cost
@@ -57,7 +57,7 @@ Each BYOK key belongs to one of two sections:
 
 You can drag keys between sections on the provider
 detail page (e.g.
-[/workspaces/default/byok/openai](https://openrouter.ai/workspaces/default/byok/openai)).
+[/settings/integrations/openai](https://openrouter.ai/settings/integrations/openai)).
 
 By default, if all keys in both sections encounter a
 rate limit or failure, OpenRouter will fall back to
@@ -151,7 +151,7 @@ If you want to prevent fallback to OpenRouter endpoints
 entirely, set **Shared capacity fallback** to **"Never
 use shared capacity for any model on this provider"** on your
 BYOK keys in your
-[workspace BYOK settings](https://openrouter.ai/workspaces/default/byok).
+[workspace BYOK settings](https://openrouter.ai/integrations).
 
 ### BYOK and Regional Endpoints
 
@@ -181,7 +181,7 @@ To use a provider through BYOK, make sure your data policies allow it. The provi
 
 #### Declaring ZDR on a Key
 
-Some providers give your own account zero data retention. The shared endpoint that OpenRouter tracks for that provider can still retain prompts. OpenRouter cannot see your provider agreement. You tell OpenRouter what it covers. Each key card has a **Provider agreement** section with a **Zero data retention** setting. Workspace admins change the setting on the provider page (for example [/workspaces/default/byok/openai](https://openrouter.ai/workspaces/default/byok/openai)). The setting has three options:
+Some providers give your own account zero data retention. The shared endpoint that OpenRouter tracks for that provider can still retain prompts. OpenRouter cannot see your provider agreement. You tell OpenRouter what it covers. Each key card has a **Provider agreement** section with a **Zero data retention** setting. Workspace admins change the setting on the provider page (for example [/settings/integrations/openai](https://openrouter.ai/settings/integrations/openai)). The setting has three options:
 
 | Option | Effect when ZDR is enforced |
 |---|---|
@@ -206,7 +206,7 @@ The declaration follows these rules:
 
 #### Declaring a Data Region on a Key
 
-On a regional domain, OpenRouter routes only to endpoints it has onboarded for that region (see [In-Region Routing](/guides/features/in-region-routing)). OpenRouter cannot see where your own OpenAI account processes requests, so you tell OpenRouter. The **Provider agreement** section on an OpenAI key card has a **Data region** setting, next to the ZDR setting, on the [OpenAI provider detail page](https://openrouter.ai/workspaces/default/byok/openai). It has three options, each labelled with the OpenRouter hostname it applies to:
+On a regional domain, OpenRouter routes only to endpoints it has onboarded for that region (see [In-Region Routing](/guides/features/in-region-routing)). OpenRouter cannot see where your own OpenAI account processes requests, so you tell OpenRouter. The **Provider agreement** section on an OpenAI key card has a **Data region** setting, next to the ZDR setting, on the [OpenAI provider detail page](https://openrouter.ai/settings/integrations/openai). It has three options, each labelled with the OpenRouter hostname it applies to:
 
 | Option | Hostname | Effect |
 |---|---|---|
@@ -263,7 +263,7 @@ section. Prioritized keys are tried first, then
 OpenRouter endpoints, then Fallback keys. You can
 reorder keys via drag-and-drop on the provider detail
 page (e.g.
-[/workspaces/default/byok/openai](https://openrouter.ai/workspaces/default/byok/openai)).
+[/settings/integrations/openai](https://openrouter.ai/settings/integrations/openai)).
 When a key fails (e.g. rate limit or error), OpenRouter
 falls through to the next matching key.
 
