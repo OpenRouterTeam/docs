@@ -23,18 +23,18 @@ Connect has three goals.
 
 - Give every customer their own OpenRouter organization, so usage and keys stay separate per customer while billing goes to your organization.
 - Let your platform create those organizations programmatically or from the dashboard, without a manual signup flow for each customer.
-- Hand your platform a management key for each customer organization, so your backend can manage that customer's API keys through the [Management API](/guides/overview/auth/management-api-keys).
+- Hand your platform a management key for each customer organization, so your backend can manage that customer's configuration and API keys through the [Management API](/guides/overview/auth/management-api-keys).
 
 <Warning>
 Connect is not enabled by default. The OpenRouter team must manually grant the Connect entitlement to each organization that will create customer organizations. Until the entitlement is granted, the organization cannot view the Connect page or create customer organizations through the dashboard or the API. Contact your OpenRouter account team to request access.
 </Warning>
 
-## Requirements
+## Requirements to use Connect
 
-- Your parent account must be an OpenRouter organization with a name. Personal accounts cannot use Connect.
+- Your parent account must be an OpenRouter organization. Personal accounts cannot use Connect.
 - The organization must have the Connect entitlement, granted by OpenRouter.
-- To use the dashboard, you must be an admin of the organization.
-- To use the API, you need a [management API key](https://openrouter.ai/settings/management-keys) created while the organization is selected.
+- To use the Connect dashboard, you must be an admin of the parent organization.
+- To use the Connect API to create customer orgs, you need a [management API key](https://openrouter.ai/settings/management-keys) created in the parent organization.
 
 ## Terms
 
@@ -120,7 +120,7 @@ Use the returned management key to call the [Management API](/guides/overview/au
 | --- | --- |
 | `400` | The request body is invalid, for example a missing or empty `name` or an invalid `email`. |
 | `401` | The management key is missing or invalid. |
-| `403` | The key is not a management key, the parent account is not a named organization, or the organization does not have Connect enabled. |
+| `403` | The key is not a management key, the parent account is not an organization, or the organization does not have Connect enabled. |
 | `409` | The request conflicts with existing state, for example the customer organization already exists and its management key was already delivered, an account already exists for the owner email, the customer organization was deleted, or provisioning for the same customer is already in progress. |
 | `429` | Too many requests. Wait and retry. |
 | `500` | Unexpected error. Retrying the same request is safe. |
@@ -141,9 +141,13 @@ The Connect page lists the customer organizations your organization has created.
 Authenticate with the customer management key to call the [Management API](/guides/overview/auth/management-api-keys) as the customer organization. How you set up each customer organization depends on your product and your customer's use case.
 
 - **Workspaces.** [Create workspaces](/api/api-reference/workspaces/create-a-workspace) to separate configuration for different projects, teams, or agents. See [Workspaces](/guides/features/workspaces).
-- **Guardrails.** [Create guardrails](/api/api-reference/guardrails/create-a-guardrail) to apply budgets, data policies, model and provider allowlists, and sensitive information filtering to the whole customer organization or to individual workspaces. See [Guardrails](/guides/features/guardrails).
+- **Guardrails.** [Create guardrails](/api/api-reference/guardrails/create-a-guardrail) to apply budgets, data policies, model and provider allowlists, and sensitive information filtering to each workspace you create for the customer. See [Guardrails](/guides/features/guardrails).
 - **BYOK credentials.** [Add provider credentials](/api/api-reference/byok/create-a-byok-provider-credential) if the customer has existing provider agreements with discounted rates or commitments.
-- **API keys.** [Create API keys](/api/api-reference/api-keys/create-a-new-api-key) for the customer organization to use for inference. The plaintext key is returned only in the creation response, so store it securely.
+- **API keys.** [Create API keys](/api/api-reference/api-keys/create-a-new-api-key) for the customer organization to use for inference. The plaintext key is returned only in the creation response, so store it securely. Set the optional [`external`](/api/api-reference/api-keys/create-a-new-api-key#body-external) object to associate the key with one of your end users. `external.user` is your identifier for the end user, used for attribution. `external.api_key` is an optional key you supply, at least 32 characters long, that OpenRouter stores only as a SHA-256 hash and never returns.
+
+<Note>
+Coming soon. API routes to register and manage your customers' end users are in development. Each end user will be able to have their own guardrails and budgets. Until these routes ship, identify end users with `external.user` on API keys and `user` on inference requests.
+</Note>
 
 ## Send inference requests
 
@@ -171,9 +175,8 @@ Read usage per customer organization to bill your customers.
 
 ## Billing
 
-- OpenRouter bills only your parent organization. It never bills a customer organization.
+- OpenRouter bills your parent organization for all customers you create through Connect.
 - Customer organizations hold no credits or payment methods of their own. Their usage accrues to your parent organization.
-- Your OpenRouter invoice itemizes usage per customer organization.
 - You bill your customers on whatever pricing model you choose, using the per-customer usage you read from OpenRouter.
 
 ## Integration checklist
