@@ -257,7 +257,7 @@ The judge does not need to be the largest model available. It needs to follow de
 
 Start with one real failure, write a criterion another reviewer can apply, and test the judge against human-labeled examples. The [Ori Eval guide](https://openrouter.ai/docs/guides/ori/eval) covers the eval file format, `candidateModels()`, `setupJudge()`, `--baseline` comparisons, and running evals in CI.
 
-For closed criteria where you need a calibrated probability rather than a written verdict, such as whether a claim is supported by a source, a decision model can replace the judge call. [Jev vs LLM-as-a-Judge](https://openrouter.ai/blog/tutorials/jev-vs-llm-as-a-judge) measures both on the same tasks and shows where each one holds up.
+For closed criteria where you need a calibrated probability rather than a written verdict, such as whether a claim is supported by a source, a decision model can replace the judge call. [Jev vs LLM-as-a-Judge](https://openrouter.ai/blog/tutorials/jev-vs-llm-as-a-judge/) measures both on the same tasks and shows where each one holds up.
 
 ## Frequently asked questions
 

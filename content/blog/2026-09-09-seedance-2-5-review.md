@@ -4,7 +4,7 @@ date: "2026-09-09T00:00:00.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "Seedance 2.5 Review: What It's Best At and When to Use It"
-metaDescription: "A data-backed review of ByteDance's Seedance 2.5 video model: 30-second clips, image, video, and audio references, real per-resolution costs derived from the token formula, and how it compares to Seedance 2.0, Wan 3.0, and Veo 3.1."
+metaDescription: "A data-backed review of Seedance 2.5: 30-second clips, 720p, real per-resolution costs, and how it compares to Seedance 2.0, Wan 3.0, and Veo 3.1."
 teaser: "Seedance 2.5 trades resolution for length. It runs to 30 seconds and stops at 720p. We work through what it's best at, what a clip costs at each resolution, how it compares to Seedance 2.0, Wan 3.0, and Veo 3.1 on our own catalog data, and the cases where we'd recommend a different model."
 headerImage:
   url: "/images/seedance-2-5-review.png"
@@ -157,7 +157,7 @@ keyboard ambiance underneath.
 
 ## Calling it from your own code
 
-Those prompts go into a request body rather than a chat message, because video generation doesn't run on `/chat/completions`. It has a [dedicated asynchronous endpoint](https://openrouter.ai/blog/tutorials/video-generation-api), so you submit a job to `POST /api/v1/videos`, poll the `polling_url` we return until the status reads `completed`, then download the result with your API key. Generation usually takes from 30 seconds to a few minutes, and a 30-second polling interval is a reasonable default. Video models also don't appear in the plain models list, so use `/api/v1/videos/models` or the [video model collection](https://openrouter.ai/collections/video-models) to find them.
+Those prompts go into a request body rather than a chat message, because video generation doesn't run on `/chat/completions`. It has a [dedicated asynchronous endpoint](https://openrouter.ai/blog/tutorials/video-generation-api/), so you submit a job to `POST /api/v1/videos`, poll the `polling_url` we return until the status reads `completed`, then download the result with your API key. Generation usually takes from 30 seconds to a few minutes, and a 30-second polling interval is a reasonable default. Video models also don't appear in the plain models list, so use `/api/v1/videos/models` or the [video model collection](https://openrouter.ai/collections/video-models) to find them.
 
 The minimal text-to-video call is a submit and a poll.
 

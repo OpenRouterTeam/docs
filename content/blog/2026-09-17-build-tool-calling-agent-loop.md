@@ -358,7 +358,7 @@ A larger orchestration system may make sense when your application needs durable
 
 We handle the model request, ordered model fallbacks, and provider routing. Your application handles tool execution and the limits around it.
 
-For the complete request and response shapes, read the [tool-calling guide](https://openrouter.ai/docs/guides/features/tool-calling). For the SDK request fields used in this guide, see the [TypeScript SDK overview](https://openrouter.ai/docs/client-sdks/typescript/overview). To score the loop's output with a second model, read [LLM-as-a-Judge: Score AI Agent Outputs Automatically](https://openrouter.ai/blog/tutorials/llm-as-a-judge-evaluate-ai-agents). To check each tool call against the user's request before your dispatcher runs it, see [Gate Agent Tool Calls with Jev](https://openrouter.ai/docs/cookbook/building-agents/gate-tool-calls-with-jev).
+For the complete request and response shapes, read the [tool-calling guide](https://openrouter.ai/docs/guides/features/tool-calling). For the SDK request fields used in this guide, see the [TypeScript SDK overview](https://openrouter.ai/docs/client-sdks/typescript/overview). To score the loop's output with a second model, read [LLM-as-a-Judge: Score AI Agent Outputs Automatically](https://openrouter.ai/blog/tutorials/llm-as-a-judge-evaluate-ai-agents/). To check each tool call against the user's request before your dispatcher runs it, see [Gate Agent Tool Calls with Jev](https://openrouter.ai/docs/cookbook/building-agents/gate-tool-calls-with-jev).
 
 ## FAQ
 
