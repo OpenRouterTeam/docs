@@ -536,14 +536,14 @@ If you want to find your own thresholds, a couple of hundred labeled cases shoul
 
 If your codebase has an LLM call that ends in `JSON.parse`, and then a switch, that's your first Jev question. Swap it in, keep the LLM for the branch that needs prose, and measure both.
 
-- [Decisions API reference](https://openrouter.ai/docs/api/api-reference/alphadecisions/submit-a-decisions-questions-and-answers-request) for the full request and response schema
+- [Decisions API reference](https://openrouter.ai/docs/api/api-reference/alphadecisions/submit-a-decisions-request) for the full request and response schema
 - [Jev on OpenRouter](https://openrouter.ai/typesafe/jev-1.13) for current pricing and limits
 - [TypeSafe primitives](https://docs.typesafe.ai/primitives), [state](https://docs.typesafe.ai/concepts/state), and [confidence](https://docs.typesafe.ai/confidence) docs for help designing questions
 - [Jev-verified cascade cookbook](https://openrouter.ai/docs/cookbook/evaluate-and-optimize/jev-verified-cascade) for a cheap-then-frontier LLM cascade where Jev is the judge
 - [Gate tool calls with Jev cookbook](https://openrouter.ai/docs/cookbook/building-agents/gate-tool-calls-with-jev) for the same idea applied to agent tool calls
-- [What Is Jev?](https://openrouter.ai/blog/insights/what-is-jev) for the model itself, the three question types, and how to read the probabilities
-- [How to Use Jev](https://openrouter.ai/blog/tutorials/how-to-use-jev) for a complete TypeScript moderation pipeline where Jev answers the questions and your code owns the thresholds
-- [Is Jev as Accurate as Frontier Models at Classification?](https://openrouter.ai/blog/insights/jev-vs-claude-opus-5-classification) for a head-to-head on Banking77, including the cascade that closes most of the accuracy gap
+- [What Is Jev?](https://openrouter.ai/blog/insights/what-is-jev/) for the model itself, the three question types, and how to read the probabilities
+- [How to Use Jev](https://openrouter.ai/blog/tutorials/how-to-use-jev/) for a complete TypeScript moderation pipeline where Jev answers the questions and your code owns the thresholds
+- [Is Jev as Accurate as Frontier Models at Classification?](https://openrouter.ai/blog/insights/jev-vs-claude-opus-5-classification/) for a head-to-head on Banking77, including the cascade that closes most of the accuracy gap
 - [Jev documentation hub](https://openrouter.ai/docs/guides/community/jev) for every Jev guide and cookbook on OpenRouter
 
 ## FAQ

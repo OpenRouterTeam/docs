@@ -47,7 +47,7 @@ The compliance layer should:
 
 Consult these pages for current SDK shapes and patterns:
 - HITL tools reference: https://openrouter.ai/docs/sdks/typescript/call-model/tools#human-in-the-loop-hitl-tools
-- Tool Approval & State: https://openrouter.ai/docs/sdks/typescript/call-model/approval-and-state
+- Tool Approval & State: https://openrouter.ai/docs/agent-sdk/call-model/tool-approval-state
 - callModel API reference: https://openrouter.ai/docs/sdks/typescript/call-model/api-reference
 
 Do not hard-code secrets. Use environment variables for API keys and database credentials.
@@ -373,7 +373,7 @@ EU AI Act high-risk obligations land August 2026. Colorado's [ADMT law](https://
 
 The Agent SDK handles pausing execution, persisting state across restarts, validating human responses against schemas, and resuming cleanly. Your job is to wire it into your review workflows and audit storage.
 
-For related governance controls (budget caps, data retention policies, model restrictions), see [Guardrails](https://openrouter.ai/blog/guardrails).
+For related governance controls (budget caps, data retention policies, model restrictions), see [Guardrails](https://openrouter.ai/blog/announcements/guardrails/).
 
 Full SDK reference and working examples: [HITL tools documentation](https://openrouter.ai/docs/sdks/typescript/call-model/tools#human-in-the-loop-hitl-tools).
 

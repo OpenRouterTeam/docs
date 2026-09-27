@@ -186,7 +186,7 @@ A model without native tool calling returns the call as plain text. Nothing in t
 
 Repair behavior varies. Some code paths raise a catchable error when a call comes back malformed. Others leave detection and recovery to you. If your agent loop assumes one behavior and the framework provides the other, a model swap can make an error go unnoticed.
 
-A subtler version appears without switching model families. The same model served by two different providers can return valid tool calls at different rates. We have scored every tool call response across OpenRouter since August 2025, and in our [Auto Exacto announcement](https://openrouter.ai/blog/auto-exacto/) we reported that the tool call error rate for GLM-5 and GLM-4.7 on the affected providers fell from approximately 8% to closer to 1% after we began routing tool-calling traffic away from weaker endpoints.
+A subtler version appears without switching model families. The same model served by two different providers can return valid tool calls at different rates. We have scored every tool call response across OpenRouter since August 2025, and in our [Auto Exacto announcement](https://openrouter.ai/blog/announcements/auto-exacto/) we reported that the tool call error rate for GLM-5 and GLM-4.7 on the affected providers fell from approximately 8% to closer to 1% after we began routing tool-calling traffic away from weaker endpoints.
 
 We classify each failed tool call into three categories, and the same three checks work for your own logging. `InvalidJson` means the arguments don't parse as JSON. `UnknownName` means the called function name isn't in the request's tool list. `SchemaMismatch` means the arguments don't validate against the tool's parameter schema. For the loop mechanics, including retries, stop conditions, and turn-by-turn control, see our guide to building a [tool-calling agent loop](https://openrouter.ai/blog/tutorials/build-tool-calling-agent-loop/).
 
@@ -296,7 +296,7 @@ Call the model, check the finish reason, run each requested tool, append the res
 - [Tool Calling](https://openrouter.ai/docs/guides/features/tool-calling), OpenRouter
 - [Structured Outputs](https://openrouter.ai/docs/guides/features/structured-outputs), OpenRouter
 - [Auto Exacto](https://openrouter.ai/docs/guides/routing/auto-exacto), OpenRouter
-- [Auto Exacto: Adaptive Quality Routing, On by Default](https://openrouter.ai/blog/auto-exacto/), OpenRouter
+- [Auto Exacto: Adaptive Quality Routing, On by Default](https://openrouter.ai/blog/announcements/auto-exacto/), OpenRouter
 - [Build a Reliable Tool-Calling Agent Loop on OpenRouter](https://openrouter.ai/blog/tutorials/build-tool-calling-agent-loop/), OpenRouter
 - [Function calling](https://platform.openai.com/docs/guides/function-calling), OpenAI
 - [Tool use overview](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview), Anthropic

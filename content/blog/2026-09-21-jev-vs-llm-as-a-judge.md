@@ -23,7 +23,7 @@ faq:
 
 Most teams grade their agent's outputs by handing them to an LLM and asking it to write a verdict. That pattern is called LLM-as-a-judge, and it works well enough that it has become the default. TypeSafe's decision model, Jev, can grade the same outputs, and it does so in a different way that changes what you can do with the result. This post explains the difference, shows where it mattered in our measurements, and says which judge to use for which kind of rubric.
 
-It assumes you know what LLM-as-a-judge is. If not, read [LLM-as-a-Judge: Score AI Agent Outputs Automatically](/blog/tutorials/llm-as-a-judge-evaluate-ai-agents) first.
+It assumes you know what LLM-as-a-judge is. If not, read [LLM-as-a-Judge: Score AI Agent Outputs Automatically](/blog/tutorials/llm-as-a-judge-evaluate-ai-agents/) first.
 
 ## TL;DR
 
@@ -184,9 +184,9 @@ Our numbers show the shape of the trade-off. To set a production threshold you n
 3. Build the reliability table and ignore the accuracy line. Pick your accept threshold as the lowest bin whose observed rate you would sign off on, and send everything between that and your reject threshold to a person or an LLM judge.
 4. Rerun the table whenever the rubric or the model version changes. The `model` field in every Decisions response tells you which version answered.
 
-The [Jev model page](/typesafe/jev-1.13) has current pricing and limits, the [TypeSafe SDK guide](/docs/guides/community/typesafe-sdk) has the full Decisions API shape, and the [LLM-as-a-judge post](/blog/tutorials/llm-as-a-judge-evaluate-ai-agents) covers how to write the rubric in the first place.
+The [Jev model page](/typesafe/jev-1.13) has current pricing and limits, the [TypeSafe SDK guide](/docs/guides/community/typesafe-sdk) has the full Decisions API shape, and the [LLM-as-a-judge post](/blog/tutorials/llm-as-a-judge-evaluate-ai-agents/) covers how to write the rubric in the first place.
 
-If Jev is new to you, [What Is Jev?](/blog/insights/what-is-jev) explains the model and its three question types, and [Jev vs LLM](/blog/tutorials/jev-vs-llm-when-to-use-each) covers the broader question of when a decision model replaces a generative call. For a second accuracy measurement on a different task, [Is Jev as Accurate as Frontier Models at Classification?](/blog/insights/jev-vs-claude-opus-5-classification) runs Jev against Claude Opus 5 on Banking77. The [Jev documentation hub](/docs/guides/community/jev) lists every Jev guide and cookbook on OpenRouter.
+If Jev is new to you, [What Is Jev?](/blog/insights/what-is-jev/) explains the model and its three question types, and [Jev vs LLM](/blog/tutorials/jev-vs-llm-when-to-use-each/) covers the broader question of when a decision model replaces a generative call. For a second accuracy measurement on a different task, [Is Jev as Accurate as Frontier Models at Classification?](/blog/insights/jev-vs-claude-opus-5-classification/) runs Jev against Claude Opus 5 on Banking77. The [Jev documentation hub](/docs/guides/community/jev) lists every Jev guide and cookbook on OpenRouter.
 
 ## FAQ
 

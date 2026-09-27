@@ -957,7 +957,7 @@ Run it again and the probabilities move by a hundredth or two while the actions 
 
 To take this beyond the marketplace, keep the shape. Code does the deterministic work. State is minimal, holding only what the questions need, with computed facts passed as labels. Questions are narrow and typed, asked together in one request, with each type chosen by what the answer means, literal criteria, and an explicit `none`. Answers are evidence. Validate their shape, map them to actions with a pure policy whose thresholds come from labeled examples, and route uncertainty and failures to a person.
 
-This approach works for routing tickets, controlling agent tools, and classifying content. Jev doesn't generate text, so a task like "rewrite this listing title" goes to a generative model. How to pair Jev with an LLM is covered in the [Jev vs LLM post](https://openrouter.ai/blog/tutorials/jev-vs-llm-when-to-use-each).
+This approach works for routing tickets, controlling agent tools, and classifying content. Jev doesn't generate text, so a task like "rewrite this listing title" goes to a generative model. How to pair Jev with an LLM is covered in the [Jev vs LLM post](https://openrouter.ai/blog/tutorials/jev-vs-llm-when-to-use-each/).
 
 To build this, first [create an OpenRouter API key](https://openrouter.ai/settings/keys). Then add the code to your project (the first line in each code block names the file) and test it on listings from your own queue with `bun run run.ts`.
 
@@ -965,8 +965,8 @@ To build this, first [create an OpenRouter API key](https://openrouter.ai/settin
 - The [Decisions API reference](https://openrouter.ai/docs/api/api-reference/alphadecisions/submit-a-decisions-request) has the request and response schema.
 - The [tool-call gating cookbook](https://openrouter.ai/docs/cookbook/building-agents/gate-tool-calls-with-jev) applies the same approve, block, and review shape to agent actions.
 - The [classification cookbook](https://openrouter.ai/docs/cookbook/evaluate-and-optimize/jev-classification) applies Jev to a large backlog within rate limits.
-- [What Is Jev?](https://openrouter.ai/blog/insights/what-is-jev) explains the model, the three question types, and how to read the probabilities.
-- [Is Jev as Accurate as Frontier Models at Classification?](https://openrouter.ai/blog/insights/jev-vs-claude-opus-5-classification) measures Jev against Claude Opus 5 on a 77-intent benchmark, including a confidence cascade.
+- [What Is Jev?](https://openrouter.ai/blog/insights/what-is-jev/) explains the model, the three question types, and how to read the probabilities.
+- [Is Jev as Accurate as Frontier Models at Classification?](https://openrouter.ai/blog/insights/jev-vs-claude-opus-5-classification/) measures Jev against Claude Opus 5 on a 77-intent benchmark, including a confidence cascade.
 
 ## FAQ
 

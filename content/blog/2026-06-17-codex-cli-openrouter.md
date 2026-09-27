@@ -39,7 +39,7 @@ howTo:
 
 Codex CLI runs an agentic coding loop in your terminal, and it already supports custom OpenAI-compatible providers. That hook is all you need to route it through OpenRouter.
 
-The payoff is one API key in front of 300+ models, automatic provider failover, and consolidated usage tracking, with no change to Codex itself. The setup is a small `config.toml` block, but Codex has two requirements that trip people up if you miss them. This walks through the full setup and the two errors you're most likely to hit.
+The payoff is one API key in front of 300+ models, automatic provider failover, and consolidated usage tracking, with no change to Codex itself. The setup is a small `config.toml` block, but Codex has two requirements that trip people up if you miss them. This walks through the full setup and the two errors you're most likely to hit. The same key also works in Claude Code, Cursor, and the other tools covered in [how to use OpenRouter with any coding agent](https://openrouter.ai/blog/tutorials/any-coding-agent/).
 
 ## Point Codex at OpenRouter in five steps
 

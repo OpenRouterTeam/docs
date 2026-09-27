@@ -4,7 +4,7 @@ date: "2026-09-09T00:00:00.000Z"
 author: "OpenRouter"
 category: "tutorials"
 metaTitle: "Nano Banana API: Edit Images with Gemini in Code"
-metaDescription: "Edit images programmatically with Nano Banana 2 (google/gemini-3.1-flash-image) through the OpenRouter API: send a source image and an edit prompt in one request, decode the result, iterate, and swap the editing model with one field."
+metaDescription: "Edit images with Nano Banana 2 via the OpenRouter API: send a source image and edit prompt in one request, decode the result, and swap models in one field."
 teaser: "Send a source image and an edit prompt in one request, get the edited image back, and change the editing model by editing a single field. Runnable Python and TypeScript included."
 headerImage:
   url: "/images/nano-banana.png"
@@ -23,9 +23,9 @@ faq:
     answer: "Describe the change first, then name what to preserve, for example: change the background to a snowy street at night, and keep the subject exactly as is. One instruction per request works best. For precise results, edit in small steps and send each returned image back in as the source for the next prompt."
 ---
 
-This guide shows how to edit an image with a text prompt in code. You send the source image and an edit prompt to `google/gemini-3.1-flash-image` through the OpenRouter API, and the edited image comes back in the response. "Nano Banana" is the nickname for Google's Gemini image models. This slug is Nano Banana 2, the default fast model in that family. Because you reach it through [one API](https://openrouter.ai/blog/announcements/image-api), you can use a different editing model later by changing one field.
+This guide shows how to edit an image with a text prompt in code. You send the source image and an edit prompt to `google/gemini-3.1-flash-image` through the OpenRouter API, and the edited image comes back in the response. "Nano Banana" is the nickname for Google's Gemini image models. This slug is Nano Banana 2, the default fast model in that family. Because you reach it through [one API](https://openrouter.ai/blog/announcements/image-api/), you can use a different editing model later by changing one field.
 
-Image editing changes an existing image. Image generation creates a new image from text. This guide covers editing, so every request here includes a source image. For creating images from text, see the [image generation docs](https://openrouter.ai/docs/guides/overview/multimodal/image-generation) or the [image generation tutorial](https://openrouter.ai/blog/tutorials/image-generation).
+Image editing changes an existing image. Image generation creates a new image from text. This guide covers editing, so every request here includes a source image. For creating images from text, see the [image generation docs](https://openrouter.ai/docs/guides/overview/multimodal/image-generation) or the [image generation tutorial](https://openrouter.ai/blog/tutorials/image-generation/).
 
 ![Before-and-after example of a natural-language image edit: a portrait photo, the prompt "Add a red wool scarf around the person's neck. Keep everything else the same.", and the edited result with the scarf added and everything else intact](/images/nano-banana-before-after.png)
 
@@ -49,7 +49,7 @@ You need three things:
 
 The default in this guide is `google/gemini-3.1-flash-image`, Nano Banana 2. It takes an image as input and returns an edited image. The Nano Banana family has four current members: Nano Banana 2 (`google/gemini-3.1-flash-image`) is the default in this guide, Nano Banana 2 Lite (`google/gemini-3.1-flash-lite-image`) is the cheapest and fastest, Nano Banana Pro (`google/gemini-3-pro-image`) is slower and higher quality, and the original Nano Banana (`google/gemini-2.5-flash-image`) is the older model the nickname started with.
 
-The image catalog changes often. Models are added, deprecated, and repriced, so a slug you pin today may be retired later. Before you build on a model, check that it accepts image input and supports the editing features you need. You can browse the editing-capable models in the [image model collection](https://openrouter.ai/collections/image-models). For a walkthrough of the catalog, see [image generation models](https://openrouter.ai/blog/tutorials/image-generation-models).
+The image catalog changes often. Models are added, deprecated, and repriced, so a slug you pin today may be retired later. Before you build on a model, check that it accepts image input and supports the editing features you need. You can browse the editing-capable models in the [image model collection](https://openrouter.ai/collections/image-models). For a walkthrough of the catalog, see [image generation models](https://openrouter.ai/blog/tutorials/image-generation-models/).
 
 The samples below use the slug shown in each request, so you can run them as written and change the model later. Keep your key in an environment variable, not in your code:
 
@@ -216,7 +216,7 @@ json={
 },
 ```
 
-Use `google/gemini-3.1-flash-image` as a fast default. Use `google/gemini-3.1-flash-lite-image` when you want the lowest price. Use `google/gemini-3-pro-image` when you want higher quality and can accept more latency. The original `google/gemini-2.5-flash-image` still works with the same request shape, but the newer models above are the better default. Use a model from another provider, such as `openai/gpt-5-image`, when you want to [compare quality, cost, or speed](https://openrouter.ai/blog/announcements/image-benchmarks) on your own images. This one-field change only works for models that accept image input and support the same `input_references` shape, so check that a model is editing-capable before you switch to it.
+Use `google/gemini-3.1-flash-image` as a fast default. Use `google/gemini-3.1-flash-lite-image` when you want the lowest price. Use `google/gemini-3-pro-image` when you want higher quality and can accept more latency. The original `google/gemini-2.5-flash-image` still works with the same request shape, but the newer models above are the better default. Use a model from another provider, such as `openai/gpt-5-image`, when you want to [compare quality, cost, or speed](https://openrouter.ai/blog/announcements/image-benchmarks/) on your own images. This one-field change only works for models that accept image input and support the same `input_references` shape, so check that a model is editing-capable before you switch to it.
 
 To set a model and its options per environment instead of in code, use OpenRouter [Presets](https://openrouter.ai/docs/guides/features/presets).
 
