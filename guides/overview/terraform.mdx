@@ -73,21 +73,23 @@ The provider supports the lifecycle of OpenRouter platform resources, including:
 - Guardrails and spending limits
 - BYOK provider credentials
 - Observability destinations
+- Private endpoints
 - SCIM group mappings
 
 Terraform tracks these resources in state so plans can show configuration drift before you apply a change. Existing resources can be imported into Terraform-managed state.
 
 ## Resources and data sources
 
-The provider currently includes six managed resources:
+The provider currently includes seven managed resources:
 
 - `openrouter_api_key`
 - `openrouter_byok_key`
 - `openrouter_guardrail`
 - `openrouter_observability_destination`
+- `openrouter_private_endpoint`
 - `openrouter_scim_group_mapping`
 - `openrouter_workspace`
 
-It also includes data sources for looking up resources and platform information, including API keys, BYOK keys, credits, guardrails, models, observability destinations, presets, providers, SCIM mappings, and workspaces.
+It also includes data sources for looking up resources and platform information, including API keys, BYOK keys, credits, guardrails, models, observability destinations, presets, private endpoints, providers, SCIM mappings, and workspaces.
 
 For the complete resource and data-source reference, see the [Terraform Registry documentation](https://registry.terraform.io/providers/OpenRouterTeam/openrouter/latest/docs). The provider source is available on [GitHub](https://github.com/OpenRouterTeam/terraform-provider-openrouter).
