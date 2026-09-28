@@ -192,6 +192,8 @@ Azure BYOK configurations point at a specific resource you created (`resource_na
 
 **You must create your Azure resource in a region within your data region** (e.g. an EU Azure region such as Sweden Central or West Europe for the EU domain). OpenRouter cannot verify or change where your Azure resource is deployed; a US-deployed Azure resource used from the EU domain would process your prompts in the US. Also review Azure's own data-processing settings: some Azure OpenAI features (such as global deployment types) process data outside the resource's region, so use regional (not global) deployment types for residency-sensitive workloads.
 
+**You must also declare the region on the key.** On `eu.openrouter.ai` and `us.openrouter.ai`, an Azure key is only used when its **Provider agreement → Data region** setting matches the request's region. An Azure key left on **Global** is never used on a regional domain, even when the model's shared endpoint is in-region. See [Declaring a Data Region on a Key](/guides/overview/auth/byok#declaring-a-data-region-on-a-key).
+
 ### Google Vertex AI
 
 Vertex BYOK service account keys accept an optional `region` field that selects the Vertex location OpenRouter sends requests to. Under in-region routing:
@@ -199,6 +201,24 @@ Vertex BYOK service account keys accept an optional `region` field that selects 
 - **Set `region` to a location inside your data region** (e.g. `europe-west1` for the EU, `us-central1` for the US).
 - **For most Vertex models, OpenRouter enforces this**: a key region outside your data region is rejected with an error, and an unset or `"global"` region resolves to a default location inside your data region instead of Google's global endpoint. Make sure your project has model access and quota in that location.
 - **Exceptions**: models served through Vertex's OpenAI-compatible endpoint (which includes non-OpenAI models such as Llama and DeepSeek) and models served through the Vertex Interactions API use the key's configured region directly, defaulting to `global` when unset, without enforcement against your data region. Because you cannot always tell from the model which path serves it, always set an explicit in-region location on your key and never use `"global"`, since the global location lets Google process the request in any region.
+
+### OpenAI
+
+OpenAI serves a project with data residency only on its regional API host. To use such a project under in-region routing, enter the key as JSON with a `region` field:
+
+```json lines
+{
+  "api_key": "sk-...",
+  "region": "eu"
+}
+```
+
+- **`region`** is `eu` or `us`. OpenRouter sends requests made with the key to `https://eu.api.openai.com` or `https://us.api.openai.com`, and saving the key declares the matching data region on it.
+- **An EU key serves `eu.openrouter.ai`, and a US key serves `us.openrouter.ai`.** A regional key never serves the other region's domain. On `openrouter.ai` it still goes to its own regional host, because OpenAI serves the project nowhere else.
+- **A plain string key** is for a Global project and uses `api.openai.com`. It is never used on a regional domain.
+- If OpenAI does not process an API on the regional host, a request to that API with a regional key fails with an error instead of falling back to `api.openai.com`. Use a plain key for those requests.
+
+See [Declaring a Data Region on a Key](/guides/overview/auth/byok#declaring-a-data-region-on-a-key) for how the declaration interacts with key priority, fallback keys, and guardrails.
 
 ### Baseten
 
