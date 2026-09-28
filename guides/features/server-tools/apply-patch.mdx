@@ -221,6 +221,8 @@ The apply patch tool accepts an optional `engine` parameter:
 
 ### Engine behavior
 
+To check whether an endpoint runs apply_patch natively, read `native_tools` on the endpoint object. See [Native Execution](/guides/features/server-tools#native-execution).
+
 - **Native passthrough** streams the diff incrementally via `response.apply_patch_call_operation_diff.delta` events, matching OpenAI's streaming format. Currently supported on OpenAI endpoints.
 - **HITL (human-in-the-loop)** buffers the complete diff and delivers it as a single atomic `apply_patch_call` output item.
 

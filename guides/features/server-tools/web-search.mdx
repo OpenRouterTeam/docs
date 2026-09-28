@@ -217,7 +217,7 @@ When `engine` is `"auto"` (the default) or `"native"`, OpenRouter uses the provi
 Older OpenAI models (including GPT-4o, GPT-4o Mini, and GPT-4 Turbo) do **not** support native web search. If you set `engine: "native"` with these models, the server tool will fall back to Exa search. Use `engine: "auto"` (or omit the field) for equivalent behavior.
 </Note>
 
-You can check whether a specific model supports native search on its [model page](https://openrouter.ai/models); look for the "Web Search" capability badge. For models without native search, set `engine` to one of the other supported options ([Exa](https://exa.ai), [Firecrawl](https://firecrawl.dev), [Parallel](https://parallel.ai), or [Perplexity](https://docs.perplexity.ai)), or leave it as `"auto"` to default to Exa.
+You can check whether a specific model supports native search on its [model page](https://openrouter.ai/models); look for the "Web Search" capability badge. To check programmatically, read `native_tools` on the endpoint object. See [Native Execution](/guides/features/server-tools#native-execution). For models without native search, set `engine` to one of the other supported options ([Exa](https://exa.ai), [Firecrawl](https://firecrawl.dev), [Parallel](https://parallel.ai), or [Perplexity](https://docs.perplexity.ai)), or leave it as `"auto"` to default to Exa.
 
 ## Engine Selection
 

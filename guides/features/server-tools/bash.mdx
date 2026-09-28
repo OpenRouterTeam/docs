@@ -274,7 +274,9 @@ a container alive across separate API requests in a conversation, send a stable
 
 ## Execution engine
 
-The `engine` parameter controls where commands run:
+The `engine` parameter controls where commands run. To check whether an
+endpoint runs bash natively, read `native_tools` on the endpoint object. See
+[Native Execution](/guides/features/server-tools#native-execution).
 
 - `openrouter`: run commands server-side in the OpenRouter sandbox.
 - `auto` (default) / `native`: local, human-in-the-loop execution. The tool
