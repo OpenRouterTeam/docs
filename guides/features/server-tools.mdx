@@ -72,6 +72,32 @@ Server tools are specialized tools operated by OpenRouter that any model can cal
 
 Server tools work alongside your own user-defined tools. You can include both in the same request.
 
+## Native Execution
+
+Some providers have a built-in version of a server tool. For example, OpenAI and Anthropic (as well as other providers) have built-in web search tools. When the model's endpoint has a "native" version of a tool available, OpenRouter can request the tool to be executed through the provider instead of running its own engine. This is the `native` engine in the server tool configuration.
+
+### Which endpoints run a tool natively
+
+Each endpoint object returned by the [endpoints API](/api/api-reference/endpoints/list-all-endpoints-for-a-model) has a `native_tools` field. The key is the canonical OpenRouter server tool name. For example, for web search, it is `openrouter:web_search`. The value is the name of the provider's tool. For most tools the provider runs it. Bash is the exception: Anthropic's built-in bash tool returns the command to your application, which runs it. See [Bash](/guides/features/server-tools/bash#execution-engine).
+
+```json lines
+{
+  "name": "Anthropic | anthropic/claude-sonnet-4.5",
+  "native_tools": {
+    "openrouter:web_search": { "type": "web_search_20260209" },
+    "openrouter:web_fetch": { "type": "web_fetch_20260209" },
+    "openrouter:bash": { "type": "bash_20250124" }
+  }
+}
+```
+
+The fallback rules, and which parameters carry over to the provider's tool, differ per tool:
+
+- [Web Search](/guides/features/server-tools/web-search#engine-selection)
+- [Web Fetch](/guides/features/server-tools/web-fetch#engine-selection)
+- [Apply Patch](/guides/features/server-tools/apply-patch#engine-behavior)
+- [Bash](/guides/features/server-tools/bash#execution-engine)
+
 ## Tool Call Limits
 
 Every request that uses server tools runs an agent loop with a step budget. Each tool call the model makes (a web search, an image generation, etc.) consumes one step; when the budget is exhausted, the model is asked to produce its final answer with the context gathered so far.
