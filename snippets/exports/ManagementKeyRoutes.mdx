@@ -81,6 +81,21 @@
 | --- | --- | --- |
 | `GET` | `/api/v1/organization/members` | [List organization members](/api/api-reference/organization/list-organization-members) |
 
+### Private Endpoints
+
+| Method | Route | Reference |
+| --- | --- | --- |
+| `GET` | `/api/v1/private-endpoints` | [List private endpoints](/api/api-reference/private-endpoints/list-private-endpoints) |
+| `POST` | `/api/v1/private-endpoints` | [Create a private endpoint](/api/api-reference/private-endpoints/create-a-private-endpoint) |
+| `GET` | `/api/v1/private-endpoints/{id}` | [Get a private endpoint](/api/api-reference/private-endpoints/get-a-private-endpoint) |
+| `DELETE` | `/api/v1/private-endpoints/{id}` | [Delete a private endpoint](/api/api-reference/private-endpoints/delete-a-private-endpoint) |
+| `PATCH` | `/api/v1/private-endpoints/{id}` | [Update a draft private endpoint](/api/api-reference/private-endpoints/update-a-draft-private-endpoint) |
+| `POST` | `/api/v1/private-endpoints/{id}/activate` | [Activate a validated private endpoint](/api/api-reference/private-endpoints/activate-a-validated-private-endpoint) |
+| `POST` | `/api/v1/private-endpoints/{id}/disable` | [Disable a private endpoint](/api/api-reference/private-endpoints/disable-a-private-endpoint) |
+| `POST` | `/api/v1/private-endpoints/{id}/enable` | [Enable a private endpoint](/api/api-reference/private-endpoints/enable-a-private-endpoint) |
+| `PUT` | `/api/v1/private-endpoints/{id}/pricing` | [Set private endpoint pricing](/api/api-reference/private-endpoints/set-private-endpoint-pricing) |
+| `POST` | `/api/v1/private-endpoints/{id}/validate` | [Validate a draft private endpoint](/api/api-reference/private-endpoints/validate-a-draft-private-endpoint) |
+
 ### SCIM
 
 | Method | Route | Reference |

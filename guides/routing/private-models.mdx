@@ -49,6 +49,58 @@ Until it is activated, an endpoint stays hidden and is not routable. You can lea
 
 Requests to a private endpoint are authenticated with your own provider key, so BYOK keys must be configured in each workspace that calls it.
 
+## Manage endpoints with the API or Terraform
+
+You can also manage private endpoints programmatically, which helps when you run many of them or keep configuration in code. The [Private Endpoints API](/api/api-reference/private-endpoints/list-private-endpoints) covers the same lifecycle as the wizard: create, validate, activate, update pricing, disable, enable, and delete.
+
+Requests are authenticated with an organization [Management API key](/guides/overview/auth/management-api-keys). Keys created on a personal account are rejected, and the organization must have Private Endpoints enabled.
+
+The steps map to these calls:
+
+1. `POST /api/v1/private-endpoints` creates a hidden draft from `model_permaslug`, `provider_slug`, `upstream_model_id`, and, for providers that need it, `base_url`. You can also set `pricing`, `declared_zdr`, and `declared_region`.
+2. `POST /api/v1/private-endpoints/{id}/validate` runs the Test checks with the BYOK key saved in the workspace you pass as `workspace_id`. The workspace must belong to your organization and have a key for the endpoint's provider.
+3. `POST /api/v1/private-endpoints/{id}/activate` makes a validated draft routable.
+
+To do all three in one request, include `activate: { "workspace_id": "..." }` in the create body:
+
+```bash
+curl https://openrouter.ai/api/v1/private-endpoints \
+  -H "Authorization: Bearer $OPENROUTER_MANAGEMENT_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: gpt-4o-prod" \
+  -d '{
+    "model_permaslug": "openai/gpt-4o-2024-08-06",
+    "provider_slug": "openai",
+    "base_url": "https://api.openai.com/v1",
+    "upstream_model_id": "gpt-4o-2024-08-06",
+    "pricing": { "prompt": "0.0000025", "completion": "0.00001" },
+    "activate": { "workspace_id": "<workspace-id>" }
+  }'
+```
+
+If validation fails, the draft is kept and returned with the failed checks. Fix it with `PATCH /api/v1/private-endpoints/{id}` (only drafts can be edited), then call `/validate` and `/activate` instead of creating it again.
+
+Send an `Idempotency-Key` header to make create retry-safe. Repeating a request with the same key returns the endpoint the first request created, and reusing the key with a different body returns `422 idempotency_key_reused`.
+
+After activation, `PUT /api/v1/private-endpoints/{id}/pricing` updates the reported rates, and `/disable` and `/enable` stop or resume routing. `DELETE /api/v1/private-endpoints/{id}` removes an endpoint and stops routing to it. Pass `draft_only=true` to refuse the delete (409) if the endpoint has been activated.
+
+### Terraform
+
+The [OpenRouter Terraform provider](/guides/overview/terraform) includes an `openrouter_private_endpoint` resource built on the same API:
+
+```hcl
+resource "openrouter_private_endpoint" "gpt4o" {
+  model_permaslug   = "openai/gpt-4o-2024-08-06"
+  provider_slug     = "openai"
+  base_url          = "https://api.openai.com/v1"
+  upstream_model_id = "gpt-4o-2024-08-06"
+  pricing           = { prompt = "0.0000025", completion = "0.00001" }
+  activate          = { workspace_id = openrouter_workspace.production.id }
+}
+```
+
+`terraform apply` creates, validates, and activates the endpoint. Changing `pricing` updates it in place, while changing the model, provider, base URL, upstream model ID, declarations, or `activate` workspace replaces it. `terraform destroy` disables and deletes it, and `terraform import openrouter_private_endpoint.gpt4o <endpoint-id>` adopts an endpoint that already exists.
+
 ## Endpoint limit
 
 Each organization can have up to 10 private endpoints by default. Every endpoint you have created counts toward the limit, including endpoints that are still hidden because setup is not finished.
