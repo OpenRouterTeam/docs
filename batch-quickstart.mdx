@@ -68,7 +68,7 @@ Batch runs on `:batch` endpoint variants. Filter the [models page by the batch v
 
 ## Pricing
 
-Batch requests are typically billed at 50% of the model's standard per-token pricing, mirroring the batch discounts offered by [OpenAI](https://developers.openai.com/api/docs/guides/batch) and [Anthropic](https://platform.claude.com/docs/en/build-with-claude/batch-processing). For a completed batch, `usage.cost` reports the amount OpenRouter charges. For BYOK-routed batches, that's only the OpenRouter BYOK fee, since the provider bills you directly for inference.
+Batch requests are typically billed at 50% of the model's standard per-token pricing, mirroring the batch discounts offered by [OpenAI](https://developers.openai.com/api/docs/guides/batch) and [Anthropic](https://platform.claude.com/docs/en/build-with-claude/batch-processing). For a completed batch, `usage.cost` reports the amount OpenRouter charges. For BYOK-routed batches, that's only the OpenRouter BYOK fee, since the provider bills you directly for inference. BYOK-routed batches also report the estimated provider inference cost in `usage.cost_details.upstream_inference_cost`, split into `upstream_inference_prompt_cost` and `upstream_inference_completions_cost`, the same fields sync BYOK responses return.
 
 <Note>
   Non-token pricing components aren't uniformly discounted. Web-search calls bill at standard rates, and prompt-caching rates vary by model. The pricing shown on each model's page is the source of truth.
@@ -78,7 +78,7 @@ Batch requests are typically billed at 50% of the model's standard per-token pri
 
 ## BYOK
 
-If you have a [provider key](/guides/overview/auth/byok) configured, batches route through it automatically, the same as sync requests: the provider bills you directly for inference and OpenRouter charges only the BYOK fee (see Pricing above). Completed batches report `usage.is_byok: true`.
+If you have a [provider key](/guides/overview/auth/byok) configured, batches route through it automatically, the same as sync requests: the provider bills you directly for inference and OpenRouter charges only the BYOK fee (see Pricing above). Completed batches report `usage.is_byok: true` and the provider inference estimate in `usage.cost_details`.
 
 Google Vertex uses a bucket in your GCP project for provider input and output. The primary setup is frictionless: omit `bucket` and let OpenRouter create a private, location-compatible bucket on the first batch. You can optionally provide an existing bucket instead. See [Google Vertex API keys](/guides/overview/auth/byok#google-vertex-api-keys) for permissions and storage behavior.
 
