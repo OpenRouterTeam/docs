@@ -806,7 +806,7 @@ conflict clause decides whether the next attempt may take the row:
 | --- | --- | --- |
 | `status = 'delivered'` | Never | Correct. The customer already got it. |
 | `status = 'failed'`, `is_terminal_failure = false`, `failure_reason = 'retry_exhausted'` or `'retry_exhausted_rate_ceiling'` | No | The raw claim predicate allows it, but the exhaustion guard refuses the row before that predicate, sends the message back to the delivery DLQ, and acknowledges the source message. Use a new fire edge rather than republishing it. |
-| `status = 'failed'`, `is_terminal_failure = false` for other reasons | Yes, immediately | Normal retry path, if the source message still exists. |
+| `status = 'failed'`, `is_terminal_failure = false` for other reasons | Yes, until the finalizer marks it terminal at 14 days | Normal retry path, if the source message still exists. Past 14 days the nightly finalizer marks it terminal, so an old row reading terminal is not necessarily a real terminal failure. |
 | `status = 'failed'`, `is_terminal_failure = true` | Never | **This is the blocking state.** |
 | `status = 'pending'`, `last_error IS NOT NULL` for a test event | Yes | The test-event claim exception reclaims a pending row with a recorded error immediately. |
 | `status = 'pending'`, `updated_at` older than 90 seconds | Yes | Self-healing after a crashed attempt. |
@@ -815,7 +815,13 @@ conflict clause decides whether the next attempt may take the row:
 So an ordinary `pending` row heals itself after 90 seconds and is not the thing
 to chase. Only a test-event pending row with a recorded error bypasses that
 window. For ordinary source redelivery, the row that truly blocks it is
-`is_terminal_failure = true`.
+`is_terminal_failure = true`. A row whose `is_terminal_failure = true` but whose
+`failure_reason` is a retryable one, and which is older than 14 days, was
+finalized by the nightly retention task rather than by a delivery attempt; see
+Nightly retention purge before deciding whether to clear the flag, because its
+source message has also expired by then.
+
+The nightly `purge-alert-event-deliveries` task finalizes rows that nothing can revisit any more. A `pending` or non-exhausted `failed` row whose `created_at` and `updated_at` are both older than 14 days (7 days of source redelivery plus 7 days of DLQ retention) is set to `is_terminal_failure = true`. The row then leaves the stalled class. The six-hour stalled monitor reads the oldest stalled age per channel, so it clears after the next sweep, and only once that channel has no older stalled row. A finalized `pending` row is still reclaimable if a message for it does arrive; a finalized `failed` row is not.
 
 Disposition governs whether the worker retries within the current message. It
 does not decide whether the ledger row is reclaimable, and it is independent of
@@ -1155,7 +1161,7 @@ Three `cfw-internal` cron tasks run at midnight UTC:
 `purge-alert-event-deliveries`, `purge-alert-delivery-rates`, and
 `purge-alert-endpoint-circuits`. Ledger rows are deleted at 30 days by age
 alone with no status filter. `pending`, `failed`, and `delivered` rows all
-disappear at 30 days. Rate rows are deleted at 7 days. Endpoint-circuit rows
+disappear at 30 days. Before the ledger purge, the same task finalizes dead ledger rows as described in State 6. A finalization error logs `cfw_internal_alert_delivery_dead_delivery_finalization_failed` and the purge still runs. `cfw_internal_alert_delivery_dead_deliveries_finalized` logs the count only when rows were finalized, so a quiet night logs nothing. `db.finalizeDeadAlertEventDeliveries-batch-cap-reached` warns when a run stops at the batch cap with rows left over. Finalization needs `UPDATE (is_terminal_failure, updated_at)` on `alert_event_delivery` for `hyperdrive_read_write`. Rate rows are deleted at 7 days. Endpoint-circuit rows
 are deleted after their one-day cooldown has been expired for one day, or when
 their endpoint is soft-deleted; live probe leases are always retained. All
 three run in batches of 500 with a cap of 20 batches per run. Source and DLQ
@@ -1194,13 +1200,7 @@ Update this runbook when any of these change.
 - **There is no alert-specific production repair CLI and no Mission Control
   surface for these tables.** Direct edits go through `psql` per
   `postgres/README.md`.
-- **Circuit-breaker state is process-local.** Repeated `retriable_5xx` or
-  `fetch_error` outcomes can open an endpoint circuit and make delivery appear
-  stuck until its cooldown probe succeeds, but the state is not persisted in
-  Postgres and cannot be queried from the alert tables. The observable signal
-  is the `alert-delivery:breaker-transition` log and the
-  `[Alert Delivery] Endpoint repeatedly opening circuit` monitor. Individual
-  open state and failure history are otherwise per worker instance.
+- **Circuit-breaker state is only partly queryable.** Repeated `retriable_5xx` or `fetch_error` outcomes can open an endpoint circuit and make delivery appear stuck until its cooldown probe succeeds. With `SHARED_ENDPOINT_CIRCUIT_ENABLED`, which production sets, open state and the probe lease live in `alert_endpoint_circuit`: `SELECT endpoint_id, opened_at, open_until, probe_claimed_until FROM alert_endpoint_circuit WHERE endpoint_id = :endpoint_id;`. No row means the circuit is closed. `open_until` in the future means the fleet is shedding that endpoint. `open_until` in the past means the circuit is half-open, and a future `probe_claimed_until` means a probe is in flight. Consecutive-failure counts before a circuit opens stay per worker instance. The other observable signal is the `alert-delivery:breaker-transition` log, charted in the Notifications Observability dashboard's "Delivery safety and invariant events (expect empty)" widget. No monitor pages on circuit opens.
 - **Both kill switches require a Terraform apply and a new revision.**
   `EVALUATION_ENABLED` and `DELIVERY_CONSUMER_ENABLED` are Cloud Run
   environment variables read at process boot, so the fastest stop is a deploy.
