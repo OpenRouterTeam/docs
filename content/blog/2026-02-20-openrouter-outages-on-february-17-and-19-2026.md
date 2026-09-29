@@ -1,6 +1,7 @@
 ---
 title: "OpenRouter Outages on February 17 and 19, 2026"
 date: "2026-02-20T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "OpenRouter Engineering"
 teaser: "What happened and what have we done to prevent this happening again? "
 headerImage:

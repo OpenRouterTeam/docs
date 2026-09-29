@@ -104,6 +104,10 @@ The routing rules as read from the On-Call API on 2026-09-23 (`GET /api/v2/on-ca
 | `priority:(3 OR 4 OR 5)` | Slack post only, nobody is paged |
 | no match | Engineers default escalation policy at low urgency |
 
+#### Human sign-off for P1 and P2
+
+A `priority = 1` or `priority = 2` monitor pages at any hour, including at night, so adding one or raising a monitor to P1 or P2 needs the requesting human's explicit agreement, recorded in the PR description. Without it, the monitor ships at `priority = 3` or lower. The rule and the P1/P2 response windows are in [AGENTS.md → Paging the on-call](./AGENTS.md#paging-the-on-call).
+
 ```hcl
 resource "datadog_monitor" "example_paging" {
   name     = "${var.name_prefix}[Service] Condition"

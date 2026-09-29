@@ -1,6 +1,7 @@
 ---
 title: "Create OpenRouter Accounts via CLI with Stripe Projects"
 date: "2026-04-29T12:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Chris Watts"
 teaser: "Run `stripe projects add openrouter/api` to get an OpenRouter account, an API key, and Stripe billing, all from the command line. Your agents can do it too."
 headerImage:

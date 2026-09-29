@@ -1,6 +1,7 @@
 ---
 title: "Price Drops and Llama 3.3 70b "
 date: "2024-12-06T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Price drops and six models, and providers for Llama 3.3 70b "
 category: "announcements"

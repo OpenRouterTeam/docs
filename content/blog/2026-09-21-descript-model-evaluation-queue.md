@@ -1,6 +1,7 @@
 ---
 title: "Two Hours of Work That Takes a Week"
 date: "2026-09-21T00:00:00.000Z"
+updated: "2026-09-24T18:03:21.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "How Descript Cut Model Evaluation to Hours"

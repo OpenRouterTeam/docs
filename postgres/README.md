@@ -1,15 +1,17 @@
 # Manually Performing DB Migrations On Prod
 
-Use the normal deploy path first. If a migration exceeds the database
-`statement_timeout` default of `8s` (`20260706230000_baseline_schema.sql`),
-run it with the timeout-raising dbmate path below. Migrations must run as
-`github-ci` so object permissions stay consistent.
+## Preferred: manual migration workflow
+
+Use this workflow instead of running dbmate from a laptop; the laptop path below is a fallback only when GitHub Actions itself is unavailable. Run the [Migrate Prod Postgres (manual)](https://github.com/OpenRouterTeam/openrouter-web/actions/workflows/migrate-prod-manual.yaml) workflow from `main`. Leave `sha` empty to migrate at the currently deployed release commit. If a release failed at "Migrate Prod Postgres Databases", copy that run's commit SHA into `sha`, run the workflow, then re-run the release. The workflow refuses any SHA that is not on `main` or that no release or hotfix run has actually attempted to migrate (the run must have reached the prod migration step, so a release cancelled in preflight does not qualify), and runs with `statement_timeout` set from the `statement_timeout` input (default `0`, disabled; pass e.g. `30min` to keep a bound). `lock_timeout` is not changed by either setting: the `github-ci` role's 5-second `lock_timeout` still applies, so a migration that must wait longer for a lock has to `SET LOCAL lock_timeout` itself. It applies and records every pending migration up to that commit.
+
+A release that failed on a `CREATE INDEX CONCURRENTLY` leaves an INVALID index behind and dbmate does not record that migration. No manual cleanup is needed: `scripts/db-migrate-gcp.ts` drops every stale INVALID index (skipping any build still in progress) before running dbmate, so the workflow rerun rebuilds it.
 
 ## Indexes on large tables: build before the release
 
 The release runs migrations on the `8s` default timeout, so an index build on a
 big table (rule of thumb, over ~100k rows) fails the release and leaves an
-INVALID index behind. Run it yourself first, on the commit the train ships:
+INVALID index behind. Run the preferred manual migration workflow above first,
+on the commit the train ships. For the laptop fallback, use:
 
 ```sh
 git pull
@@ -17,16 +19,17 @@ bun run scripts/db-migrate-gcp.ts --statement-timeout
 ```
 
 This applies and records every pending migration, so only run it once the
-release commit is on `main`. Then confirm the index is valid, since the planner
-ignores an INVALID one and `IF NOT EXISTS` skips over it silently:
+release commit is on `main`. Then confirm the index is valid (the same check
+applies after the manual workflow), since the planner ignores an INVALID one
+and `IF NOT EXISTS` skips over it silently:
 
 ```sql
 SELECT indisvalid FROM pg_index WHERE indexrelid = 'public.my_index'::regclass;
 ```
 
-If `false`, `DROP INDEX CONCURRENTLY` and rebuild.
+If `false`, re-run the manual migration workflow, which drops the INVALID index and rebuilds it.
 
-## Preferred: dbmate
+## Fallback (only if Actions is unavailable): dbmate from a laptop
 
 Run the pending migrations in order with a 10-minute statement timeout:
 
@@ -104,10 +107,9 @@ unrelated; migrations connect through dbmate, not the DB pool.
    For large backfills, use bounded PK-range batches and pacing as that
    migration does.
 
-5. If dbmate could not be used, apply the entire pending batch in timestamp
-   order before recording versions; `migrate --strict` rejects out-of-order
-   pending versions. Only after the up body has fully completed (including
-   every statement of a `transaction:false` migration), record its version:
+5. If dbmate could not be used, apply the pending migrations in filename
+   order. Only after the up body has fully completed (including every
+   statement of a `transaction:false` migration), record its version:
 
    ```sql
    INSERT INTO dbmate.schema_migrations (version)

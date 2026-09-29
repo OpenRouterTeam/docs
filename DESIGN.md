@@ -203,8 +203,9 @@ components:
   button-primary-hover:
     backgroundColor: "{colors.accent-hover}"
   button-outline:
-    backgroundColor: transparent
-    textColor: "{colors.muted-foreground}"
+    backgroundColor: "{colors.background}"
+    borderColor: "{colors.input}"
+    textColor: "{colors.foreground}"
     rounded: "{rounded.md}"
   button-outline-hover:
     backgroundColor: "{colors.muted}"
@@ -254,7 +255,7 @@ Design discipline:
 
 ## Working with this document
 
-This file is the complete rule set for product UI. The primitives in `packages/frontend/components/ui/` implement it, and `theme.css` in that directory is the runtime home of the tokens below. Read the rules, use the primitives, and take names from the public surface. `theme.css` is where a value lives, not a place to copy one from. Migration material lives next to the primitives: [`RADIX_TO_SEMANTIC_MAP.md`](packages/frontend/components/ui/RADIX_TO_SEMANTIC_MAP.md) for legacy Radix utilities and [`DESIGN_PORTING.md`](packages/frontend/components/ui/DESIGN_PORTING.md) for installing the token system in a host repo and for pages from the all-Gordita era. Legacy components that have not been rebranded yet sit in the same `components/ui/` tree as the rebrand primitives.
+This file is the complete rule set for product UI. The primitives in `packages/frontend/components/ui/` implement it, and `theme.css` in that directory is the runtime home of the tokens below. Read the rules, use the primitives, and take names from the public surface. `theme.css` is where a value lives, not a place to copy one from. Prototypes, pre-rebrand screens, and existing product pages are not style references either: they carry patterns this file bans (all-caps section headers, off-scale sizes, legacy colors), so take their layout and content and restyle them from the public surface. Migration material lives next to the primitives: [`RADIX_TO_SEMANTIC_MAP.md`](packages/frontend/components/ui/RADIX_TO_SEMANTIC_MAP.md) for legacy Radix utilities and [`DESIGN_PORTING.md`](packages/frontend/components/ui/DESIGN_PORTING.md) for installing the token system in a host repo and for pages from the all-Gordita era. Legacy components that have not been rebranded yet sit in the same `components/ui/` tree as the rebrand primitives.
 
 ### Priority order
 
@@ -271,8 +272,8 @@ When two rules conflict, the earlier one wins.
 The names an agent may write. The set is complete: if a need has no name here, use the nearest token by role and say so in the PR rather than adding a value.
 
 - **Colors.** The semantic Tailwind utilities (`bg-background`, `text-foreground`, `bg-card`, `bg-popover`, `bg-muted`, `text-muted-foreground`, `border-border`, `border-input`, `bg-primary`, `text-primary-foreground`, `bg-accent`, `text-accent-foreground`, `bg-destructive`), the extended surfaces (`surface`, `card-hover`, `selected-bg`, `input-bg`, `text-faint`, `accent-subtle`, `accent-border`, `accent-hover`, `doc-surface`, `text-prose-body`), the status tokens (`positive`, `negative`, `warning`, `info`, `promo`, each with `-bg` and `-text`), the chart palette (`chart-1` to `chart-20` and the `chart-*` role tokens), the `tier-*` tokens, and the fixed `chart-N` slots assigned under Entity identity and Modality identity. Tints come from the opacity scale on these names, never from a new hex. Tailwind's own palette (`text-green-500`, `bg-slate-100`) and the legacy Radix steps (`text-slate-11`) are not part of the surface for new code.
-- **Type.** The nine tiers `hero`, `display`, `title`, `heading`, `section`, `prose`, `body`, `button`, `overline` (as `text-[length:var(--text-*)]` or the matching utility), the leadings `tight`, `snug`, `body`, `prose`, and the family classes `font-brand` and `font-mono` under the rules in Typography. No arbitrary `text-[13px]`.
-- **Shape and space.** `rounded-sm` to `rounded-xl` plus `rounded-full`, the Tailwind spacing scale at even values, and the z-index utilities generated from `packages/theme/index.css` (`z-above`, `z-sticky`, `z-overlay`, `z-fixed`, `z-modal`, `z-alert`, `z-notification`, `z-popover`, `z-popover-overlay`, `z-popover-tooltip`). The icon sizes `icon-xs` to `icon-lg` and the content widths `content` and `wide` in Layout are role names, not classes: write them as the Tailwind size they resolve to (`size-3` to `size-6`, `max-w-5xl` and `max-w-7xl`).
+- **Type.** The nine tiers `hero`, `display`, `title`, `heading`, `section`, `prose`, `body`, `button`, `overline` (as `text-[length:var(--text-*)]` or the matching utility), the leadings `tight`, `snug`, `body`, `prose`, and the family classes `font-brand` and `font-mono` under the rules in Typography. No arbitrary `text-[13px]`, and no Tailwind size aliases (`text-2xs`, `text-3xs`, `text-xs` to `text-6xl`): theme.css remaps them so legacy code renders on the scale, but they duplicate tiers (`text-xs` and `text-sm` are both 14px) and hide which role the text plays. Weights are `font-normal` (450), `font-medium`, `font-semibold` and `font-bold`; tracking is `tracking-tight` on the Gordita tiers and `tracking-wider` on nav section headers.
+- **Shape and space.** `rounded-sm` to `rounded-xl` plus `rounded-full`, `rounded-none` to square the edges where controls join (`ButtonGroup`, split buttons, a calendar range), the Tailwind spacing scale at even values, and the z-index utilities generated from `packages/theme/index.css` (`z-above`, `z-sticky`, `z-overlay`, `z-fixed`, `z-modal`, `z-alert`, `z-notification`, `z-popover`, `z-popover-overlay`, `z-popover-tooltip`). The icon sizes `icon-xs` to `icon-lg` and the content widths `content` and `wide` in Layout are role names, not classes: write them as the Tailwind size they resolve to (`size-3` to `size-6`, `max-w-5xl` and `max-w-7xl`).
 - **States.** `--focus-border`, `--focus-shadow`, `--error-border`, `--error-shadow`, `opacity-50` for disabled, `card-hover` for hover, `selected-bg` for selected.
 
 Two rules follow. **No synonyms**: `text-faint` is not `text-foreground/70`, `card-hover` is not `bg-muted/50`, and a status is not its `chart-*` lookalike. **No literals**: reference the var in a `calc`, never its current value (`var(--leading-snug)`, not `1.35`), and never carry a token's hex into TSX, SVG, or inline styles when the token can be referenced.
@@ -295,7 +296,7 @@ These are the patterns that generated UI produces by default. Each is named so a
 - **Tinted callouts.** An accent-tinted banner, a colored card for information without status, a tinted CTA card. Non-status callouts are neutral, promo is Royal (Banner / toast, CTA card).
 - **Bumped menu rows.** Dropdown, select, or command rows taller than the standard row height (Hover row).
 - **Invented z-index.** A `z-50` or `z-[999]` outside the ladder, or page floaters hoisted to `z-modal` (Layout).
-- **Authored capitals.** Title Case labels, ALL CAPS overlines, a capitalized second word in a button (Capitalization).
+- **Authored capitals.** Title Case labels, ALL CAPS or `uppercase` overlines and badges, a capitalized second word in a button (Capitalization).
 - **Token values as literals.** A leading, size, or color written as the number it happens to be today (Public surface).
 
 ### Review before handoff
@@ -478,8 +479,9 @@ Model modality is platform-critical wayfinding, so its colors are **fixed assign
 | File | `modality-file` | `chart-11` | `#DAA520` goldenrod | `File` |
 | Embeddings | `modality-embeddings` | `chart-8` | `#DA70D6` orchid | `Boxes` |
 | Rerank | `modality-rerank` | `chart-14` | `#6B8E23` olive | `ArrowUpDown` |
+| Decisions | `modality-decisions` | `chart-18` | `#800080` purple | `ArrowDownWideNarrow` |
 
-**Never color-only.** A modality is identified by its icon and color *together*, always with a visible label or a tooltip — color is redundant encoding, never the sole channel (color-vision deficiency collapses hue families; the glyph disambiguates). **Distinctness outranks glyph contrast for the long tail:** the four rarest modalities (`tts`, `transcription`, `file`, `embeddings`) sit on slots below 3:1 in light mode precisely so no two modalities share a hue family — their label/tooltip is mandatory, and they must never carry meaning by color alone.
+**Never color-only.** A modality is identified by its icon and color *together*, always with a visible label or a tooltip — color is redundant encoding, never the sole channel (color-vision deficiency collapses hue families; the glyph disambiguates). **Distinctness outranks glyph contrast for the long tail:** the rarest modalities (`tts`, `transcription`, `file`, `embeddings`, `decisions`) sit on slots below 3:1 in one theme precisely so no two modalities share a hue family — their label/tooltip is mandatory, and they must never carry meaning by color alone.
 
 **Modality badge** (the model-detail capabilities callout is the reference): a **20px `rounded-md` tile** — modality color at `/12` fill, the modality icon at **12px / stroke 2.5 in the modality color**, name in a tooltip. Use wherever a model's modalities are listed compactly (detail header, capability callouts, table cells).
 
@@ -543,7 +545,9 @@ Sentence case is the choice because Title Case has no decidable rule (every styl
 2. **Verbatim third-party labels.** When copy instructs the user to click something in someone else's UI, quote that control exactly as it appears there — "Under *Your App Configuration Tokens*, click *Generate Token*" — because the user is pattern-matching against Slack's screen, not reading our prose. Mark it as a quotation (italics or `<em>`) so the casing reads as a citation rather than a lapse.
 3. **Acronyms and identifiers** stay as they are: "API key", "VM zone", "ORI version", "HIPAA restrictions".
 
-**Never ALL CAPS as authored text.** The `overline` tier applies uppercase as a *style* (`uppercase` + `tracking-wider`), so the string underneath stays sentence case and the tier can be restyled without a copy edit. Emphasis comes from weight, color, and size — never from capitalization.
+**Never ALL CAPS, with one exception: nav section headers.** The group labels in a sidebar or nav menu may render uppercase, because in a nav the case change separates the group label from its rows without adding weight. It is applied as a *style*, so the string underneath stays sentence case: `text-overline font-medium uppercase tracking-wider text-muted-foreground`, as in the dashboard sidebar (`projects/web/app/[locale]/(user)/(dashboard)/SidebarComponents.tsx`). Everything else renders in sentence case: page and section titles, card and dialog titles, table headers, form labels, overlines, badges, meta labels, card kickers. Emphasis comes from weight, color, and size, never from capitalization. Lint (`openrouter/no-off-design-surface`) flags `capitalize`. It does not flag `uppercase` yet, because it cannot tell a nav section header from anything else; that waits until the existing all-caps is removed from the product. Until then, a new `uppercase` outside a nav section header is still wrong, it just isn't caught automatically.
+
+**Prototypes are not a precedent for case.** Pre-rebrand prototypes (the guardrails prototype among them) use all-caps section headers. Where a prototype and this section disagree, this section wins: port the prototype's structure and content, never its capitalization.
 
 ### Implementation
 
@@ -584,11 +588,11 @@ Everything not in the two Gordita roles needs **no font class at all** — writi
 | `prose` | 16px | 450 | prose (1.7) | Jakarta | Reading body for **multi-paragraph content** — blog posts, rendered docs, chat transcripts. Width comes from the page layout, never from this tier |
 | `body` | 14px | 450 | body (1.625) | Jakarta | Body, descriptions, links — product-UI copy (nav text is `body` size at 500 — see Nav weight below) |
 | `button` | 14px | 500 | — | Jakarta | Button labels |
-| `overline` | 12px | 500 | — | Jakarta | Meta labels, badges (uppercase, tracking-wider). w500 is the tier default — the smallest text never renders at the lightest weight |
+| `overline` | 12px | 500 | — | Jakarta | Meta labels, badges (sentence case — uppercase only on nav section headers, see Capitalization). w500 is the tier default — the smallest text never renders at the lightest weight |
 
 **Pair leading with size:** hero/display/title → tight (1.2); section/heading → snug (1.35); prose 16px → prose (1.7); body 14px → body (1.625).
 
-**Letter-spacing is inverse to size — and zero in the reading registers.** Gordita display tiers (`hero`/`display`/`title`) take `tracking-tight` (-0.025em); `hero` at ≥48px on marketing surfaces may deepen to -0.04em (geometric caps go gappy at display sizes). Jakarta headings (`heading`/`section`) default to 0, with -0.01em optional at w600. **Never add tracking to `body`/`prose`/`button`** — Jakarta's metrics are fitted at 14–16px and the w450 register already added stroke density; positive tracking loosens exactly what the weight tightened. `overline` takes `tracking-wider` (+0.05em) and only as part of the uppercase pairing (never wide tracking on mixed-case); marketing kickers on slides may go wider (0.12–0.22em).
+**Letter-spacing is inverse to size — and zero in the reading registers.** Gordita display tiers (`hero`/`display`/`title`) take `tracking-tight` (-0.025em); `hero` at ≥48px on marketing surfaces may deepen to -0.04em (geometric caps go gappy at display sizes). Jakarta headings (`heading`/`section`) default to 0, with -0.01em optional at w600. **Never add tracking to `body`/`prose`/`button`** — Jakarta's metrics are fitted at 14–16px and the w450 register already added stroke density; positive tracking loosens exactly what the weight tightened. `tracking-wider` (+0.05em) goes only with the uppercase pairing on nav section headers (never wide tracking on mixed-case); marketing kickers on slides may go wider (0.12–0.22em).
 
 **Rag control.** Heading tiers carry `text-wrap: balance` (no one-word orphan lines in titles and card headings); `p`/`li` carry `text-wrap: pretty`. Both ship as base-layer `:where()` rules in the theme (progressive enhancement — unsupported browsers ignore them); don't re-declare them per component.
 
@@ -692,7 +696,14 @@ Five radius tokens, even values only:
 | `xl` | 12px | Large grouped surfaces, media/image headers, feature cards |
 | `full` | 9999px | Badges, pills, avatars |
 
-Product UI tops out at `xl` (12px). Oversized radii — conversational chat bubbles, marketing flourishes (16–24px) — are a **deliberate exception scoped to those surfaces**, not new tokens; don't reach for them in app chrome.
+Two radii are a **deliberate exception scoped to chat bubbles and marketing**, not tokens:
+
+| Exception | Value | Use |
+|-----------|-------|-----|
+| `2xl` | 16px | Conversational chat bubbles, marketing flourishes |
+| `3xl` | 24px | Marketing flourishes |
+
+Product UI tops out at `xl` (12px); don't reach for the exceptions in app chrome. Lint flags both, so an allowed use takes `// oxlint-disable-next-line openrouter/no-off-design-surface -- <reason>`, the same as a brand hex.
 
 ## Components
 
@@ -716,7 +727,8 @@ Filled accent `default` for primary actions, `outline` for secondary. Destructiv
 | `sm` | 32px (`h-8`) | `px-3` | dense toolbars, inline actions |
 | `default` | 40px (`h-10`) | `px-4` | standard |
 | `lg` | 44px (`h-11`) | `px-8` | prominent / marketing CTAs |
-| `icon` | 40×40 (`h-10 w-10`) | — | icon-only (use `h-8 w-8` in dense rows) |
+| `icon-sm` | 32×32 (`h-8 w-8`) | — | icon-only (dense rows / inline) |
+| `icon` | 40×40 (`h-10 w-10`) | — | icon-only |
 
 Add `w-full` for full-width (mobile, auth, card footers). Disabled = `opacity-50` + no pointer events (see Controls).
 
@@ -833,6 +845,7 @@ A row (or column) of buttons fused into one control: shared variant (usually `ou
 ### Accordion
 
 Collapsible disclosure: each item is `border-b border-border`; the trigger is a full-width row (`py-3`, `body` at the Nav weight `font-medium` — a marketing FAQ accordion may step up to `section` size, per Tier assignments) with a trailing `icon-sm` chevron in `muted-foreground` that rotates on open (`transition-transform`, `fast` duration, `ease-smooth-out`); content is `body`, animates open/closed. Same focus ring as everything. Use for FAQs, advanced/optional settings, long option lists — not for primary navigation.
+The chevron points down when closed and up when open. A right-pointing chevron means navigation into a deeper level, never disclosure. An Accordion is contained in a `Card` (`rounded-lg border bg-card px-4`).
 
 ### Banner / toast
 
@@ -857,7 +870,7 @@ These aren't new primitives — they're the canonical way to assemble the ones a
 - **Form field** — a vertical stack (`gap-1.5`): `Label` → control → help/error line. Help text is `body` `text-faint`; error is `body` `negative` with a leading `icon-xs`. (The control's own focus/error treatment comes from Inputs.)
 - **Settings row** — `flex items-center gap-4`, `px-4 py-3.5`: optional leading `size-8` `muted` icon medallion → title (`body` `font-medium`) + description (`body` `text-faint`) in a `flex-1` column → trailing control (switch/button). Stack these divided by `border/50` inside a card.
 - **Stat / KPI card** — flat `Card`, `p-3`: label (`body` `muted-foreground`, Jakarta) + optional delta, the value as a big number (`section` size at weight 500, or `display`/`hero` at 700; always `tabular-nums`; `.font-brand` Gordita at `display` size and up — the "headline number", and only when it's the view's single headline, not one of a grid), and an optional sparkline beneath (chart palette, status color only if it encodes good/bad).
-- **Model / entity card** — `Card`, hover `card-hover` when interactive: header row = `icon-md` mark + name (`heading` `font-semibold`) + provider byline (`body` `text-faint`), with a hover-revealed `↗`; a metric row beneath using `overline` uppercase labels + `body` values.
+- **Model / entity card** — `Card`, hover `card-hover` when interactive: header row = `icon-md` mark + name (`heading` `font-semibold`) + provider byline (`body` `text-faint`), with a hover-revealed `↗`; a metric row beneath using `overline` labels + `body` values.
 - **Code block** — `font-mono` on `doc-surface` (or `card`) inside a `rounded-lg border`, with an optional header strip (`h-9`, `overline` filename + copy button) and a `body`/`overline` body; syntax hues from the `chart-*`/status palette. Inline code and masked secrets follow Tables → *Code & secrets*.
 - **Hover row** — a list row that is the hover convention made reusable: `rounded-md`, `px-4 py-2.5`, `body` (14px) `font-medium` (the Nav weight rule — rest and active alike); rest `muted-foreground`; **hover (rest→hover) → neutral `card-hover` bg + `accent-foreground` text** (the text promotion is the interactivity cue — the wash stays quiet); **active (the current nav location / current value) → accent-tint `accent` (`14`) bg + `accent-foreground`**. This is the single primitive behind sidebar nav items, **dropdown / menu rows (incl. the profile & org-switcher menu)**, and select options — they are the *same* row at the *same* `body` size, not a larger variant. Two rulings that are routinely gotten wrong: **(1) hover is neutral, active is accent** — painting `accent` (`14`) bg on plain hover wrongly applies the active-state treatment to hover; **(2) a menu row is `body` (14px)**, matching the sidebar — don't bump it above `body` just because it's in a dropdown. The accent-tint active treatment is *navigation* language; rows the user **selects** (multi-select lists, pickable options) follow **Selection states** — neutral `selected-bg` + an explicit control — instead.
 

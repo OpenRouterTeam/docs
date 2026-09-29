@@ -284,11 +284,23 @@ slice happens before Spanner, not at ingestion. Partition pass-through is ~1/N
 of *entities*, but *generation volume* per partition varies a lot (entity skew):
 a 1/20 partition can be 3-6% of volume, not a clean 5%.
 
+Consequence for **latency** arms: a small arm still parses the whole topic, so an undersized arm saturates on ingestion and `generations.latency.publish_to_parse` (and therefore `publish_to_commit`) measures Pub/Sub wait, not pipeline time. Check worker CPU and `oldest_unacked_message_age` on the arm's sub before reading publish->commit as pipeline latency, or size the arm so ingestion is not saturated and compare `parse_to_commit` across arms instead.
+
 ## Measuring with SPANNER_SYS — and the pitfalls
 
 Staging Spanner: `--instance=usage-record-staging --database=usage-staging
 --project=openrouter-core`. Tables: `*_TOP_MINUTE` (one interval),
 `*_TOP_10MINUTE` (retains ~10 min, multiple overlapping intervals).
+
+### Access
+
+Production and staging `SPANNER_SYS` reads go through the `spanner-sys-observer`
+PAM entitlement (see `gcp-pam-entitlements`). Query with
+`--database-role=observability_reader`. The grant only works because
+`services/usage-record/infra` gives the federated principal the standing
+`roles/spanner.fineGrainedAccessUser` binding on the database; a new database
+needs that binding and an entry in the entitlement `condition` before the grant
+reaches it.
 
 ### Tags
 
@@ -568,3 +580,6 @@ on its own rather than deleting it.
   `_Index_generations_by_id` lock-wait exceeding `generation_shards` in staging
   even though prod data had `generation_shards` dominant — don't assume the prod
   bottleneck reproduces; measure it.
+- **A green deploy workflow is not a running job.** The generations lane defaults to `n4-highcpu-4`, which stocks out in us-central1; the job then sits at 0 vCPUs (`gcp.dataflow.job.current_num_vcpus`) and fails after ~5 min with `ZONE_RESOURCE_POOL_EXHAUSTED`. Check the job's state and messages via the Dataflow REST API (`/v1b3/projects/openrouter-core/locations/us-central1/jobs/<id>[/messages]`, readable with `devin-readonly`, the session's default gcloud identity, which holds `roles/dataflow.viewer` org-wide) before waiting on data, and relaunch with `machine_type=c3-highcpu-4` if it happened.
+- **Relaunching an already-built image:** pass `image_digest` alone. `skip_build` and `image_digest` are mutually exclusive in the deploy script.
+- **Cross-arm row diff (data invariance):** arms on the same partition insert the same generations under different `generation_id` salts, so pair rows on the id with the `arm:<tag>:` prefix stripped and diff every other column. Expected to differ: `generation_id`, `generation_id_hash`, `inserted_at`, `started_at_shard_id` (disjoint shard bands). Bound both queries by the same `started_at` window; deferred-lane rows land minutes later, so a handful of one-sided rows near the query time is timing, not divergence.

@@ -50,8 +50,7 @@ batchable-request scenario (see the capture matrix), not only the
 response/output shapes — so the tests below never hand-write request
 payloads.
 
-Raw capture transcripts stay in `/tmp/batch-research/<provider>/` and are
-**not** committed; the note quotes the relevant redacted JSON inline.
+Raw capture transcripts stay under `$BATCH_RESEARCH_CAPTURE_ROOT/<provider>/captures/`, where `BATCH_RESEARCH_CAPTURE_ROOT` is a persistent location outside the repository, and are **not** committed; the note quotes the relevant redacted JSON inline.
 No adapter code, no schema code, no registrations.
 
 ## Fixtures drive every layer
@@ -136,7 +135,7 @@ capture matrix:
 9. **Sync-transform overrides** — does the provider's live sync adapter
    override `transformRequest`/`getReasoningEffort`? If yes,
    `OpenAIBatchAdapter` reuse is forbidden (see the factory doc comment
-   in `services/batch-api/src/adapters/adapter-factory.ts`)
+   in `services/batch-api/src/adapters/api-key-providers.ts`)
 10. **OpenRouter mapping decision** — the concluded reuse-vs-new call for
     skin and adapter, the planned layer list, and the fixture plan
 11. **OpenRouter endpoint intersection** — documented batch models
@@ -170,6 +169,11 @@ capture matrix:
     caller-facing reason, so an unresearched provider silently tells users
     to fall back to the sync API. Unverified is a valid conclusion, but it
     must be the stated one
+15. **Native deletion** — whether the provider exposes batch deletion and file deletion, the status/body receipts, post-delete reads, whether batch deletion removes provider files, and the adapter seams `nativeDeletion` and `deleteFiles`
+
+## Research note skeleton
+
+Every new note follows this compact structure: every factual claim carries one of the repository's provenance tags, `[capture]`, `[docs]`, or `[unconfirmed]`; a `Fixture index` table maps each committed fixture to the capture-matrix row it proves; and a `Deviations from <reference wire>` section is required whenever the provider claims drop-in compatibility with OpenAI or another existing skin.
 
 ## Completion and per-request failure semantics
 
@@ -260,8 +264,7 @@ both are load-bearing downstream:
 2. Run as much of the [capture matrix](./capture-matrix.md) live against
    the provider as the credential and the provider's own limits allow;
    record what could not be captured rather than stalling. Save raw
-   status/headers/body per scenario in `/tmp`, redact, and promote the
-   load-bearing shapes into the note and fixtures
+   status/headers/body per scenario under `$BATCH_RESEARCH_CAPTURE_ROOT/<provider>/captures/`, redact, and promote the load-bearing shapes into the note and fixtures
    (capture mechanics: [`batch-sync-fixtures`](../batch-sync-fixtures/SKILL.md)).
    For each batchable-request scenario, commit the captured **request
    input** into `adapters/<provider>/fixtures.ts` alongside the response
@@ -320,11 +323,18 @@ where the whole status model is counters:
 - **A request can sit `pending` with no error and no deadline.** Two xAI
   probes never resolved. Record whether the provider documents a
   per-request timeout; without one, the adapter needs its own.
+- **Send a `curl`-style `User-Agent` on native captures.** Together's edge
+  returns HTTP 403 (Cloudflare error 1010) to Python's default agent.
+- **Pick an image host that serves non-browser clients.** A host that
+  answers 400 to script agents surfaces as a per-line image error that is
+  indistinguishable from a model-capability rejection.
 - **Run the adapter's `parseResult` on a captured error row, not a
   hand-built one.** A provider may nest the error body as a JSON string
   where the parser expects an object (Mistral, `docs/batch-research/mistral.md` D1).
 - **When a docs site has no fetchable OpenAPI spec, read its `/llms.txt`**
   for the canonical page list before guessing URLs or operation anchors.
+- **Persist raw captures under `$BATCH_RESEARCH_CAPTURE_ROOT` rather than `/tmp`.** Set that variable to a persistent location outside the repository before the session starts; the Together run's temporary capture directory was gone by review time and every fixture had to be re-downloaded from the provider's file API, while the transient `CANCELING` poll had to be re-captured live.
+- **Capture deletion independently from lifecycle cancellation.** A provider may expose `DELETE /v1/files/{id}` while rejecting `DELETE /v1/batches/{id}` or accepting it only for a different permission scope; capture both receipts and post-delete GETs before declaring native deletion supported.
 
 ## Deferred captures
 

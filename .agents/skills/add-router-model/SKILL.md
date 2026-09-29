@@ -1,39 +1,30 @@
 ---
 name: add-router-model
-description: Add a new router model to OpenRouter — covers RouterModel enum, plugin implementation, init-plugins wiring, seed verification, plugin settings UI, and testing checklist
+description: Add a new router model to OpenRouter. Covers the RouterModel enum, plugin implementation, init-plugins wiring, seed verification, plugin settings UI, and testing checklist
 user-invocable: true
 ---
 
-# Add Router Model
+# Add a router model
 
-Follow this checklist when adding a new router model
-(e.g. `openrouter/pareto-code`, `openrouter/auto`,
-`openrouter/fusion`). Router models are abstract placeholders
-that resolve to concrete provider endpoints at request time
-via a router plugin.
+Follow this checklist when you add a new router model, such as `openrouter/pareto-code`, `openrouter/auto`, or `openrouter/fusion`. Router models are abstract placeholders that a router plugin resolves to concrete provider endpoints at request time.
 
 ## Prerequisites
 
-- Local Postgres running (`bun run db:start`)
-- Familiarity with the plugin system in
-  `packages/router/plugins/`
+- Local Postgres is running (`bun run db:start`).
+- You are familiar with the plugin system in `packages/router/plugins/`.
 
 ## Arguments
 
-- `$ROUTER_SLUG`: Full model slug
-  (e.g. `openrouter/pareto-code`)
-- `$ROUTER_KEY`: PascalCase key for the `RouterModel` enum
-  (e.g. `ParetoCode`)
-- `$PLUGIN_DIR`: Directory name under
-  `packages/router/plugins/` (e.g. `pareto-router`)
-- `$PLUGIN_CLASS`: PascalCase plugin class name
-  (e.g. `ParetoRouterPlugin`)
+- `$ROUTER_SLUG`: The full model slug, such as `openrouter/pareto-code`.
+- `$ROUTER_KEY`: The PascalCase key for the `RouterModel` enum, such as `ParetoCode`.
+- `$PLUGIN_DIR`: The directory name under `packages/router/plugins/`, such as `pareto-router`.
+- `$PLUGIN_CLASS`: The PascalCase plugin class name, such as `ParetoRouterPlugin`.
 
 ## Steps
 
-### 1. Add enum value to `packages/models/id/router.ts`
+### Add the enum value
 
-Add the new router to the `RouterModel` const object:
+Add the new router to the `RouterModel` const object in `packages/models/id/router.ts`:
 
 ```ts
 // packages/models/id/router.ts
@@ -43,51 +34,32 @@ export const RouterModel = {
 } as const;
 ```
 
-### 2. Create the router plugin
+### Create the router plugin
 
-Create a new directory under `packages/router/plugins/$PLUGIN_DIR/`
-with at minimum:
+Create a new directory under `packages/router/plugins/$PLUGIN_DIR/` with at least the following files:
 
-- `index.ts` — the plugin class
-- `index.test.ts` — plugin unit tests
-- `TESTING.md` — local and prod testing instructions
+- `index.ts`: The plugin class.
+- `index.test.ts`: Plugin unit tests.
+- `TESTING.md`: Local and production testing instructions.
 
-Use an existing router plugin as reference:
+Use an existing router plugin as a reference:
 
-- **Simple selection**: See `free-router/` (random selection
-  from a model list)
-- **Tier-based selection**: See `pareto-router/` (tier
-  thresholds with fallback)
-- **AI-powered routing**: See `auto-router/` (meta-model
-  analysis)
-- **Multi-model orchestration**: See `fusion/` (parallel
-  execution and merge)
+- **Simple selection**: See `free-router/`, which selects at random from a model list.
+- **Tier-based selection**: See `pareto-router/`, which uses tier thresholds with fallback.
+- **AI-powered routing**: See `auto-router/`, which uses meta-model analysis.
+- **Multi-model orchestration**: See `fusion/`, which runs models in parallel and merges the results.
 
-Key patterns every router plugin must follow:
+Every router plugin must follow these patterns:
 
-1. **Guard clause**: Return early (no-op) if the request
-   model doesn't match your router slug. Use
-   `RouterModel.$ROUTER_KEY` for the check.
-2. **Placeholder endpoint**: Call
-   `createRouterModelPlaceholderEndpoint()` from
-   `@openrouter-monorepo/routing/endpoints/router-placeholder`
-   during init to pass through the router's startup phase.
-3. **Resolve in `resolveEndpoints`**: Replace the placeholder
-   with real endpoint(s) selected by your routing logic.
-4. **Thread `routerRequest`**: Set
-   `routerRequest.model` / `routerRequest.permaslug` to the
-   resolved concrete model so downstream plugins and the
-   adapter see the real model, not the router slug.
-5. **Log metadata**: Attach routing metadata (requested tier,
-   actual tier, resolved model, fallbacks) to the router
-   metadata plugin via `routerRequest.routerMetadata`.
+1. **Guard clause**: Return early (no-op) if the request model doesn't match your router slug. Use `RouterModel.$ROUTER_KEY` for the check, and read `routerRequest.requestedModelSlugs`, not `rawModelSlugs`. `rawModelSlugs` is empty when the router slug comes from the account or workspace default model, so a guard on it never fires and the placeholder is dropped with a `404`.
+2. **Placeholder endpoint**: Call `createRouterModelPlaceholderEndpoint()` from `@openrouter-monorepo/routing/endpoints/router-placeholder` during init to pass through the router's startup phase.
+3. **Resolve in `resolveEndpoints`**: Replace the placeholder with the real endpoints that your routing logic selects. `applyPluginResolveEndpoints` drops any placeholder that is still present after this phase. A plugin that resolves later, in the completion hook like `bodybuilder`, must be listed in `COMPLETION_RESOLVED_ROUTER_MODELS` in `packages/router/plugins/base/resolve-endpoints.ts`.
+4. **Thread `routerRequest`**: Set `routerRequest.model` and `routerRequest.permaslug` to the resolved concrete model so that downstream plugins and the adapter see the real model, not the router slug.
+5. **Log metadata**: Attach routing metadata (requested tier, actual tier, resolved model, and fallbacks) to the router metadata plugin through `routerRequest.routerMetadata`.
 
-### 3. Register in `packages/router/plugins/base/init-plugins.ts`
+### Register the plugin
 
-Import your plugin and add it to the `initPlugins` array.
-Router plugins run early — place yours alongside the other
-router plugins (auto-router, free-router, pareto-router,
-latest-router):
+In `packages/router/plugins/base/init-plugins.ts`, import your plugin and add it to the `initPlugins` array. Router plugins run early, so place yours alongside the other router plugins (`auto-router`, `free-router`, `pareto-router`, and `latest-router`):
 
 ```ts
 import { $PLUGIN_CLASS } from '../$PLUGIN_DIR';
@@ -103,41 +75,34 @@ new $PLUGIN_CLASS({
 }),
 ```
 
-### 4. Add the model row in production
+### Add the model row in production
 
-Router models are created in prod Mission Control, not via
-migration:
+Router models are created in production Mission Control, not through a migration.
 
-1. Open prod Mission Control and add the model row:
+1. In production Mission Control, add the model row with the following values:
    - `group` = `Router`
-   - `slug` / `permaslug` = `$ROUTER_SLUG`
+   - `slug` and `permaslug` = `$ROUTER_SLUG`
    - `hidden` = `true` (until launch)
-   - `input_modalities` = `{text}`,
-     `output_modalities` = `{text}`
-   - Set `context_length` to the max of models in
-     your routing pool
-2. Router models do **not** need endpoint rows — the plugin
-   creates placeholder endpoints at request time via
-   `createRouterModelPlaceholderEndpoint`.
+   - `input_modalities` = `{text}` and `output_modalities` = `{text}`
+   - `context_length` = the maximum context length of the models in your routing pool
+2. Don't add endpoint rows. Router models don't need them, because the plugin creates placeholder endpoints at request time through `createRouterModelPlaceholderEndpoint`.
 
-### 5. Verify model appears in seed CSV
+### Verify that the model appears in the seed CSV
 
-The `Refresh Models and Endpoints` workflow syncs prod rows
-into `postgres/seeds/models_rows.csv`. After the model exists
-in prod:
+The `Refresh Models and Endpoints` workflow syncs production rows into `postgres/seeds/models_rows.csv`. After the model exists in production, trigger the refresh, or wait for the daily 13:00 UTC cron:
 
 ```bash
-# Trigger refresh (or wait for daily 13:00 UTC cron)
 gh workflow run "Refresh Models and Endpoints" \
   --repo OpenRouterTeam/openrouter-web
+```
 
-# After the auto-PR merges, verify:
+After the automated PR merges, verify that the row is present:
+
+```bash
 grep '$ROUTER_SLUG' postgres/seeds/models_rows.csv
 ```
 
-If the model is not yet in the seed CSV (e.g. it was just
-created in prod), you can verify locally by inserting
-directly into the local DB:
+If the model is not yet in the seed CSV, for example because it was just created in production, you can verify locally by inserting it into the local database:
 
 ```sql
 INSERT INTO models (
@@ -159,29 +124,19 @@ INSERT INTO models (
 ) ON CONFLICT (permaslug) DO NOTHING;
 ```
 
-Then run `bun run db:reset` to confirm the seed CSV works for
-a clean reset.
+Then run `bun run db:reset` to confirm that the seed CSV works for a clean reset.
 
-**Important**: Router models do NOT need endpoint seeds. They
-resolve to other models' endpoints at request time. Do not
-add endpoint rows for router models.
+Router models don't need endpoint seeds. They resolve to the endpoints of other models at request time. Don't add endpoint rows for router models.
 
-### 6. Add plugin settings UI (if user-configurable)
+### Add the plugin settings UI
 
-If the router has user-configurable defaults (like
-pareto-router's `min_coding_score`), add it to the plugin
-settings UI:
+This step is optional. If the router has user-configurable defaults, like the `min_coding_score` setting of `pareto-router`, add it to the plugin settings UI:
 
-1. **Add plugin schema** in
-   `packages/llm-interfaces/plugins/<plugin>/schemas.ts` if one
-   doesn't exist. Define a Zod schema for the plugin's
-   config (e.g. `ParetoRouterPreferencesSchema`).
+1. **Add a plugin schema** in `packages/llm-interfaces/plugins/<plugin>/schemas.ts` if one doesn't exist. Define a Zod schema for the plugin's config, such as `ParetoRouterPreferencesSchema`.
 
-2. **Add to `PluginId` enum** in `packages/enums/plugins.ts`
-   if not already there.
+2. **Add the plugin to the `PluginId` enum** in `packages/enums/plugins.ts` if it isn't already there.
 
-3. **Add row to `CONFIGURABLE_PLUGINS`** in
-   `projects/web/app/[locale]/(user)/(dashboard)/workspaces/[workspaceId]/plugins/PluginsSection.tsx`:
+3. **Add a row to `CONFIGURABLE_PLUGINS`** in `projects/web/app/[locale]/(user)/(dashboard)/workspaces/[workspaceId]/plugins/PluginsSection.tsx`:
 
    ```ts
    {
@@ -193,35 +148,33 @@ settings UI:
    },
    ```
 
-4. **Add config form** in `PluginConfigureModal.tsx` with a
-   branch for your plugin ID. Follow the pattern used by
-   pareto-router (tier presets + optional advanced/custom
-   input).
+4. **Add a config form** in `PluginConfigureModal.tsx` with a branch for your plugin ID. Follow the pattern that `pareto-router` uses: tier presets plus an optional advanced or custom input.
 
 5. **Add PostHog events** for the new plugin interactions.
 
-6. **Update docs**:
-   - Add to the Available Plugins table in
-     `projects/docs/guides/features/plugins.mdx`
-   - Create or update the router's docs page under
-     `projects/docs/guides/routing/routers/`
+6. **Update the docs**:
+   - Add the router to the Available Plugins table in `projects/docs/guides/features/plugins.mdx`.
+   - Create or update the router's docs page under `projects/docs/guides/routing/routers/`.
 
-### 7. Write tests
+### Forward the config on server-tool inner turns
 
-- **Unit tests**: `$PLUGIN_DIR/index.test.ts` — test config
-  parsing, model resolution at each configuration, error
-  paths, and log metadata.
-- **Pipeline tests**: `$PLUGIN_DIR/pipeline.test.ts` — test
-  the plugin in context with sibling plugins via
-  `applyPluginResolveEndpoints`.
-- **Run tests**:
+After you add the schema to `PluginPreferenceSchema` (`packages/llm-interfaces/plugins/schemas.ts`), `bun run typecheck` fails in `toSdkRouterPlugins` (`packages/router/plugins/server-tools/build-callmodel-input.ts`) until you add a case for the new plugin ID. The case maps the snake_case request fields to the SDK's camelCase plugin type in `@openrouter/sdk/models/<plugin>.js`. If the SDK type doesn't exist yet, bump the SDK first. Add a colocated test for the mapping. Without the case, the inner `callModel` turns of a server-tool request run the router without the caller's restrictions.
 
-  ```bash
-  bun run --filter @openrouter-monorepo/router test \
-    packages/router/plugins/$PLUGIN_DIR
-  ```
+### Write tests
 
-### 8. Local e2e verification
+- **Unit tests** (`$PLUGIN_DIR/index.test.ts`): Test config parsing, model resolution at each configuration, error paths, and log metadata.
+- **Pipeline tests** (`$PLUGIN_DIR/pipeline.test.ts`): Test the plugin in context with sibling plugins through `applyPluginResolveEndpoints`.
+
+Run the tests:
+
+```bash
+bun run --filter @openrouter-monorepo/router test \
+  packages/router/plugins/$PLUGIN_DIR
+```
+
+### Verify locally end to end
+
+Start the local stack and enable request logging:
 
 ```bash
 bun run dev:up
@@ -243,29 +196,25 @@ curl -sS -X POST http://localhost:8787/api/v1/chat/completions \
   }' | jq '.model, .provider'
 ```
 
-Check `services/dev-fs-logs/.logs/` for the generation folder
-and verify routing metadata in `router/transaction-attempt.log`.
+In `services/dev-fs-logs/.logs/`, open the generation folder and verify the routing metadata in `router/transaction-attempt.log`.
 
-## Existing Router Models
+## Existing router models
+
+The following table lists the router models that exist today and the plugin that resolves each one.
 
 | Slug | Plugin | Description |
 |------|--------|-------------|
-| `openrouter/auto` | `auto-router` | AI-powered routing via meta-model analysis |
+| `openrouter/auto` | `auto-router` | AI-powered routing through meta-model analysis |
 | `openrouter/free` | `free-router` | Random selection from free models |
 | `openrouter/pareto-code` | `pareto-router` | Tier-based coding model selection |
 | `openrouter/fusion` | `fusion` | Multi-model parallel execution and merge |
 | `openrouter/bodybuilder` | `bodybuilder` | Model selection for specific tasks |
 
-## Reference Files
+## Reference files
 
-- `packages/models/id/router.ts` — `RouterModel` enum
-- `packages/routing/endpoints/router-placeholder.ts` —
-  placeholder endpoint factory
-- `packages/router/plugins/base/init-plugins.ts` — plugin
-  registration order
-- `packages/router/plugins/router-metadata/` — routing
-  metadata collection
-- `postgres/seeds/models_rows.csv` — model seed data
-  (auto-synced from prod)
-- `projects/web/.../plugins/PluginsSection.tsx` — plugin
-  settings UI
+- `packages/models/id/router.ts`: The `RouterModel` enum.
+- `packages/routing/endpoints/router-placeholder.ts`: The placeholder endpoint factory.
+- `packages/router/plugins/base/init-plugins.ts`: The plugin registration order.
+- `packages/router/plugins/router-metadata/`: Routing metadata collection.
+- `postgres/seeds/models_rows.csv`: Model seed data, synced automatically from production.
+- `projects/web/.../plugins/PluginsSection.tsx`: The plugin settings UI.

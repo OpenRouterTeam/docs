@@ -122,7 +122,7 @@ tilt trigger api
 # Trigger the cron on cfw-api (NOT embeddings-api).
 # Wait a few seconds after `tilt trigger api` so wrangler
 # is fully back up before you hit /__scheduled.
-curl -s "http://localhost:8787/__scheduled?cron=*/5+*+*+*+*"
+curl -s "http://localhost:8794/__scheduled?cron=*/5+*+*+*+*"
 
 # Restart embeddings-api so it picks up the new KV data
 tilt trigger embeddings-api

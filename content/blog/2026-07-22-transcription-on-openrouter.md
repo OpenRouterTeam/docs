@@ -1,6 +1,7 @@
 ---
 title: "Transcription on OpenRouter"
 date: "2026-07-22T00:00:00.000Z"
+updated: "2026-09-24T23:03:15.000Z"
 author: "OpenRouter"
 category: "tutorials"
 metaTitle: "Transcription on OpenRouter: Whisper & More STT Models"

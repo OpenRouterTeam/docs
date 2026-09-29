@@ -1,6 +1,7 @@
 ---
 title: "Structured Outputs & Free Gemini Flash 2.0"
 date: "2024-12-12T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Structured outputs for OpenAI 4o and Fireworks models + Gemini Flash 2.0 "
 category: "announcements"

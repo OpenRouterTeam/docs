@@ -101,6 +101,16 @@ resource "datadog_monitor" "my_monitor_name" {
 }
 ```
 
+Inside a metric `{...}` scope, pick one filter syntax: either comma-separated
+tags (`{engine:exa,status:failed,!reason:not_configured}`) or boolean
+(`{engine:exa AND status:failed AND reason IN (a,b)}`). Mixing them
+(`{engine:exa,status:failed,reason IN (a,b)}`) passes `tofu validate` but
+`POST /api/v1/monitor/validate` rejects it, so the CI plan fails. The boolean
+form is a monitor-query allowance only: in dashboard widget queries an `AND`
+clause still persists but breaks the query API, per
+`configs/terraform-monitors/AGENTS.md` ("Tag filters inside `{...}` are
+comma-separated").
+
 Set the rollup interval explicitly to the window the threshold was calibrated
 on. `min(last_30m)` without `.rollup(...)` compares the metric's native points
 (60s), so one dip clears a sustained breach — a threshold picked from 15-minute
@@ -205,7 +215,7 @@ To add a new route or error monitor, edit `configs/terraform-monitors/monitoring
 
 ### Synthetic HTTP Checks (external probes)
 
-For a public URL that must stay up regardless of Worker metrics, use `datadog_synthetics_test` (`type = "api"`, `subtype = "http"`) following `public_api_route_coverage.tf` / `docs_site_availability.tf`: skip it in preview mode, assert status + content-type + a body fragment, and set `min_location_failed` with 2+ locations so one region cannot page. `follow_redirects` belongs in `options_list`, not `request_definition` — `terraform validate` rejects it there. `retry.interval` is milliseconds (max 5000), so retries cannot ride out an outage; rely on locations for that. An active probe has no traffic gate; say so in the PR's monitor bar.
+For a public URL that must stay up regardless of Worker metrics, use `datadog_synthetics_test` (`type = "api"`, `subtype = "http"`) following `public_api_route_coverage.tf` / `docs_site_availability.tf`: skip it in preview mode, assert status + content-type + a body fragment, and set `min_location_failed` with 2+ locations so one region cannot page. `follow_redirects` belongs in `options_list`, not `request_definition` — `tofu validate` rejects it there. `retry.interval` is milliseconds (max 5000), so retries cannot ride out an outage; rely on locations for that. An active probe has no traffic gate; say so in the PR's monitor bar. If the URL is edge-cached (`stale-if-error`, long `max-age`), a plain probe keeps passing on the cached body after the origin breaks: add a `config_variable` (`type = "text"`, `pattern = "{{ timestamp(0, ms) }}"`) and put `{{ NAME }}` in a query parameter so every run reaches the origin, and assert structure with `operator = "validatesJSONPath"` + `targetjsonpath` rather than a bare `contains` — see `rankings_chart_availability.tf`.
 
 ### Monitors Referenced by Composite Monitors
 
@@ -236,9 +246,9 @@ For a customer-impact gate using a metric tagged by entity, group the numerator 
 
 ### Grouped Ratio Tradeoffs
 
-Grouped ratios with `by {…}` on both sides cannot carry an absolute traffic gate like the composite pattern; near-zero-traffic groups can move the ratio on a handful of events. `POST /api/v1/monitor/validate` accepts this shape, so document the tradeoff.
+A grouped ratio with `by {…}` on both sides can move on a handful of events in a near-zero-traffic group. To gate it, give the gate the same `by {…}` and the same tag filter as the ratio, and combine the two in a composite; Datadog matches the groups by tag value, so each group is gated on its own volume. Set `new_group_delay` on every grouped constituent and give each one a recovery threshold (below) because a gate sized inside the groups' normal traffic range crosses its line many times a day. `monitoring/cfw_frontend_api.tf` (private-route 5xx share) is the canonical example. Only when the gate cannot share the ratio's grouping is an ungated grouped ratio acceptable; `POST /api/v1/monitor/validate` accepts that shape, so document the tradeoff in the resource.
 
-For ungrouped composite ratios, check the minimum event count implied by the traffic floor and percentage threshold. If `min_requests * threshold_percent / 100` is below the intended absolute signal, add a numerator count gate to the composite so one event cannot alert during a traffic collapse.
+For any composite ratio, check the minimum event count implied by the traffic floor and percentage threshold. If `min_requests * threshold_percent / 100` is below the intended absolute signal, add a numerator count gate to the composite so one event cannot alert during a traffic collapse.
 
 ### Recovery Thresholds on Gate and Rate Composites
 
@@ -247,7 +257,15 @@ A composite of a traffic gate and a rate monitor re-notifies on every crossing o
 - Rate monitor (`> threshold`): set `critical_recovery`, and set `warning_recovery` when the monitor also declares a warning threshold. Both sit below their triggers but above the metric's normal p90, so routine noise cannot clear the state.
 - Traffic gate (`>= min_events`): set only `critical_recovery`, below the count trigger and derived from normal traffic volume rather than the rate baseline.
 
-Size the window to the length of an episode rather than a minute, so a dip in the middle of an episode does not resolve the alert. `terraform validate` does not check recovery thresholds, but `POST /api/v1/monitor/validate` does.
+Size the window to the length of an episode rather than a minute, so a dip in the middle of an episode does not resolve the alert. `tofu validate` does not check recovery thresholds, but `POST /api/v1/monitor/validate` does.
+
+A composite has no thresholds of its own and reads constituent statuses, so recovery thresholds live on the constituents and the composite's floor becomes history-dependent: a constituent that has crossed its trigger stays in alert down to its recovery line, and the composite can open while that constituent sits in the band if the partner then crosses its own trigger. Datadog offers no hysteresis around the whole conjunction. Accept this only after replaying the recovery lines against the baseline as an extra alert condition (gate at recovery with the rate at its trigger, and rate at recovery with the gate at its trigger) and state those effective floors in the resource comment; tighten the recovery lines instead if the replay pages.
+
+### Volume Gates on Sparse Counters
+
+A `> 0` rolling-window counter flaps on every isolated event when the metric is sparse — it fires, recovers one window later, and re-fires on the next event. Gate it on volume **only when a single event is not actionable on its own** and the hourly distribution is mostly 1s with occasional bursts of tens. Set the trigger threshold to a count taken from that distribution (the value that separates bursts from noise) and a `critical_recovery` below it to hold the alert open while a burst tails off. See `broadcast_destinations/monitors.tf` `fanout_lost` for the canonical example.
+
+Do **not** apply this gate when each event is independently actionable. Dead-letter and poison-message monitors (`batch_generations_lane_dlq_failures.tf`, `gcp_queue_worker_gzip_inflate_failures.tf`) use `> 0` on purpose: a single lost message warrants investigation, and gating on volume would suppress the first signal of a new failure mode.
 
 ## Key Conventions
 
@@ -298,7 +316,8 @@ Slack auto-links any bare text that looks like a domain, so a template variable 
 - Use `@attribute:value` for facet filters
 - Wildcard with `*` (e.g., `@job_name:usage-record-generations-*`)
 - Rollup types: `"count"`, `"sum"`, `"cardinality"` (unique count)
-- Group by several facets with one comma-separated string, `.by("@extra.provider,@extra.model")`. Separate string arguments, `.by("a","b")`, are rejected by Datadog with `unable to parse log monitor query`, and `terraform validate` does not catch it because the query is only checked by `POST /api/v1/monitor/validate` during `terraform plan`.
+- Group by several facets with one comma-separated string, `.by("@extra.provider,@extra.model")`. Separate string arguments, `.by("a","b")`, are rejected by Datadog with `unable to parse log monitor query`, and `tofu validate` does not catch it because the query is only checked by `POST /api/v1/monitor/validate` during `tofu plan`.
+- **Workers `@outcome` is per invocation, not per line**: Workers Logs stamps the invocation's final `outcome` (`exception`, `exceededMemory`, ...) on every line that invocation emitted, so `rollup("count")` on `@outcome:exception` scales with breadcrumb verbosity, not failed requests. Count requests with `rollup("cardinality", "@cf_ray_id")` instead (see `image_api_oom.tf`); lines from DO alarms and constructors carry no `cf_ray_id` and drop out.
 - Time windows: `last("5m")`, `last("10m")`, `last("30m")`, `last("1h")`
 - For once-daily cron tasks, size the log-alert window to at least the cron period (e.g. `last("1d")`) so the alert does not self-clear before anyone sees it.
 - **Breadcrumbs vs Extra**: Properties set via `breadcrumbs()` appear under `@breadcrumbs.*` in logs (e.g., `@breadcrumbs.key_hash_first_ten`, `@breadcrumbs.clerk_user_id`). Properties passed as structured args to `iLog()`/`wLog()`/`eLog()` appear under `@extra.*`. Do not confuse the two — using the wrong prefix will return no results.
@@ -310,14 +329,16 @@ The Datadog site for this org is `us5.datadoghq.com`. Use this for log links and
 
 ## CI Validation
 
-CI runs `terraform validate` on the `configs/terraform-monitors` directory automatically. The check appears as `Terraform (configs/terraform-monitors)` in GitHub Actions. No manual terraform commands needed — just commit and push.
+CI runs `tofu validate` on the `configs/terraform-monitors` directory automatically. The check appears as `Terraform (configs/terraform-monitors)` in GitHub Actions. No manual terraform commands needed — just commit and push.
 
-`terraform validate` only checks HCL, so a malformed query fails later in the same job at the `terraform plan` step, where Datadog validates it. The plan output is usually too large for the PR comment, so read the reason from the `terraform-plan-output` workflow artifact (`gh run download <run_id> -n terraform-plan-output`). To check a query before pushing, post it to `https://api.us5.datadoghq.com/api/v1/monitor/validate` with `DD_API_KEY` / `DD_APP_KEY`, where `{}` means valid.
+CI pins the OpenTofu version in `.github/actions/setup-opentofu/action.yaml` (`tofu_version` default). A newer local binary formats heredocs and comments differently, so a repo-wide `tofu fmt -recursive -check` can list dozens of untouched files; run `fmt -check` on the files you changed and leave the rest alone.
+
+`tofu validate` only checks HCL, so a malformed query fails later in the same job at the `tofu plan` step, where Datadog validates it. The plan output is usually too large for the PR comment, so read the reason from the `terraform-plan-output` workflow artifact (`gh run download <run_id> -n terraform-plan-output`). To check a query before pushing, post it to `https://api.us5.datadoghq.com/api/v1/monitor/validate` with `DD_API_KEY` / `DD_APP_KEY`, where `{}` means valid.
 
 ## DO NOT
 
 - Do NOT try to create monitors via the Datadog API (`DD_API_KEY`/`DD_APP_KEY` lack write permissions)
-- Datadog dashboards only allow tag KEYS `team` and `ai` — never put arbitrary grouping tags (e.g. a ticket id like `ope-5618`) on a `datadog_dashboard`; that passes `terraform validate`/`plan` but 400s on `apply` and breaks the release train. Put grouping tags on the monitors only.
+- Datadog dashboards only allow tag KEYS `team` and `ai` — never put arbitrary grouping tags (e.g. a ticket id like `ope-5618`) on a `datadog_dashboard`; that passes `tofu validate`/`plan` but 400s on `apply` and breaks the release train. Put grouping tags on the monitors only.
 - Do NOT modify `versions.tf` or `outputs.tf` unless adding a new module; `variables.tf` may be modified when a flat monitor needs a configurable variable (e.g. an opt-out list)
 - Do NOT create module directories for simple single-monitor alerts — use a flat `.tf` file
 - Do NOT use `timestamp()` or other Terraform functions in Datadog message templates — they evaluate at plan time, not alert time

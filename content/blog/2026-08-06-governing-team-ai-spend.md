@@ -1,6 +1,7 @@
 ---
 title: "Governing AI Spend Across a Team on OpenRouter"
 date: "2026-08-06T00:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "OpenRouter Spend Controls for Teams: A Decision Map"

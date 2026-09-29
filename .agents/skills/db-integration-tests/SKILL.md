@@ -32,6 +32,9 @@ or `createDBRequestContextForIntegrationTest()`).
   `database context not initialized`
 - **Requires**: running Postgres instance (via Tilt or
   `bun run db:start`)
+- If `bun run db:start` cannot authenticate to Infisical, use
+  `bunx tsx --tsconfig ./scripts/tsconfig.json scripts/db-start.ts` to start
+  the local container and apply migrations before running the integration suite.
 - **Preload**: `integration/preload-integration.ts` —
   sets `OR_ENV=test`, loads env overrides, and calls
   `setupDbIntegrationContext()`
@@ -127,9 +130,9 @@ live alongside test files in the domain directory.
 import { afterAll, beforeAll, describe, expect, it }
   from 'bun:test';
 import type { Result }
-  from '@openrouter-monorepo/type-utils/result-monad';
+  from '@openrouter-monorepo/lib-result';
 import { assertOk, assertErr, isErr }
-  from '@openrouter-monorepo/type-utils/result-monad';
+  from '@openrouter-monorepo/lib-result';
 import { dbRead, dbWrite } from '../../context';
 
 describe('<domain> queries', () => {
@@ -471,7 +474,11 @@ const model = createMockDbModel({
   response-shape test that asserts `Object.keys(row)
   .sort()` against a sorted array of expected column
   names. This catches accidental column omissions
-  when a query is refactored.
+  when a query is refactored. The flip side: an
+  `ADD COLUMN` migration on that table fails these
+  tests until the expected list gains the new column,
+  so grep the integration suite for the table name
+  after regenerating Kysely types.
 - When a query accepts optional filter parameters
   (e.g. `workspaceId`, `includeNullWorkspaceId`),
   test all branches: without the filter (returns all),

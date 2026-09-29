@@ -110,11 +110,13 @@ Error lines are captured the same way: trigger the error against the real
 provider (bad model, over-limit line, malformed request) and save its
 response.
 
+Through OpenRouter, the public batch route is `/api/v1/batches` (`/api/beta/batches` stays mounted for existing clients until OPE-5383). Read result rows from the `results` array on `GET /api/v1/batches/<id>`; the `/results` file endpoint can return an empty body for a completed job.
+
 ## Step 3 — Redact + commit with provenance
 
 Run every capture through the executable template at
 [`capture-template.ts`](./capture-template.ts) — copy it to
-`/tmp/batch-research/<provider>/capture.ts`, fill in the provider schema,
+`$BATCH_RESEARCH_CAPTURE_ROOT/<provider>/capture.ts` (a persistent directory outside any git checkout; the script refuses to run without the variable or with a root inside a repository), fill in the provider schema,
 identifier keys, and per-scenario requests, and run it with
 `infisical run … -- bun capture.ts <scenario>`. It must:
 
@@ -165,7 +167,7 @@ field-by-field — template:
 Fixtures generally ship in the same PR as the adapter/skin that consumes
 them (per [`batch-api-stacked-pr`](../batch-api-stacked-pr/SKILL.md)); the
 raw (pre-redaction) capture transcripts stay under
-`/tmp/batch-research/<provider>/` as working artifacts and are never
+`$BATCH_RESEARCH_CAPTURE_ROOT/<provider>/` as working artifacts and are never
 committed.
 
 For a new provider, the capture list comes from the

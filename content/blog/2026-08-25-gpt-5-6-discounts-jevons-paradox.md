@@ -1,6 +1,7 @@
 ---
 title: "GPT 5.6 Discounts & Jevons Paradox"
 date: "2026-08-25T00:00:00.000Z"
+updated: "2026-08-27T15:33:26.000Z"
 author: "OpenRouter"
 teaser: "OpenAI introduced large discounts on their new Terra and Luna models from July 27th through August 14th. What impact did these discounts have on token volumes, total spend, and the competition?"
 metaTitle: "GPT 5.6 Discounts & Jevons Paradox"

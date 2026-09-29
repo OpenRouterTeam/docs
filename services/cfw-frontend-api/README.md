@@ -34,17 +34,15 @@ graph TD
 | `/api/frontend/v1/apps/marketplace` | Apps marketplace datasets (per-dataset handlers: marketplace, category, app, app-rankings, ...) |
 | `/api/frontend/v1/author-models` | Models authored by a specific provider |
 | `/api/frontend/v1/author-page` | Author profile page data for the web author route (replaces the direct DB connection during SSR) |
+| `/api/frontend/v1/catalog/authors` | Author cards (slug, name, icon_uri) for repeated `?slug=a&slug=b`, read by the web compare pages and author OG image |
 | `/api/frontend/v1/catalog/endpoint` | Endpoint catalog entry |
 | `/api/frontend/v1/catalog/models` | Public model catalog (paginated, filterable) |
 | `/api/frontend/v1/catalog/providers` | Provider catalog entries |
 | `/api/frontend/v1/data-policy` | Data policies (ColoCache, public) |
-| `/api/frontend/v1/endpoints` | Global endpoints cache (KV-backed, sanitized) |
 | `/api/frontend/v1/image-proxy` | Proxied image fetching for model thumbnails |
 | `/api/frontend/v1/llms-full-txt-proxy` | LLMs.txt full proxy endpoint |
-| `/api/frontend/v1/models` | Global models cache (KV-backed, DB fallback) |
 | `/api/frontend/v1/models/find` | Model search with analytics enrichment |
 | `/api/frontend/v1/provider-filters` | Provider filter options for marketplace UI |
-| `/api/frontend/v1/providers` | Global providers cache (KV-backed, sanitized) |
 | `/api/frontend/v1/sdk-providers/catalog` | SDK provider catalog for rankings and mission-control |
 | `/api/frontend/v1/spawn-manifest` | Spawn manifest for worker orchestration |
 | `/api/frontend/v1/flag-checks` | Terminal ingest for the web app's first-party flag-check reporter — bounded anonymous (flag, value) counts land in ClickHouse; nothing involves Statsig |
@@ -100,7 +98,7 @@ graph TD
 | `src/routes/provider-dashboard/` | Provider-dashboard routes: 12 graph routes ported from Next.js API routes (aggregate stats, benchmark scores/comparison, model error rates, monthly report, list endpoints, test runs, latency/throughput/colo-request graphs) plus provider-info, get-endpoint, and endpoint capability/visibility management routes duplicated from cfw-api (with a shared endpoint test runner in `helpers/`) |
 | `src/routes/stats/` | ClickHouse-backed analytics routes for mission-control dashboards |
 | `src/routes/apps-marketplace/` | Apps marketplace dataset routes (per-dataset handlers via cachedStatsQuery) |
-| `src/kv/` | KV cache readers with FetchDeduper wrappers; includes `web-endpoints-cache.ts` and `benchmark-cache.ts` for KV-backed benchmark availability (5-min TTL + SWR) |
+| `src/kv/` | `catalog.ts` loads immutable model/endpoint/provider snapshots and pins one snapshot per request. Other KV data, such as benchmark availability, keeps its independent TTL cache. |
 | `src/middlewares/` | Env injection, edge cache, auth middleware |
 | `src/db/` | DB context initialization for fallback queries |
 

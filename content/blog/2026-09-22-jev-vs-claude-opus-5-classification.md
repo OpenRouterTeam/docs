@@ -1,6 +1,7 @@
 ---
 title: "Is Jev as Accurate as Frontier Models at Classification?"
 date: "2026-09-22T00:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "Kenny Rogers"
 category: "insights"
 metaTitle: "Is Jev as Accurate as Frontier Models at Classification?"

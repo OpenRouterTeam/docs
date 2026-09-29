@@ -1,6 +1,7 @@
 ---
 title: "New Audio APIs for Speech and Transcription"
 date: "2026-05-01T18:00:00.000Z"
+updated: "2026-07-07T18:59:52.000Z"
 author: "Jacky Liang"
 teaser: "Text-to-speech and transcription are now live on OpenRouter. Two new endpoints give you access to speech synthesis and audio transcription across multiple providers, under one API."
 headerImage:

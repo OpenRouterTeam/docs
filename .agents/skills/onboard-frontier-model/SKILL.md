@@ -1,6 +1,6 @@
 ---
 name: onboard-frontier-model
-description: Onboard a new frontier-lab text model (Anthropic Claude, Google Gemini, OpenAI GPT) — covers model ID enums, aliases and mapper families, provider configs (incl. Azure), adapter capability gating, new API params, docs, and the follow-up surfaces that are easy to miss. Use when a lab ships a new model or snapshot (e.g. "onboard claude-5-fable", "add gemini-3.5-flash", "onboard gpt-5.5").
+description: Onboard a new frontier-lab text model or snapshot (Anthropic Claude, Google Gemini, OpenAI GPT), covering model ID enums, aliases, provider configs incl. Azure, adapter gating, new API params, docs, and follow-up surfaces. Use when a lab ships a new model or snapshot.
 user-invocable: true
 ---
 
@@ -64,9 +64,12 @@ onboardings: #23456 (fable), #22274 (Opus 4.8), #21568 (Gemini 3.5 Flash),
 ### All labs
 
 - [ ] Add the permaslug to the model ID enum:
-  - Anthropic: `packages/models/id/anthropic.ts` (`AnthropicModel`, plus
-    `AnthropicReasoningModel`, structured-outputs list, automatic-caching list
-    as applicable)
+  - Anthropic: `packages/models/id/anthropic.ts` (`AnthropicModel`, plus the
+    structured-outputs / automatic-caching lists as applicable). The reasoning
+    format (`get-reasoning-format.ts`) keys off the `anthropic/` author prefix
+    minus a frozen pre-3.7 set (`emitsAnthropicThinking`), not an allowlist —
+    a launched snapshot must replay thinking through the Messages API before
+    its enum entry lands; keep it that way and never grow the frozen set.
   - Google: `packages/models/id/google.ts` (`GoogleGeminiModel`)
   - OpenAI: `packages/models/id/openai.ts` (`OpenAIResponsesModel` etc.)
 - [ ] Azure config if the model is served on Azure/Foundry:
@@ -147,6 +150,8 @@ The enum grep misses surfaces keyed on the dated permaslug string or an endpoint
   scoped to older snapshots must not leak onto the new one. The gating code
   gets refactored often, so read the current implementation rather than
   trusting this file.
+- [ ] A lab retiring a request shape on the new model (e.g. forced `tool_choice: required` / named tool, or budget-style thinking) is usually a DB gate, not code: `packages/routing/filters/by-tool-compatibility.ts` reads `endpoint.features.supports_tool_choice`, and `get-thinking-params.ts` downgrades budgets to adaptive from `reasoning_config.supports_reasoning_max_tokens`. Record the required endpoint-row flags in the PR's staging notes instead of adding a model-keyed set.
+- [ ] If the new model rejects `thinking: { type: 'disabled' }`, stage its endpoint rows with `is_mandatory_reasoning` (disabled reasoning then 400s, or coerces to the lowest effort on `~latest`) rather than remapping `disabled` to another mode. If it ships `thinking: { type: 'between_tools' }`, add it to `anthropicRequestFeatureSupport.thinkingBetweenTools` in `packages/models/id/anthropic.ts`.
 - [ ] Permaslug naming flipped to family-first for the 5.x line
   (`anthropic/claude-sonnet-5-<date>`, not `claude-5-sonnet-<date>`). Use the
   exact slug the announcement/DB gives; the model-mapper + alias map already
@@ -237,6 +242,7 @@ The enum grep misses surfaces keyed on the dated permaslug string or an endpoint
   `index.test.ts` iterates that map, so add the new pair's models and
   endpoints to its `modelsCache` / `endpointsCache` fixtures or the swap
   case fails with a missing endpoint.
+- [ ] Model-keyed request-feature allowlists in `openaiRequestFeatureSupport` (`packages/models/id/openai.ts`, e.g. `midConversationEffort`): decide per feature whether the new snapshot belongs. Pro siblings stay out of `midConversationEffort` (upstream 400s `configuration_update` on pro and tournament models). Efforts like `none` are a DB lever (`supported_reasoning_efforts`), not code.
 - [ ] Exhaustive per-model tests that must name the new enum entries:
   `packages/models/id/openai.test.ts` (prompt-cache breakpoint
   classification) and `packages/rate-limit/new-account-rate-limit.test.ts`
@@ -320,7 +326,12 @@ mid-session system, #22274):
   data. Mirror the prior sweep (#22420 → 4.8, #29997 → Opus 5). Leave
   untouched: captured fixtures/SSE payloads, version-specific behavior tests
   (model-mapper, speed router), the old model's own configs/alias decisions,
-  comments, and seeds.
+  comments, and seeds. Also leave the new-account rate-limit whitelist
+  (`packages/rate-limit/new-account-rate-limit.ts`) and decisions-router
+  candidates (`packages/routing/helpers/decisions-routing-config.ts`) for a
+  deliberate product call. Sites typed `satisfies Model` (playground
+  defaults) need the new permaslug in the ID enum first; for a lab whose
+  models are DB-only (xAI), the sweep is where that entry gets added.
 
 ## Verification
 

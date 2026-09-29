@@ -1,6 +1,7 @@
 ---
 title: "Guardrails: Protect your Agents, Data, and Costs"
 date: "2026-05-29T12:00:00.000Z"
+updated: "2026-09-24T23:03:15.000Z"
 author: "Cailee Moberg"
 teaser: "Configurable security and governance tools for budget enforcement, zero data retention, model and provider restrictions, prompt injection defense, and data loss prevention."
 headerImage:

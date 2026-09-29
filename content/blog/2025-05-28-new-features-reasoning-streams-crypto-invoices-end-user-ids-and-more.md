@@ -1,6 +1,7 @@
 ---
 title: "New Features: Reasoning Streams, Crypto Invoices, End-User IDs & More"
 date: "2025-05-28T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Stream reasoning summaries, protect your rate limits, pay with crypto, and lock down your keys—now all live on OpenRouter. "
 category: "announcements"

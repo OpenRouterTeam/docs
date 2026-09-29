@@ -1,6 +1,7 @@
 ---
 title: "Surpassing Frontier Performance with Fusion"
 date: "2026-06-12T00:00:00.000Z"
+updated: "2026-07-13T14:22:07.000Z"
 author: "Brian Thomas"
 teaser: "A panel of budget models, fused through OpenRouter, outscored GPT-5.5 and Claude Opus 4.8 on 100 complex research tasks."
 category: "announcements"

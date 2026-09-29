@@ -1,6 +1,7 @@
 ---
 title: "Image Generation Models Compared: Cost, Edit, Quality"
 date: "2026-09-18T00:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "Image Generation Models Compared: Cost, Edit, Quality"

@@ -46,9 +46,7 @@ that the tag values named in the query exist in that code.
   limit needs a stated reason because the default top-10 hides long tails.
 - Flag note panels that read as essays. They should be short descriptive
   sentences: what the metric counts and what an anomaly in it means.
-- Flag formulas with no explicit unit when the metric carries no unit in Datadog
-  metric metadata — set `number_format.unit` with a `custom_unit_label` so the
-  panel does not render bare numbers.
+- Flag a charted metric that carries no unit in Datadog metric metadata: the fix is a `datadog_metric_metadata` resource setting its `unit`, not a per-formula unit override. Flag per-formula unit overrides (`number_format.unit`, `custom_unit`, a module formula `unit`) unless the formula itself changes the unit, such as a nanosecond-to-millisecond division.
 
 ## Module not wired into the monitoring root
 
@@ -66,11 +64,34 @@ its baseline is known.
 
 A monitor whose message says it pages, or whose PR says it should, needs both `@oncall-engineers` in the message and `priority = 1` or `priority = 2` on the resource that notifies. `bun run check:monitor-paging` catches one without the other. Flag a `@oncall-<other>` handle (only the `Engineers` team has an escalation policy), a priority that disagrees with the severity the message claims, and a `priority` set on a gate or rate constituent instead of the composite that carries the message. See [README.md → Paging the on-call](./README.md#paging-the-on-call).
 
+## P1 or P2 monitor without human sign-off
+
+A PR that adds a `priority = 1` or `priority = 2` monitor, or raises an existing monitor to P1 or P2, must show that the requesting human explicitly agreed the monitor should be able to page someone at any hour within the P1/P2 response window. Flag the PR if its description does not name who agreed and where. An agent-authored PR approved only by the requesting human's general go-ahead does not count. Without the sign-off, ask for `priority = 3` or lower. See [AGENTS.md → Paging the on-call](./AGENTS.md#paging-the-on-call).
+
 ## Title does not describe the query
 
 A widget or monitor title must describe the grouping and metric its query
 actually uses. Calling a query grouped `by {config}` "by pool", or naming a
 resource for a replication leg it does not measure, is a defect.
+
+## Message or note does not match the query
+
+<!-- src: #37010 talos 2026-09-01 -->
+<!-- src: #30835 talos 2026-09-01 -->
+<!-- src: #40878 jamespsterling 2026-09-15 -->
+<!-- src: #42812 charlesrockhead-OR 2026-09-15 -->
+<!-- src: #43625 Cybourgeoisie 2026-09-16 -->
+<!-- src: #43413 jamespsterling 2026-09-23 -->
+
+Every piece of text that an operator reads must match the query and the code that it describes: the monitor message, the recovery and warning blocks, the file header comment, the dashboard description, and each note panel. When you widen a query, add a cause, or change a threshold, update that text in the same diff.
+
+Flag these kinds of out-of-date text:
+
+- A recovery block that names one column when the query also covers another, which points on-call at the wrong column.
+- A cause list that omits a branch that the code emits.
+- A value that the code doesn't produce, such as `batch_reconcile` for a message type that the code writes as `reconcile`.
+- A recovery condition that ignores the `warning` threshold. The `{{#is_recovery}}` block renders only when the monitor returns to OK, so the block must quote the warning threshold, not the critical threshold.
+- A description that uses a term that every panel title has dropped.
 
 ## No-op provider fields
 

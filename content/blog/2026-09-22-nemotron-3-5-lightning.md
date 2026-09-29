@@ -1,6 +1,7 @@
 ---
 title: "What Is Nemotron 3.5 Lightning"
 date: "2026-09-22T00:00:00.000Z"
+updated: "2026-09-24T18:03:21.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "What Is Nemotron 3.5 Lightning? Specs, Context, and API"

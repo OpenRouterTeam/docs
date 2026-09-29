@@ -1,6 +1,7 @@
 ---
 title: "Subagent: Let Your Model Delegate the Busywork"
 date: "2026-06-16"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Kenny Rogers"
 teaser: "The openrouter:subagent server tool lets a frontier model hand off self-contained tasks to a smaller, cheaper, faster worker model mid-generation. Summarize a doc, extract structured data, reformat text, all without burning frontier tokens."
 headerImage:

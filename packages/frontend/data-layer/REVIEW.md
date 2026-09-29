@@ -85,7 +85,7 @@ Flags for code using the shared data layer. This file is only the checklist
   component to every property and causes unnecessary rerenders.
 - An RSC `queryFn` that hand-writes `fetchInternalJsonApi` → `isErr` →
   `throw`, or builds its own `URLSearchParams` — the override is
-  `fetchServerAPIQuery(route, { searchParams, schema })` spread over the
+  `fetchServerAPIQuery<T>(route, { searchParams })` spread over the
   canonical options, and the failure path is the thrown `APIQueryError`
   that `dehydrate` drops.
 - `setQueryData` used to seed a server client from data fetched only for

@@ -1,6 +1,7 @@
 ---
 title: "Provider Variance: Introducing Exacto"
 date: "2025-10-21T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Chris Clark"
 teaser: "Does the same model perform differently across different providers? "
 headerImage:

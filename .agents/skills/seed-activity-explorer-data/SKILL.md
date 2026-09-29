@@ -1,6 +1,6 @@
 ---
 name: seed-activity-explorer-data
-description: Seed deterministic ClickHouse usage data for a specific Clerk user and workspace so Activity Explorer verification has predictable top-N, Other, granularity, and export data.
+description: Seed deterministic ClickHouse usage data for a Clerk user and workspace so Activity Explorer verification has predictable data.
 ---
 
 # Seed Activity Explorer data
@@ -80,6 +80,7 @@ read low.
 
 ## Verify Activity Explorer
 
+- **Profile charts have their own 5-minute cache.** `/api/frontend/v1/private/user-activity` (`services/cfw-frontend-api/src/routes/activity/user-activity/user-activity-handler.ts`) is cached per entity and target user. Seed before first opening `/settings/profile` or an org member profile. Changing the period only re-slices the fetched series, so an empty pre-seed response stays until the TTL expires.
 - Open `/activity/explore` after signing in.
 - **Freshly seeded numbers can look stale.** The analytics response is cached
   server-side per user and query for 5 minutes (1 minute for minute

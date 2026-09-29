@@ -1,6 +1,7 @@
 ---
 title: "Dinner is Served"
 date: "2026-06-11T16:00:00.000Z"
+updated: "2026-08-20T17:52:10.000Z"
 author: "Afzal Jasani"
 teaser: "Standardizing on one LLM is like everyone at the table ordering their own entree. The case for going family style with your AI, and the OpenRouter data showing teams already do."
 headerImage:

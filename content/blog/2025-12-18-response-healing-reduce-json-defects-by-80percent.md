@@ -1,6 +1,7 @@
 ---
 title: "Response Healing: Reduce JSON Defects by 80%+"
 date: "2025-12-18T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Alex Atallah"
 teaser: "Today we're launching Response Healing, a new feature on OpenRouter that automatically fixes malformed JSON responses from LLMs before they reach your application "
 headerImage:

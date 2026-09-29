@@ -1,6 +1,7 @@
 ---
 title: "Passkeys, DevEx Upgrades, and a New Guide for TypeScript Agents"
 date: "2025-05-22T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Secure your account with passkeys, explore provider slugs, and build agents faster with fresh docs. "
 category: "announcements"

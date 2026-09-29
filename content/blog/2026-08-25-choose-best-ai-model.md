@@ -1,6 +1,7 @@
 ---
 title: "How to Choose the Best AI Model (Live, in Your Editor)"
 date: "2026-08-25T00:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "OpenRouter"
 category: "tutorials"
 metaTitle: "How to Choose the Best AI Model (Live, in Your Editor)"

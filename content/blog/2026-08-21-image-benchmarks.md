@@ -1,6 +1,7 @@
 ---
 title: "Image Benchmarks: See the Capabilities of Every Model"
 date: "2026-08-21T00:00:00.000Z"
+updated: "2026-09-03T14:40:53.000Z"
 author: "Brian Thomas"
 teaser: "We ran 39 image models through 15 deliberately hard prompts and put every result on one page. Compare fill levels, finger counts, poster text, and edits side by side, with the price and generation time under each image."
 category: "announcements"

@@ -1,6 +1,7 @@
 ---
 title: "May Release Spotlight"
 date: "2026-06-01T00:00:00.000Z"
+updated: "2026-07-13T14:22:07.000Z"
 author: "Nick Livermore"
 teaser: "Speech and transcription APIs, Model Fusion, private models, enterprise workspace controls, and 20 new model launches including Gemini 3.5 Flash and Claude Opus 4.8."
 headerImage:

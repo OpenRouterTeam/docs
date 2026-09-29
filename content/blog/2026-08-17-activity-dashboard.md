@@ -1,6 +1,7 @@
 ---
 title: "Understand your AI usage: every agent, model, and request"
 date: "2026-08-17T00:00:00.000Z"
+updated: "2026-08-20T17:52:10.000Z"
 author: "Cailee Moberg"
 teaser: "See what your team spent on every model, save the charts you keep rebuilding, click any bar to land in the logs behind it, and query the same data from your terminal with the Analytics API."
 headerImage:

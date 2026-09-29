@@ -1,6 +1,7 @@
 ---
 title: "Agent SDK: Building Multi-turn Agent Workflows on OpenRouter"
 date: "2026-04-24T12:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Brian Thomas"
 teaser: "The OpenRouter Agent SDK gives you callModel: one function that turns a chat completion into a multi-step agent with tool calls, stop conditions, and cost tracking across 400+ models."
 headerImage:

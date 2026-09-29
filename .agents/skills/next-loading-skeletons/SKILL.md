@@ -29,6 +29,7 @@ Skip it when:
 - A parent route group already provides an adequate loading state
 - The page is so fast that a skeleton would flash and feel worse
 - The route is gated (feature flag, `notFound()`) — resolve the gate in the segment's `layout.tsx`; a `loading.tsx` fallback streams to an ungated visitor before `page.tsx`'s gate resolves
+- The route is prerendered and sits at the top of the LCP path (e.g. the landing page): a boundary above it delays the hero paint by React's ~300 ms Fizz boundary-reveal throttle even though nothing streams. Coverage is asserted by `app/[locale]/route-loading-coverage.test.ts`.
 
 ## Choosing a Loading Strategy: Skeleton vs Spinner
 
@@ -115,13 +116,13 @@ function WorkspaceTableSkeleton(): React.JSX.Element {
 When the content area has variable dimensions, keep it simple:
 
 ```tsx
-import { Loader2 } from 'lucide-react';
+import { Spinner } from '@openrouter-monorepo/frontend/components/ui/Spinner';
 
 export default function PageLoading(): React.JSX.Element {
   return (
     <DashboardPage title='Activity'>
       <div className='flex items-center justify-center py-12'>
-        <Loader2 className='size-6 animate-spin text-muted-foreground' />
+        <Spinner className='size-6 text-muted-foreground' />
       </div>
     </DashboardPage>
   );

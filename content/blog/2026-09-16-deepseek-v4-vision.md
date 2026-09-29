@@ -1,6 +1,7 @@
 ---
 title: "Does DeepSeek V4 Have Vision?"
 date: "2026-09-16T00:00:00.000Z"
+updated: "2026-09-22T13:47:37.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "Does DeepSeek V4 Have Vision? Image Input by Model"

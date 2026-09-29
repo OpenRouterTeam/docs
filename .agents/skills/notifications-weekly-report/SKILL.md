@@ -1,287 +1,87 @@
 ---
 name: notifications-weekly-report
 description: >-
-  Weekly metrics report for the notifications feature. Produces one table, a row
-  per alert policy and destination with active users, alert events and delivery
-  outcomes, and posts one Slack message into #weekly-product-insights
-  (C0BS9CC9PQD).
+  Weekly metrics report for the notifications feature. Produces a seven-day
+  delivery table and a right-now configuration snapshot, then posts one Slack
+  message into #weekly-product-insights (C0BS9CC9PQD).
 user-invocable: true
 ---
 
 # Notifications Weekly Report
 
-One table, one row per alert policy and destination:
+Runs Mondays at 9:00 America/New_York. Post one head message and one thread reply, no attachments, to `#weekly-product-insights` (`C0BS9CC9PQD`). Cover the last 7 complete UTC days against the 7 before them. Manual runs accept `--end` (exclusive UTC date) and a different channel.
 
-| alert policy | destination | active users | alert events (per policy) | delivered | failed |
+## Rules
 
-`active users` is a state count per entity; the other three are event counts.
-They sit in one row for reading, but they are not a funnel and do not divide
-into each other.
+- Read-only. Never commit report output.
+- Derive dates from the run date. Never include a partial day.
+- Report the numbers the script produces. If two totals disagree, state the gap instead of reconciling it.
+- A prior-week zero is not a percentage: write "no comparable traffic last week". Do not quote a week-over-week change across an instrumentation change.
+- An empty result is not a zero until you confirm the facet exists on the queried line.
+- No destination data: no endpoint URLs, tokens, response bodies, or raw errors. Only policy, channel, `failure_reason`, and counts.
+- Credits-low and credit-expiration are out of scope.
 
-This runbook is the versioned definition of the report. The Devin automation's
-prompt invokes this skill; keep them in sync when the procedure changes.
+## What each number means
 
-## Cadence & delivery
+- **Alert events**: distinct `alert_key` per policy. Not the sum of delivered and failed.
+- **Delivered / failed**: final per-destination outcomes; `failed` excludes `should_retry:true` attempts. On a bulk notice one line is one tenant, never one email.
+- **Configured**: `max:openrouter.alert_policy.active_entities` by `policy_key`, `channel`, `scope_type`, at run time. Not part of the seven-day window. Never use `enabled_entities`.
+- **Tenant-alert publications**: distinct `dedup_key` on `alert-delivery:event-outcome`. Thread reply only.
+- **Retried alerts**: distinct `dedup_key` on `should_retry:true` failed lines.
 
-- **Schedule:** weekly, Monday 9:00 America/New_York, via the Devin
-  automation **Weekly notifications report**, covering the last 7 complete UTC
-  days against the 7 before them.
-- **Slack footprint:** one head message and exactly one thread reply in
-  `#weekly-product-insights` (`C0BS9CC9PQD`), with no attachments.
-- **Manual runs:** accept an end-date override (`--end`, exclusive UTC boundary)
-  and a Slack-channel override.
-
-## Required access
-
-- **Datadog** (US5, `DD_API_KEY` / `DD_APP_KEY`) — `service:alert-delivery` logs
-  for the event and delivery columns, `openrouter.alert_policy.*` gauges for
-  active users. Log retention caps raw-log history at ~15 days; metric history is
-  longer.
-- Both keys live in Infisical `/services/cfw-api` and are logs/query-scoped —
-  enough for every query here, not enough to write a dashboard. The automation
-  environment injects them; when it does not, read them from Infisical rather
-  than asking for a credential:
-  `infisical secrets get DD_API_KEY --env=dev --path=/services/cfw-api --plain`
-  (the repo-root `.infisical.json` supplies the project). A non-interactive run
-  needs a universal-auth token first — see [Secret Management](../../../AGENTS.md#secret-management).
-
-## Guardrails
-
-- **Read-only.**
-- **Do not commit report output.** Only this skill and its scripts live in the
-  repo.
-- **Derive dates from the run date**, never hardcode them, and never mix a
-  partial day into an average or a week-over-week comparison.
-- **Credits-low and credit-expiration notifications are out of scope** — they
-  belong to PLA-1210.
-- **No destination data in the report.** No endpoint URLs, encrypted
-  destinations, Slack tokens, response bodies or raw errors: policy, channel,
-  `failure_reason` and counts only.
-- **State the numbers the scripts produce.** If two totals disagree, report the
-  gap instead of reconciling it silently.
-- **Never quote a week-over-week change across an instrumentation change.** If a
-  series starts, stops or steps inside the window, report levels and say the
-  baseline is partial.
-- **An empty result from a mismatched query is not a zero.** Confirm the facet
-  exists on the line being queried before reporting absence.
-
-## Definitions
-
-- **Destination** — `webhook`, `slack` or `email`, the delivery channel. Webhook
-  and Slack destinations are `alert_delivery_endpoints` rows; email has no
-  endpoint row and is addressed from the account.
-- **Active users** — entities entitled to the policy, with it enabled, **and**
-  with a destination that would actually receive the alert: at least one active
-  endpoint of that type for webhook and Slack, a deliverable address for email.
-  Enabled-but-undeliverable does not count.
-- **Alert events** — the number of distinct alerts the policy produced in the
-  window, measured as the cardinality of `dedup_key` on the
-  `alert-delivery:event-outcome` lines. It is **not** the sum of
-  `delivered_count` and `failed_count`: those are per-endpoint outcome
-  counters, so they count a fanned-out alert repeatedly and count a
-  republished alert repeatedly. The event line carries aggregate counters
-  (`delivered_count`, `failed_count`, `skipped_count`, `errored_count`,
-  `eligible_endpoint_count`, `policy_subscribed_endpoint_count`,
-  `circuit_open_count`), and has no `outcome` field or `channel` field. Because
-  there is no channel, the alert-event figure is per policy and repeats across
-  that policy's destination rows. Datadog cardinality is approximate at large
-  volumes.
-- **Delivered / failed** — final outcomes of the per-endpoint delivery attempts,
-  one `alert-delivery:delivered` or `alert-delivery:failed` line each. Per
-  endpoint, not per alert event, so they exceed the event count when a policy
-  fans out.
-- Payload facets: `@data.jsonPayload.extra.policy_key`, `.channel`,
-  `.failure_reason`, `.endpoint_id`, `.outcome_scope`, `.is_test`.
+The script excludes test sends (`test:` `dedup_key` prefix, see [PLA-1694](https://linear.app/openrouter/issue/PLA-1694)) and per-email `outcome_scope:batch` lines.
 
 ## Steps
 
-1. **Fetch the data** — run
-   `python3 scripts/fetch_notifications.py --out <workdir>` (add `--end` for a
-   manual override). It writes `<workdir>/notifications.json` with every column
-   for both windows. Expect a few minutes of paced Datadog calls.
+1. **Fetch.** `DD_API_KEY` / `DD_APP_KEY` (US5) live in Infisical at `/services/cfw-api`. If the automation has not injected them, inject them without printing:
 
-   Active users, `POST /api/v2/query/timeseries` per window, last point of each
-   series:
-
-   ```text
-   sum:openrouter.alert_policy.active_entities{*} by {policy_key,channel}
+   ```bash
+   WORKDIR=$(mktemp -d)
+   source scripts/infisical/agent-auth.sh && infisical_auth \
+     && infisical_run /services/cfw-api python3 .agents/skills/notifications-weekly-report/scripts/fetch_notifications.py --out "$WORKDIR"
    ```
 
-   Delivered, `POST /api/v2/logs/analytics/aggregate` per window, grouped by
-   `policy_key` and `channel`, with `count` and `cardinality` of `endpoint_id`.
-   Failed uses the same grouping plus `failure_reason`. Both use the
-   `DELIVERY_QUERY` filter below:
+   Output: `$WORKDIR/notifications.json`. Takes a few minutes. On a group-by-limit abort, raise that limit (keep the product under 10,000) and re-run. It marks the snapshot unavailable if a gauge sample is older than three hours.
 
-   ```text
-   service:alert-delivery ("alert-delivery:delivered" OR "alert-delivery:failed")
-     -@data.jsonPayload.extra.outcome_scope:batch
-     -@data.jsonPayload.extra.dedup_key:test\:*
-   ```
+2. **Check** before posting:
+   - Failure-reason totals and channel totals both equal the failed total.
+   - Every policy in `alert_events_by_policy` has a table row. If not, name it: if it is in `retried_alerts_by_policy`, it had retries but no final outcome within the window; otherwise it had no delivery attempts.
+   - If `retried_alerts_by_policy` is non-zero, check the `[Alert Delivery] DLQ has undelivered messages` monitor for the window. If it fired, say in the thread that dead-lettered alerts are missing from `failed`.
+   - If `zero_delivery_counter_events_by_policy` is non-zero, say in the thread that the policy's alert-event count is a lower bound.
+   - Before calling zero deliveries on a configured row a gap, check `eligible_endpoint_count` on that policy's `event-outcome` lines.
+   - Before calling a quiet notice week a delivery problem, check `gcp-model-dep-alert-producer` in GCP Cloud Logging (`openrouter-core`).
 
-   Datadog drops log rows missing a group-by facet, so group each facet only on
-   lines that carry it.
+3. **Post** in raw Slack mrkdwn per [slack-mrkdwn](../slack-mrkdwn/SKILL.md), and run its sanity check. Fill only the bracketed slots in the templates; bold is single `*`, never `**`. Counts of 1,000 or more take a thousands separator. The head message stays under ~2,000 characters and the reply under ~4,000.
 
-   Alert events, grouped by `policy_key`, with cardinality of `dedup_key`:
+   Head message:
 
-   ```text
-   service:alert-delivery "alert-delivery:event-outcome"
-     -@data.jsonPayload.extra.is_test:true
-   ```
+   1. `*:bar_chart: Notifications · <Mon D>–<Mon D>, <YYYY>*`
+   2. `:envelope: <N> alert events <trend> · :white_check_mark: <N> delivered <trend> · :x: <N> failed <trend>`, where `<trend>` is `:chart_with_upwards_trend: +<P>%`, `:chart_with_downwards_trend: -<P>%`, or `(unchanged)`.
+   3. A delivery table in a code block, with the policy and events cells printed only on each group's first row. Omit rows that are all zero.
 
-2. **Reconcile** — before posting anything: the failure-reason totals and the
-   channel totals each sum to the window's failed attempts. Per-endpoint
-   outcomes are at least the alert-event count and exceed it whenever a policy
-   fans out or an event is republished. Compare the event total in
-   `notifications.json`'s `alert_events_by_policy` against the table's alert-event
-   column and state any policy that appears only in the former, because a policy
-   with alert events but no delivery attempts has no destination row.
-
-3. **Post** — send exactly one head message followed by exactly one thread reply
-   in Slack mrkdwn. The automation session's first response is the top-level
-   channel message:
-
-   1. A bold title line, rendered exactly as this template:
-      `*:bar_chart: Notifications · <Mon D>–<Mon D>, <YYYY>*`
-      One asterisk each side: Slack mrkdwn bold is `*bold*`, and a `**bold**`
-      line posts as literal asterisks — the posting path does not translate
-      Markdown. Nothing else goes on that line: no `weekly`, no `(UTC)`, and no
-      `vs <prior window>` suffix. The prior window is named in the thread
-      reply's title instead.
-   2. A one-line KPI strip, rendered exactly as this template:
-      `:envelope: <N> alert events <trend> · :white_check_mark: <N> delivered <trend> · :x: <N> failed <trend>`
-      where `<trend>` is `:chart_with_upwards_trend: +<P>%` for a rise,
-      `:chart_with_downwards_trend: -<P>%` for a fall, and `(unchanged)` when
-      the prior week is comparable and the value did not move. A KPI with no
-      comparable prior week says so in words in place of the percentage. Never
-      write the strip as prose without the emoji.
-   3. The policy/destination table in a triple-backtick block, plain
-      space-separated columns with a hyphen rule under the header, no box-drawing
-      characters. Left-align the label columns, right-align the number columns,
-      pad each column to its widest cell, and separate columns by two spaces.
-      Keep the header words short so the widest line stays at or under ~72
-      characters, since a wider block wraps in Slack on a narrow view.
-
-      Group the rows by policy and never repeat a value down a group: the policy
-      name and its alert-event count are printed once, on the group's first row,
-      and left blank on the rest. Alert events sit next to the policy because
-      they are a per-policy figure, not a per-destination one — printing the same
-      number against every destination reads as if each destination had its own
-      events.
-
+      ```text
+      policy                events  dest     delivered  failed
+      --------------------  ------  -------  ---------  ------
+      budget-limit               3  email            3       0
+                                    webhook          0       1
       ```
-      policy                events  dest     active users  delivered  failed
-      --------------------  ------  -------  ------------  ---------  ------
-      api-key-budget-limit       1  email               4          1       0
-                                    slack               0          0       0
-      budget-limit               4  email               8          4       0
-                                    webhook             2          0       0
-      model-deprecated           0  email           2,922          0       0
-      ```
-   4. One line defining the columns, so a reader who has never seen the report
-      knows what it counts, rendered exactly as this template:
-      ``What these count: `alert events` is alerts the policy produced, `delivered` and `failed` are per-destination send attempts for them, and `active users` is how many entities have that policy enabled with a destination that could receive it right now.``
-   5. One closing sentence naming the single thing that actually changed this
-      week and ending with `detail in the thread`.
 
-   The session's next message is the thread reply:
+   4. `Configuration snapshot · now`, then a code block with the columns `policy  dest  scope  configured`, in JSON order. Omit rows where `configured` is 0.
+   5. ``_events = distinct alerts · delivered/failed = final outcome per destination (per tenant on bulk notices) · configured = can receive it now_``
+   6. The single biggest change in at most 15 words, ending with `· detail in thread`.
 
-   1. A bold line:
-      `*Detail · Notifications, <this window> vs <prior window>*`.
-   2. Hyphen bullets for week-over-week movement per policy and destination.
-   3. A triple-backtick block for the failure breakdown by policy, channel and
-      `failure_reason`, omitting entries with no data.
-   4. A `Caveats:` paragraph containing only the gaps that apply this week,
-      including the test-button caveat and [PLA-1694](https://linear.app/openrouter/issue/PLA-1694)
-      whenever failures could not be filtered at the attempt level.
-   5. If the head message needs correction, state it plainly in the reply.
+   Keep each code block's lines at or under ~72 characters: left-align the labels, right-align the numbers, and separate columns with two spaces.
 
-   Slack mrkdwn only: `*bold*` with one asterisk each side, `_italic_`,
-   backticks for inline code, hyphen bullets, `<url|label>` links. Double
-   asterisks, `#` headers and Markdown tables all post as literal characters —
-   Jacky flagged exactly that on the first run. No attachments. Keep the head
-   message under ~2000 characters and the reply under ~4000 characters.
+   Thread reply:
 
-## Specifications
+   1. `*Detail · Notifications, <this window> vs <prior window>*`
+   2. `•` bullets with week-over-week movement per policy and destination.
+   3. A code block with failures by policy, channel, and `failure_reason`, if there are any.
+   4. `Caveats:` listing only the gaps that apply this week, always including the test-send caveat with PLA-1694.
+   5. A plain correction if the head message was wrong.
 
-- 7 complete UTC days versus the 7 before; partial days never appear.
-- One head message and exactly one thread reply generated from freshly fetched data.
-- One row per policy and destination.
-- The head-message table uses plain space-separated columns, and its widest line
-  stays at or under ~72 characters. The active-users column header reads
-  `active users`, never `active`. Column order is policy, events, dest, active
-  users, delivered, failed, with the policy and events cells blank on a group's
-  continuation rows.
-- The head message defines its columns in one line under the table. A reader who
-  has never seen the report should not have to ask what a column counts.
-- Counts of four or more digits carry a thousands separator (`2,922`, never
-  `2922`), in the KPI strip and in the table.
-- A row is absent when alert events, delivered, failed and known active users are
-  all zero; retain it when active users are `"unavailable"`.
-- Delivered and failed are per endpoint. Never present them as a count of alerts
-  or of users notified.
-- A destination row's active users and its alert-event figure can describe
-  different entities: active users and delivery outcomes are per destination,
-  while the event figure covers the whole policy group even though the table
-  prints it once, on the group's first row. Zero deliveries on a row with active
-  users is therefore not a delivery gap on its own. Before reporting one, query
-  that policy's `alert-delivery:event-outcome` lines and read
-  `eligible_endpoint_count` per event: it is per event, so
-  `notifications.json` does not carry it.
-- Every reported metric carries its week-over-week change or states why it has
-  none.
+## Known gaps
 
-## Data gaps to state
-
-- **`active users` comes from the evaluator gauge.** The report sums
-  `openrouter.alert_policy.active_entities` across `scope_type`, grouped by the
-  gauge's `policy_key` and `channel` tags. Its channel values are `email`,
-  `webhook` and `slack`, the same values used by the delivery logs. Do not
-  substitute `enabled_entities`, which counts entities with no working
-  destination. That sum assumes each policy declares one scope; if a policy
-  declares both tenant and api-key scopes, group by `scope_type` instead because
-  an entity configured at both scopes is counted once per scope.
-- **Test sends in delivery counts.** Per-endpoint `delivered`/`failed` lines
-  have no `is_test` marker, so the filter excludes test sends by `dedup_key`
-  prefix. Every test send the frontend publishes carries the `test:` prefix, so
-  the filter is exact today and rests on that convention: if a test path ever
-  publishes a differently shaped key, its sends count as customer traffic until
-  the filter is updated. [PLA-1694](https://linear.app/openrouter/issue/PLA-1694)
-  replaces the convention with an attempt-level marker.
-- **Producer-gated dry runs.** `model-deprecated` and `model-price-drop`
-  publication is disabled in production: both flags are `"false"` in
-  `services/gcp-model-dep-alert-producer/infra/cloud-run.tf`, so zero alert
-  events are configuration-driven rather than adoption evidence. Report their
-  event levels when non-zero, never read their absence as an adoption signal,
-  and remove this caveat when the flags flip.
-- Delivery attempts also produce an aggregate `outcome_scope:batch` failure line
-  per email batch. Exclude it from per-endpoint aggregation, as the monitors do.
-- A policy with alert events but no delivery attempts has no destination row and
-  is therefore absent from the table. Suppression (`policy_disabled`, no eligible
-  endpoint) looks identical to no traffic. Compare the event total in
-  `notifications.json` against the table's alert-event column and state any
-  policy that only appears in the former.
-- The fetch aborts rather than publishing if any group-by limit is reached. Raise
-  the corresponding limit while keeping the product under 10,000, then re-run.
-- Datadog log retention bounds raw execution history at ~15 days. The
-  `alert_delivery.attempt` / `.failure` log metrics carry `policy_key` and
-  `channel` since #39390, so per-policy history outlives the log window from
-  that point forward, but earlier weeks are not backfillable.
-- No endpoint-to-tenant inventory in the warehouse, so the report says what
-  happened to deliveries, not how many destinations exist.
-- **Render the head templates literally.** Fill only the bracketed slots in the
-  title, KPI strip and column-definition line. Rewording any of them into prose,
-  dropping a thousands separator, or bolding with double asterisks is drift from
-  this spec.
-
-## Advice and pointers
-
-- Delivery logs are `service:alert-delivery` with the payload under
-  `@data.jsonPayload.extra.*`.
-- Datadog log analytics rate-limits aggressively; the fetcher paces and retries,
-  so let it run rather than issuing the queries by hand in parallel.
-- A log aggregation is rejected when the group-by limits multiply past 10,000
-  combinations. Policy and channel are both bounded, so keep the per-facet limit
-  small.
-- The log metrics outlive the logs, so a metric day total can exceed what the log
-  query returns. Check the metric daily series before calling any weekly number a
-  rate — one incident day can be the whole history.
+- Datadog keeps raw logs for about 15 days.
+- A policy suppressed before delivery (`policy_disabled`, no eligible endpoint) looks the same as no traffic.
+- There is no endpoint-to-tenant inventory, so the report describes deliveries, not how many destinations exist.

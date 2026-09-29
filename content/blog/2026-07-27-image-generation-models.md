@@ -1,6 +1,7 @@
 ---
 title: "Image Generation Models: Choosing One, Fixing Errors"
 date: "2026-07-27T00:00:00.000Z"
+updated: "2026-09-24T19:10:57.000Z"
 author: "OpenRouter"
 category: "tutorials"
 metaTitle: "Image Generation Models: Choosing One, Fixing Errors"

@@ -1,6 +1,7 @@
 ---
 title: "When Zero Means Zero"
 date: "2026-06-24T16:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "Afzal Jasani"
 teaser: "Everyone has a different view on Zero Data Retention. The confusion is real, and vendors aren't rushing to clarify. Here's what ZDR actually means and how OpenRouter enforces it."
 category: "insights"

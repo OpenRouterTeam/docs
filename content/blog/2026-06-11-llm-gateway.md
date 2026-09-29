@@ -1,6 +1,7 @@
 ---
 title: "What Is an LLM Gateway? The Missing Layer Between Your App and AI Models"
 date: "2026-06-11T16:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "LLM Gateway: What It Is and How to Choose One"

@@ -1,6 +1,7 @@
 ---
 title: "Agentic AI Governance: Your API Key Is a Guardrail"
 date: "2026-06-15T16:00:00.000Z"
+updated: "2026-09-24T23:03:15.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "How to Enforce Agentic AI Governance at the API Layer"

@@ -45,6 +45,27 @@ Do not report integration proof when database setup was unavailable.
 
 Follow `local-dev-env` and `testing-byok-page` for local web, cfw-api, cfw-frontend-api, dev-fs-logs and Postgres. Use the seeded Clerk test account. Confirm the provider list loads and the migration is applied as nullable, with existing rows NULL. A locally applied older boolean migration must be reset/reapplied through the DB scripts; its previous NOT NULL false default is not the tri-state schema.
 
+### Public management API only
+
+For `/api/v1/byok` CRUD checks, a seeded Postgres and standalone `cfw-public-api` worker suffice when requests do not resolve model allowlists. This does not verify inference routing or the frontend. The seeded management credential is `sk-or-v1-provisioningkey` (`scripts/sync-clerk.ts`); confirm it is enabled and `GET /api/v1/workspaces` resolves an active workspace before testing.
+
+From `services/cfw-public-api`, a focused local launch is:
+
+```bash
+bunx wrangler dev --port 8795 --inspector-port 0 \
+  --persist-to ../../.wrangler/shared-state --minify=false \
+  --var OR_ENV:development \
+  --var PROVIDER_ENCRYPTION_KEY:$(printf '%s' 0123456789abcdef0123456789abcdef | base64)
+```
+
+The encryption key above is test-only, matching CI; do not use it with real provider credentials. Use synthetic provider-key strings and delete only the fixtures created by the run. Bare Wrangler does not automatically inherit the shell's provider encryption secret; check `.dev.vars` or explicit bindings before diagnosing a create 500. Full Tilt remains appropriate for UI/routing checks. An absent local telemetry collector can produce exporter warnings without preventing CRUD; report telemetry as untested rather than API evidence.
+
+Capture sanitized HTTP requests and complete status/body responses. Cover POST omitted/null/true/false, GET each, name-only PATCH from every state, PATCH transitions and explicit null clearing, invalid string/number inputs on both write routes, and list field presence/type for every returned item. After invalid writes, verify the persisted value and list count are unchanged.
+
+## Devin Secrets Needed
+
+Public-API-only CRUD with the seeded database and test encryption key needs no external secret. For the full stack, see `local-dev-env` for `INFISICAL_CLIENT` and `INFISICAL_SECRET`, and `clerk-dev-signin-token` for UI authentication.
+
 ## Browser walkthrough
 
 1. Open a provider's BYOK page and expand an existing undeclared key. Under Provider agreement, **Use OpenRouter's default** is selected. No declaration badge appears. Saving an unrelated edit omits `payload.declared_zdr`.

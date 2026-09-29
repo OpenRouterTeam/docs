@@ -1,6 +1,7 @@
 ---
 title: "Announcing Video Generation"
 date: "2026-04-15T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "OpenRouter"
 teaser: "Video generation is now live on OpenRouter. One API gives you access to the top video models."
 headerImage:

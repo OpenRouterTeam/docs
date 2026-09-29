@@ -1,6 +1,7 @@
 ---
 title: "April Release Spotlight"
 date: "2026-04-30T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Brian Thomas"
 teaser: "Video generation, workspaces, an agent SDK, reranker models, and a wave of frontier model launches."
 headerImage:

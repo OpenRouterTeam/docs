@@ -1,6 +1,7 @@
 ---
 title: "Holiday launches: Web Search & Price Cuts"
 date: "2024-12-24T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Web search is available for free in the OpenRouter Chatroom. "
 category: "announcements"

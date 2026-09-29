@@ -1,6 +1,7 @@
 ---
 title: "OpenRouter is Joining Stripe"
 date: "2026-08-19T00:00:00.000Z"
+updated: "2026-08-19T17:26:46.000Z"
 author: "OpenRouter"
 teaser: "Today, we are excited to announce that we are joining forces with Stripe, to power the next wave of GDP growth globally."
 category: "announcements"

@@ -33,7 +33,7 @@ Use when the provider's `/v1/models` endpoint is public and returns `{ data: [..
 
 ```ts
 import { ProviderName } from '@openrouter-monorepo/enums/providers';
-import { z } from '@openrouter-monorepo/type-utils/zod';
+import { z } from '@openrouter-monorepo/lib-zod';
 import {
   StandardModelDataSchema,
   StandardMonitor,
@@ -67,7 +67,7 @@ Use when the provider requires an API key (most providers).
 
 ```ts
 import { ProviderName } from '@openrouter-monorepo/enums/providers';
-import { z } from '@openrouter-monorepo/type-utils/zod';
+import { z } from '@openrouter-monorepo/lib-zod';
 import { getAuthorizationHeaders } from '../../classes/base/utils';
 import { StandardModelDataSchema, StandardMonitor } from '../../classes/standard';
 
@@ -102,7 +102,7 @@ Use when the provider's API does not return `{ data: [...] }` (e.g., returns `{ 
 
 ```ts
 import { ProviderName } from '@openrouter-monorepo/enums/providers';
-import { z } from '@openrouter-monorepo/type-utils/zod';
+import { z } from '@openrouter-monorepo/lib-zod';
 import { getAuthorizationHeaders } from '../../classes/base/utils';
 import { StandardModelDataSchema, StandardMonitor } from '../../classes/standard';
 
@@ -230,6 +230,8 @@ export function getProviderMonitors(): ProviderMonitor[] {
 ### 6. Add the API key environment variable (if auth required)
 
 If the provider requires authentication, add the API key to the providers env type at `packages/providers/env.ts` (within `ProvidersEnv`). The key name should follow the pattern `${UPPER_SNAKE_CASE_PROVIDER}_API_KEY`. This env type is already composed into `ProviderMonitorsEnv` via `packages/provider-monitors/env.ts`, so no changes are needed there.
+
+If the provider already has a key mapped in `packages/providers/configs/api-key.ts`, use Template B with that key. Pin the header with a colocated test like `packages/provider-monitors/configs/assemblyai/index.test.ts` (`ensureEnv(MOCK_ROUTER_ENV)` then assert `opts.getHeaderMap()`).
 
 ### 7. (Optional) Add `vendor.test.ts`
 

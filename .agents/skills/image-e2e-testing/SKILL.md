@@ -47,6 +47,15 @@ authorization headers in evidence.
    curl -fsS http://localhost:${CFW_IMAGE_API_PORT:-8797}/api/v1/images/models
    ```
 
+   A healthy worker still returns `404 {"error":{"message":"Catalog artifact unavailable"}}`
+   from `/models` until the `modality_image` KV artifact exists. Outside Tilt, populate it by
+   also running `cfw-api` and `cfw-internal` (`WRANGLER_INSPECTOR_PORT=0 bun run dev cfw-api cfw-internal
+   cfw-image-api dev-fs-logs`) and triggering the catalog cron with
+   `curl "http://localhost:8794/__scheduled?cron=*/5+*+*+*+*"`. That warmer
+   needs local ClickHouse up (`docker compose -f packages/clickhouse/docker-compose.yaml up -d`);
+   without it `warmKVModelsAndEndpoints` fails on the endpoint perf query and writes nothing.
+   Reads are cached for 60s, so re-check `/models` after a minute rather than re-triggering.
+
 4. Record model slug, endpoint ID, provider model ID, adapter, pricing strategy, and expected
    image capability fields.
 

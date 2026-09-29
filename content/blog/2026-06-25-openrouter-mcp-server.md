@@ -1,6 +1,7 @@
 ---
 title: "The OpenRouter MCP Server"
 date: "2026-06-25T00:00:00.000Z"
+updated: "2026-07-10T17:11:18.000Z"
 author: "OpenRouter"
 teaser: "Connect your coding agent to OpenRouter's live model catalog, benchmarks, docs, and test inference, all without leaving your editor."
 category: "announcements"

@@ -1,0 +1,19 @@
+# DataRegion
+
+The data region this generation was routed through: 'global', 'europe', or 'us'.
+
+## Example Usage
+
+```typescript
+import { DataRegion } from "@openrouter-monorepo/management-sdk-generated/models";
+
+let value: DataRegion = "global";
+
+// Open enum: unrecognized values are captured as Unrecognized<string>
+```
+
+## Values
+
+```typescript
+"global" | "europe" | "us" | Unrecognized<string>
+```

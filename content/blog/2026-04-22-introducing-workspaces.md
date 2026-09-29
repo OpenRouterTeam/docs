@@ -1,6 +1,7 @@
 ---
 title: "Introducing Workspaces"
 date: "2026-04-22T12:00:00.000Z"
+updated: "2026-07-22T23:09:00.000Z"
 author: "OpenRouter"
 teaser: "Organize your OpenRouter projects into separate environments, each with its own API keys, routing defaults, guardrails, and observability."
 headerImage:

@@ -1,6 +1,7 @@
 ---
 title: "How to Connect SillyTavern to OpenRouter (2026 Guide)"
 date: "2026-06-18T15:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "OpenRouter"
 category: "tutorials"
 metaTitle: "Connect SillyTavern to OpenRouter: Setup, Models, Fixes"

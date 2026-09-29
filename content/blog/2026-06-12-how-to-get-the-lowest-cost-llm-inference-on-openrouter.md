@@ -1,6 +1,7 @@
 ---
 title: "How to Get the Lowest-Cost LLM Inference on OpenRouter"
 date: "2026-06-12T16:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "OpenRouter"
 category: "tutorials"
 metaTitle: "Lowest-Cost LLM Inference: The Complete OpenRouter Guide"

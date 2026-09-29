@@ -1,6 +1,7 @@
 ---
 title: "January Release Spotlight"
 date: "2026-01-09T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "OpenRouter"
 teaser: "Prioritize fast LLMs, explore providers, customize the auto router, load skills in the SDK, and big performance improvements. "
 headerImage:

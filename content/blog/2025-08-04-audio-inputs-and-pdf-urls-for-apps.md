@@ -1,6 +1,7 @@
 ---
 title: "Audio Inputs and PDF URLs for Apps"
 date: "2025-08-04T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "OpenRouter"
 teaser: "Add voice input and send PDFs by URL, on any model. "
 headerImage:

@@ -1,6 +1,7 @@
 ---
 title: "Dev & BYOK Updates: Uptime API + Smarter Key Management"
 date: "2025-06-25T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Track model uptime via API and get more control over your BYOK setup including usage limits and testable keys. "
 category: "announcements"

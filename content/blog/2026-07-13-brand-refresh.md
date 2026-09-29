@@ -1,6 +1,7 @@
 ---
 title: "A New Look for OpenRouter"
 date: "2026-07-13T15:00:00.000Z"
+updated: "2026-08-06T12:57:22.000Z"
 author: "Julian Thayn"
 teaser: "Built from first principles and grounded in timeless Bauhaus philosophy, our new brand identity marks the beginning of our next chapter."
 headerImage:

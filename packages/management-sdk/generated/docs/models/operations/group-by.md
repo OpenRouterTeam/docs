@@ -1,0 +1,17 @@
+# GroupBy
+
+Set to 'workspace' to split each row per workspace and include `workspace_id` on every item. Omitted by default, in which case rows are aggregated across workspaces (by date, model, and endpoint) and `workspace_id` is not returned — preserving the historical response shape.
+
+## Example Usage
+
+```typescript
+import { GroupBy } from "@openrouter-monorepo/management-sdk-generated/models/operations";
+
+let value: GroupBy = "workspace";
+```
+
+## Values
+
+```typescript
+"workspace"
+```

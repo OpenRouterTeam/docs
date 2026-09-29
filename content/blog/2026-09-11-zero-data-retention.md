@@ -1,6 +1,7 @@
 ---
 title: "Zero Data Retention (ZDR): What It Means for AI APIs"
 date: "2026-09-11T00:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "Zero Data Retention (ZDR): What It Means for AI APIs"

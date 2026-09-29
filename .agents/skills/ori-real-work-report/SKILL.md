@@ -101,6 +101,24 @@ prompt invokes this skill; keep them in sync when the procedure changes.
   generations carry the same `api_key_id`. `key_join.coverage_available` is
   false when no run in the window carried a key id, which says nothing about
   how much Ori traffic exists.
+- **Per-harness usage** — `harness_usage.by_harness.<harness>` joins each
+  harness's runs to generations through the API keys those runs reported,
+  across every app. It carries the daily requests, `requests_in_ori_app`,
+  sessions, keys, accounts, tokens and `usage_usd`, the current-week `models`
+  and `apps`, telemetry `runs` and `runs_prior`, and `accounts.{current,
+  prior,new,retained}` where new means requests on that harness's keys this
+  week and none the week before. A key that ran more than one harness is
+  attributed to each and counted in `keys_shared`, so per-harness rows can
+  overlap and must not be summed as distinct customers. Requests through a
+  key with no run in the window are excluded. `harness_usage.runs_daily` is
+  the telemetry run count per day and harness behind the growth chart, and
+  `harness_usage.keyed_runs_daily` is the number of runs per day that carried
+  an `api_key_id` at all. Days at zero there had no joinable runs, so a key
+  set observed only late in the window makes `accounts.prior` and `retained`
+  a floor and `new` a ceiling. The chart captions and the Slack thread must
+  say so whenever the first keyed day is inside the window.
+  `requests` on a harness's keys counts every app those keys touched, so it is
+  an upper bound on the harness's own traffic and `apps` shows the split.
 - **Internal exclusion** — every account in an org whose email domain is
   `openrouter.ai`, every Ori install that ever ran under one of those accounts,
   and every MCP API key they own. It is a **floor**: staff or interns on personal
@@ -116,12 +134,20 @@ prompt invokes this skill; keep them in sync when the procedure changes.
    all-requests and all-tool-calls totals behind the ratio caveat, and a `usage`
    section: per-day Ori-app requests, sessions, keys, accounts, prompt,
    completion, reasoning and cached tokens and `usage_usd`, the top models for
-   the current week, and the session and key joins. Expect a few
+   the current week, the session and key joins, and a `harness_usage` section
+   with the per-harness key-joined usage described above. Expect a few
    minutes of Datadog aggregation calls. The fetcher paces and retries against
    Datadog rate limits and caches each completed stage in `<out>/stages.json`
    keyed to the window and the exclusion inputs; if it dies mid-way, rerun the
    identical command with the same `--out` and window. Changed exclusions (or
    a cache written before they were recorded) recompute every stage.
+   The logs analytics endpoint enforces a short quota (observed 2 calls per
+   10s), so a 429 is normal on the per-day harness stages; the fetcher sleeps
+   for the `X-RateLimit-Reset` the response reports instead of backing off
+   exponentially. ClickHouse session joins can exceed the 180s read timeout
+   and are retried once at 600s. A full production window takes roughly
+   15-20 minutes end to end. Run it in its own shell (`tee` to a log) and
+   never restart it with `pkill -f fetch_real_work.py` from the same shell.
 
 2. **Sanity-check the series** — before drawing anything, confirm: no day is
    zero across every metric (a zero day means a failed query, not a quiet day);
@@ -129,14 +155,23 @@ prompt invokes this skill; keep them in sync when the procedure changes.
    sums to the current-week `agent_runs`; the eval-outcome breakdown sums to the
    current-week `eval_runs`; the MCP `by_tool` total equals the current-week
    `mcp_real_calls`; `usage.session_join.<harness>.sessions_matched` never
-   exceeds `runs_with_session`. Investigate any mismatch before posting — do
-   not paper over it.
+   exceeds `runs_with_session`; `harness_usage.runs_daily` summed over the
+   current week matches the `harness` breakdown per harness (runs without a
+   `harness` prop appear in neither) and each harness's `runs_with_key` never
+   exceeds its `runs` plus `runs_prior`. Investigate any mismatch before posting — do
+   not paper over it. Expect single ClickHouse reads for the session and key
+   joins to run for minutes; the fetcher retries a timed-out read once with a
+   longer budget.
 
 3. **Build the charts** — run
    `python3 scripts/build_charts.py --data <workdir>/real-work.json --out <workdir>/charts`.
    Token-driven HTML assets plus a `manifest.json`, grouped
    `01`–`05` harness, `06`–`08` eval, `09`–`12` MCP, and when the JSON has a
-   `usage` section `13`–`15` usage (requests and sessions, tokens, top models).
+   `usage` section `13`–`15` usage (requests and sessions, tokens, top models),
+   and with a `harness_usage` section `16`–`19` per-harness trends (requests,
+   accounts and agent runs per day for the top five harnesses, new accounts
+   by harness) plus `20`+ one model-mix chart per top-four harness by
+   requests.
 
 4. **Validate and capture** — from `tests/web-e2e`, validate every asset
    (`bun scripts/validate-viz-asset.ts <file>`) then capture at 4:3:
@@ -155,23 +190,30 @@ prompt invokes this skill; keep them in sync when the procedure changes.
 5. **Export the data** — run
    `python3 scripts/export_csv.py --data <workdir>/real-work.json --out <workdir>`
    for the daily-series and breakdown CSVs plus, with a usage section, the
-   `real-work-usage-{daily,models,correlation,apps}.csv` files. Attach them to the
+   `real-work-usage-{daily,models,correlation,apps}.csv` files and, with a
+   `harness_usage` section, `real-work-harness-usage-{daily,models,accounts,apps}.csv`.
+   Attach them to the
    MCP thread reply so the whole report is inspectable.
 
-6. **Compose the three messages** — Slack mrkdwn: `**bold**`, hyphen bullets,
-   backtick inline code, triple-backtick blocks for tabular data, `<url|label>`
-   links. No headers, no Markdown tables. Every metric gets its 7-day daily
-   average, the week-over-week change, and the week total where it reads better.
-   Lead each message with the window and "real work only, internal usage
-   excluded".
+6. **Compose the three messages** — raw Slack mrkdwn per
+   `.agents/skills/slack-mrkdwn/SKILL.md`: `*bold*`, `•` bullets, backtick
+   inline code, triple-backtick blocks for tabular data, `<url|label>` links.
+   No headers, no Markdown tables. Run its sanity check before posting. Every
+   metric gets its 7-day daily average, the week-over-week change, and the week
+   total where it reads better. Lead each message with the window and "real
+   work only, internal usage excluded".
 
    - **Ori harness** (charts `01`–`05`, usage charts `13`–`15`): agent
      runs/day, engaged installs and accounts/day, runs per engaged install,
      first runs/day, then Ori-app OpenRouter requests/day, tokens/day,
      spend/day and the top models behind session-matched harness runs (chart
-     `15` falls back to Ori-app models when no session matched).
+     `15` falls back to Ori-app models when no session matched), then the
+     per-harness charts `16`–`20`+.
      *Reply:* the week-over-week table, the heavy-automation caveat with the
-     human-scale number, the session-correlation coverage per harness and the
+     human-scale number, a per-harness block (runs, key coverage, requests,
+     spend, accounts current/new/retained, top model, and the Ori-app share of
+     requests) with the shared-key overlap stated, the session-correlation
+     coverage per harness and the
      key-correlation coverage (or that it is not yet available), and the
      definition and exclusion lines. Say plainly that usage counts
      OpenRouter-routed Ori traffic only.

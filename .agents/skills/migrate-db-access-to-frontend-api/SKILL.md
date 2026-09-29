@@ -1,13 +1,6 @@
 ---
 name: migrate-db-access-to-frontend-api
-description: >-
-  Playbook for OPE-5618: migrating projects/web server actions
-  and RSC loaders that call @openrouter-monorepo/db directly
-  onto cfw-frontend-api private routes + the TanStack
-  data-layer. Covers the backend route port (auth parity,
-  error handling, schemas), integration tests, the client
-  queries.ts swap, converting RSC loaders to client reads,
-  deletion of the old path, and verification.
+description: Playbook for OPE-5618, migrating projects/web server actions and RSC loaders off direct @openrouter-monorepo/db calls onto cfw-frontend-api private routes and the TanStack data-layer, through route port, tests, client swap, old-path deletion, and verification.
 user-invocable: false
 ---
 
@@ -298,9 +291,10 @@ Create one `queries.ts` for the domain:
   entity id in the key** for any per-entity data, so org
   switches repartition the cache.
 - Reads: a `queryOptions` factory named `<thing>Options`
-  calling `fetchAPIQuery(route, { signal, schema, searchParams })`.
-  Pass the response `schema` — new surfaces validate at
-  runtime. Call sites use plain `useQuery(<thing>Options(id))`.
+  calling `fetchAPIQuery<T>(route, { signal, searchParams })`. The
+  response type `T` is a shared type imported with `import type` —
+  the data layer no longer parses responses through a Zod schema.
+  Call sites use plain `useQuery(<thing>Options(id))`.
 - Mutations: `useAPIMutation({ mutationFn, invalidates })`
   where `mutationFn` is a Result-native `fetchJsonResult`
   POST to the same route. `invalidates` is required and

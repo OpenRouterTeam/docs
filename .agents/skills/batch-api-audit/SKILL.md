@@ -54,7 +54,7 @@ or review comment.
 - [ ] Use-case modules return `ErrorT` / `Result`; only
       `services/batch-api/src/routes/` serializes HTTP error responses
 - [ ] No `try/catch` — `wrap()` from
-      `@openrouter-monorepo/type-utils/result-monad`; no `any`, no `as`
+      `@openrouter-monorepo/lib-result`; no `any`, no `as`
       casts (use Zod schemas / type guards)
 - [ ] External data (provider responses, JSONL lines, Pub/Sub payloads) is
       parsed with Zod at the boundary, not trusted
@@ -68,7 +68,7 @@ or review comment.
 - [ ] Every `fetch()` whose body is not consumed cancels it via
       `response.body?.cancel()`
 - [ ] No `Promise.race` — `safeRace` from
-      `@openrouter-monorepo/helpers/safe-race`
+      `@openrouter-monorepo/lib-async`
 
 ### D. Shared helpers (no hand-rolling)
 
@@ -185,7 +185,7 @@ Audit against the committed research note
       for states like `expired`, `cancelling`, or partial-completion
 - [ ] Polling respects the provider's documented limits/backoff hints
       (rate-limit headers, retry-after) — no fixed tight loops
-- [ ] Submit / fetch / cancel calls match the provider's actual API
+- [ ] Submit / fetch / cancel / delete calls match the provider's actual API
       semantics per the research note's live captures, not the OpenAI
       reference adapter's assumptions
 - [ ] Partial failures and separate error-file outputs are handled: a job

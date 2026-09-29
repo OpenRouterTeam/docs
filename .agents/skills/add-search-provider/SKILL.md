@@ -1,10 +1,6 @@
 ---
 name: add-search-provider
-description: >-
-  Add a new web search provider (engine) to OpenRouter's
-  search infrastructure. Covers the enum, API client,
-  plugin dispatch, server-tools dispatch, cost/SKU,
-  environment wiring, frontend UI, OpenAPI docs, and tests.
+description: Add a web search provider (engine), covering the enum, API client, plugin and server-tools dispatch, cost/SKU, env wiring, frontend UI, OpenAPI docs, and tests.
 user-invocable: true
 ---
 
@@ -121,14 +117,14 @@ Pattern to follow (see `exa-client.ts`, `parallel-client.ts`):
 ```typescript
 import type { ErrorT } from '@openrouter-monorepo/instrumentation/error';
 import type { WebSearchResponse } from '@openrouter-monorepo/llm-interfaces/plugins/web-search/schemas';
-import type { AsyncResult } from '@openrouter-monorepo/type-utils/result-monad';
+import type { AsyncResult } from '@openrouter-monorepo/lib-result';
 
 import { HTTPStatus } from '@openrouter-monorepo/enums/http-status';
 import { fetchJsonResult } from '@openrouter-monorepo/helpers/fetch';
 import { errT } from '@openrouter-monorepo/instrumentation/error';
 import { iLog, wLog } from '@openrouter-monorepo/instrumentation/logger';
-import { isErr, ok } from '@openrouter-monorepo/type-utils/result-monad';
-import { z } from '@openrouter-monorepo/type-utils/zod';
+import { isErr, ok } from '@openrouter-monorepo/lib-result';
+import { z } from '@openrouter-monorepo/lib-zod';
 
 const ${ENGINE_UPPER}_SEARCH_URL = '<provider endpoint>';
 
@@ -290,7 +286,7 @@ the tool via the agent SDK). Follows the same pattern as
 import type { SearchContextSizeKey, WebSearchToolResult } from './constants';
 
 import { wLog } from '@openrouter-monorepo/instrumentation/logger';
-import { isErr } from '@openrouter-monorepo/type-utils/result-monad';
+import { isErr } from '@openrouter-monorepo/lib-result';
 import { ensureEnv } from '../../../env';
 import { search${ENGINE_PASCAL} } from '../../web-search/$ENGINE-client';
 import { DEFAULT_MAX_RESULTS, SEARCH_CONTEXT_SIZE_MAP } from './constants';

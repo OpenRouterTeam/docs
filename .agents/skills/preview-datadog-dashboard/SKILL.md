@@ -6,12 +6,12 @@ user-invocable: true
 
 # Preview a Datadog Dashboard Locally
 
-The CI `/preview-dashboards` command uses the workflow YAML from `main`, so new or modified dashboards in a PR branch can't be previewed until merged. This skill bypasses that limitation by running terraform locally with a local state backend.
+The CI `/preview-dashboards` command uses the workflow YAML from `main`, so new or modified dashboards in a PR branch can't be previewed until merged. This skill bypasses that limitation by running OpenTofu locally with a local state backend.
 
 ## Prerequisites
 
 - `DD_API_KEY` and `DD_APP_KEY` secrets must be available in the environment
-- `terraform` CLI must be installed (v1.12+)
+- `tofu` CLI must be installed (v1.12+)
 
 ## Step-by-Step
 
@@ -23,7 +23,7 @@ Dashboard modules live in `configs/terraform-monitors/monitoring/`. Each module 
 - `dashboard.tf` — the dashboard resource definition
 - `outputs.tf` — exports `dashboard_url`
 
-### 2. Create a temporary terraform workspace
+### 2. Create a temporary tofu workspace
 
 ```bash
 mkdir -p $HOME/tf-preview
@@ -99,14 +99,14 @@ Hard-coded tag filters still use normal `tag:value` syntax and can be mixed with
 
 ```bash
 cd $HOME/tf-preview
-DATADOG_API_KEY="${DD_API_KEY}" DATADOG_APP_KEY="${DD_APP_KEY}" TF_INPUT=false terraform init
-DATADOG_API_KEY="${DD_API_KEY}" DATADOG_APP_KEY="${DD_APP_KEY}" TF_INPUT=false terraform apply -auto-approve
+DATADOG_API_KEY="${DD_API_KEY}" DATADOG_APP_KEY="${DD_APP_KEY}" TF_INPUT=false tofu init
+DATADOG_API_KEY="${DD_API_KEY}" DATADOG_APP_KEY="${DD_APP_KEY}" TF_INPUT=false tofu apply -auto-approve
 ```
 
 If `apply` fails, a partial apply may have created resources in Datadog. Clean up immediately:
 
 ```bash
-DATADOG_API_KEY="${DD_API_KEY}" DATADOG_APP_KEY="${DD_APP_KEY}" TF_INPUT=false terraform destroy -auto-approve
+DATADOG_API_KEY="${DD_API_KEY}" DATADOG_APP_KEY="${DD_APP_KEY}" TF_INPUT=false tofu destroy -auto-approve
 rm -rf $HOME/tf-preview
 ```
 
@@ -116,14 +116,14 @@ Fix the dashboard definition and retry from step 2.
 
 ```bash
 DATADOG_API_KEY="${DD_API_KEY}" DATADOG_APP_KEY="${DD_APP_KEY}" \
-  terraform state show 'datadog_dashboard.<resource_name>' -no-color \
+  tofu state show 'datadog_dashboard.<resource_name>' -no-color \
   | grep '^\s*url\s' | head -1 | sed 's/.*"\(.*\)".*/\1/'
 ```
 
 The full URL is `https://us5.datadoghq.com` + the extracted path.
 
 For a JSON-shipped dashboard the resource type is `datadog_dashboard_json`, not
-`datadog_dashboard`, so use `terraform state show 'datadog_dashboard_json.<resource_name>'`.
+`datadog_dashboard`, so use `tofu state show 'datadog_dashboard_json.<resource_name>'`.
 Adding an `outputs.tf` with `output "dashboard_url" { value = datadog_dashboard_json.<name>.url }`
 is simpler and prints the path straight out of `apply`.
 
@@ -144,7 +144,7 @@ After the user has reviewed the dashboard, destroy it:
 
 ```bash
 cd $HOME/tf-preview
-DATADOG_API_KEY="${DD_API_KEY}" DATADOG_APP_KEY="${DD_APP_KEY}" TF_INPUT=false terraform destroy -auto-approve
+DATADOG_API_KEY="${DD_API_KEY}" DATADOG_APP_KEY="${DD_APP_KEY}" TF_INPUT=false tofu destroy -auto-approve
 rm -rf $HOME/tf-preview
 ```
 
@@ -178,15 +178,16 @@ Everything a reviewer would eyeball can be asserted through the API:
   returned definition and replay them with an absolute `from`/`to` window. Use
   `POST /api/v2/query/scalar` for scalar and toplist metric requests. Use
   `POST /api/v2/query/timeseries` for persisted timeseries requests, preserving their query
-  and formula objects and adding an interval such as `60000`. A persisted distribution query
-  value may omit the scalar API's `aggregator` field. Add `aggregator: "avg"` as request
-  context while preserving the persisted query string and formula. A card that would render
+  and formula objects and adding an interval such as `60000`. Replay a `query_value` request with the persisted `aggregator` unchanged. If the persisted query has none, do not paper over it in the replay: that is the bug described under "Scalar aggregation on `query_value` widgets" and the fix belongs in the source file. A card that would render
   blank comes back `null`/`0` here — that is the cheap way to catch the classic "count metric
   mixed with a distribution in one formula" bug.
+- **Scalar aggregation on `query_value` widgets**: every metrics query in a `query_value` request must carry an explicit `"aggregator"` (JSON `queries[].aggregator`, HCL `metric_query { aggregator = ... }`). Without it Datadog reduces the window with `avg`, so a `sum:metric{*}.as_count()` tile shows the average per-interval count instead of the total and looks like a small, plausible number. Choose it from what the tile claims to show, never mechanically: `sum` for count totals (`.as_count()`, `as_rate()` inputs to a ratio formula), `avg` for averages, `percentile` for a percentile query (`p50:`/`p95:` with `avg`, `max` or `last` replays and renders as an empty tile, while the same query on a timeseries widget works), `max`/`min` for peaks and troughs, `last` for a current-state gauge such as a queue backlog or the last run's row count. Confirm the choice by replaying the same query twice with `aggregator: "sum"` and `"avg"` over the dashboard window; for a count tile the `sum` result must equal the total of the timeseries replay. Rate metrics submitted through statsd `incr` need `.as_count()` before a `sum` aggregator makes sense. Audit: `rg -n '"type": "query_value"'` for JSON and `query_value_definition` for HCL, then check every `metric_query`/`queries[]` under them has an aggregator.
 - **Layout**: rasterize each `layout` `{x,y,width,height}` into 12-column grid cells and assert
   zero double-covered cells and zero uncovered cells inside the bounding box.
   On a tabbed dashboard every tab starts at `y = 0`, so rasterize per tab (the widgets in one
   `tabs[].widget_ids`), not across the whole `widgets` array.
+- **Ordered-layout groups**: on an `ordered` dashboard the top-level `group` widgets carry no `layout` at all; rasterize each group's inner `widgets` separately.
+- **Template variables in replays**: `POST /api/v2/query/*` does not resolve `$var` scopes and returns an empty result instead of an error, so a persisted query such as `{env:production,$workflow}` reads as "No data". Drop the `$var` tokens from the scope (an empty scope becomes `{*}`) before replaying.
 - **Tab membership**: the persisted `tabs[].widget_ids` come back as integer widget ids, not the
   `@N` positional refs the source uses. Map `widgets[i].id` to its index before asserting which
   tab a widget landed in, and check every widget appears in exactly one tab.
@@ -203,7 +204,7 @@ Everything a reviewer would eyeball can be asserted through the API:
 - **Datadog rejects `custom_unit` on `timeseries` and `toplist` widgets** with
   `400 Bad Request: Invalid widget definition at position N of type timeseries. $: Additional
   properties are not allowed ('custom_unit' was unexpected)`. It is accepted on `query_value`.
-  Put the unit in the widget title or a formula style override instead. The error names the widget
+  Set the unit on the metric with `datadog_metric_metadata` instead (`configs/terraform-monitors/AGENTS.md`). The error names the widget
   by index into the (possibly filtered) widget array, so count from the widgets actually sent.
 - **Formula `number_format.unit` with a `canonical_unit` (second, millisecond, dollar, …) is
   accepted on `timeseries` widgets** and persists as `{"type":"canonical_unit","unit_name":…}`
@@ -215,32 +216,40 @@ Everything a reviewer would eyeball can be asserted through the API:
   them. Replay every persisted query to catch this. The same applies to a per-tag disjunction:
   `{outcome:(skip OR fail),capture_surface:x}` persists but replays as
   `400 Error parsing query: 'AND' and 'OR' cannot be mixed with ','`. Express the exclusion as
-  `!outcome:success` or split it into two queries plus a formula.
-- **A re-apply can orphan the previous preview.** `terraform state list` in `$HOME/tf-preview`
+  `!outcome:success` or split it into two queries plus a formula. The same goes for
+  `{outcome:x,reason IN (a,b)}`: the monitor validate endpoint accepts the `AND reason IN (...)`
+  form, but a dashboard widget needs one query per value summed in the formula
+  (`monitoring/hipaa_pre_relay_guard/dashboard.json`).
+- **Strip template variables before replaying.** A persisted `{env:production,$service}` scope
+  replays as zero series on `/api/v2/query/*`, not as an error, so drop `,$service` (or substitute
+  the default) in the replay body or every widget looks like "No data".
+- **A re-apply can orphan the previous preview.** `tofu state list` in `$HOME/tf-preview`
   can come back empty while the dashboard it created still exists in Datadog, so the next
   `apply` creates a second copy. Check the state list before applying, and delete any dashboard
   the state no longer tracks with `DELETE /api/v1/dashboard/{id}` before sharing a new link.
-- **`terraform validate` at `configs/terraform-monitors/` needs `terraform init -backend=false`.**
+- **`tofu validate` at `configs/terraform-monitors/` needs `tofu init -backend=false`.**
   A plain `init` tries to reach the R2 S3 backend and fails with "No valid credential sources
   found" in a Devin sandbox. For the production-mode check, run
-  `terraform plan -var preview_mode=false` in the `$HOME/tf-preview` workspace instead, which has
+  `tofu plan -var preview_mode=false` in the `$HOME/tf-preview` workspace instead, which has
   a local backend and already holds the module.
-- **A `query_value` metrics query without `"aggregator"` renders the time-average, not the total.**
-  `sum:metric{*}.as_count()` in a scalar request still averages the per-interval sums across the
-  window unless the query object carries `"aggregator": "sum"`. Every count tile needs it
-  (`monitoring/reverification/dashboard.json`, PR #43284); `moderation_content_block` is a reference.
+- **A percentile or distribution `query_value` needs an aggregator that matches its query.** `p95:<metric>` needs `"aggregator": "percentile"`, and a distribution queried as `avg:`/`max:` needs the same word as its aggregator. A mismatch is accepted by the API, persisted, and replays as an empty column, so the tile reads "No data" next to a timeseries of the same query that has points. Measured on `openrouter.kv.kv_cache.latency` while previewing `monitoring/private_catalog_kv`.
+- **A `query_value` metrics query without `"aggregator"` renders the time-average, not the total.** See "Scalar aggregation on `query_value` widgets" above for the rule and the replay check. Datadog persists and renders the widget without complaint, so only the number tells you.
+- **`display_type` on a timeseries request is `line`, not `lines`.** The enum is `area`, `bars`, `adjacent_bars`, `line`, `overlay`; `lines` fails apply with a nested "Invalid inner widget definition" error that names the position inside the group, not the widget title.
+- **Cloudflare quantile metrics carry the percentile in the suffix, not as a dotted segment.** `openrouter.cloudflare.workersInvocationsAdaptive.quantiles.memoryUsageBytesP999` exists, `...memoryUsageBytes.p999` does not, and Datadog persists the wrong name and replays it as zero series. Copy metric names from a dashboard that already renders them (`monitoring/cfw_api_perf/dashboard.json`) rather than guessing.
+- **Wrap every subtracted log arm in `default_zero(...)`.** A formula like `all - large - multimodal` goes null for any bucket where one arm has no events, so the derived "other" line has holes. Datadog accepts the formula either way, so only the replayed series shows it.
+- **A grouped scalar ratio across two log arms keeps groups present in only one arm.** For `(success / (success + errors)) * 100` grouped by provider, `POST /api/v2/query/scalar` treats a group missing from one arm as 0, so a failure-only provider renders `0` and a success-only provider `100`, with or without `default_zero(...)`. When a reviewer claims such groups disappear, answer with a replay that forces one arm empty (`@extra.provider_name:__nonexistent__`) and shows the other arm's group row, rather than restructuring the query (#44689).
 - **Dashboard `tags` must use `team:` or `ai:` keys.** `team:preview` and `team:inference` are fine.
 - **Never build a filtered and an unfiltered widget list in the two arms of a `? :` conditional.**
   Terraform type-unifies both arms regardless of which is taken, so a 11-element tuple against a
-  12-element tuple fails with `Inconsistent conditional result types` at `terraform validate` — in
+  12-element tuple fails with `Inconsistent conditional result types` at `tofu validate` — in
   *both* variable values, which means production apply is broken too, not just the preview. Build
   the list in a `local` with a single `[for ... if ...]` comprehension that both filters and
-  rewrites. Always run `terraform validate` and `terraform plan -var preview_mode=false` (plan only,
+  rewrites. Always run `tofu validate` and `tofu plan -var preview_mode=false` (plan only,
   never apply) so you catch the production-mode expression too.
 - Resources gated with `count = var.preview_mode ? 0 : 1` are safe to reference as `[0]` only from
   inside an expression that Terraform does not evaluate in preview mode — which a conditional arm
   is *not*.
-- **`by {tag}` on a distribution percentile query fails at apply**, not `terraform validate`, with
+- **`by {tag}` on a distribution percentile query fails at apply**, not `tofu validate`, with
   `configuration error :: type: disabled_tags :: location: group_by :: metric_name: …` when the
   tag is not in the distribution's percentile tag config (e.g. `framework`/`skin` on
   `openrouter.server_tools.call.duration_ms`). Replay `p50:<metric>{*} by {tag}` via
@@ -257,10 +266,10 @@ Everything a reviewer would eyeball can be asserted through the API:
 
 - **Modules that also declare `datadog_logs_metric` resources fail the preview apply with
   `403 Forbidden` on those resources** (session keys are dashboard-scoped). The dashboards are
-  still created and land in state, so read `terraform output` after the failure and `destroy`
+  still created and land in state, so read `tofu output` after the failure and `destroy`
   as usual. Sourcing such a module (e.g. `monitoring/ori`) by absolute path is still the right
   call: it exercises every `.tf` in the module, including generated locals. To skip the 403s
-  outright, `terraform apply -target=module.<name>.datadog_dashboard_json.<name>` creates only
+  outright, `tofu apply -target=module.<name>.datadog_dashboard_json.<name>` creates only
   the dashboard (`monitoring/spend_guard`, which also ships `datadog_logs_metric` resources).
 
 - **Divide only series that share a counting unit.** A retry loop makes `*.attempted` count
@@ -281,7 +290,11 @@ Everything a reviewer would eyeball can be asserted through the API:
   `prefix: "@breadcrumbs.abuse_rule_names"` persists, but replays as `Rule 'scope_or' didn't
   match at '@breadcrumbs...'` via `/api/v2/query/timeseries`. One variable has one prefix, so
   either declare a second variable with the metric tag prefix or leave metric widgets at `{*}`
-  (`monitoring/abuse_rules/dashboard.json`).
+  (`monitoring/abuse_rules/dashboard.json`). The reverse works without a second variable: a
+  metric-tag variable scopes a log widget through `@facet:$var.value`, which substitutes the
+  bare value (`@breadcrumbs.task:$task.value`, `monitoring/cf_cron_task_workflows/dashboard.json`).
+  Replay both the `*` default and one concrete value, and confirm the facet's values match the
+  metric tag's values (`GET /api/v1/query ... by {tag}` against a logs aggregate `group_by`).
 
 - **Multi-facet `query_table` group-bys multiply.** Three facets at `limit: 50` each replay as
   `Cannot generate more than 10000 groups across all dimensions`; size each facet's limit to its
@@ -293,9 +306,9 @@ Everything a reviewer would eyeball can be asserted through the API:
   dropped, and state the deploy dependency in the PR. Whether the UI drops the clause for `*`
   is unverified from the API.
 
-- **Percentile queries on a `distribution()` metric return empty series** when percentile
-  aggregation is not enabled for that metric in Datadog. Probe with `avg:` before charting
-  percentiles, and fall back to avg/max until percentiles are enabled.
+- **Percentile queries on a `distribution()` metric return empty series** when percentile aggregation is not enabled for that metric in Datadog. Probe with `avg:` before charting percentiles, and fall back to avg/max until percentiles are enabled. Re-probe before a later revision: a header comment saying "no percentiles" goes stale silently (`private_catalog_kv` did), since enabling percentiles is a metric-configuration change that lives outside the dashboard JSON. Track it in the repo with a `datadog_metric_tag_configuration` resource (`include_percentiles = true`) in the dashboard module (`monitoring/classification/metrics.tf`); if the API enabled it first to verify a preview, import it via the root `imports.tf` rather than re-creating — a second copy returns a 409.
+- **`IN (...)` and `,` do not mix inside a metric scope.** `{mode IN (off,shadow),source:pg}` fails the query API with "'AND' and 'OR' cannot be mixed with ','". Drop the redundant tag or use separate queries per value.
+- **`queries[].name` must match `[A-Za-z0-9_]+`.** The dashboard API persists a name with spaces or parentheses and the widget renders "Invalid query". Keep the human label in the formula `alias`. Replaying every request through `/api/v2/query/*` catches it.
 
 ## Previewing several modules at once, including cross-module wiring
 
@@ -343,8 +356,8 @@ Datadog also normalizes on save, so a round-trip changes fields nobody edited: t
 layout sets `reflow_type: "fixed"` plus a `layout` on every widget. Keep the normalized form.
 
 Prove the file matches with terraform, not by eye. In a local-backend workspace whose `module`
-block sources the real module directory, `terraform import module.<name>.datadog_dashboard_json.<name> <id>`
-then `terraform plan` must print `No changes.` Import and plan need no write scope. Plan the
+block sources the real module directory, `tofu import module.<name>.datadog_dashboard_json.<name> <id>`
+then `tofu plan` must print `No changes.` Import and plan need no write scope. Plan the
 previous `dashboard.json` once too and confirm it shows `1 to change`, otherwise the no-diff proves
 nothing.
 
@@ -373,7 +386,7 @@ That is a dashboard-interpretation bug worth flagging even though no query error
 
 ## Concurrent previews
 
-Other open PRs may have live preview dashboards. `terraform destroy` in your workspace only
+Other open PRs may have live preview dashboards. `tofu destroy` in your workspace only
 touches resources in your own state file, but never run `destroy` in a workspace you did not
 create, and use a per-PR directory (`$HOME/tf-preview-pr<NUMBER>`) when a session may overlap with
 another preview. After cleanup, re-`GET` the other PR's dashboard id to prove it is still intact.
@@ -381,10 +394,10 @@ another preview. After cleanup, re-`GET` the other PR's dashboard id to prove it
 ## Notes
 
 - The preview dashboard is tagged `team:preview` (via `preview_mode = true`) so it's easy to find and distinguish from production dashboards
-- The local terraform state is stored in `$HOME/tf-preview/terraform.tfstate` — do NOT commit this file
+- The local tofu state is stored in `$HOME/tf-preview/terraform.tfstate` — do NOT commit this file
 - This approach works for **simple dashboard-only modules** that follow the `{main.tf, variables.tf, dashboard.tf, outputs.tf}` layout (e.g. `client_query_metrics`, `convoy`). Modules with multiple `.tf` files, JSON-shipped dashboards, or non-`dashboard.tf` resource files (e.g. `api_error_rate`, `broadcast_destinations`) require adapting Step 3 so every referenced file is copied into the preview workspace
 - The DD_API_KEY/DD_APP_KEY secrets have write access when used via the Datadog provider directly
-- The Datadog MCP plugin is **not** read-only: `upsert_datadog_dashboard` can create and update dashboards (verified 2026-08 against us5) with no local keys at all. It has no delete tool, so MCP-created previews must be cleaned up in the Datadog UI. An MCP preview is a hand-translation of the HCL into widget JSON — useful for iterating on layout/queries with live data when no write-scoped keys are available, but it does not validate the Terraform itself; still run `terraform validate` (and this skill's apply flow when keys exist) before merging
+- The Datadog MCP plugin is **not** read-only: `upsert_datadog_dashboard` can create and update dashboards (verified 2026-08 against us5) with no local keys at all. It has no delete tool, so MCP-created previews must be cleaned up in the Datadog UI. An MCP preview is a hand-translation of the HCL into widget JSON — useful for iterating on layout/queries with live data when no write-scoped keys are available, but it does not validate the Terraform itself; still run `tofu validate` (and this skill's apply flow when keys exist) before merging
 - Large MCP previews can be upserted **in chunks**: an `upsert_datadog_dashboard` call replaces the whole widget list, but unchanged widgets can be carried over as bare `{"id": <numeric id>}` entries (ids come from the previous upsert's response) and referenced by numeric id in `tabs.widget_ids`, mixed freely with `"@N"` positional refs to widgets sent in full in the same call. Only widgets whose definition changed need to be re-sent
 - **Render order within a tab follows the top-level widget array order, not the `tabs.widget_ids` order.** Listing group A before group B in `widget_ids` does nothing if B precedes A in `widgets` — to reorder groups in a tab, physically reorder the widget declarations (in HCL: move the `widget` block and renumber the `@N` comments/tab refs)
 - A module may be missing `main.tf` / `variables.tf` / `outputs.tf` entirely, shipping only `dashboard.json` + `dashboard.tf`. Authoring `main.tf` per step 2 is then mandatory rather than optional, and a module in that state is usually also missing its `module` block in the monitoring root, meaning nothing creates it in production either. Check for the root `module` block before assuming the preview failure is yours

@@ -1,6 +1,7 @@
 ---
 title: "The First-Ever Image Model Is Up on OpenRouter"
 date: "2025-08-26T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "OpenRouter"
 teaser: "SOTA image generation, character consistency, and multi-image outputs—now live with Gemini 2.5 Flash Image Preview. "
 headerImage:

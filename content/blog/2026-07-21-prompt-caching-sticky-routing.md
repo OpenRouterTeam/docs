@@ -1,6 +1,7 @@
 ---
 title: "The Cheapest Token Is a Cached One: Prompt Caching + Sticky Routing"
 date: "2026-07-21T00:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "OpenRouter"
 category: "tutorials"
 metaTitle: "OpenRouter Prompt Caching: What Cached Tokens Cost"

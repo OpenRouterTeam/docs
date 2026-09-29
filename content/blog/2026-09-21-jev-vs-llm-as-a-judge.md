@@ -1,6 +1,7 @@
 ---
 title: "Jev vs LLM-as-a-Judge"
 date: "2026-09-21T00:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "Kenny Rogers"
 category: "tutorials"
 metaTitle: "Jev vs LLM-as-a-Judge"

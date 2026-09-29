@@ -1,0 +1,19 @@
+# ContentFilterAction
+
+Action taken when the pattern matches
+
+## Example Usage
+
+```typescript
+import { ContentFilterAction } from "@openrouter-monorepo/management-sdk-generated/models";
+
+let value: ContentFilterAction = "block";
+
+// Open enum: unrecognized values are captured as Unrecognized<string>
+```
+
+## Values
+
+```typescript
+"redact" | "block" | "flag" | Unrecognized<string>
+```

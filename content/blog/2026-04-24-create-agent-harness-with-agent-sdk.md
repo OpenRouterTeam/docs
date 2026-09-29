@@ -1,6 +1,7 @@
 ---
 title: "Build Your Own Harness with the Agent SDK"
 date: "2026-04-24T12:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Brian Thomas"
 teaser: "Use the create-agent-tui and create-headless-agent skills to scaffold a personalized coding agent in minutes — with a terminal UI or headless for scripts and pipelines."
 headerImage:

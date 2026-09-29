@@ -1,0 +1,15 @@
+日本語
+
+- です・ます体 (polite form) for every sentence the user reads, including error messages and empty states. Never plain form (だ・である).
+- Katakana loanwords for product terms and keep them stable: ガードレール, プリセット, ワークスペース. Never leave "Guardrail" or "Preset" in Latin script and never invent a kanji equivalent (事前設定, 作業領域).
+- Protected names stay in Latin script: OpenRouter, Fusion, Spawn, BYOK.
+- Japanese omits what context supplies. Drop pronouns and explicit subjects the English needs but Japanese does not, and do not add あなた. Keep every piece of information the source states.
+- Full-width punctuation 、。「」（） in prose. Labels and headings have no trailing 。 Nav and button labels are noun phrases (ガードレールを作成, 変更を保存), not full sentences.
+- Counters attach to the variable: {count} 個のモデル, {count} 件. Keep a half-width space on both sides of a Latin word or number inside Japanese text.
+- Periods without a digit in English stay digit-free: "per minute" is 毎分, "per day" and "a day" are 毎日 or 一日, "a week" is 一週間, "an hour" is 一時間. Never 1 日, 1 時間 or 1 週間 for these.
+- The option labels "No expiration" and "No limit" are 有効期限なし and 上限なし. Inside a sentence ("select No limit") write them inline without 「」: 上限なしを選択してください.
+- An English sentence joined with a semicolon or colon stays one Japanese sentence with a single 。, even when a ", and" clause comes before the semicolon: join every part with 〜し、 / 〜で、 / 〜が、 or a 、 and never start a new sentence with また. "Workspaces give each environment its own keys, limits and activity: 5 workspaces on Free and Standard, 1,000 on Business." is ワークスペースは各環境に固有の API キー、上限、アクティビティを与え、Free と Standard では 5 個、Business では 1,000 個のワークスペースを利用できます。 and "A limit you hit there normally comes from the provider, and fallback routing retries other providers automatically; only very high burst traffic is rejected by OpenRouter's own DDoS protection with a 429." is そこで達した制限は通常プロバイダーによるもので、フォールバックルーティングが他のプロバイダーを自動的に再試行し、非常に大量のバーストトラフィックのみが OpenRouter 独自の DDoS 保護によって 429 で拒否されます。
+- Preferred product forms, use them in new translations even where existing copy still varies: クレジット (Credits, never 謝辞 or 単位), プロバイダー (Provider, never 提供者 or 事業者), レート制限 (Rate limit), エンドポイント, APIキー without a space (API キー is tolerated in existing copy, never API鍵), 組織, アクティビティ (Activity, never 活動), ログ (Logs, never 記録 or 履歴), ウェブ検索 (never Web検索), データポリシー, プラットフォーム手数料 (Platform fee), 自動チャージ (Auto top-up, never 自動補充 or 自動トップアップ).
+- Interns and Auto Router stay in Latin script: "Ori は Intern です", "Interns を作成". Never インターン, 実習生, or 自動ルーター. Zero Data Retention stays in English with ZDR, and the gloss form is ゼロデータ保持, never データ保持ゼロ.
+- "Release" applied to a resource an Intern or workspace holds (a name, a handle, a Slack app, a repository connection) means freeing it for reuse: 解放する / 解放される, never 公開する. "Everything we can release is released, but the following can't be:" is 解放できるものはすべて解放しますが、次のものは解放できません。
+- Redact in guardrails is マスキング in every form: マスキング (Redact), マスキング済み (Redacted), マスキングルール (redaction rules). Never 編集, 削除, 伏せる, or 匿名化 for this action. 墨消し is tolerated in existing copy.

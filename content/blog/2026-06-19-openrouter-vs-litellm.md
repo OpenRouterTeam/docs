@@ -1,6 +1,7 @@
 ---
 title: "OpenRouter vs LiteLLM: Which LLM Gateway Fits Your Stack?"
 date: "2026-06-19T15:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "OpenRouter vs LiteLLM: Managed vs Self-Hosted Gateway"

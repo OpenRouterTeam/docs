@@ -79,17 +79,24 @@ Leaf controls inherit the capability of the surface they serve: flag new
 buttons, CTAs, or menu entries that link to or act on a capability-gated
 surface without a `useWorkspaceCapabilityGate` check at their composition
 point. Blocked nav and menu entries render disabled through the shared
-`CapabilityDisabledNavItem` components with their standard tooltip; reject
-hidden entries and hand-rolled per-surface disabled treatments alike. See
+`CapabilityDisabledNavItem` components (top nav, menus) or the dashboard
+sidebar's `NavItem.disabledReason`, always with the standard
+`CAPABILITY_UNAVAILABLE_IN_WORKSPACE_COPY` reason; reject hidden entries and
+hand-rolled per-surface disabled treatments alike. See
 `packages/entitlements/WORKSPACE_CAPABILITIES.md` for the full model.
 
 ## Copy must describe what the code does
+
+<!-- src: #40735 talos 2026-09-12 -->
+<!-- src: #40737 talos 2026-09-12 -->
 
 Every user-visible string is an assertion about runtime behavior. When a branch changes, its copy changes with it.
 
 - A terminal state needs terminal copy. If a failure path deliberately stays put, it renders an error with a retry — not the "Redirecting you…" or spinner copy of the success path.
 - Descriptive copy ("chat with the flow that created this post") only ships when the code it describes exists.
 - A label or tooltip must match the number beside it. Aggregate wording over a single-entity value is wrong even when the number is right.
+- Write every string that can reach a toast or error surface for the user, not the developer. Trace an `ErrorT` message through `extractMutationErrorMessage` and the toast that renders it before treating it as internal.
+- Give a partial outcome its own title. A toast that shares its headline with the full-success toast and differs only in the description tells the user nothing happened differently.
 
 ```tsx
 // BAD: the reject path never navigates, but the copy promises it will

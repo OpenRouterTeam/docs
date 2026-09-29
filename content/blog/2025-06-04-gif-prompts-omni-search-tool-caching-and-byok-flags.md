@@ -1,6 +1,7 @@
 ---
 title: "GIF Prompts, Omni Search, Tool Caching, and BYOK Flags"
 date: "2025-06-04T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Faster workflows, smarter tooling, and smoother image support—GIFs, provider search, Anthropic tool-call caching, and BYOK confirmation are all now live. "
 category: "announcements"

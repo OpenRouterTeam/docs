@@ -10,10 +10,9 @@ Auto-exacto chain: `scripts/temporal/run-auto-exacto.ts` → `autoExactoWorkflow
 
 ## Prerequisites / gotchas (each one cost real debugging time)
 
-1. **Infisical auth** in every new shell before any `bun run x` / `bun run dev`:
+1. **Infisical auth** once per shell, with the helper from [infisical-agent-auth](../infisical-agent-auth/SKILL.md). Don't `export` the token; `bun run x` and the worker's `bun run dev` wrap `infisical run` and read `INFISICAL_TOKEN` from their environment, so scope it to each of those commands with an `INFISICAL_TOKEN="$INFISICAL_TOKEN"` prefix, as in the commands below (`bun run dev:up` logs in on its own from `INFISICAL_CLIENT` / `INFISICAL_SECRET`):
    ```bash
-   export INFISICAL_TOKEN=$(infisical login --method=universal-auth \
-     --client-id="$INFISICAL_CLIENT" --client-secret="$INFISICAL_SECRET" --plain --silent)
+   source scripts/infisical/agent-auth.sh && infisical_auth
    ```
 
 2. **Internal-entity API key.** `applyInternalEndpointPin` silently ignores the header unless the key's `clerk_user_id` is in `INTERNAL_ENTITY_IDS` (`packages/routing/helpers/constants.ts`). The seed key `sk-or-v1-unlimitedkey` is NOT internal. Create a local key owned by the benchmarking org (`org_35qoLJ12T6wtYbJ1gpIvv8RhWM6`): insert a `users` row (is_organization=true, allow_negative_balance=true), a `credits` row, and an `api_keys` row whose `hash` is the sha256 of your chosen `sk-or-v1-...` token.
@@ -38,7 +37,7 @@ tilt wait --for=condition=Ready uiresource/api uiresource/api-kv-cron --timeout=
 temporal server start-dev             # or let the worker dev script start it
 tilt enable dev-fs-logs
 tilt trigger dev-fs-logs
-cd services/gcp-bench-worker && bun run dev   # task queue benchmark-queue; idles out after ~10 min
+cd services/gcp-bench-worker && INFISICAL_TOKEN="$INFISICAL_TOKEN" bun run dev   # task queue benchmark-queue; idles out after ~10 min
 ```
 
 Worker must log "Loaded N override(s)" and "db-context-initialized". The worker webpack-bundles workflows at startup; restart it after changing workflow code.
@@ -53,7 +52,7 @@ where model_permaslug='z-ai/<permaslug>' and deleted=false and is_disabled=false
 ```
 
 ```bash
-TEMPORAL_API_KEY="" bun run x scripts/temporal/run-auto-exacto.ts \
+TEMPORAL_API_KEY="" INFISICAL_TOKEN="$INFISICAL_TOKEN" bun run x scripts/temporal/run-auto-exacto.ts \
   -e "<endpoint-id-1>,<endpoint-id-2>" --wait
 ```
 

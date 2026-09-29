@@ -1,10 +1,10 @@
 # User Deletions
 
-Data Subject Request (DSR) deletion targets for OpenRouter. Each target implements the `UserDeletionTarget` interface to scrub personally identifiable data from a specific storage backend, replacing it with a pseudonymized replacement user ID.
+Data Subject Request (DSR) deletion targets for OpenRouter. Each target implements the `UserDeletionTarget` interface to remove personally identifiable data from a specific storage backend, or replace an account ID where financial records must be retained.
 
 The cfw-internal `UserDeletionWorkflow` is the only deletion orchestrator. It
-builds the handler set from `buildDeletionHandlers`, including the R2 and GCS
-prompt-log targets, and Mission Control routes new deletions there.
+builds the handler set from `buildDeletionHandlers`, including the R2/GCS
+prompt-log and Ori ClickHouse targets, and Mission Control routes new deletions there.
 The cfw-internal cron owns the deletion monitor sweep.
 The former GCP Graphile orchestrator has been removed.
 
@@ -35,6 +35,7 @@ graph TD
 | `build-handlers.ts` | `buildDeletionHandlers` — constructs the `UserDeletionTargetName → UserDeletionTarget` map shared by every orchestrator |
 | `scrub-postgres-user.ts` | `ScrubPostgresUser` — delegates to `packages/db` to scrub user records in Postgres |
 | `scrub-spanner-billable-entity.ts` | `ScrubSpannerBillableEntity` — batch-scrubs generation rows in Spanner, respecting shard IDs, generated columns, and override columns |
+| `delete-clickhouse-ori-product-data.ts` | `DeleteClickHouseOriProductData` — polls an Ori-only deletion barrier, then waits for physical deletion from all four identity tables across every snapshot |
 | `delete-vendor-clerk-user.ts` | `DeleteVendorClerkUser` — deletes the user from Clerk via the Clerk Backend API |
 | `delete-vendor-customerio-user.ts` | `DeleteVendorCustomerioUser` — deletes the user profile from Customer.io |
 | `prefix-sweep.ts` | `sweepPrefixes` — paged list+delete of every object under a set of prefixes in one bucket, bounded by a per-invocation page budget |
@@ -42,6 +43,15 @@ graph TD
 | `org-membership-check.ts` | `rejectOrgMembers` — fails the target for users in any org, since org-context prompt logs are not under the user prefix |
 | `gcs/delete-gcs-prompt-logs.ts` | `DeleteGcsPromptLogs` — sweeps `global-private-prompt-data` through the GCS JSON API (`packages/prompt-storage/gcs/client.ts`) |
 | `r2/delete-r2-prompt-logs.ts` | `DeleteR2PromptLogs` — sweeps the three prompt-log buckets through Worker R2 bindings; only constructible on cfw-internal, so `buildDeletionHandlers` takes it as a dependency |
+
+The Ori target does not mutate the inference billing ledger. It first stores a
+SHA-256 account digest for 401 days, one day beyond Ori's 400-day replay horizon.
+All Ori reads and inserts exclude that digest. The first attempt polls while
+pre-barrier, server-time-limited writes drain; subsequent attempts await
+`mutations_sync = 2` on events, work days, model days, and generation facts.
+A timeout or failed mutation remains retryable rather than completing the target.
+Install/session identifiers can be shared or client-supplied, so they never
+authorize deletion of another account or genuinely anonymous events.
 
 ## Commands
 

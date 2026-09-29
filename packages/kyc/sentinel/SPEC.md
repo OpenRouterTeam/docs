@@ -51,11 +51,7 @@ configuration, or a release gate.
   `ban_candidate_targets.compromised_account_enacted_at`. Agent enactment is
   refused and undo cannot reverse it; the user clears the state by resetting
   their password.
-- A Sentinel restriction is attributed to the caller-supplied acting identity,
-  trusted as-sent behind the internal HMAC boundary; when omitted it falls
-  back to `system`. Ingest-key (agent) callers must supply the identity. The
-  durable restriction audit record therefore identifies the administrator or
-  agent identity the caller claimed.
+- A Sentinel restriction is attributed to the identity cfw-internal verified itself: the internal admin's Clerk session cookie (Mission Control), or a verified Devin OIDC token, as the issuer-signed requester when the token names one and otherwise as its `devin_id` (`devin:<devin_id>`). Request bodies cannot name an identity.
 - Signup, generation, and payment flows now record many useful abuse signals.
   Most signals are still used for investigation or isolated controls rather
   than automatically creating Sentinel cases.
@@ -184,15 +180,7 @@ audit and observability.
 
 ### Use different trust boundaries for machines and humans
 
-Detection agents call signed internal endpoints with shared HMAC keys. Mission
-Control uses a Clerk session and an internal-administrator check. The
-enactment bridge crosses back into the machine boundary: the `restrictions`
-row carries a `last_edited_clerk_user_id` actor, and the Sentinel enactment
-path records the caller-supplied acting identity there, trusted as-sent
-behind the HMAC boundary, falling back to `system` when omitted ([#29956]).
-Requests verified by the ingest signing key are treated as agent requests:
-they must claim an acting identity and are subject to the agent enactment
-gates.
+Detection agents call internal endpoints with a Devin OIDC bearer token. Mission Control uses a Clerk session and an internal-administrator check. The enactment bridge crosses back into the machine boundary: the `restrictions` row carries a `last_edited_clerk_user_id` actor, and the Sentinel enactment path records the cookie-verified internal admin there ([#29956]). Requests verified by a Devin OIDC token are agent requests: they are attributed to the issuer-signed requester when the token names one, otherwise to `devin:<devin_id>`, rejected if the body names an actor, and subject to the agent enactment gates.
 
 ### Collect most new signals without blocking the user flow
 
@@ -409,13 +397,9 @@ The merged CLI and agent skill can submit, inspect, approve, and enact cases:
 ### Review
 
 The review endpoint records `approved` or `denied` on a pending target.
-Either shared signing key authorizes it.
-
-The HMAC proves possession of a shared key, not a human identity. A supplied
-`reviewerId` is trusted as-sent as the acting reviewer; a review-key caller
-that omits it falls back to `ACTING_SYSTEM`, while an ingest-key (agent)
-caller must supply it. Mission Control's server actions forward the Clerk
-administrator as `reviewerId`.
+It is authorized by an internal admin's Clerk session cookie (Mission Control
+forwards its own cookie) or by a Devin OIDC bearer token; the reviewer is the
+identity that credential proves. A body carrying `reviewerId` is rejected with 400.
 
 Mission Control adds a stronger boundary for its user interface:
 
@@ -424,7 +408,7 @@ Mission Control adds a stronger boundary for its user interface:
 - each case has a dedicated workspace with filtering, sorting, selection,
   enrichment, account metrics, and target details.
 
-The claimed identity is threaded into the durable restriction actor.
+The resolved identity is threaded into the durable restriction actor.
 
 ### Proposed-kind change
 
@@ -454,17 +438,7 @@ request that loses the in-batch collision.
 
 ### Enactment
 
-The enact endpoint accepts approved target IDs and creates `system` restrictions.
-The `last_edited_clerk_user_id` actor is the caller-supplied acting identity
-(Mission Control forwards the reviewing administrator), and `ACTING_SYSTEM`
-when omitted; agent-mode requests must supply it. Requests verified by the
-ingest signing key, or carrying `agentEnactment: true`, are agent-gated:
-`account_ban` and non-allowlisted kinds are refused, only PAYG user targets
-may be enacted, and lookups fail closed. Ingest-key review approvals are
-gated the same way, while ingest-key undo may reverse any enacted
-restriction, including another actor's, provided the caller claims an
-acting identity.
-Per-target failures are isolated and processed with bounded concurrency.
+The enact endpoint accepts approved target IDs and creates `system` restrictions. The `last_edited_clerk_user_id` actor is the cookie-verified internal admin, the requester a verified Devin OIDC token names, or `devin:<devin_id>` when it names none; bodies may not supply one. Devin OIDC requests, or requests carrying `agentEnactment: true`, are agent-gated: `account_ban` and non-allowlisted kinds are refused, only PAYG user targets may be enacted, and lookups fail closed. Devin OIDC review approvals are gated the same way. Per-target failures are isolated and processed with bounded concurrency.
 
 Enactment handles three important cases:
 

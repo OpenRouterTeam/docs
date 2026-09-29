@@ -1,6 +1,7 @@
 ---
 title: "New Provider Drop: Cerebras Is Here"
 date: "2025-05-07T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "A provider built for speed and scale—from wafer to token. See what becomes possible when memory bottlenecks disappear. "
 category: "announcements"

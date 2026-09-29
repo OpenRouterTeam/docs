@@ -1,6 +1,7 @@
 ---
 title: "The 2025 State of AI Report"
 date: "2025-12-04T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "OpenRouter"
 teaser: "Introducing the 2025 State of AI report, in partnership with a16z. The largest empirical look yet at how developers and organizations use language models in the real world. "
 headerImage:

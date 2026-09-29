@@ -1,6 +1,7 @@
 ---
 title: "Opus 4.7's New Tokenizer: What It Actually Costs"
 date: "2026-04-27T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Justin Summerville"
 teaser: "Anthropic changed the tokenizer in Opus 4.7. We looked at usage that shifted from 4.6 to 4.7 to measure exactly how it affects costs."
 headerImage:

@@ -1,6 +1,7 @@
 ---
 title: "A Robot is Sprinting Towards You: Do You Want it Running on Claude or Grok?"
 date: "2026-06-04T12:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Jacky Liang"
 teaser: "A 30-game battle royale across eleven LLMs, $482 of inference, and one finding that should change how you read model benchmarks."
 headerImage:

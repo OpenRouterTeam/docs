@@ -1,6 +1,7 @@
 ---
 title: "EU AI Act & Colorado ADMT Compliance: Human Oversight for AI Agents"
 date: "2026-06-08T12:00:00.000Z"
+updated: "2026-09-24T21:04:19.000Z"
 author: "Kenny Rogers"
 teaser: "Use the Agent SDK's human-in-the-loop (HITL) tools to meet AI agent compliance requirements from the EU AI Act, Colorado's Automated Decision-Making Technology law (SB26-189), and NIST AI RMF."
 headerImage:
