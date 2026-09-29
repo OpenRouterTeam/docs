@@ -682,5 +682,5 @@ Poll for results the same way as any other batch (`GET https://openrouter.ai/api
 ```
 
 <Note>
-  OpenRouter stores batch inputs and results as JSONL artifacts in Google Cloud Storage and deletes them 30 days after creation. Upstream retention varies by provider. Download any results you need before the 30-day window elapses, or [delete the batch](#delete-a-batch) sooner to purge them immediately.
+  OpenRouter stores batch inputs and results as JSONL artifacts in Google Cloud Storage and deletes them 30 days after creation. Upstream retention varies by provider. Download any results you need before the 30-day window elapses, or [delete the batch](#delete-a-batch) sooner to purge them immediately. After the results are deleted, retrieving a completed batch returns `410 Gone`.
 </Note>
