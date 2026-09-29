@@ -1,6 +1,6 @@
 ---
 name: resolve-pr-comments
-description: Drive a PR's unresolved review threads to zero in the current session — fix, reply, resolve, keep the PR description's resolution log current, and escalate only the comments that genuinely need a human. Use after any review pass (thermo-nuclear, Devin Review, Perry, human reviewers) or when asked to "resolve the PR comments", "address the review feedback", or "clear the review threads". Not for "babysit this PR" — that hands off to Perry via ask-perry-babysit.
+description: Drive a PR's unresolved review threads to zero in the current session — fix, reply, resolve, keep the PR description's resolution log current, and escalate only the comments that genuinely need a human. Use after any review pass (thermo-nuclear, Devin Review, Perry, human reviewers) or when asked to "resolve the PR comments", "address the review feedback", or "clear the review threads". Also the comment-handling half of an in-session Perry loop when this session owns the PR; "babysit" for a PR nobody has a live session on hands off via ask-perry-babysit.
 user-invocable: true
 ---
 
@@ -17,21 +17,16 @@ review is frequently wanted without the follow-through. Pairs naturally with
 
 ## Not `ask-perry-babysit`
 
-"Babysit this PR" belongs to `ask-perry-babysit`, not here. The two look
-adjacent and are not interchangeable:
+The separate babysit session is for a PR nobody has a live session on. The two look adjacent and are not interchangeable:
 
 | | `resolve-pr-comments` (this skill) | `ask-perry-babysit` |
 |---|---|---|
-| Who does the work | You, in the current session | A separate Devin session, triggered from `#agents` Slack |
+| Who does the work | You, in the current session | A separate Devin session, triggered from `#agents-perry-reviews` Slack |
 | Where the feedback comes from | Threads already on the PR, from anyone | Perry, which it also summons to review |
 | Ends when | Every thread is fixed, declined, or tagged for the human | Perry approves and CI is green |
 | Your branch | You are the only writer | The other session pushes commits and rewrites the description |
 
-Rough rule: **this skill finishes a review that already happened; Perry babysit
-procures a review and drives it to approval.** If the request names Perry or
-asks for approval, hand off; if it is about the comments already sitting on the
-PR, stay here. When it is genuinely ambiguous, ask — the handoff is a
-fire-and-forget Slack post that is far more expensive to undo than this loop.
+Rough rule: **this skill finishes a review that already happened; the babysit session procures one and drives it to approval for a branch nobody is holding.** If this session authored the PR and the request names Perry or approval, stay here and run the loop yourself: ask Perry for a `review` (see `ask-perry-babysit`), clear the threads with this skill, and repeat until Perry approves and CI is green. For a stack, review it as a stack and work the layers bottom-up. Hand off only for a PR this session does not own. When it is genuinely ambiguous, ask, since the handoff is a fire-and-forget Slack post that is far more expensive to undo than this loop.
 
 Do not run both on one branch at the same time — two actors pushing to the same
 branch and resolving the same threads is the failure mode `ask-perry-babysit`
@@ -84,10 +79,22 @@ reply). Skim `gh pr view <PR> --json comments` for context; treat a
 conversation-level comment as actionable only if it contains an explicit
 unaddressed request.
 
+A bot's conversation-level report (Fallow audit, mutation report, both posted by `github-actions[bot]`) has no review thread, so `git_comment_on_pr` with `in_reply_to=<its comment id>` fails with `Parent comment not found` (seen on #43529). Answer it with a top-level comment that names the report it responds to. There is nothing to resolve.
+
+The mutation report's survivors table truncates after ~40 rows ("… and N more"), usually all in one pre-existing file, so the survivors on your new lines are not in the comment. Pull the full list with `gh run download <run id from the comment footer> -n mutation-survivors-pr-<PR>` (a `survivors.json` of path/line/mutator) and filter to the paths you added (seen on #43294). Fallow's unused-export finding also fires on a function that production reaches only through a factory-wrapped default dependency; check the callers before declining. It also flags `TEST_`-prefixed re-exports, which the required `fallow:production` scan exempts as test seams (`dropTestSeams` in `scripts/fallow-production.ts`), so decline those with that pointer rather than deleting the seam (seen on #46248).
+
 `perry-the-pr-reviewer` also puts findings in the review *body* with no inline
 thread (two "observations" on #41585 next to an empty thread list). They need
 a verdict like any thread; give it in the layer's top-level resolution comment,
 since there is nothing to resolve.
+
+Perry flags the `main` tag dropping out of `packages/management-sdk/generated/.speakeasy/workflow.lock` after a Speakeasy regen from a feature branch (seen on #44304). Decline with the check that settles it: `management-sdk-regen-check` diffs with `':(exclude)...workflow.lock'`, and the sdk-bot commit after merge restores the tag.
+
+Devin Review re-checks its own findings on the next push and, when the fix holds, posts a `✅ **Resolved**` reply and resolves the thread itself (seen on #46049). Reply with the fixing SHA as usual, but do not queue that thread for your own CI-green resolve pass; when its re-check instead rewrites the finding in place (the first fix on #46049 dedup'd by model name and the bot pointed out a repeated roster entry), treat the edited body as a new thread.
+
+An `@devin` mention in a thread is answered by whichever Devin session the mention spawns, not by the session that opened the PR, and that session gets no notification of the follow-up. If the spawned session is archived it posts "Devin is archived and cannot be woken up" instead of a reply, and the follow-up sits unanswered (seen on #42755). Re-fetch threads on every pass rather than waiting for a notification, and answer a follow-up posted to an already-resolved thread in place.
+
+On a review-readiness audit, also fetch resolved threads by removing the `isResolved` filter and check each finding against its resolution and current code. Reviewers can replace the original finding in place while leaving the thread resolved (Devin on #41362); retain comment bodies by `databaseId`, compare them after subsequent pushes, and reopen any substantively edited finding the existing fix no longer addresses.
 
 cortex is the exception worth reading every pass (seen on #32072): it keeps one
 consolidated issue comment that it rewrites in place on every push, and a
@@ -191,6 +198,8 @@ create ("not agent-managed"): post, reply, and resolve through the agent's PR
 tool instead, and put the resolution-log rows in your report for the author
 to paste (seen on #42123).
 
+A reply POST that returns HTTP 504 may still have landed. Before retrying, query the thread with `comments(last: 10)` (the step 1 query uses `first: 10` and misses replies on long threads) and retry only when the reply is absent, otherwise the thread gets a duplicate verdict (seen on #45992).
+
 Run these from a shell, not from a scripted subprocess: the `gh` on PATH is a
 wrapper that resolves the token from the shell environment, and a subprocess
 that misses it fails with `gh auth login` instead of a permissions error. A
@@ -226,6 +235,25 @@ say in it that the description could not be edited (seen on #40939–#40942).
 Pushing triggers re-review (Devin Review, CI, humans), which produces new
 threads. Loop back to step 1 after CI settles. Exit when the only unresolved
 threads are escalations.
+
+A red `unit` check confined to a workspace the PR does not touch (but that
+lands in the affected set as a package dependent) is usually a shard flake,
+not a regression — triage it before touching code, because chasing it
+costs an hour (seen on #44917): every CI-failing file must pass on the
+job's own "Rerun failed tests" step; then reproduce locally with the CI's
+exact runner (`bun scripts/ci/run-unit-tests.ts`, `AFFECTED_PATHS_FILE`
+listing the flaking workspace, `JUNIT_DIR` set) on both the head and the
+parent whose CI was green — identical local failures on both exonerate the
+diff, and a failure set that also reproduces on `origin/main` and passes
+in isolation names a pre-existing shared-process isolation bug in that
+suite. Document the chain in the PR body, name the follow-up, and leave
+the fix to its own PR. Bare `git stash` in a shared multi-session worktree
+is how not to bisect: it pops another session's stash and contaminates the
+tree. A `git diff > patch` round-trip is no safer there — the patch omits
+unstaged binary and untracked files, and the `git checkout --` that
+follows discards them, which can destroy another session's in-flight
+work. Run the head-vs-parent comparison in a separate detached worktree
+(`git worktree add <path> <sha>`) so the shared tree is never touched.
 
 ## Reporting
 

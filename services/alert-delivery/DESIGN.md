@@ -1,4 +1,4 @@
-# Alert delivery design and runbook
+# Alert delivery design
 
 `alert-delivery` is an in-house Bun/TypeScript Cloud Run worker. The `svix`
 package is used only as the MIT Standard Webhooks signing library; no
@@ -83,20 +83,9 @@ accounting for two database connections per concurrently resolved notice-batch
 fallback tenant. Email recipient
 resolution and endpoint lookup start concurrently, so each message can hold
 two database connections before endpoint fan-out.
-Production consumes the topic through
-`alert-delivery-alert-events-transactional`, filtered with
-`NOT attributes.alert_event_class = "notice"`, and
-`alert-delivery-alert-events-notice`, filtered with
-`attributes.alert_event_class = "notice"`. The negative transactional filter
-keeps attribute-less legacy messages on a consumed subscription. Their lease
-budgets are split from the one
-`DELIVERY_MAX_CONCURRENT_MESSAGES` total, with the extra slot going to
-transactional traffic for odd totals. The unfiltered
-`alert-delivery-alert-events` subscription remains declared but unconsumed as
-the rollback path and is removed by a follow-up change after cutover
-confirmation.
+Production consumes the topic through two filtered subscriptions: `alert-delivery-alert-events-transactional` uses `NOT attributes.alert_event_class = "notice"`, while `alert-delivery-alert-events-notice` uses `attributes.alert_event_class = "notice"`. The negative transactional filter routes a message without the attribute to the transactional subscription. Their lease budgets are split from the one `DELIVERY_MAX_CONCURRENT_MESSAGES` total, with the extra slot going to transactional traffic for odd totals.
 Waiting for a global endpoint-concurrency permit is bounded by
-`DELIVERY_PERMIT_WAIT_TIMEOUT_MS` (default 60000), so a saturated worker
+`DELIVERY_PERMIT_WAIT_TIMEOUT_MS` (default 10000), so a saturated worker
 reports the stall instead of queueing behind slow deliveries indefinitely.
 Notice-class endpoint and per-tenant email work additionally takes a permit
 from a `DELIVERY_NOTICE_ENDPOINT_CONCURRENCY` sub-cap before the global permit.
@@ -112,8 +101,7 @@ endpoint permits; it is bounded only by the Resend pacer, where
 request/s for transactional email. `RESEND_BURST_CAPACITY` (default 2) is
 configured separately from the steady rate so the worst-case sliding-second
 load remains below Resend's shared team limit. These defaults leave 2 request/s
-of steady transactional headroom, narrower than the 3 request/s left by the
-previous 10 and 7 pair, chosen so the worst case in any sliding second stays
+of steady transactional headroom and keep the worst case in any sliding second
 at 8 against the shared team limit of 10. The burst allowance is not reserved
 for transactional email, because both limiters are constructed with
 `RESEND_BURST_CAPACITY` and a notice send takes a notice token and then a global
@@ -126,34 +114,9 @@ recognized publisher/consumer divergence uses the published class, matching
 the subscription routing decision. Notice-batch envelopes remain notice by
 their envelope discriminant and do not consult the attribute.
 
-Notice shards are published at a maximum of 250 tenants. The wire/schema
-ceiling deliberately remains 1_000 tenants so messages published before this
-deploy continue to validate. The subscription explicitly pins Pub/Sub's
-60-minute lease-extension ceiling. One endpoint wave costs
-`60_000 + 10_000 + 30_000 = 100_000 ms`; a fallback tenant costs
-`ceil(100 / 4) × 100_000 = 2_500_000 ms`, and the bulk stage costs
-`ceil(1_000 / 100) × 100_000 = 1_000_000 ms`. The largest single stage estimate
-is `max(2_500_000, 1_000_000) = 2_500_000 ms`, within `3_600_000 ms`. This is
-not a whole-shard bound. Fallback tenants run at
-`DELIVERY_NOTICE_FALLBACK_CONCURRENCY`, so several fallback tenants add their
-costs across a shard. Recipient count is also unbounded in code, since every
-active organization admin is resolved. A shard can therefore exceed the
-largest-stage estimate and the lease. A whole-shard bound needs a runtime
-deadline that defers untouched tenants, which is deliberately not implemented
-at the current audience size. An overrun causes a deduplicated redelivery
-rather than a duplicate send.
+Notice shards are published at a maximum of 250 tenants. The wire schema accepts up to `ALERT_NOTICE_BATCH_MAX_TENANTS` (1_000) tenants per shard. The subscription explicitly pins Pub/Sub's 60-minute lease-extension ceiling. One endpoint wave costs `10_000 + 10_000 + 30_000 = 50_000 ms`; a fallback tenant costs `ceil(100 / 4) × 50_000 = 1_250_000 ms`, and the bulk stage costs `ceil(1_000 / 100) × 50_000 = 500_000 ms`. The largest single stage estimate is `max(1_250_000, 500_000) = 1_250_000 ms`, within `3_600_000 ms`. This is not a whole-shard bound. Fallback tenants run at `DELIVERY_NOTICE_FALLBACK_CONCURRENCY`, so several fallback tenants add their costs across a shard. Recipient count is also unbounded in code, since every resolved recipient of the tenant is sent to, whether it comes from admin-role resolution or from configured people and addresses. A shard can therefore exceed the largest-stage estimate and the lease. There is no whole-shard runtime deadline. An overrun causes a deduplicated redelivery rather than a duplicate send.
 
-Preferring the published class makes both the subscription routing and the
-notice sub-cap only as strong as what the publisher stamps: a publisher that
-stamps `transactional` on notice traffic defeats the filter and the
-reservation together, where a purely in-process classification would still
-have held the cap. This is deliberate. A class that disagrees between the
-routing layer and the capacity layer is the worse failure, because the
-sub-cap would then bound traffic that arrived on the other subscription. A
-recognized disagreement logs `alert-delivery:event-class-divergence` with both
-values. Divergence requires publisher/consumer deploy skew and self-heals once
-both sides are on the same revision, so the warn log is the proportionate
-signal and no monitor is warranted.
+Because the consumer uses the published class, subscription routing and the notice sub-cap always agree, and both are only as correct as the publisher's stamp: notice traffic stamped `transactional` bypasses the filter and the sub-cap together. A recognized disagreement between the published and computed class logs `alert-delivery:event-class-divergence` with both values; it indicates publisher/consumer deploy skew and has no monitor.
 
 Email batches acquire and release that permit one batch at a time. The loop
 normally attempts every batch before the row status is decided, unless a permit
@@ -193,13 +156,7 @@ whether any retryable failure exists. `fan_out_capped`, like
 `permit_timeout` and `circuit_open`, is excluded from those aggregate metrics
 because no customer delivery attempt occurred; batch-scoped diagnostics are
 excluded because the unscoped aggregate record already represents the
-delivery attempt. In the monitoring taxonomy the three still differ:
-`permit_timeout` has its own dedicated monitor, `fan_out_capped` is covered by
-its own endpoint-fan-out-capped event monitor, and `circuit_open` has no
-dedicated monitor because operators are signalled by the breaker itself: the
-repeatedly-opening-circuit monitor watches breaker open transitions, so the
-per-message short-circuit records would only restate what that monitor already
-alerts on.
+delivery attempt. In the monitoring taxonomy the three differ: `permit_timeout` has its own dedicated monitor, `fan_out_capped` is covered by the endpoint-fan-out-capped event monitor, and `circuit_open` has no monitor. Breaker transitions (`alert-delivery:breaker-transition`) are charted on the Notifications Observability dashboard's `Delivery safety and invariant events (expect empty)` widget, and nothing pages on a circuit open.
 
 The worker also exits
 non-zero when `ALERT_DELIVERY_ENCRYPTION_KEY` is absent or does not decode to
@@ -256,11 +213,7 @@ Before reading policy routing or endpoints, it checks the shared retired-policy
 set. A retired-policy event is acknowledged without retrying and produces no
 delivery or failure. Instead, the event outcome records one skipped outcome,
 one unevidenced skipped outcome, and `retired_policy` as its suppression reason.
-This is defense in depth for events published before the evaluator guard
-existed or by the topic's other producer — the frontend API also holds
-publisher rights on `alert-events` and publishes test events from the
-notification-settings test route — while keeping the suppression visible in
-delivery outcome logging rather than silently dropping the event.
+This covers the topic's other producer — the frontend API also holds publisher rights on `alert-events` and publishes test events from the notification-settings test route — and keeps the suppression visible in delivery outcome logging rather than silently dropping the event.
 
 ### Endpoint auto-disable and owner notification
 
@@ -375,10 +328,7 @@ secrets never enter the database row, Pub/Sub envelope, or Terraform state.
 
 ### Secret transport tradeoff
 
-Slack incoming-webhook URLs are bearer credentials and remain a
-storage-at-rest risk until encrypted custody is implemented. The worker reads
-the encrypted endpoint envelope from Postgres at delivery time and holds
-`ALERT_DELIVERY_ENCRYPTION_KEY` to decrypt it. This keeps both plaintext
+Endpoint URLs, including Slack incoming-webhook URLs, which are bearer credentials, are stored as `EncryptedSecret` envelopes in `endpoint_url_encrypted` with a keyed HMAC `endpoint_url_fingerprint` for matching. The worker reads the encrypted endpoint envelopes from Postgres at delivery time and holds `ALERT_DELIVERY_ENCRYPTION_KEY` to decrypt them. This keeps both plaintext
 secrets and encrypted envelopes out of Pub/Sub; the key's blast radius
 remains a security-owner review item.
 
@@ -448,8 +398,7 @@ ceiling bounds distinct alerts rather than attempts, so a pass that already
 owns a ledger row is never denied, and an alert that loses the race for the
 last slot in a window inherits that exemption and is delivered without
 consuming one. This overshoot is bounded by the per-event endpoint
-concurrency. Removing it entirely would require the ledger row to carry
-whether a slot was ever spent, which was deliberately not built.
+concurrency. The ledger row does not record whether a slot was spent.
 In a mixed fan-out, the aggregate uses the generic retry-exhausted reason while
 the per-endpoint ledger rows remain authoritative for the individual reasons.
 The broker's own dead-letter delivery may still have no reason attribute.
@@ -482,8 +431,8 @@ still denied, the worker records `retry_exhausted_rate_ceiling`, emits the
 standard failure metric, and dead-letters with the same distinct reason without
 incrementing terminal-failure or auto-disable state. Decryption/signing failures are nacked and redelivered. They remain
 non-terminal `failed` ledger rows so they can be claimed again after the
-underlying key or secret is fixed; acking them dropped the alert permanently
-because nothing else redelivered the reclaimable row. Redelivery is bounded by
+underlying key or secret is fixed, until the nightly finalizer marks a row
+untouched for fourteen days terminal. They are nacked rather than acked because nothing else redelivers a reclaimable row. Redelivery is bounded by
 the per-endpoint attempt cap and the subscription's `max_delivery_attempts`;
 after that, the failure becomes `retry_exhausted` and reaches the DLQ. The
 delivery-failure disposition table defines this retry versus no-retry behavior.
@@ -525,37 +474,45 @@ accepted the send while allowing the other consumer's outcome to stand.
 Aggregate failure is logged before its guarded write, so a failure that loses
 the race is observable rather than disappearing with the stale worker.
 
-Each endpoint also has an in-process closed/open/half-open circuit breaker.
-Five consecutive failures open the breaker for sixty seconds; one half-open
-probe is permitted after the cooldown. State is process-local and approximate
-under concurrency and scale-out; the registry is bounded by size and idle
-eviction. Breaker state is not shared between instances.
+Each endpoint also has an in-process closed/open/half-open circuit breaker. Five consecutive failures open the breaker for sixty seconds; one half-open probe is permitted after the cooldown. The in-process registry is bounded by size and idle eviction. When `SHARED_ENDPOINT_CIRCUIT_ENABLED` is set, which production sets, open state and the half-open probe are additionally coordinated through the `alert_endpoint_circuit` table, so the first process to accumulate its five consecutive failures sheds that endpoint for the whole fleet, and only one process at a time holds the probe lease. The lease is fenced on settlement, so a probe outcome written after the lease expired is logged rather than applied. A database error on the shared read or on an open/close write falls back to the process-local decision, so coordination degrades to per-instance rather than blocking delivery. The probe claim is the exception: if its write fails the attempt is shed rather than probed, because the single-prober guarantee cannot be verified. With the flag off, breaker state is process-local and approximate under concurrency and scale-out.
 
 Delivery is at-least-once, not exactly-once. A successful POST followed by a
 ledger-write failure can cause a duplicate POST on redelivery. Generic webhook
 receivers should deduplicate using `svix-id` (the event deduplication key);
 Slack has no equivalent receiver-side idempotency header in this worker.
 
+## Retention and finalization
+
+Three `cfw-internal` cron tasks run nightly at midnight UTC.
+`purge-alert-event-deliveries` deletes ledger rows at thirty days by age alone
+with no status filter, `purge-alert-delivery-rates` deletes rate rows at seven
+days, and `purge-alert-endpoint-circuits` deletes circuit rows whose cooldown
+has been expired for a day or whose endpoint is soft-deleted, always retaining a
+live probe lease. Each runs in batches of five hundred with a cap of twenty
+batches per run, warns when it hits that cap, and emits a retention-age gauge
+for its table. None is manually triggerable; a missed run is recovered by the
+next night's.
+
+Before it purges, the ledger task finalizes dead deliveries. A `pending` or
+`failed` non-terminal row whose `created_at` and `updated_at` are both older
+than fourteen days is marked `is_terminal_failure = true`, leaving `status`,
+`failure_reason` and `last_error` as they are, so the diagnosis survives.
+Fourteen days is the maximum redelivery lifetime plus dead-letter retention, so
+nothing can revisit the row by then and the flag records a fact rather than a
+decision. Rows already carrying `retry_exhausted` or
+`retry_exhausted_rate_ceiling` are left alone, because their reason already says
+they are dead. Finalization applies its eligibility predicate to the update as
+well as to the selection, so a row a concurrent claim has just taken is not
+finalized underneath it, and a finalization failure is logged and does not stop
+the purge. A finalized `pending` row is still reclaimable by stale-pending
+recovery, since `pending` never proved a delivery happened: the policy prefers a
+possible duplicate over a possible permanent omission.
+
 ## Scale-out headroom and capacity
 
-Cloud Run runs this worker at `min_instance_count = 1` and
-`max_instance_count = 1`, so the bounds above are also the whole fleet's
-bounds: 8 messages in flight, 12 concurrent endpoint attempts, and up to
-`DELIVERY_DB_POOL_MAX` (28) connections against the pg-us-central1 primary.
-The boot-environment parity test enforces these instance limits because the
-circuit breaker and rate counters are process-local.
-`DELIVERY_MAX_CONCURRENT_MESSAGES` shapes how much work one process admits; it
-is per-process flow control and does not add capacity, so enough concurrently
-slow endpoints saturate the message slots and the input subscription backs up
-with no relief.
+Cloud Run runs this worker at `min_instance_count = 1` and `max_instance_count = 1`, so the bounds above are also the whole fleet's bounds: 8 messages in flight, 12 concurrent endpoint attempts, and up to `DELIVERY_DB_POOL_MAX` (28) connections against the pg-us-central1 primary. The boot-environment parity test enforces these instance limits because the global endpoint semaphore and the Resend pacer are per-instance. `DELIVERY_MAX_CONCURRENT_MESSAGES` shapes how much work one process admits; it is per-process flow control and does not add capacity, so enough concurrently slow endpoints saturate the message slots and the input subscription backs up with no relief.
 
-The two Datadog monitors on `alert-delivery-alert-events`
-(`alert_delivery_subscription_backlog.tf` for oldest unacked message age,
-`alert_delivery_input_backlog_depth.tf` for undelivered depth) exist to make
-that saturation visible well before the subscription's 600s ack deadline and
-`max_delivery_attempts = 20` convert a sustained backlog into dead-lettered
-alerts. Their firing history is the evidence a capacity decision should be
-made on.
+The two Datadog monitors on the transactional and notice subscriptions (`alert_delivery_subscription_backlog.tf` for oldest unacked message age, `alert_delivery_input_backlog_depth.tf` for undelivered depth) exist to make that saturation visible well before either subscription's 600s ack deadline and `max_delivery_attempts = 20` convert a sustained backlog into dead-lettered alerts. Their firing history is the evidence a capacity decision should be made on.
 
 Raising the instance ceiling above one requires three things the service does
 not have:
@@ -569,11 +526,7 @@ not have:
   failure mode that matters. Scaling has to be driven from
   `num_undelivered_messages` or `oldest_unacked_message_age`, which requires a
   mechanism outside the built-in autoscaler.
-- An accepted per-endpoint pressure multiplier. Circuit-breaker state and
-  in-process rate counters are process-local, so a fleet of N instances can
-  send up to N times the concurrent attempts to one endpoint and needs N
-  consecutive failures per instance before that endpoint is shed. Duplicate
-  delivery stays bounded by the idempotent ledger claim, not by breaker state.
+- An accepted per-endpoint pressure multiplier. The shared endpoint circuit coordinates open state and half-open probes across processes, so an endpoint shed by one instance is shed fleet-wide and only one instance probes it during recovery. The in-process rate counters and the per-endpoint concurrency semaphore remain per-instance, so a fleet of N instances can still send up to N times the concurrent attempts to one endpoint before any of them opens its breaker. Duplicate delivery stays bounded by the idempotent ledger claim.
 
 ## Secrets and release
 
@@ -637,76 +590,18 @@ if the encrypted columns are dropped without restoring plaintext first.
 
 ## Boot and infrastructure invariants
 
-Alert-delivery enforces its cross-value configuration invariants in the
-`AlertDeliveryEnvSchema.superRefine()` startup validation: message plus global
-endpoint concurrency must fit within the Postgres pool; per-event concurrency
-must not exceed global endpoint concurrency; the per-endpoint attempt cap must
-stay below the Pub/Sub dead-letter attempt budget; and the terminal-failure
-staleness and spread windows must not exceed ledger retention and the
-staleness window, respectively. Auto-disable requires both at least the
-configured count of consecutive terminal failures and a period with no
-successful delivery. It does not require terminal failures to be evenly
-distributed across that period. The service boot-parity and queue-parity tests load the production
-Cloud Run literals through the real environment loader and compare Terraform
-queue settings with application constants. `failure-reason-monitoring.ts` and
-monitor parity keep the declared failure-reason monitoring contract aligned
-with Terraform. One endpoint's permit wait plus one attempt, or one email
-batch permit acquisition, must fit inside the subscription's ack deadline,
-which queue parity keeps aligned with the Terraform value. A mid-loop email
-timeout records `permit_timeout` and retries the whole event, so that deadline
-bounds the window in which an endpoint produces no outcome at all and a
-saturated worker reports `permit_timeout` within the
-deadline the subscription was provisioned with. We deliberately do not extend
-that into a per-message invariant across fan-out waves: delivery's Pub/Sub
-client auto-extends leases for up to its 60-minute default, and endpoint work
-includes database operations around the HTTP call, so the Terraform ack
-deadline is not the load-bearing upper bound on total message processing. Under
-total saturation the per-message worst case is one permit wait per fan-out wave,
-about 25 minutes for a 100-endpoint event at the default per-event concurrency
-of 4, all of it inside the lease-extension window rather than the ack deadline.
-The boot-parity test also enforces the
-single-instance Cloud Run assumption that keeps process-local breaker state and
-rate-counter thresholds fleet-wide.
+Alert-delivery enforces its cross-value configuration invariants in the `AlertDeliveryEnvSchema.superRefine()` startup validation: message plus global endpoint concurrency must fit within the Postgres pool; per-event concurrency must not exceed global endpoint concurrency; the per-endpoint attempt cap must stay below the Pub/Sub dead-letter attempt budget; and the terminal-failure staleness and spread windows must not exceed ledger retention and the staleness window, respectively. Auto-disable requires both at least the configured count of consecutive terminal failures and a period with no successful delivery. It does not require terminal failures to be evenly distributed across that period. The service boot-parity and queue-parity tests load the production Cloud Run literals through the real environment loader and compare Terraform queue settings with application constants. `failure-reason-monitoring.ts` and monitor parity keep the declared failure-reason monitoring contract aligned with Terraform. One endpoint's permit wait plus one attempt, or one email batch permit acquisition, must fit inside the subscription's ack deadline, which queue parity keeps aligned with the Terraform value. A mid-loop email timeout records `permit_timeout` and retries the whole event, so that deadline bounds the window in which an endpoint produces no outcome at all and a saturated worker reports `permit_timeout` within the deadline the subscription was provisioned with. That is not a per-message invariant across fan-out waves: delivery's Pub/Sub client auto-extends leases for up to its 60-minute default, and endpoint work includes database operations around the HTTP call, so the Terraform ack deadline is not the load-bearing upper bound on total message processing. Under total saturation the per-message worst case is one permit wait per fan-out wave, about 4 minutes for a 100-endpoint event at the default per-event concurrency of 4, all of it inside the lease-extension window rather than the ack deadline. The boot-parity test also enforces the single-instance Cloud Run assumption that keeps the per-instance rate-counter and endpoint-semaphore thresholds fleet-wide.
 
 ## Known limitations
 
 - Test-event provenance rests on trusted producer IAM and the `test:`
   dedup-key prefix. There is no signed provenance on the envelope.
-- Circuit-breaker state and rate counters are process-local, which is why the
-  fleet is pinned to one instance (see Scale-out headroom and capacity).
+- Rate counters and the endpoint-concurrency semaphore are per-instance, which is why the fleet is pinned to one instance (see Scale-out headroom and capacity). Breaker open state and half-open probes are coordinated across processes through the shared endpoint circuit, best-effort.
 
-### Provisioning verification (apply-time)
+### Operational checks
 
-When the infrastructure is provisioned, verify:
-
-- Pull consumption is enabled only after the existing topic, subscription, and
-  `INTERNAL_ONLY` Cloud Run service are verified; a misconfiguration should be
-  visible in subscription backlog and DLQ metrics.
-- When flipping `DELIVERY_CONSUMER_ENABLED` to `true`, confirm the
-  `alert-delivery:consumer-gated-in-prod` startup log no longer appears for the
-  new revision. A remaining startup log means the gate is still set to `false`.
-- The alert-delivery monitors are not silenced. They evaluate and hold state
-  from the moment they are applied. `notification_preset_name = "hide_all"`
-  only strips the query, handles, snapshots and footer links out of the
-  notification body, so it changes what a message looks like and not whether
-  one is sent. What decides that is the notification target the monitor
-  interpolates, which is set in
-  `configs/terraform-monitors/monitoring/alert_platform_targets.tf`. Read
-  monitor state in Datadog rather than waiting for a page.
-- Log-based metrics do not backfill, so a monitor built on one sits in `No
-  Data` for its full no-data timeframe after the first apply. The
-  fingerprint-mismatch monitor uses 60 minutes and alerts on `No Data`
-  deliberately, so expect it to alert for about an hour after apply.
-- The worker's `ALERT_DELIVERY_ENCRYPTION_KEY` from Infisical/GSM is
-  byte-identical to the producer key used by `encryptAlertDeliverySecret`.
-  Missing or wrongly sized key material fails startup before DB or Pub/Sub
-  setup. A valid but mismatched key records every event as a `failed` ledger
-  row with `is_terminal_failure = false`, so it remains re-claimable once the
-  key is corrected. The consumer nacks and redelivers those events without
-  touching the breaker; after retry exhaustion they reach the DLQ. Operational
-  alerting must query `status = 'failed'` without filtering on
-  `is_terminal_failure` to catch this configuration error.
-- DNS resolution works under 443-only egress. GCP exempts the
-  `169.254.169.254` metadata server, so name resolution is unaffected by the
-  `169.254.0.0/16` deny. Confirm observability and metrics egress uses 443 or
-  a localhost agent, since UDP and other non-443 traffic is denied.
+- A `alert-delivery:consumer-gated-in-prod` startup log means the revision is running with `DELIVERY_CONSUMER_ENABLED=false` and is acknowledging real events without delivering them. Production sets it to `true`.
+- The alert-delivery monitors evaluate and hold state whether or not they page. `notification_preset_name = "hide_all"` only strips the query, handles, snapshots and footer links from the notification body; the notification target set in `configs/terraform-monitors/monitoring/alert_platform_targets.tf` decides whether a message is sent. Read monitor state in Datadog rather than waiting for a page.
+- Log-based metrics do not backfill. The encryption-key fingerprint-mismatch monitor alerts on `No Data` after 60 minutes, so it alerts for about an hour after it is first applied.
+- The worker's `ALERT_DELIVERY_ENCRYPTION_KEY` must be byte-identical to the producer key used by `encryptAlertDeliverySecret`. Missing or wrongly sized key material fails startup before DB or Pub/Sub setup. A valid but mismatched key records each real-alert delivery that uses an encrypted endpoint as a `failed` ledger row with `is_terminal_failure = false`, so it remains re-claimable once the key is corrected, until the nightly finalizer marks it terminal at fourteen days. The consumer nacks and redelivers those events without touching the breaker; after retry exhaustion they reach the DLQ. Operational alerting must query `status = 'failed'` without filtering on `is_terminal_failure` to catch this configuration error.
+- DNS resolution works under 443-only egress because GCP exempts the `169.254.169.254` metadata server from the `169.254.0.0/16` deny. Observability and metrics egress must use 443 or a localhost agent, since UDP and other non-443 traffic is denied.
