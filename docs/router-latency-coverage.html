@@ -474,7 +474,7 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
 <span class="cm">own phases        </span><span class="str">bootstrap  auth  body_read  preset_resolution  credit_authorization</span>
 <span class="cm">                  </span><span class="str">model_selection  sticky_session  private_catalog  rate_limit</span>
 <span class="cm">                  </span><span class="str">spend_guard  request_build  prompt_cache  media_hydration</span>
-<span class="cm">                  </span><span class="str">response_cache  known_csam</span>
+<span class="cm">                  </span><span class="str">response_cache  known_csam  relay</span>
 <span class="cm">                  // own phases only label time; they are never subtracted</span></pre>
     </div>
   </header>
@@ -486,30 +486,28 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
     </div>
 
     <div class="tally" aria-hidden="true">
-      <span class="own" style="flex: 13"></span>
+      <span class="own" style="flex: 14"></span>
       <span class="unattr" style="flex: 5"></span>
       <span class="excl" style="flex: 7"></span>
       <span class="deflate" style="flex: 0"></span>
-      <span class="out" style="flex: 3"></span>
+      <span class="out" style="flex: 2"></span>
     </div>
     <ul class="legend">
-      <li><span class="sw own"></span><span><span class="name">Own phase</span><span class="count">13 steps</span></span><span class="desc">Counted as OpenRouter time and labelled with a named phase.</span></li>
+      <li><span class="sw own"></span><span><span class="name">Own phase</span><span class="count">14 steps</span></span><span class="desc">Counted as OpenRouter time and labelled with a named phase.</span></li>
       <li><span class="sw unattr"></span><span><span class="name">Counted, no label</span><span class="count">5 steps</span></span><span class="desc">Counted as OpenRouter time, but with no phase of its own. CPU-only steps fold into the next phase that awaits I/O; post-dispatch work shows only inside the <code>post_dispatch</code> total.</span></li>
       <li><span class="sw excl"></span><span><span class="name">Subtracted</span><span class="count">7 steps</span></span><span class="desc">Correctly removed as provider, client, tool, parsing, guardrail or routing-model time.</span></li>
       <li><span class="sw inflate"></span><span><span class="name">Counted, should not be</span><span class="count">0 steps</span></span><span class="desc">Third-party time counted as ours. Makes OpenRouter look slower.</span></li>
       <li><span class="sw deflate"></span><span><span class="name">Subtracted, should not be</span><span class="count">part of row 20</span></span><span class="desc">Our own work hidden inside the provider interval. Makes OpenRouter look faster.</span></li>
-      <li><span class="sw out"></span><span><span class="name">Outside both windows</span><span class="count">3 steps</span></span><span class="desc">Never measured. Fine after the response; a gap before the window starts.</span></li>
+      <li><span class="sw out"></span><span><span class="name">Outside both windows</span><span class="count">2 steps</span></span><span class="desc">Never measured. Fine after the response.</span></li>
     </ul>
 
     <figure>
       <div class="fig-scroll">
-        <svg class="tl" viewBox="0 0 1120 772" role="img" aria-label="Schematic timeline of 28 request steps across four regions: before the recorder starts, the router_latency_v2 window up to first provider dispatch, the post_dispatch window up to the last byte to the client, and work after it. Each step is coloured by how router latency classifies it.">
+        <svg class="tl" viewBox="0 0 1120 772" role="img" aria-label="Schematic timeline of 28 request steps across three regions: the router_latency_v2 window from the origin receipt of a relayed request, or the handler start, up to first provider dispatch, the post_dispatch window up to the last byte to the client, and work after it. Each step is coloured by how router latency classifies it.">
           <!-- regions -->
-          <rect class="r-out" x="310" y="52" width="30" height="680"/>
-          <rect class="r-w1" x="340" y="52" width="380" height="680"/>
+          <rect class="r-w1" x="310" y="52" width="410" height="680"/>
           <rect class="r-w2" x="720" y="52" width="290" height="680"/>
           <rect class="r-out" x="1010" y="52" width="100" height="680"/>
-          <text class="reg-label" x="325" y="20" text-anchor="middle">OUTSIDE</text>
           <text class="reg-label w1" x="530" y="20" text-anchor="middle">ROUTER_LATENCY_V2 WINDOW</text>
           <text class="reg-label w1" x="865" y="20" text-anchor="middle">POST_DISPATCH WINDOW</text>
           <text class="reg-label" x="1060" y="20" text-anchor="middle">OUTSIDE</text>
@@ -548,10 +546,10 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
           <text class="mark-label soft" x="924" y="752" text-anchor="end">upstream EOF, onComplete</text>
 
           <!-- window boundaries -->
-          <line class="boundary" x1="340" y1="50" x2="340" y2="732"/>
+          <line class="boundary" x1="310" y1="50" x2="310" y2="732"/>
           <line class="boundary" x1="720" y1="50" x2="720" y2="732"/>
           <line class="boundary" x1="1010" y1="50" x2="1010" y2="732"/>
-          <text class="mark-label" x="340" y="42" text-anchor="middle">startedAtMs</text>
+          <text class="mark-label" x="310" y="42" text-anchor="middle">startedAtMs</text>
           <text class="mark-label" x="720" y="42" text-anchor="middle">first dispatch</text>
           <text class="mark-label" x="1010" y="42" text-anchor="middle">last byte to client</text>
 
@@ -586,7 +584,7 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
           <text class="row-num" x="8" y="724">28</text><text class="row-label" x="34" y="724">waitUntil: ClickHouse, Stripe, usage</text>
 
           <!-- rows: bars -->
-          <rect class="b-out" x="314" y="65" width="24" height="14" rx="2"/>
+          <rect class="b-own" x="314" y="65" width="24" height="14" rx="2"/>
           <rect class="b-own" x="342" y="89" width="20" height="14" rx="2"/>
           <rect class="b-own" x="364" y="113" width="22" height="14" rx="2"/>
           <rect class="b-unattr" x="393" y="137" width="12" height="14" rx="2"/>
@@ -618,14 +616,14 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
           <rect class="b-out" x="1013" y="713" width="87" height="14" rx="2"/>
         </svg>
       </div>
-      <figcaption>Schematic. The order and overlap of steps are real; bar lengths are not durations. Auth, router config and the body read run in parallel (rows 5 and 6). Row 12 is mostly own <code>model_selection</code> time, with the classifier model calls and routing-service calls inside it subtracted as <code>routing_models</code>. Classifier cache reads stay in <code>model_selection</code>. Each classifier interval ends at its caller's timeout when the model call runs longer. Many rows only run for some requests; the ledger below says when.</figcaption>
+      <figcaption>Schematic. The order and overlap of steps are real; bar lengths are not durations. Row 1 is the landing worker's <code>relay</code> phase: for a relayed request whose clock check passes, the window starts at the origin receipt. Auth, router config and the body read run in parallel (rows 5 and 6). Row 12 is mostly own <code>model_selection</code> time, with the classifier model calls and routing-service calls inside it subtracted as <code>routing_models</code>. Classifier cache reads stay in <code>model_selection</code>. Each classifier interval ends at its caller's timeout when the model call runs longer. Many rows only run for some requests; the ledger below says when.</figcaption>
     </figure>
   </section>
 
   <section aria-labelledby="edge-h">
     <div class="section-head">
       <h2 id="edge-h">Which requests get a number</h2>
-      <span class="meta">16 request paths</span>
+      <span class="meta">17 request paths</span>
     </div>
     <p class="section-intro">A metric is only emitted when a request dispatches to a provider through the router adapter. <code>computeRouterLatencyV2</code> returns null without a first dispatch. When no endpoint was attempted, <code>logTxAttempt</code> writes no log line and only the server-tool user request emits a metric.</p>
     <div class="table-scroll">
@@ -709,6 +707,14 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="ev"><code>services/cfw-api/src/index.ts · getStatsdDefaultTags({ isHipaaWorker: isHipaaWorker() })</code><code>services/cfw-api/src/statsd-default-tags.ts · is_hipaa_worker</code><code>services/cfw-api/src/middlewares/hipaa-dispatch.ts · hipaaService.fetch</code></td>
             <td class="tk"><span class="none">n/a</span></td>
           </tr>
+          <tr>
+            <td class="step">Cross-region relay<span class="sub">China traffic, or a mixed-traffic colo</span></td>
+            <td><span class="chip c-ok">tagged</span></td>
+            <td><span class="chip c-ok">tagged</span></td>
+            <td class="why">The origin worker relays before its handler runs, so it emits no router latency. The landing worker emits, with the origin's share counted as the <code>relay</code> phase (row 1). Every surface built with the cfw-api recorder helper tags <code>relayed:true</code> only when the relay pre-shared key matches the worker's own, and <code>relayed:false</code> otherwise; the header alone is not trusted. <code>relay_clock</code> says how the window was set: <code>ok</code>, <code>skewed</code>, <code>none</code> when not relayed, and <code>unknown</code> when the timing headers were unusable or no helper-built recorder exists, as for batch jobs.</td>
+            <td class="ev"><code>services/cfw-api/src/middlewares/pre-handler-auth-timing.ts · observeRelay</code><code>services/cfw-api/src/utils/verified-relay.ts · isVerifiedRelayRequest</code><code>packages/instrumentation/router-latency-v2/tags.ts · relay_clock</code></td>
+            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2971">PLA-2971</a></td>
+          </tr>
 
           <tr>
             <td class="step">Video generation</td>
@@ -786,17 +792,16 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
           <tr><th>#</th><th>Step</th><th>Runs when</th><th>Counted today as</th><th>Should be</th><th>Evidence</th><th>Ticket</th></tr>
         </thead>
         <tbody>
-          <tr class="group"><td colspan="7">Before the recorder starts</td></tr>
+          <tr class="group"><td colspan="7">router_latency_v2 window: handler start, or an earlier relay or pre-handler auth step, to first dispatch</td></tr>
           <tr>
             <td class="num">1</td>
             <td class="step">Cross-region relay<span class="sub">preRelayGuard, then fetch to another region</span></td>
             <td class="when">China traffic, or mixed-traffic colo</td>
-            <td><span class="chip c-out">outside</span></td>
-            <td>Measured only in the landing region. The relay hop is never counted.</td>
-            <td class="ev"><code>services/cfw-api/src/middlewares/proxy.ts · preRelayGuard</code></td>
-            <td class="tk"><span class="none">not ticketed</span></td>
+            <td><span class="chip c-own">relay</span></td>
+            <td><span class="chip c-ok">correct</span> When the clock check passes. For a verified relay, the origin stamps its receipt time and its own elapsed time up to the relay <code>fetch</code> (the pre-relay guard and request build) in <code>or-relay-origin-start-ms</code> and <code>or-relay-origin-elapsed-ms</code>, overwriting any values the client sent. The landing worker trusts them only when the relay pre-shared key verifies, and compares them with its own proxy-middleware entry time. <code>ok</code> (implied transit from 0 to <code>MAX_RELAY_TRANSIT_MS</code>): the window starts at the origin receipt and <code>relay</code> covers receipt to landing entry. <code>behind</code> (negative transit) or <code>ahead</code> (above the bound): durations only, so <code>relay</code> covers the origin elapsed time ending at landing entry and the transit is not counted. <code>invalid</code> (a header missing or not a non-negative integer, the clocks more than a minute apart, or an origin elapsed time above a minute): the headers are ignored and the relay is outside the window. The clock-independent round trip is still emitted as <code>openrouter.api.relay_hop.duration_ms</code> as the reference for tuning the bound.</td>
+            <td class="ev"><code>services/cfw-api/src/middlewares/relay-clock.ts · stampRelayOrigin</code><code>services/cfw-api/src/middlewares/relay-clock.ts · checkRelayClock</code><code>services/cfw-api/src/middlewares/relay-clock.ts · MAX_RELAY_TRANSIT_MS</code><code>services/cfw-api/src/middlewares/proxy.ts · serveLocally</code><code>services/cfw-api/src/middlewares/pre-handler-auth-timing.ts · ROUTER_LATENCY_V2_OWN_PHASES.Relay</code></td>
+            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2971">PLA-2971</a></td>
           </tr>
-          <tr class="group"><td colspan="7">router_latency_v2 window: handler start, or an earlier pre-handler auth step, to first dispatch</td></tr>
           <tr>
             <td class="num">2</td>
             <td class="step">Region-lock user lookup<span class="sub">getUser to check regional-routing entitlement</span></td>
@@ -811,7 +816,7 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="step">Clerk cookie auth</td>
             <td class="when">Non-Cloudflare cookies present</td>
             <td><span class="chip c-own">auth</span></td>
-            <td><span class="chip c-ok">correct</span> On the same surfaces as row 2. The pre-relay verification on a would-relay colo also records a span, but there a signed-in cookie either relays, so no local recorder is built, or is rejected before dispatch. In practice that check is outside the window.</td>
+            <td><span class="chip c-ok">correct</span> On the same surfaces as row 2. The pre-relay verification on a would-relay colo records a span that the origin never uses: a relayed request counts that check inside the landing worker's <code>relay</code> phase (row 1), and a rejected one never dispatches.</td>
             <td class="ev"><code>services/cfw-api/src/middlewares/clerk.ts · recordPreHandlerAuthSpan</code><code>services/cfw-api/src/middlewares/hipaa-pre-relay-guard.ts · guardCookieSession</code><code>services/cfw-api/src/middlewares/pre-handler-auth-timing.ts · createRouterLatencyV2Recorder</code></td>
             <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2832">PLA-2832</a></td>
           </tr>
@@ -947,18 +952,18 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="step">Pool charge, token estimate<span class="sub">Upstash round-trip; tokenizer CPU</span></td>
             <td class="when">Pool keys; token estimate on every attempt</td>
             <td><span class="chip c-own">credit_authorization</span></td>
-            <td><span class="chip c-ok">correct</span> The Upstash acquire runs after authorization, so the two spans are sequential. Tokenizer CPU reads near zero on its own and folds into the next phase that awaits I/O, <code>spend_guard</code>; production bounds it at 7 to 14ms (PLA-2794).</td>
+            <td><span class="chip c-ok">correct</span> The Upstash acquire runs after authorization, so the two spans are sequential. Tokenizer CPU reads near zero on its own and folds into the next phase that awaits I/O: <code>spend_guard</code>, or <code>rate_limit</code> when the concurrent rate-limit check also awaits I/O (row 19). Production bounds it at 7 to 14ms (PLA-2794).</td>
             <td class="ev"><code>packages/router/index.ts · #acquirePoolPendingCharge</code><code>packages/router/index.ts · cache.acquirePoolCharge</code><code>packages/router/index.ts · RequestTokenEstimator.estimate, validateEndpointMaxTokens</code></td>
             <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2794">PLA-2794</a></td>
           </tr>
           <tr>
             <td class="num">19</td>
-            <td class="step">Rate limit, spend guard</td>
-            <td class="when">Every attempt</td>
+            <td class="step">Rate limit, spend guard<span class="sub">run concurrently</span></td>
+            <td class="when">Every attempt; the reserve only while SpendGuard is active</td>
             <td><span class="chip c-own">rate_limit</span><span class="chip c-own">spend_guard</span></td>
-            <td><span class="chip c-ok">correct</span></td>
-            <td class="ev"><code>packages/router/index.ts · measureOwn('rate_limit'</code><code>packages/router/index.ts · recordOwn('spend_guard'</code></td>
-            <td class="tk"><span class="none">n/a</span></td>
+            <td><span class="chip c-ok">correct</span> The SpendGuard reserve starts without an await, the rate-limit check runs from the same frozen stamp, and the reserve is awaited only after it. After a rate-limit rejection the reserve is never awaited: it stays in flight through the next attempt and can outlive that attempt's dispatch, where compute clips it. <code>rate_limit</code> and every other phase keep their time. <code>spend_guard</code> reports only the wait that no other own phase or excluded interval covers, so a stacked <code>by {phase}</code> breakdown counts each overlap once. <code>router_latency_v2</code> and <code>unexplained</code> use the window and the union of spans, so they never counted it twice.</td>
+            <td class="ev"><code>packages/router/index.ts · const spendGuardStartMs = Date.now()</code><code>packages/router/index.ts · measureOwn('rate_limit'</code><code>packages/router/index.ts · recordOwn('spend_guard'</code><code>packages/router/index.ts · await spendGuardDispatch.outcomePromise</code><code>packages/router/index.ts · #pendingRateLimitWithdrawals</code><code>packages/instrumentation/router-latency-v2/compute.ts · NESTED_OWN_PHASES</code><code>packages/instrumentation/router-latency-v2/compute.ts · subtractNestedOwnPhaseSpans</code></td>
+            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-3054">PLA-3054</a></td>
           </tr>
           <tr>
             <td class="num">20</td>
@@ -1059,7 +1064,15 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
     <dl class="emit">
       <div>
         <dt>openrouter.router.tx_attempt_latency</dt>
-        <dd>Distribution with <code>latency_type</code> of <code>router_v2</code>, <code>router_v2_excluded</code>, <code>router_v2_post_dispatch</code> and <code>router_v2_unexplained</code>. The post-dispatch value is skipped when null. Every router latency metric also carries <code>server_tool_call</code>: <code>none</code> for direct traffic, or <code>agent_loop</code>, <code>tool_model</code>, <code>image_generation</code> or <code>fusion</code> for calls made by a server tool or fusion. The v2 tags also carry <code>region_lock</code> and <code>cookie_auth</code> (<code>true</code>, <code>false</code> or <code>unknown</code>): whether region-lock middleware looked the user up, and whether Clerk verified a session cookie, before the route handler created its recorder. <code>unknown</code> means the recorder was not built from the pre-handler spans, as for batch jobs, which run no pre-handler middleware, and for a video job whose Durable Object restored a snapshot saved before the snapshot carried the sources. The same values are in <code>router_latency_v2_tags</code> on Transaction attempt logs. Neither is the same as <code>region</code>, which is the Cloudflare colo's region.<span class="src">packages/instrumentation/router-latency-v2/metrics.ts · emitRouterLatencyV2Metrics; packages/router/helpers/tx-attempt-metric-tags.ts · server_tool_call; packages/instrumentation/router-latency-v2/tags.ts · region_lock, cookie_auth; services/cfw-api/src/middlewares/pre-handler-auth-timing.ts · observePreHandlerAuth</span></dd>
+        <dd>Distribution with <code>latency_type</code> of <code>router_v2</code>, <code>router_v2_excluded</code>, <code>router_v2_post_dispatch</code> and <code>router_v2_unexplained</code>. The post-dispatch value is skipped when null. Every router latency metric also carries <code>server_tool_call</code>: <code>none</code> for direct traffic, or <code>agent_loop</code>, <code>tool_model</code>, <code>image_generation</code> or <code>fusion</code> for calls made by a server tool or fusion. The v2 tags also carry <code>region_lock</code> and <code>cookie_auth</code> (<code>true</code>, <code>false</code> or <code>unknown</code>): whether region-lock middleware looked the user up, and whether Clerk verified a session cookie, before the route handler created its recorder. <code>unknown</code> means the recorder was not built from the pre-handler spans, as for batch jobs, which run no pre-handler middleware, and for a video job whose Durable Object restored a snapshot saved before the snapshot carried the sources. The same values are in <code>router_latency_v2_tags</code> on Transaction attempt logs. Neither is the same as <code>region</code>, which is the Cloudflare colo's region. <code>relayed</code> is <code>true</code> when a verified relay delivered the request, and <code>relay_clock</code> is <code>ok</code> when the window starts at the origin receipt, <code>skewed</code> when the clocks disagreed and only the origin's own elapsed time was counted, <code>none</code> when not relayed, and <code>unknown</code> when the timing headers were unusable or the recorder was not helper-built. The <code>router_latency_v2_tags</code> log field keeps the raw result instead: <code>ok</code>, <code>behind</code>, <code>ahead</code>, <code>invalid</code> or <code>none</code>.<span class="src">packages/instrumentation/router-latency-v2/metrics.ts · emitRouterLatencyV2Metrics; packages/router/helpers/tx-attempt-metric-tags.ts · server_tool_call; packages/instrumentation/router-latency-v2/tags.ts · region_lock, cookie_auth, relay_clock; services/cfw-api/src/middlewares/pre-handler-auth-timing.ts · observePreHandlerAuth, observeRelay</span></dd>
+      </div>
+      <div>
+        <dt>openrouter.api.relay_hop.duration_ms</dt>
+        <dd>Distribution, emitted by the origin worker on every relay mount. Not part of <code>router_latency_v2</code>. The value is the origin's time from the relay <code>fetch</code>, after the pre-relay guard, to the relay response headers, minus the landing worker's own elapsed time from <code>or-relay-landing-elapsed-ms</code>, clamped at 0. That leaves the network round trip through the relay; the guard is counted in the landing worker's <code>relay</code> phase instead. Each worker uses its own clock, so there is no cross-colo skew. A relay whose response has no valid landing time emits nothing, so the count covers only measured hops. Tagged <code>relay_location</code> (<code>china</code> or <code>singapore</code>), <code>route</code> (the templated route) and <code>status_class</code> of the landing response (<code>2xx</code> to <code>5xx</code> or <code>other</code>), plus the worker's default tags such as <code>service</code>. It is the clock-independent reference for tuning <code>MAX_RELAY_TRANSIT_MS</code>.<span class="src">services/cfw-api/src/middlewares/relay-hop-metric.ts · emitRelayHopDuration, readRelayLandingElapsedMs, RELAY_HOP_STATUS_CLASSES; services/cfw-api/src/middlewares/proxy.ts · observeRelayHop</span></dd>
+      </div>
+      <div>
+        <dt>openrouter.api.relay_hop.clock_check and implied_transit_ms</dt>
+        <dd>Emitted by the landing worker for every verified relay. <code>clock_check</code> is a counter tagged <code>result</code> (<code>ok</code>, <code>behind</code>, <code>ahead</code> or <code>invalid</code>). <code>implied_transit_ms</code> is a distribution of the signed implied transit, landing entry minus origin receipt minus origin elapsed, tagged the same way and skipped for <code>invalid</code>. Together with the round trip above, they show whether <code>MAX_RELAY_TRANSIT_MS</code> is set right.<span class="src">services/cfw-api/src/middlewares/relay-clock.ts · emitRelayClockCheck; services/cfw-api/src/middlewares/proxy.ts · emitRelayClockCheck</span></dd>
       </div>
       <div>
         <dt>Stream delay on openrouter.router.tx_attempt_latency</dt>
@@ -1089,7 +1102,7 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
   </section>
 
   <footer>
-    <span>Verified against main at ab341e8 plus PRs #47661 and #47662 on 2026-09-28. Claims are checked in code unless marked inferred or suspected. Production numbers come from the PLA-2794 sizing on 2026-09-28; nothing else was run. Update rules: packages/instrumentation/router-latency-v2/AGENTS.md.</span>
+    <span>Verified against main at 998bd6e on 2026-09-29. Claims are checked in code unless marked inferred or suspected. Production numbers come from the PLA-2794 sizing on 2026-09-28; nothing else was run. Update rules: packages/instrumentation/router-latency-v2/AGENTS.md.</span>
     <svg class="glyph" viewBox="0 0 599.50008 424.5955" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="currentColor" d="M465.95505,1c70.18551,0,127.07865,56.89523,127.07865,127.07865s-56.89314,127.07865-127.07865,127.07865l126.04929,126.05058c16.01193,16.01105,4.67227,43.38762-17.96889,43.38762H211.79775C94.82524,424.5955,0,329.77027,0,212.79775S94.82524,1,211.79775,1h254.1573ZM211.79775,85.7191c-70.18342,0-127.07865,56.89523-127.07865,127.07865s56.89523,127.07865,127.07865,127.07865,127.07865-56.89523,127.07865-127.07865-56.89523-127.07865-127.07865-127.07865Z"/></svg>
     <a href="https://linear.app/openrouter/project/router-latency-instrumentation-8abaa33a7542">Linear: Router Latency Instrumentation</a>
   </footer>
