@@ -33,7 +33,7 @@ A batch runs on one provider. By default OpenRouter picks the cheapest eligible 
 
 Multimodal input in batch is URL-only, and support depends on the provider the batch routes to.
 
-**Images.** Image parts must be public `http(s)` URLs. Base64 and `data:` URI images are rejected on every provider. Image URLs are accepted when the model accepts image input and the batch routes to a provider whose batch API fetches URLs natively:
+**Images.** Image parts must be public `http(s)` URLs. Base64 and `data:` URI images are rejected on every provider. Image URLs are accepted when the model accepts image input and the batch routes to a provider whose batch API fetches URLs natively. A rejected image URL's error names the check that refused it: the model does not list image input, the provider endpoint does not support multipart content, or the named provider's batch serializer cannot forward image URLs:
 
 | Provider | Public image URLs | Public file URLs |
 |----------|-------------------|------------------|
@@ -48,7 +48,7 @@ Multimodal input in batch is URL-only, and support depends on the provider the b
 | DeepInfra (`/v1/chat/completions` only) | Supported | Supported |
 | Fireworks | Not supported | Not supported |
 
-**Files.** File parts (Responses `input_file`, Anthropic `document`, chat completions `file`) are accepted only as URL references, only on the providers marked above, and only for models that list file input. Inline file bytes and provider file IDs are rejected.
+**Files.** File parts (Responses `input_file`, Anthropic `document`, chat completions `file`) are accepted only as URL references, only on the providers marked above, and only for models that list file input. Inline file bytes and provider file IDs are rejected. A rejected file URL's error names the check that refused it: the model does not list file input, the provider endpoint does not support multipart content or file URLs, or the provider's batch serializer cannot forward file URLs (OpenAI forwards them only for models served on the Responses wire).
 
 **Audio and video.** Audio and video input parts are rejected on every provider. On `/v1/chat/completions`, requests that ask for non-text output through `modalities`, `audio`, or `image_config` are also rejected. For embeddings, `input` must be strings or token arrays.
 
