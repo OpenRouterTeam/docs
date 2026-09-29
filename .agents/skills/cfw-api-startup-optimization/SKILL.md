@@ -85,7 +85,8 @@ same branches.
 
 - **Request-path, memory and latency measurement**: Use the
   [`cfw-api-cpu-memory-optimization`](../cfw-api-cpu-memory-optimization/SKILL.md)
-  skill for real-request profiling with the `api-perf` Preview. The
+  skill for real-request profiling, and the [`cfw-api-perf`](../cfw-api-perf/SKILL.md)
+  skill for deploying and testing on the `api-perf` Preview. The
   [`cfw-fusion-isolate-memory`](../cfw-fusion-isolate-memory/SKILL.md) skill
   covers fusion-specific heap retainers and OOM analysis.
 
@@ -246,6 +247,12 @@ they do not describe the current AOT architecture.
 - **What to check**: for any dependency whose bytes look unshakeable, read its `exports` map. Wrangler resolves with the `workerd`, `worker`, `browser` conditions, so a package that only offers ESM behind `esnext`/`module` falls through to `default` — usually CommonJS, whose namespace object esbuild cannot drop unused exports from.
 - **Fix pattern**: patch the package's `exports` to add `workerd` and `worker` entries pointing at its ESM build, leaving `default` and `types` intact so Node, Next and TypeScript resolution are unchanged. `patches/@opentelemetry%2Fsemantic-conventions@1.37.0.patch` is the reference. Prefer this over `WRANGLER_BUILD_CONDITIONS`, which changes resolution for every dependency at once.
 - **Verify before shipping**: rebuild with `bun run cf:bundle:min` and compare the package's `bytesInOutput` in `dist/bundle-meta.json`, and diff the ESM and CJS entrypoints' export names and values to confirm parity.
+- **Quick measurement without writing a patch**: edit the package's `package.json` under `node_modules/.bun/<pkg>@<version>/node_modules/<pkg>/`, run `bunx wrangler deploy --dry-run --outdir ./dist-exp --minify --metafile` in `services/cfw-api` (about 10 s), diff per-package `bytesInOutput` between the two metafiles, then restore the file and delete `dist-exp/`.
+- **Audited CommonJS deps in the cfw-api bundle** (2026-09-18, versions from `bun.lock`). Re-check only after a version bump.
+  - `@opentelemetry/api@1.9.0`: ESM under `module`/`esnext` only. Patch saves ~5 KB; open as [#40286](https://github.com/OpenRouterTeam/openrouter-web/pull/40286).
+  - `@upstash/ratelimit@2.0.6` + `@upstash/core-analytics@0.0.10`: `main`-only with a sibling `dist/index.mjs`. Patch saves ~5 KB; open as [#39700](https://github.com/OpenRouterTeam/openrouter-web/pull/39700). Patch both together: ratelimit's ESM imports core-analytics.
+  - `@clickhouse/client-web@1.23.1`: ships only CommonJS `dist/`. No ESM build on disk, so not fixable by an `exports` patch.
+  - `pg@8.16.3`: `esm/index.mjs` is a wrapper that does `import pg from '../lib/index.js'` and re-exports properties, so the whole CommonJS `lib/` still ships. Not fixable by an `exports` patch.
 
 #### 12. Precompiling `buildZodGuard` with zod-compiler (Aug 2026)
 

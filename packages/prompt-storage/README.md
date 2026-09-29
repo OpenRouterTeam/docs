@@ -1,6 +1,6 @@
 # Prompt Storage
 
-Prompt and completion storage for OpenRouter. Uploads request/response pairs to object storage for analytics, debugging, and compliance. Supports multiple backends (S3, GCS, MinIO) and generates signed URLs for secure retrieval. Also handles startup application file uploads and the GCS list/delete primitives used by GDPR/DSR deletions.
+Prompt and completion storage for OpenRouter. Uploads request/response pairs to object storage for analytics, debugging, and compliance. Supports multiple backends (S3, GCS, RustFS) and generates signed URLs for secure retrieval. Also handles startup application file uploads and the GCS list/delete primitives used by GDPR/DSR deletions.
 
 ## Architecture
 
@@ -12,7 +12,7 @@ graph TD
     StartupUploads --> GCS["GCS Client\nsigned URLs + service account auth"]
     GCS --> GCPBucket["Google Cloud Storage"]
     S3 --> S3Bucket["AWS S3"]
-    Dev["Local Development"] --> MinIO["MinIO Client\nS3-compatible local storage"]
+    Dev["Local Development"] --> LocalS3["RustFS Client\nS3-compatible local storage"]
     DSR["packages/user-deletions\nGDPR deletion targets"] --> GCS
 ```
 
@@ -22,8 +22,9 @@ graph TD
 |-----------|---------|
 | `s3/` | S3 client for uploading prompts and completions |
 | `gcs/` | GCS client with service-account auth, signed URL generation for startup uploads, and paged list/delete for GDPR deletion |
-| `minio/` | MinIO client for local development (S3-compatible) |
+| `local-s3/` | RustFS client for local development (S3-compatible) |
 | `startup-uploads/` | Helpers for startup application file uploads |
+| `generated-media/` | Regional private storage for generated media: object keys, create-only upload, signed download URLs, and prefix deletion |
 | `env.ts` | Environment variable configuration for storage backends |
 
 ## Commands

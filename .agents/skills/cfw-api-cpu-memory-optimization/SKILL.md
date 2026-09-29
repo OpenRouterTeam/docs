@@ -13,223 +13,9 @@ timing. The [`cfw-fusion-isolate-memory`](../cfw-fusion-isolate-memory/SKILL.md)
 skill covers fusion-specific isolate memory retainers and `exceededMemory`
 analysis.
 
-## What the perf worker measures
+## The api-perf Preview
 
-The `api-perf` worker is a throwaway Cloudflare Worker Preview of cfw-api. It
-uses the same cfw-api source with FakeProvider-only inference and read-only
-bindings, so several branches can be under load at once without sharing a
-deployment or Durable Object storage. The Preview name follows the branch. The
-run summary prints a stable hostname that follows the branch and an immutable
-hostname pinned to the commit. Use the immutable hostname when comparing two
-commits.
-
-The Preview cannot write to Postgres, has no queue producer bindings and no
-usage-record binding. It holds exactly one secret, the FakeProvider key, set by
-hand in the worker's Previews settings with
-`bunx wrangler preview secret put FAKE_PROVIDER_API_KEY --config wrangler.perf.toml`.
-Every new Preview copies that secret. The workflow handles no secrets, no paid
-provider key and no `PROVIDER_ENCRYPTION_KEY`, so load points at FakeProvider
-endpoints by default; passthrough (see
-[Profiling production OpenRouter routing](#profiling-production-openrouter-routing))
-is the real-model option. The `FAKE_PROVIDER_API_KEY` is a Preview base-config
-secret, and a Preview never inherits secrets from the production deployment.
-
-The Preview omits `CF_AI`, presidio, sandbox, files-api, fusion and image-api.
-Features behind those bindings report themselves unavailable and measurements of
-those paths are not meaningful. `R2_SKILL_BUNDLES` no longer exists in either config: nothing in cfw-api ever
-read it (the skills routes live in cfw-public-api), and an unused R2 binding
-carries put and delete against the immutable skill-bundles store, so the
-production binding was removed with the r2-audit rollout.
-
-Its rate limiters fail open. Every Hyperdrive binding points at
-`pg-us-central1-replica`, so cross-region latency is not comparable to
-production. Every Preview shares those Hyperdrive configurations and the
-production KV namespaces, so KV-contention experiments need their own
-resources.
-
-## Deploying a Preview
-
-Use `repository_dispatch` to trigger
-`.github/workflows/deploy-cfw-api-perf.yaml` from the branch under test. It
-needs only `Contents: write` and deploys `wrangler.perf.toml` as the `api-perf`
-Preview:
-
-```sh
-gh api repos/OpenRouterTeam/openrouter-web/dispatches \
-  -f event_type=deploy-cfw-api-perf \
-  -f 'client_payload[action]=deploy' \
-  -f 'client_payload[ref]=<branch>' \
-  -f 'client_payload[experiment]=cpu-hunt'
-```
-
-`client_payload[ref]` is the branch to deploy. The run itself reports the
-default branch, so a dispatched run's `head_branch` is not the ref under test.
-`action: bootstrap` creates the worker once. `action: delete` ends an
-experiment early. Run the workflow from the branch under test so the Preview
-name and hostname come from the ref.
-
-A human can trigger the workflow from the Actions UI. An agent token cannot use
-`workflow_dispatch`, so a 403 `Resource not accessible by integration` means
-that path was used instead of `repository_dispatch`.
-
-## Sending requests
-
-A request to a Preview passes two independent checks, and confusing them wastes
-time because both look like a 401.
-
-1. **Cloudflare Access**, at the edge, before the worker runs. Satisfied by a
-   service token sent as `CF-Access-Client-Id` and
-   `CF-Access-Client-Secret`. Access strips both headers before the request
-   reaches the worker.
-2. **cfw-api**, in the worker. Satisfied by an OpenRouter API key sent as
-   `Authorization: Bearer <key>`. The `Bearer` prefix is not optional. The
-   header parser takes the second space-separated token, so a bare key reads as
-   `undefined` and fails with `Missing Authentication header`.
-
-The script reports which of the two rejected a request.
-
-Query with service-token headers rather than a browser login. An Access cookie
-reaches cfw-api's Clerk middleware, which the perf worker has no secret for.
-
-Any OpenRouter API key works. The Preview validates it against the production
-database replica and passes it upstream exactly as production does, so there is
-no perf-specific key and no allowlist. What it cannot do is validate a key that
-the replica has never seen: the Infisical dev seeded key under `/tests/e2e` and
-`/services/cfw-api` exists only in the local seed database and returns 401. An
-agent session already holds a production key in the `OPENROUTER_API_KEY`
-environment variable.
-
-That key is shared org-wide and has a real monthly budget. The Preview defaults
-to FakeProvider, so it cannot spend, but pointing a run at a real model spends
-from the shared pool and shares its rate limits with every other session in the
-org. Use a separate key for load against real models.
-
-Access credentials are not in Infisical. In CI, the pair lives in the
-`Cloudflare API Perf` GitHub environment. In an agent session, the same values
-are already in `CLOUDFLARE_ACCESS_ID` and `CLOUDFLARE_SECRET`. To mint a new
-pair in Cloudflare One, follow [Putting the Previews behind
-Access](#putting-the-previews-behind-access). In all cases, map the values to
-`PERF_CF_ACCESS_CLIENT_ID` and `PERF_CF_ACCESS_CLIENT_SECRET` below.
-
-```bash
-export OPENROUTER_API_KEY=...      # OpenRouter API key
-export PERF_CF_ACCESS_CLIENT_ID=...     # Access service token
-export PERF_CF_ACCESS_CLIENT_SECRET=...
-
-bun scripts/ci/query-perf-preview.ts \
-  --url https://<preview>-api-perf.openrouter.workers.dev \
-  --count 100 \
-  --initial-delay-ms 200
-```
-
-The script is a load generator and an Access/auth canary, not a CPU
-instrument. It prints per-request status and client-side wire timing, TTFB and
-total, which carries network, colo, cold start and FakeProvider delay alongside
-any worker cost. Read CPU from the worker's own events instead, per
-[Measuring request-path changes](#measuring-request-path-changes).
-The model defaults to `openrouter/fake-20260806`, so no request from it can
-reach a paid upstream. Both the stable Preview URL and the immutable Deployment
-URL of a single commit work as `--url`.
-
-A Preview only picks up a merged fix on redeploy, including changes to how it
-logs.
-
-## Profiling production OpenRouter routing
-
-The `api-perf` Preview can optionally forward keyed inference to production
-OpenRouter instead of contacting a provider. Passthrough activates only when
-`OR_PERF_SKIP_SIDE_EFFECTS` is `true`, the Preview base URL is configured, the
-request has a valid API key, and the request is not already marked as
-passthrough. It pins production to the endpoint selected by the Preview and
-forwards the caller's own key, so real inference spends the caller's own
-credits. Use a dedicated account with a credit limit when profiling.
-
-Requests for `openrouter/fake-*` remain on FakeProvider and are free. Cookie-
-authenticated requests, stealth adapters and non-inference requests
-(embeddings, rerank, media and batch) do not use passthrough. Paid inference
-needs a production-valid key in `OPENROUTER_API_KEY`, which agent sessions
-already have; the local seed key the e2e suite defaults to is not valid
-against the production replica.
-
-Passthrough Previews reproduce production model output faithfully, including
-reasoning content and `reasoning_details`, but a few response metadata fields
-do not survive: reasoning-token usage fields
-(`completion_tokens_details.reasoning_tokens` and the Responses API
-equivalents) can be absent, zero or inconsistent, and `service_tier` is
-`null`. At commit `b279465d971`, a run of the chat-completions, completions,
-messages and responses suites produced 1004 passed, 54 failed and 259
-skipped. The original 37 expected failures remain: 20 were capabilities
-deliberately omitted by `wrangler.perf.toml` (6 image-generation and 14
-web-search), 15 were reasoning-token usage assertions in
-`api/chat-completions/reasoning/{basic,usage-tracking}.test.ts` and
-`api/responses/reasoning/usage-tracking.test.ts`, and 2 were
-`api/messages/regressions/service-tier.test.ts`. The remaining failures were
-nine raw-fetch Access-login artifacts in
-`api/responses/basic/error-handling.test.ts`, one `service_tier: null` snapshot
-in `api/chat-completions/basic/simple.test.ts`, one web-search 500 in
-`api/chat-completions/metadata/router-metadata.test.ts`, two additional
-reasoning-token usage failures for OpenAI o4-mini and xAI Grok 4.3, one timeout
-from the large-base64 video regression because the Preview omits the
-sandbox/files-api bindings, and provider-nondeterminism cases in
-`api/messages/edge-cases/incomplete-responses.test.ts` and
-`api/messages/reasoning/block-index-ordering.test.ts`. Do not treat these
-capability, passthrough, Access, binding, or provider-nondeterminism failures
-as regressions when validating a branch on a perf Preview; diff against this
-observed baseline instead.
-
-### Preview Access and raw-fetch gotcha
-
-An e2e test that calls `fetch` directly against `config.apiBase` does not
-receive the Cloudflare Access service-token headers added by
-`getPerfPreviewHeaders` in `tests/e2e/utils/config.ts`. On a Preview, the
-request therefore follows Access's redirect to a `200 text/html` login page
-instead of reaching cfw-api; the tell is the title `Sign in ・ Cloudflare
-Access`. Check the raw-fetch sites in
-`tests/e2e/api/responses/basic/error-handling.test.ts`,
-`tests/e2e/api/messages/metadata/pipeline-guardrails.test.ts`,
-`tests/e2e/api/responses/metadata/pipeline-guardrails.test.ts`, and
-`tests/e2e/api/guardrails/accuracy-helpers.ts` before treating an unexpected
-200 as a product response.
-
-By hand:
-
-```bash
-curl https://<preview>-api-perf.openrouter.workers.dev/api/v1/chat/completions \
-  -H "CF-Access-Client-Id: $PERF_CF_ACCESS_CLIENT_ID" \
-  -H "CF-Access-Client-Secret: $PERF_CF_ACCESS_CLIENT_SECRET" \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H 'Content-Type: application/json' \
-  -H 'x-initial-delay-ms: 200' \
-  -d '{"model":"openrouter/fake-20260806","messages":[{"role":"user","content":"hi"}],"max_tokens":1}'
-```
-
-### FakeProvider response controls
-
-The router forwards the headers in `FAKE_PROVIDER_HEADERS` from
-`packages/llm-interfaces/schemas/request/index.ts`. Examples include:
-
-- `x-initial-delay-ms`, `x-completion-tokens`, `x-reasoning-tokens`
-
-An unlisted header is silently dropped at ingress. Content length is
-`min(x-completion-tokens or 300, body max_tokens if present, 100,000)`, where
-the header fallback applies when it is absent, invalid or zero.
-`x-reasoning-tokens` adds reasoning tokens on top under the same 100,000-token
-ceiling. See
-[`services/fake-provider/README.md`](../../../services/fake-provider/README.md)
-for the full header reference.
-
-To check the hostname from the outside, without any credentials:
-
-```bash
-bun scripts/ci/query-perf-preview.ts --url https://<preview>-api-perf.openrouter.workers.dev --check-access
-```
-
-It exits non-zero when cfw-api answers an unauthenticated request, which proves
-the hostname is reachable without Access. The deploy workflow runs this after
-every deploy and fails the run on a public Preview. Setting the repository (or
-`Cloudflare API Perf` environment) variable `PERF_REQUIRE_CF_ACCESS` to `false`
-downgrades that to a warning, which is only for bringing a Preview up before
-the Access application covers its hostname.
+What the Preview has and lacks, how to deploy it, authenticate, use passthrough, the e2e baseline, Access and cleanup are in [`cfw-api-perf`](../cfw-api-perf/SKILL.md#preview-reference), which also holds the task-level workflows (smoke, A/B, repro, config overrides). This skill covers how to measure once load is flowing.
 
 ## Measuring request-path changes
 
@@ -327,6 +113,27 @@ Consequences to respect before quoting any local profile number:
   run in production and were 42% of busy CPU in the reference profile;
   `devOnlyCpuEstimateMs` reports it. fs-logs also *create* most local spans, so
   local profiles overstate per-span overhead in volume as well as in cost.
+- **Prove the two arms ran the same workload before reading a delta.** Response
+  bytes and transport chunk counts are socket-timing artifacts, not proof that
+  both arms produced the same model output. `--action compare` refuses pairs
+  whose scenario, workload identity (API URL, endpoint, body hash, headers,
+  API-key digest, sampling arm), model-event total, completion-token total,
+  or model-output digest differ, and refuses any arm whose requests produced
+  more than one distinct output. The digest folds each response to what the
+  model said (text, reasoning, tool names and arguments, finish reason;
+  Anthropic block types, text, thinking, tool-use name and input, stop
+  reason) and ignores framing, ids, timestamps, and usage, so equal event and
+  token totals with different text are still rejected. A sidecar written
+  before those fields existed must be re-collected, not compared.
+- **The sampling arm in a sidecar is the arm cfw-api booted with.** The pin
+  only changes through a restart, so a run whose requested arm (including the
+  implicit `inherit` of a plain `--action run`) differs from the worker's
+  materialized `.dev.vars`, or whose `.dev.vars` was modified after the
+  listening workerd process started, is refused before any request is sent.
+  The check compares file mtime with `ps -o etime` of the API listener; it
+  cannot read the environment inside workerd, so a same-second rewrite or a
+  worker started from another checkout passes it. Finish or switch a series
+  with `--prepare --sampling <arm>`, never by editing the env file.
 - **Check the sample count behind a candidate.** One sample is the resolution
   quantum (0.008 ms/request at 100µs over 12 requests), so anything under ~10
   samples is noise. For a sub-millisecond-per-request candidate, a local
@@ -434,14 +241,7 @@ deploy for any calibration. Calibrate against `cpuTime` from the worker events,
 not against added client latency, which includes time the CPU counter never
 sees and biases the constant.
 
-To point suites that use `callApi`, `apiFetch` or the media helpers at a
-Preview, set `TEST_ENV=production`, `OPENROUTER_API_BASE=<preview url>`,
-`OPENROUTER_API_KEY=<key>`, `PERF_CF_ACCESS_CLIENT_ID`, and
-`PERF_CF_ACCESS_CLIENT_SECRET`. Tests that call `fetch` directly do not attach
-the Access headers and will receive a 302. The Preview defaults to FakeProvider;
-tests pinned to real provider models can run via passthrough (see
-[Profiling production OpenRouter routing](#profiling-production-openrouter-routing)),
-with a known set of failures.
+To run the e2e suites against a Preview, and for the known-failure baseline, see [`cfw-api-perf`](../cfw-api-perf/SKILL.md#smoke-test-a-branch).
 
 ## Local pre-traffic heap snapshots
 
@@ -453,78 +253,3 @@ For a pre-traffic heap snapshot, build with `wrangler deploy --dry-run`, run
 address, and complete `HeapProfiler.takeHeapSnapshot` before issuing any
 request. `HeapProfiler.collectGarbage` hangs in this build. Use the completed
 snapshot as the GC boundary.
-
-## Putting the Previews behind Access
-
-Access is a Cloudflare One Access application, configured outside this
-repository. No wrangler setting makes a Preview hostname private:
-`workers_dev = false` does not cover Preview hostnames. The existing application
-covers `*-api-perf.openrouter.workers.dev`, including stable per-branch and
-immutable Deployment URLs, with a Service Auth policy for the token and an
-Allow policy for humans opening the URLs in a browser. An uncovered Preview
-fails its deploy instead of serving the public internet.
-`PERF_REQUIRE_CF_ACCESS=false` is the setup escape hatch. Access is the only
-rate limit in front of these hostnames because the perf worker's rate limiters
-fail open.
-
-## Expiry and cleanup
-
-Cloudflare never expires a Preview. It evicts the least recently deployed one
-when the worker reaches its Preview cap, which is not a time bound, so
-`cleanup-cfw-api-perf-previews.yaml` runs hourly and applies two:
-
-- **Six hours since the last deploy.** Always enforced, because it needs no
-  telemetry.
-- **One hour with no requests.** Enforced only when the workflow has both
-  Datadog keys, because without them a Preview under load and an abandoned one
-  look identical, and deleting the former destroys a running experiment. When
-  they are missing, or when the activity query for a Preview fails, the run
-  reports `activity_unmeasured` for that Preview and only the age cap applies.
-
-A Preview younger than the idle limit is never deleted for idleness, since a
-Preview is deployed before load is pointed at it. Redeploying resets both clocks,
-so a long experiment survives by redeploying, or by running the cleanup workflow
-with a larger `max-age-minutes`.
-
-Which Previews exist comes from this repository's deploy-workflow run history,
-matched by the deploy workflow's `run-name`, because wrangler 4.107.0 has no
-`preview list` and the Previews REST API is in private beta. Consequences worth
-knowing:
-
-- A Preview created outside CI is invisible to cleanup and has to be deleted by
-  hand.
-- Renaming the deploy workflow's `run-name` blinds cleanup until
-  `perfPreviewEventFromRun` is updated to match.
-- Cleanup's own deletions leave no run behind, so a Preview it deleted stays on
-  the list until its deploy run leaves the history window. The window is the
-  age cap plus two hours for that reason, and a delete that finds nothing is
-  reported as `already_gone` rather than counted or alerted on. Override it with
-  `--lookback-minutes` only alongside a larger `--max-age-minutes`. A window
-  shorter than the age cap hides Previews before they are ever deleted.
-
-Idle time comes from the hostname in cfw-api's own request logs, which is the
-only per-Preview signal available. Cloudflare's Workers metrics aggregate across
-a script's hostnames. A request counts for a Preview unless its hostname belongs
-to another live Preview, because a deployment's immutable hostname is named
-after the deployment id and cannot be reconstructed from a Preview name. Load
-pointed at a Deployment URL keeps its Preview alive, at the cost of holding the
-other live Previews open until the age cap too.
-
-To see decisions without acting on them, a human can dispatch
-`cleanup-cfw-api-perf-previews.yaml` with `dry-run`; it is not an agent-triggerable
-workflow today. The summary lists every Preview with its age, idle time and
-reason.
-
-To delete a Preview, dispatch the deploy workflow with `action: delete` from the
-branch that created it:
-
-```bash
-gh api repos/OpenRouterTeam/openrouter-web/dispatches \
-  -f event_type=deploy-cfw-api-perf \
-  -f 'client_payload[action]=delete' \
-  -f 'client_payload[ref]=<branch>' \
-  -f 'client_payload[experiment]=cpu-hunt'
-```
-
-Deleting a Preview deletes every deployment in it. A deleted Preview comes back
-by dispatching `action: deploy` again.
