@@ -49,10 +49,11 @@ The full terms of service for each provider are linked from the provider's page,
 
 
 <a id="enterprise-eu-in-region-routing" />
+<a id="enterprise-in-region-routing" />
 
-## Enterprise in-region routing
+## In-region routing
 
-For enterprise customers, OpenRouter supports in-region routing in the EU and US. When enabled for your account, your prompts and completions are processed within the selected region and do not leave it. Use `https://eu.openrouter.ai` for EU requests or `https://us.openrouter.ai` for US requests. This feature is only enabled for enterprise customers by request.
+On the Business and Enterprise plans, OpenRouter supports in-region routing in the EU and US. There is no setting to turn on: send a request to `https://eu.openrouter.ai` or `https://us.openrouter.ai`, and its prompts and completions are processed within that region and do not leave it. See [In-Region Routing](/guides/features/in-region-routing) for details.
 
 <Info>
 **Regional models list**
@@ -60,4 +61,4 @@ For enterprise customers, OpenRouter supports in-region routing in the EU and US
   To see which models are available for regional routing, call `/api/v1/models/user` through the corresponding regional hostname. [Learn more](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails)
 </Info>
 
-If you're interested, please contact our enterprise team at https://openrouter.ai/enterprise/form.
+Organization admins can upgrade to Business in [Settings > Manage plan](https://openrouter.ai/settings/manage-plan). For Enterprise, contact our enterprise team at https://openrouter.ai/enterprise/form.
