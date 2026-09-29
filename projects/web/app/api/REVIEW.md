@@ -23,6 +23,8 @@ box.
 Only the Statsig bootstrap routes below remain under `app/api/`. Do not use
 them as a pattern to follow.
 
+**Exception:** `app/api/[[...slug]]` is not an endpoint. It terminates any `/api/` path this app's routing table does not claim with the API's JSON 404 envelope in place of the HTML not-found page. Do not add behavior to it.
+
 **Exception:** `app/api/frontend/statsig-bootstrap` and
 `app/api/frontend/statsig-customer-bootstrap` are intentionally here, not in
 `cfw-frontend-api`. They run the `@statsig/statsig-node-core` napi native

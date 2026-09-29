@@ -1,6 +1,7 @@
 ---
 title: "Reasoning Tokens for Thinking Models"
 date: "2025-01-24T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Understand model thought processes with reasoning tokens "
 category: "announcements"

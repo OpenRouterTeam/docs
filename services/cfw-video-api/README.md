@@ -12,10 +12,16 @@ graph TD
     DO --> Adapter["video-generation adapters\nupstream submit + poll"]
     Adapter --> Upstream["upstream provider"]
     DO --> Alarm["poll alarm\n10s interval"]
-    DO --> Submit["submit-completed-generation.ts"]
+    DO --> Submit["generation-settled.ts"]
     Submit --> Usage["usage-record\nbilling + pending charges"]
     DO --> Webhook["convoy webhook\non completion"]
 ```
+
+## Job Lifecycle
+
+`src/durable-objects/lifecycle.ts` names three awaited, in-process events: `jobStarted`, `generationSettled`, and `jobFinalized`. Reservation handlers and settlement collaborators are shared with the complete video feature catalog in `packages/video-generation/lifecycle/job-features.ts`. The Durable Object supplies job facts and its existing services, not callback overrides.
+
+Storage, polling, and retries remain in `VideoGenerationJob`. Reservations are acquired at the existing post-start boundary. Settlement still waits for provider-usage persistence; terminal status and webhooks precede reservation release and storage cleanup. The renamed settlement handler preserves its existing test-only collaborator overrides, but the production job does not pass them. There are no subscriptions or generic event dispatch.
 
 ## Routes
 

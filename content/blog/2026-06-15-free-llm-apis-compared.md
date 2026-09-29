@@ -1,6 +1,7 @@
 ---
 title: "Free LLM APIs Compared: Rate Limits, Models, and Real Costs (2026)"
 date: "2026-06-15T17:00:00.000Z"
+updated: "2026-09-24T21:04:19.000Z"
 author: "OpenRouter"
 category: "tutorials"
 metaTitle: "Free LLM API in 2026: 13 Options Ranked and Compared"

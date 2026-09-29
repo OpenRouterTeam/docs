@@ -60,9 +60,18 @@ Write (`/api/v1/internal/support/write`):
 | `POST /zendesk/tickets/{ticketId}/approve` | Execute a reply/status change a human approved in Slack. Requires `zendesk_write` plus a **read** case capability; see "Case dispatch and approval" |
 | `POST /zendesk/tickets/{ticketId}/autonomous` | Execute a reply/status change with no human approval when every autonomous gate passes. Requires `zendesk_write`, `case_approve`, and a **read** case capability whose origin's live mode is `auto`; see "Autonomous writes" |
 
+Console (`/api/v1/internal/support/console`, Mission Control Support → Launcher only; see [Support console](#support-console)):
+
+| Route | Purpose |
+| --- | --- |
+| `GET /backlog` | Open, unsolved backlog tickets: `ticket_id`, `subject`, `priority`, `age_hours`, `assignee_kind` (`none`, `ada`, `human`; never an assignee email), `last_dispatch`, and `case_started` (the console or the Zendesk webhook already holds the ticket's case-start claim, so a dispatch would skip it). Filters `priority`, `assignment` (comma-separated), `min_age_hours`, `max_age_hours`; paginated with `page`, `page_size`. Reuses the bounded backlog candidate search (`search_truncated` flags a capped search) |
+| `POST /dispatch` | `{ticket_ids: number[]}` (1-5, unique). Refuses the whole batch with 403 `mode_off` when `modes.backlog` is `off`. Otherwise, per ticket in order: skips solved/closed, human-assigned, and already-dispatched tickets, assigns unassigned tickets to Ada with Zendesk `safe_update`, and starts the case with origin `backlog`. Returns one result per ticket |
+| `GET /dispatches` | Per-ticket dispatch status for `ticket_ids` (comma-separated) or the newest `limit` dispatches: `dispatched`, `accepted`, `slack_thread_url`, `outcome` and `outcome_reason` |
+| `GET /policy` | The effective `support_ada_policy` the worker enforces right now |
+
 ### Zendesk proxy
 
-Agents never hold a Zendesk credential. The worker keeps a confidential Zendesk OAuth client (`ZENDESK_OAUTH_CLIENT_ID` / `ZENDESK_OAUTH_CLIENT_SECRET`, created by the dedicated Zendesk agent user whose identity every write is attributed to), mints a `client_credentials` token scoped to `tickets:read tickets:write ticket_attachments:read ticket_attachments:write users:read` (`users:read` only resolves a new ticket's requester email for intake triage), caches it per isolate until one minute before expiry, and retries once with a fresh token on a 401. Requests go only to the fixed origin `https://openrouter.zendesk.com`, and the proxy exposes no other Zendesk endpoint, so what an agent can reach is the route list above regardless of the token's scope. Ticket and comment payloads are Zod-validated projections, and comment text never enters logs. Comment bodies are sent verbatim: do not append a signature, Zendesk adds the agent's.
+Agents never hold a Zendesk credential. The worker keeps a confidential Zendesk OAuth client (`ZENDESK_OAUTH_CLIENT_ID` / `ZENDESK_OAUTH_CLIENT_SECRET`, created by the dedicated Zendesk agent user whose identity every write is attributed to), mints a `client_credentials` token with the full `read write` scopes (Zendesk Search, used by the backlog, requires `read`), caches it per isolate until one minute before expiry, and retries once with a fresh token on a 401. Requests go only to the fixed origin `https://openrouter.zendesk.com`, and the proxy exposes no other Zendesk endpoint, so what an agent can reach is the route list above regardless of the token's scope. Ticket and comment payloads are Zod-validated projections, and comment text never enters logs. Comment bodies are sent verbatim: do not append a signature, Zendesk adds the agent's.
 
 Writes are rate limited per ticket under the `zendesk-ticket:<id>` entity key, sharing
 the per-agent write budget with account mutations.
@@ -491,11 +500,19 @@ The `wrangler versions upload` / `versions deploy` release path does **not** syn
 verify in the Cloudflare dashboard that the worker route
 `openrouter.ai/api/v1/internal/support/*` is attached, that the Access applications
 (`.../support/read`, `.../support/write`) exist with the intended Service Auth
-policies, and that the AUD vars and allowlists above are set — before any data
+policies, that no Access application covers `.../support/console`, that `ADMIN_API_KEY` is set, and that the AUD vars and allowlists above are set — before any data
 endpoint goes live. `.../support/webhooks` must have no Access application (Zendesk
 sends no Access credentials; the signature authenticates it): remove the old one, and
 the Zendesk webhook's `CF-Access-Client-Id` / `CF-Access-Client-Secret` custom headers,
 after this ships.
+
+### Support console
+
+The console namespace has no Cloudflare Access application. Every request must carry `Authorization: Bearer <ADMIN_API_KEY>` (constant-time compare against the worker's `ADMIN_API_KEY`; a missing key in the worker's environment fails closed with 500) and an `X-Operator-Email` header naming the Mission Control user who acted. The operator email is attribution only, it grants nothing: the caller's identity is always `console`, which holds only the `console` capability, and console paths never accept an Access JWT (nor do read, write, launcher, or webhook paths accept the admin key). The local `SUPPORT_DEV_AUTH_BYPASS` never grants `console`.
+
+Each dispatch request counts once against the shared support write budget (5/min for the `console` identity), and each started case takes one slot from the `support-console-dispatch` budget (5/min), so Mission Control sends one ticket per request every 12 s. Tickets run sequentially; a result is `dispatched`, `skipped` (`ticket_not_found`, `ticket_solved`, `human_assigned`, `already_dispatched`, `rate_limited`, `mode_off`), or `failed` (`ticket_read_failed`, `dedupe_unavailable`, `rate_limit_unavailable`, `assign_conflict`, `assign_failed`, `dispatch_failed`, `dispatch_unconfirmed`). Already-dispatched uses the same Redis dedupe as the webhook case start, so a ticket started by the webhook or by an earlier console run is not started twice. A failure after Ada may have received the case (`dispatch_unconfirmed`) keeps the dedupe claim so a retry cannot double-start it. Any other failure frees the claim. Because the webhook skips assignment events while the console holds the claim, a `dispatch_failed` ticket the console just assigned stays assigned to Ada with no case; it shows in the backlog as `assignee_kind: ada` with no `last_dispatch` and `case_started: false`, and dispatching it again from the launcher starts its case without reassigning it.
+
+Each dispatch is stored in Redis under `support-console-dispatch:ticket:<id>` (30-day TTL, indexed by dispatch time) with the mode, Ada's acceptance, the Slack thread coordinates, and the acting operator email for audit. The capability token is never stored or returned, and `GET /dispatches` never returns the operator email. When Ada later calls the approve or autonomous route for a `backlog` case, the worker records its outcome on that record in the background (write-once, except that `awaiting_approval` can still become `approved_sent` or another final outcome): `auto_sent`, `approved_sent`, `dry_run`, `awaiting_approval` (an autonomous gate refused, so Ada falls back to Slack approval), `escalated` (the ticket stopped being Ada's or closed), or `refused` with `outcome_reason`. Audit logs (`support_console_dispatch_*`) carry the operator email, ticket IDs, results, and reasons only, never subjects, requester data, or comment bodies.
 
 ## Local development
 

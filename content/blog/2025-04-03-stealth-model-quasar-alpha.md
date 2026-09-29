@@ -1,6 +1,7 @@
 ---
 title: "“Stealth” model: Quasar Alpha"
 date: "2025-04-03T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Announcing our first-ever “stealth” model, Quasar Alpha "
 category: "announcements"

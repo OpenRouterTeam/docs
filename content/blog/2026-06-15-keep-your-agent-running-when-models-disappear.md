@@ -1,6 +1,7 @@
 ---
 title: "Keep Your Agent Running When Models Disappear"
 date: "2026-06-15T12:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author:
   - "Kenny Rogers"
   - "Alex Atallah"

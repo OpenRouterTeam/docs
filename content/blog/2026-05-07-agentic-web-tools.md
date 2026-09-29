@@ -1,6 +1,7 @@
 ---
 title: "Consistent Web Search and Fetch Across Every Model"
 date: "2026-05-07T12:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "David Bai"
 teaser: "Give any tool-calling model the ability to search the web and fetch page content on its own, with multiple search engines and fetch engines to choose from."
 headerImage:

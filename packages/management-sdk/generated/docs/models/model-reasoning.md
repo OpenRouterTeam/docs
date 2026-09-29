@@ -1,0 +1,31 @@
+# ModelReasoning
+
+Reasoning effort configuration. Omitted for non-reasoning models and dynamic router models.
+
+## Example Usage
+
+```typescript
+import { ModelReasoning } from "@openrouter-monorepo/management-sdk-generated/models";
+
+let value: ModelReasoning = {
+  supportedEfforts: [
+    "high",
+    "medium",
+    "low",
+    "minimal",
+  ],
+  defaultEffort: "medium",
+  defaultEnabled: true,
+  mandatory: false,
+};
+```
+
+## Fields
+
+| Field                                                                                                                                                              | Type                                                                                                                                                               | Required                                                                                                                                                           | Description                                                                                                                                                        | Example                                                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `supportedEfforts`                                                                                                                                                 | [models.ReasoningEffort](../models/reasoning-effort.md)[]                                                                                                          | :heavy_minus_sign:                                                                                                                                                 | Allowed reasoning effort values for this model, in descending effort order (highest first). Null means no allowlist — all gateway effort values are accepted.      |                                                                                                                                                                    |
+| `defaultEffort`                                                                                                                                                    | [models.ReasoningEffort](../models/reasoning-effort.md)                                                                                                            | :heavy_minus_sign:                                                                                                                                                 | N/A                                                                                                                                                                | medium                                                                                                                                                             |
+| `defaultEnabled`                                                                                                                                                   | *boolean*                                                                                                                                                          | :heavy_minus_sign:                                                                                                                                                 | Default reasoning enabled state when the client does not set `reasoning.enabled`.                                                                                  |                                                                                                                                                                    |
+| `supportsMaxTokens`                                                                                                                                                | *boolean*                                                                                                                                                          | :heavy_minus_sign:                                                                                                                                                 | Present and `true` when the model accepts `reasoning.max_tokens` in requests (Anthropic-style) instead of or in addition to `reasoning.effort`. Omitted otherwise. |                                                                                                                                                                    |
+| `mandatory`                                                                                                                                                        | *boolean*                                                                                                                                                          | :heavy_check_mark:                                                                                                                                                 | When true, reasoning cannot be disabled and effort "none" is rejected.                                                                                             |                                                                                                                                                                    |

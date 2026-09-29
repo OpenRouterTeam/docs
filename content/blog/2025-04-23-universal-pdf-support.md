@@ -1,6 +1,7 @@
 ---
 title: " Universal PDF Support"
 date: "2025-04-23T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "OpenRouter now supports PDF processing for every model. "
 category: "announcements"

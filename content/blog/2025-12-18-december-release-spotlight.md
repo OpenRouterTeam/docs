@@ -1,6 +1,7 @@
 ---
 title: "December Release Spotlight"
 date: "2025-12-18T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "OpenRouter"
 teaser: "Response Healing for structured outputs, chatroom notifications, long-context model rankings, and we're #1 on Brex's fastest-growing AI infra list! "
 headerImage:

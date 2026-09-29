@@ -103,7 +103,7 @@ tests/manual/bugs/MM-DD-YYYY-short-description/
 import { writeJsonToFile }
   from '@openrouter-monorepo/script-utils/write-to-file';
 import { assertOk }
-  from '@openrouter-monorepo/type-utils/result-monad';
+  from '@openrouter-monorepo/lib-result';
 import { expect, it, vi } from 'vitest';
 import { callChatCompletion } from '@/api/completions/shared';
 import snapshot from './snapshot.json';
@@ -129,6 +129,10 @@ it('e2e bug', async () => {
 ```bash
 cd tests/manual && bunx vitest run bugs/MM-DD-YYYY-your-description
 ```
+
+`tests/manual` has no direct `zod` dependency; import `z` and `parseSchema`
+from `@openrouter-monorepo/lib-zod`, and import only subpaths that a
+workspace package exports (unexported paths fail to resolve there).
 
 **Existing manual test locations:**
 - `tests/manual/api/completions/` — chat completions
@@ -167,7 +171,7 @@ tests/e2e/api/
 **Pattern:**
 ```typescript
 import { assertOk }
-  from '@openrouter-monorepo/type-utils/result-monad';
+  from '@openrouter-monorepo/lib-result';
 import { describe, expect, it } from 'vitest';
 import { TestModelGroups } from '@/config/test-models';
 import { RequestBuilder } from '@/fixtures';
@@ -256,6 +260,24 @@ Request `"model": "openai/gpt-4.1-2025-04-14"` with `"provider": {"order": ["fak
 
 Router logs appear in `tilt logs api`; upstream logs appear in `tilt logs fake-provider`. cfw-api prefers upstream SSE even for a non-streaming caller, so test the relevant upstream transport when changing the fake response generator.
 
+### Capturing the upstream request body with a local sink
+
+To verify what the router *sends* to a real provider (request-only adapter
+changes, e.g. server-side tool shapes) without a paid call, repoint that
+provider's `base_url` at a tiny local sink that records the body and
+returns 503, then pin routing with `provider: { only: ["<slug>"] }`. The
+`UPDATE` alone is not enough: routing reads the URL from warmed KV and
+cfw-api caches the warmed config per isolate. After the `UPDATE`, re-warm
+KV, restart `api`, and confirm the first request lands in the sink before
+running scenarios; repeat the same sequence when restoring `base_url`
+(reference: `warmKV` then `restartCfwApi` in
+`scripts/use-local-fake-provider.ts`). The client sees
+`Provider returned error`, which is expected: the evidence is the captured
+body (cross-check `adapters/base-fetch-request` in `dev-fs-logs`).
+Endpoint feature flags such as `supports_native_web_search` come from the
+seed, so no extra setup. If `psql` is not installed on the box, run it
+inside the Postgres container.
+
 Gotchas when synthesizing upstream logprobs or changing endpoint capabilities:
 
 - Synthetic logprob items MUST include `bytes: null` on every token and
@@ -283,6 +305,112 @@ Gotchas when synthesizing upstream logprobs or changing endpoint capabilities:
   trigger a wrangler rebuild. Touch `services/cfw-api/src/index.ts` and
   wait for the reload before capturing a "before" or control run, or the
   worker still serves the patched code.
+- To read a persisted generation field (e.g. `experiments`, Fortuna
+  columns) from local ClickHouse, run `cfw-api` with
+  `PUBSUB_EMULATOR_HOST=localhost:8086` and start the
+  `insert-generations-clickhouse` worker against the same emulator. A
+  complete dev-fs-logs artifact does not imply the row landed. Query
+  `http://localhost:8123` as `default:clickhouse`; `generations` is keyed
+  by `generation_id` and `experiments` is a JSON string.
+
+### Faking an OpenAI Responses-adapter upstream (provider error / refusal paths)
+
+`services/fake-provider` only speaks Chat Completions, so it cannot drive
+the `InternalStreamOpenAIResponsesAdapter` (preflight non-2xx JSON,
+`response.failed`, top-level `error` SSE events). When you need those:
+
+- Write a throwaway Bun server outside the repo (e.g. `/tmp/mock-upstream`)
+  that serves `POST /v1/responses` with OpenAI-Responses-shaped JSON/SSE,
+  select the scenario from a marker in the prompt text, and log
+  `hit=<n> model=<m> scenario=<s>` per call. Return `id: resp_mock_<n>` so
+  each cfw-api `Transaction attempt` (`native_generation_id`) correlates to
+  a mock hit. Do not edit seed files or `services/fake-provider`.
+- Repoint the real provider row: `update providers set
+  base_url='http://localhost:3010/v1' where permaslug='openai';`
+  (`providers` has `permaslug`, not `slug`/`name`; `endpoints` has
+  `model_permaslug`, no `base_url`). Warm with
+  `curl 'http://localhost:8794/__scheduled?cron=*/5+*+*+*+*'` — the cron
+  string must be exactly `*/5 * * * *` or `dispatchCronTrigger` logs
+  `Unknown cron event` and warms nothing.
+- For Chat Completions mocks, accept `/chat/completions` when the temporary
+  base URL omits `/v1`, as well as the usual `/v1/chat/completions` path.
+- Pick a model that has several endpoints for the same model (e.g. OpenAI +
+  Azure) so "skips remaining endpoints of the same model" is observable:
+  compare `attempted_endpoints` vs `potential_endpoints` in the
+  `Transaction attempt` log / `router/transaction-attempt.log`.
+- Use two models of the same provider for `models=[A,B]` fallback and make
+  the mock refuse only on A (marker suffix like `@nano`).
+- Most OpenAI models stream upstream even for non-stream client requests, so
+  the adapter's true non-stream JSON path (`isUpstreamSSE === false`) is only
+  exercised by a model such as `openai/o1-pro`. Cover a failed full Response
+  body with both a usage object and `usage: null` there.
+- Preflight (non-2xx) errors return no generation id in the body; correlate
+  them with `dev-fs-logs/.logs/` by timestamp.
+- Fault attribution: read `is_error_upstream_fault` from the
+  `Transaction attempt` block, not from the `Endpoint returned error` iLog —
+  the latter hard-codes `is_error_upstream_fault: true` for every failed
+  attempt (`packages/router/index.ts`) and is not the health signal.
+- Restoring `providers.base_url` afterwards does not take effect quickly:
+  `getKVProviders` reads `KV_ALL_PROVIDERS` with a 300 s edge `cacheTtl`
+  and the in-process ListCaches keep the old `provider_info.baseUrl`. After
+  the UPDATE + re-warm, restart `bun run dev cfw-api` and confirm
+  `fetch_url` in the newest `router/transaction-attempt.log` points at the
+  real provider (with no new mock hit) before declaring cleanup done.
+  Order matters in both directions (repoint and restore): UPDATE → warm →
+  restart → probe. Restarting before the warm, or a cfw-api started before
+  the UPDATE, keeps the old URL in the in-process provider cache
+  (`cfGlobalProvidersCache` in `services/cfw-api/src/kv/index.ts`, a 30 min
+  `FetchDeduper`): verify the KV blob holds the new URL before restarting.
+- The local seed makes the providers loader log
+  `Error loading providers from DB { errors: ['Invalid provider: Hyperbolic'] }`
+  on every warm; it is pre-existing noise, not caused by your repoint.
+- To assert provider-specific field forwarding or stripping (e.g. a new
+  tool flag) against the real upstream, read the outbound body in
+  `services/dev-fs-logs/.logs/gen-<id>/adapters/base-fetch-request.log`
+  for each attempt. A live `400 unsupported_value` from the provider still
+  proves the field reached it; only a locally-enabled model that accepts the
+  feature can prove the 2xx round trip.
+- Testing a *preflight* (non-2xx) error class — status mapping, error type,
+  `permission_denied` vs a typed refusal — requires
+  `provider.allow_fallbacks: false` (or a single-endpoint model). Otherwise
+  the router retries the same model's other endpoint (e.g. Azure), and that
+  endpoint's own failure (a 401 with no local key) becomes the client-visible
+  status, masking the assertion. Mid-stream (post-2xx) failures don't need
+  this, but the same-model endpoint skip is worth asserting via
+  `attempted_endpoint_count`.
+- Post-2xx failures on the Responses skin return HTTP 200 with
+  `status: "failed"` plus `error` / `error_type` in the body; the mapped HTTP
+  status (403 for a refusal, 502 for `server_error`) only shows up as `status`
+  in the `Transaction attempt` log and on preflight errors. Assert both places.
+- Whether an attempt "accrued usage" (the hard-stop trigger, see
+  `didAttemptProduceOutput`) is visible as `native_tokens_completion` /
+  `native_tokens_reasoning` on the generation row. A usage block on a failed
+  event may be seen by the adapter (`adapters/base-stream-event.log`) and
+  still not land on the transaction — compare those two files before
+  concluding a hard stop should/shouldn't have fired. Mock Responses usage
+  with `output_tokens >= reasoning_tokens` (reasoning tokens are a subset of
+  output tokens); `output_tokens: 0` takes accounting's no-tokens short
+  circuit and the row never gets reasoning tokens.
+- The `infisical` CLI login session expires between runs: `bun run dev …`
+  then drops into an interactive login prompt and exits with
+  `error: script "dev" exited with code 1`. Re-mint with
+  `infisical login --method=universal-auth --client-id=$INFISICAL_CLIENT
+  --client-secret=$INFISICAL_SECRET --plain --silent` and export it as
+  `INFISICAL_TOKEN`. A machine-identity token has no default project, so
+  `infisical run --env=dev --path=/tests/e2e -- …` (what the `tests/web-e2e`
+  `e2e` and `test:vr:dashboard` scripts wrap) fails with
+  `Project ID is required when using machine identity`: pass
+  `--projectId <workspaceId from .infisical.json>` and call
+  `bunx playwright test …` through it directly. Start the stack detached with stdin closed
+  (`setsid nohup bun run dev … < /dev/null > log 2>&1 &`) — with an inherited
+  stdin it dies on EOF (`error: ^D`).
+- Outside Tilt, run every worker you need in one `bun run dev cfw-api
+  cfw-internal dev-fs-logs fake-provider` with `WRANGLER_INSPECTOR_PORT=0`
+  exported (the Tiltfile sets it; a second `bun run dev` invocation fails
+  with `Address already in use (127.0.0.1:9229)`). A fresh KV has no router
+  config, so `cfw-api` answers every inference request with
+  `503 Router config unavailable: could not be read from KV` until the
+  `cfw-internal` `__scheduled` warm above has run.
 
 ### Testing billing routes on local cfw-frontend-api (stripe-credit-purchase)
 
@@ -337,6 +465,22 @@ the `webhooks` Tilt resource on `:8807` (see `tests/e2e/webhooks/`):
   `SEQUENCE_WEBHOOK_SECRET` from the test process env and skip when unset, so
   export the same values the worker's `.dev.vars` holds to run them.
 
+### Support Agent API routes (cfw-support)
+
+The `support` Tilt resource is manual and needs Infisical. Without Tilt,
+start the worker on its own from `services/cfw-support` with
+`OR_ENV=development CFW_SUPPORT_PORT=8817 WRANGLER_INSPECTOR_PORT=9317 bun run dev`
+after exporting `INFISICAL_TOKEN` (machine identity:
+`infisical login --method=universal-auth --client-id=... --client-secret=... --plain --silent`).
+`bun run dev` sets `SUPPORT_DEV_AUTH_BYPASS=true`, so requests need no
+Cloudflare Access headers, and anything gated on that flag (the
+ownership-check budget, for one) is skipped, so 429 paths are unit-test
+evidence only. Hyperdrive reads the local Postgres on `:54322`. No inference
+runs, so `dev-fs-logs` stays empty; the evidence is the worker log's
+`support_api_request_complete` line plus the handler's `iLog` line. When the
+worker cannot reach ClickHouse, ClickHouse-backed reads report
+`source_unavailable`, so cover that path with unit tests.
+
 ### Batch API Tests
 
 Follow [batch-api-testing](../batch-api-testing/SKILL.md#driving-the-live-local-stack) for the exact resources, rate-limiter check, and Pub/Sub subscription readiness. `cfw-batch-api` depends on `gcp-batch-api`, fake GCS, and the fake upstream; confirm all of them are Ready.
@@ -346,6 +490,8 @@ cd tests/e2e && bun run test:e2e run api/batches
 ```
 
 Some batch suites skip when dependencies are unavailable. Check that the intended cases executed.
+
+Run batch files one at a time. Parallel files steal each other's finalize Pub/Sub messages. `api/batches/finalize-takeover.test.ts` covers the Cloud Run finalize takeover (first worker dies mid-finalize, sweep reclaims with a new generation, second worker bills exactly once). It needs `BATCH_SWEEP_FRESHNESS_SECONDS=10` on `gcp-batch-api` (set in the Tiltfile) and the `dev-all` role for the `x-batch-finalize-failpoint` header. Details in [batch-api-testing](../batch-api-testing/SKILL.md#e2e-finalize-takeover-eco-4064).
 
 ### Run Tests
 
@@ -403,7 +549,41 @@ vendor API and reading its usage details.
 
 Start the app and sign in using [local-dev-env](../local-dev-env/SKILL.md). Use the actual web origin from Tilt. For auth or onboarding tests that need a new identity, use the optional [isolated-user workflow](../local-dev-env/references/isolated_users.md).
 
+For production-bundle verification, serve the build with
+`bun run --cwd projects/web start`, not `next dev`. Copy a prebuilt artifact
+into the web project's Next output directory rather than symlinking one from
+outside the monorepo,
+and record its BUILD_ID. If Clerk stays `loaded=false` and chat or sign-in
+renders a skeleton, reproduce the same route on a baseline build with the same
+origin and environment before attributing it to the change. That establishes a
+pre-existing blocker, not coverage of the hidden controls; never substitute
+fake auth.
+
+For `force-static` ISR pages that fetch their own origin during build, check
+whether the origin was listening at build time. A failed build-time fetch
+bakes fail-open HTML into the prerender. After the route's `revalidate`
+window passes, request it to trigger regeneration, then reload after that
+regeneration completes. Reproduce on the merge-base build before attributing
+the state to the PR. Pass only once real rows render.
+
+For public-route-only checks, `TILT_PROFILE=lean tilt up --stream -- --lite`
+(see `Tiltfile`) runs local web with production public frontend-API reads.
+Wait for `uiresource/web`; no local database or login is needed for those
+reads. Do not mistake visible fallback cards for successful backend coverage:
+the home page's `app/[locale]/(home)/actions.ts` uses a private featured-models
+route that lite mode may not serve. Report that fetch separately from the
+visible navbar/hero/cards, and use the full frontend-API stack to verify it.
+
 ### Browser Tool Selection
+
+Before asserting a hover-only visual defect (for example, the shared
+`packages/frontend/components/CardCarousel` edge gradients), inspect
+`matchMedia('(hover:hover)').matches` and `matchMedia('(pointer:fine)').matches`.
+`:hover` can match while Tailwind's hover media query is disabled. Mobile
+viewport emulation may reset these capabilities even after restoring desktop
+dimensions; recheck before desktop hover tests, or run phone-width checks last.
+Allow enter/exit transitions to settle before asserting opacity or clicking
+through a closing dialog; an immediate screenshot can capture the fade itself.
 
 Use whatever browser tool is available in your environment:
 
@@ -422,6 +602,8 @@ bun run --filter @openrouter-monorepo/test-web-e2e e2e
 ```
 
 This command defaults to `https://openrouter.ai`; it does not target the local stack. `E2E_CLERK_USER` and `E2E_CLERK_PASSWORD` belong to the deployed Clerk tenant.
+
+If a PR preview is protected by organization SSO, record that as a preview-access blocker rather than treating the SSO page as application coverage. Public production routes can provide supplementary resolved-page evidence, but must be labeled separately from PR verification.
 
 For local route smoke tests, use the runner that builds the production app, mints a development ticket, and provisions local fixtures:
 
@@ -445,7 +627,7 @@ Gotchas the runner already handles, worth knowing when you script around it:
 
 ### Sign In Flow (local manual browser testing)
 
-1. Use the seeded email-code login from local-dev-env, or mint a [sign-in ticket](../clerk-dev-signin-token/SKILL.md) for browser automation.
+1. Sign in with a [Clerk sign-in ticket](../clerk-dev-signin-token/SKILL.md), as described in local-dev-env.
 1. Confirm the session is active.
 1. Select **Personal** for personal-account tests, or the organization required by the test.
 
@@ -470,12 +652,37 @@ scripting `setActive`, so the recording shows the switch.
 
 ### Record and Test
 
+For a CSS feature-detection override (for example forcing `CSS.supports('color: hsl(from white h s l)')` false to reach Clerk's legacy appearance parser, `packages/frontend/providers/clerk-theme-color.ts`), install it before page scripts and check `CSS.supports` in the recorded tab after navigation: raw CDP `Page.addScriptToEvaluateOnNewDocument` is ignored until `Page.enable` has run. Remove the script and reload before asserting modern behavior. On Clerk forms a malformed email only trips native HTML validation; a nonexistent valid-syntax address reaches a real Clerk danger alert.
+
+For public forms, wait for client hydration after reload before filling or
+submitting (a settled auth control such as **Sign Up** is a useful signal).
+Server-rendered inputs may be visible before their React handlers are ready.
+
+For newsletter error/retry checks, distinguish malformed input (client
+validation, no request) from valid syntax rejected by the backend. Choose
+rejection fixtures using `packages/email/validation/is-autogenerated-email.ts`:
+a short numeric suffix need not cross the bot-score threshold. Use a realistic
+non-disposable address for success, verify `newsletter_subscribers.source`
+and `newsletter_consent_events.event`, then delete only test consent events
+before their subscribers (the foreign key restricts deletion).
+
+For TanStack Query refocus timing, a tab switch in Chrome launched with
+`--disable-backgrounding-occluded-windows` does not emit a visibility change.
+Use `document.dispatchEvent(new Event('visibilitychange', { bubbles: true }))`
+while the page is visible and annotate it as a synthetic trigger. The event
+must bubble because query-core listens on `window`. Measure stale age from
+the last response, not from navigation. Count query-layer fetches, not raw
+Network entries: `Other`-initiator preloads pair with each fetch and appear
+on baseline too.
+
 > **Gotcha (Devin `agent-browser record`):** `record start` spins up a
 > *fresh* browser context that does **not** carry the Clerk session, so it
 > redirects to `/sign-in`. Start the recording first, re-consume a
 > `clerk-dev-signin-token` ticket inside the recording context
 > (`window.Clerk.client.signIn.create({ strategy: 'ticket', ticket })` +
 > `setActive`), then navigate to the page under test.
+
+> **Gotcha (`agent-browser record start <path> --fps 60`):** the recorder passes `-fps_mode` to ffmpeg, which needs ffmpeg 5 or newer. Ubuntu's system ffmpeg 4.4 rejects it and the recording silently ends up empty. Check `ffmpeg -version` first and put a static ffmpeg 7 on `PATH` if needed, then confirm the output with `ffprobe -count_frames -show_entries stream=r_frame_rate,nb_read_frames <path>`.
 
 1. Start a screen recording.
 2. Navigate to each page or component affected by the diff.
@@ -515,6 +722,13 @@ Common failure patterns to watch for:
 - API returning 500s (check cfw-api logs)
 - With `agent-browser`, refresh refs after every interaction; dismiss fixed
   maintenance banners before clicking lower-page controls.
+- Wait for a hydrated control (not just navigation completion) before a
+  full-page screenshot; RSC pages can finish navigating while the grid is
+  still a skeleton.
+- For streamed not-found SEO checks, inspect raw HTML (Googlebot UA curl)
+  and the hydrated DOM separately, and report the HTTP status separately
+  from the visible not-found boundary: `notFound()` on a dynamic route
+  streams `robots=noindex` into a 200 response.
 
 ### Comparing API vs UI
 
@@ -544,7 +758,7 @@ specifically, follow these additional steps.
 
 ### Local Login
 
-Use the seeded login in [local-dev-env](../local-dev-env/SKILL.md#sign-in), or [Clerk sign-in tokens](../clerk-dev-signin-token/SKILL.md) for headless browser automation.
+Sign in with a [Clerk sign-in ticket](../clerk-dev-signin-token/SKILL.md), as described in [local-dev-env](../local-dev-env/SKILL.md#sign-in).
 
 ### Known Issues
 
@@ -587,6 +801,39 @@ constructs the tools array. To verify:
 ---
 
 ## Key References
+
+### Multilingual browser setup
+
+Before recording locale UI (for example the navbar language picker), verify
+native labels visually, not only in the DOM. On Linux, check CJK font coverage
+with `fc-list :lang=zh`, `fc-list :lang=ja`, and `fc-list :lang=ko`, and install
+`fonts-noto-cjk` if any is empty. Chrome keeps its missing-glyph fallback after
+installation, even across reloads and new tabs. Restart Chrome at the process
+level (`chrome://restart`) while preserving its user-data directory, then
+confirm glyphs and authentication before recording.
+
+### Local feature-flag and responsive UI verification
+
+The development panel is available to local development users. Open it with
+`Ctrl+.` (`Cmd+.` on macOS), choose **Feature Flags**, and filter by the Statsig
+gate name before selecting **On**, **Off**, or **Default**. Confirm the evaluated
+value as well as the override selection. These controls are implemented in
+`projects/web/components/dev-panel/FeatureFlagsPanel.tsx`.
+
+When switching locales, re-inspect accessible names: the developer panel is
+translated too (for example, `Search flags…` becomes `Flags suchen…` in German).
+Do not reuse an English-only search or button locator after locale navigation.
+
+If native computer control is unavailable and CDP fallback is authorized, keep
+one persistent browser connection while using mobile device metrics. Disconnecting
+between actions can restore Chrome's minimum physical window width. Check
+`innerWidth` and visually review the captured recording, not just screenshots.
+Auto-edited recordings may compress CDP-only actions excessively; retain the raw
+recording and render timestamped annotations onto a real-time copy when necessary.
+
+### Newsletter popup artwork checks
+
+The Dev Panel gate override also works signed out, so an `everyone` audience capture unit needs no Clerk login. Seed real `newsletter_popup_config` rows with path-specific `included_paths` so desktop/mobile and fallback fixtures coexist without editing rows mid-recording. The public capture-units API response and the client query are each cached for 60 seconds. Between presentations, clear only the newsletter-prefixed local/session storage keys (see `projects/web/components/newsletter/newsletter-storage.ts`), then reload. Wait for the dialog opening animation and check `img.complete && img.naturalWidth > 0` before screenshotting. URL-without-alt fixtures cannot be tested through the API because the creative schema rejects them and the serializer nulls malformed stored creative. Submission needs `NEXT_PUBLIC_NEWSLETTER_TURNSTILE_SITE_KEY` and matching backend Turnstile configuration, so artwork-only checks do not prove it.
 
 - E2E test infrastructure: `tests/e2e/README.md`
 - Manual test patterns: `tests/manual/README.md`

@@ -1,6 +1,7 @@
 ---
 title: "New Privacy-Focused Provider Drop: Venice "
 date: "2025-07-15T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Venice joins OpenRouter as a new provider, offering its flagship uncensored model for private, powerful, and non-restrictive AI. "
 category: "announcements"

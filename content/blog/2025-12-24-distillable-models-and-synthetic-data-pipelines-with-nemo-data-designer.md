@@ -1,6 +1,7 @@
 ---
 title: "Distillable Models and Synthetic Data Pipelines with NeMo Data Designer"
 date: "2025-12-24T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Shashank Goyal"
 teaser: "How to generate license-safe synthetic data workflows for model specialization "
 headerImage:

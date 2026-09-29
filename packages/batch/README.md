@@ -83,6 +83,7 @@ files.
 | `routes/submit.ts` | `POST /` OpenAPI route registration and zero-copy forward call |
 | `routes/list.ts` | `GET /` OpenAPI list registration and query-preserving forward call |
 | `routes/poll.ts` | `GET /:id` OpenAPI route registration and forward call |
+| `routes/delete.ts` | `DELETE /:id` OpenAPI route registration and forward call (terminal batches only; per-target `deletion` outcomes) |
 | `routes/forward.ts` | Upstream path and internal-auth route variable types |
 | `schemas/` | Public batch schemas, adapter I/O schemas, status helpers (`index.ts` is the curated barrel) |
 | `adapters/` | `BatchAdapter` contract, factory, and provider adapters (`openai/`, `anthropic/`, `vertex/`, `stub/`, …) |
@@ -105,7 +106,7 @@ const batchApp = createBatchApp({
   forwardToUpstream: (opts) => fetch(upstreamUrl + opts.upstreamPath, { ... }),
 });
 
-app.route('/api/beta/batches', batchApp);
+app.route('/api/v1/batches', batchApp);
 ```
 
 ## Commands

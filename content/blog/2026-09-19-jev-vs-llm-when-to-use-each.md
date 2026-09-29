@@ -1,6 +1,7 @@
 ---
 title: "Jev vs LLM: When to Use a Decision Model Instead of Generating Text"
 date: "2026-09-19T00:00:00.000Z"
+updated: "2026-09-24T21:04:19.000Z"
 author: "Kenny Rogers"
 category: "tutorials"
 metaTitle: "Jev vs LLM: What Jev Is and When to Use It (Benchmarks)"

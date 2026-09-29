@@ -1,6 +1,7 @@
 ---
 title: "GPT-5 is now  live "
 date: "2025-08-07T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "OpenRouter"
 teaser: "GPT-5 is here on OpenRouter — long-context, built for complex reasoning and code workflows. "
 headerImage:

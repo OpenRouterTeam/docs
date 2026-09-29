@@ -1,12 +1,6 @@
 ---
 name: add-batch-provider
-description: >-
-  Implement a new batch provider (e.g. Anthropic, Gemini) from its committed
-  research note — file-by-file recipe for the endpoint-family schema entry,
-  skin selection/creation, adapter lifecycle methods, enum/factory
-  registration, runtime env plumbing, and the tests each file needs.
-  Sub-skill of batch-api-development; the layers map 1:1 onto the
-  batch-api-stacked-pr provider decomposition.
+description: Implement a new batch provider (e.g. Anthropic, Gemini) from its committed research note, covering the schema entry, skin, adapter lifecycle, registration, env plumbing, and tests. Sub-skill of batch-api-development.
 user-invocable: true
 ---
 
@@ -89,6 +83,7 @@ parallel composition abstraction.
 | -------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ingestMode` (field)                         | `<provider>-batch-adapter.ts`                         | Declare `BatchIngestMode.File` for Files API uploads or `BatchIngestMode.Inline` when submit references persisted input directly. This field describes input delivery only. |
 | `resultMode` (field)                         | `<provider>-batch-adapter.ts`                         | Declare `BatchResultMode.FileHandle` when fetching requires `output_file_id` or `error_file_id`, or `BatchResultMode.BatchId` when fetching uses `upstream_batch_id` and both handles may remain null. |
+| `nativeDeletion` (field)                     | `<provider>-batch-adapter.ts`                         | Declare `BATCH_NATIVE_DELETION_UNSUPPORTED` when the provider documents no batch-delete API (the DELETE response then reports the provider as `unsupported`), otherwise `{ supported: true, deleteBatch }` honoring the `BatchNativeDeletion` contract (never cancel, never `ok` while the upstream copy survives). Decide from the provider docs/research note; the field is required precisely so no provider is reported `unsupported` by omission. |
 | `transformBatchRequest`                      | `transform.ts`                                        | pure client-JSON → provider-native JSONL, streaming (`AsyncIterable`), never buffers the batch. The service persists the client-wire `{custom_id, body}` copy (`input_file`) for render-context recovery separately from this lowered output (`input_file_lowered`) |
 | `uploadNativeInput` (optional, protected)    | `file-uploader.ts`                                    | multipart **stream** upload for file-based providers; inline providers omit it and the base class rejects accidental upload dispatch. Bound uploaded-input retention: set the provider's expiry field on upload (or implement deletion) so inputs do not accrue paid storage forever                  |
 | `submitNativeBatch`                          | `batch-submitter.ts`                                  | create the upstream job from `BatchSubmitParams`; inline providers may reference `input_uri` directly                                                  |

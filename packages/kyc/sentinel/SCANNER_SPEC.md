@@ -11,49 +11,51 @@
 > This file is the single source of truth for everything those scanners share:
 > data access, signal sources, the materiality gate, KYC prioritization, the
 > restricted-vs-live split, how to propose and enact candidates, and how to
-> report to Slack. Detection stays Anthropic-biased; the materiality gate
-> requires a shared pattern between actors; the
-> block a scanner proposes is a **full US-frontier block** (`anthropic`, `google`,
-> `openai`) — see [Frontier block](#frontier-block--the-remedy-scanners-propose).
+> report to Slack. Detection watches `anthropic` and `openai`, every threshold
+> reading a single author's figure (either author at the bar trips it), never a
+> blended sum; the invariants below govern everything else.
 >
 > Each scanner's automation prompt lives outside this repository and should be
-> a thin wrapper that sets its
-> own **role, scope, trigger set, and (for queue-feeding scanners) source key**
-> (see
-> [Per-scanner deltas](#per-scanner-deltas)) and otherwise defers to this file.
+> a thin wrapper that states its own **role, scope, trigger set, and (for
+> queue-feeding scanners) reporting window and source key** (see
+> [Per-scanner deltas](#per-scanner-deltas)), points the run at the fetch in
+> [Reading this file](#reading-this-file), and otherwise defers to this file
+> without re-pasting its sections. Everything below is common to all scanners
+> unless a per-scanner delta overrides it.
 >
 > Sibling docs: [SPEC.md](./SPEC.md) describes the Sentinel *enforcement system*
 > (tables, review queue, enactment); [MEMORY.md](./MEMORY.md) is its refresh
 > protocol and history. This file is about the *detection runs* that feed the
 > queue, not the enforcement system itself.
 
-## How a scanner uses this file
+## Invariants — never traded away
 
-Each scanner is a Devin automation with a `start_session` prompt. The prompt
-should:
+Each rule's full form and rationale lives in its owning section below; under any context pressure, these win:
 
-1. State the scanner's **role** (what it hunts), **scope** (turf boundaries vs
-   the other scanners), and **trigger set**; queue-feeding scanners also state
-   their reporting window and **source key**.
-2. Reference this file so the run reads it as the operating spec, and point the
-   run at the `gh api` fetch below rather than at a checkout (see
-   [Reading this file](#reading-this-file)).
-3. Otherwise defer to the shared sections below — do not re-paste them into the
-   prompt, so there is one place to change data access, the gate, output format,
-   and the status rubric.
-
-Everything below is common to all scanners unless a
-[Per-scanner delta](#per-scanner-deltas) overrides it.
+1. **Two independent corroborating signals** on the cluster itself before any enactment; a single shared attribute is a lead, never proof.
+2. **Measure a grouping key's global fanout before trusting it**; a shared JA3/JA4 is never a cluster and never one of the two signals.
+3. **The compromised-key gate is a hard stop**: when it trips, nothing is approved or enacted.
+4. **A denial is terminal**: never re-file, re-upsert, or route around it under any `ruleKey`.
+5. **If you're not sure, don't do it**: uncertainty means file, never enact.
+6. **The materiality gate holds everywhere**: file only clusters with a shared behavioral pattern between actors, and the pattern is at most one of the two signals. The one exception is the [lone-account review filing](#lone-account-review-filing), which is filed for a human and never enacted.
+7. **Read production read-only**: enforcement flows only through the ban-candidates API and its server-side gates.
+8. **The frontier block is the only block a scanner proposes on its own** — never `account_ban`; `inference_block` only for a human to approve.
+9. **Read case and target state from the CLI, never from ClickHouse.**
+10. **No raw emails or other direct PII in Slack.**
 
 ## Reading this file
 
 Fetch the spec at the start of every run — not from the session's checkout,
 which the session-start pull leaves many commits stale whenever the unrelated
-`openresponses` submodule fetch fails:
+`openresponses` submodule fetch fails. Resolve `main` to a commit once, then
+fetch the file at that commit, so the body you read and the revision you
+report are the same repository state:
 
 ```bash
-gh api repos/OpenRouterTeam/openrouter-web/contents/packages/kyc/sentinel/SCANNER_SPEC.md \
-  -H "Accept: application/vnd.github.raw" > /tmp/SCANNER_SPEC.md &&
+SPEC_SHA=$(gh api repos/OpenRouterTeam/openrouter-web/commits/main --jq '.sha[:12]') &&
+  test -n "$SPEC_SHA" &&
+  gh api "repos/OpenRouterTeam/openrouter-web/contents/packages/kyc/sentinel/SCANNER_SPEC.md?ref=$SPEC_SHA" \
+    -H "Accept: application/vnd.github.raw" > /tmp/SCANNER_SPEC.md &&
   test -s /tmp/SCANNER_SPEC.md
 ```
 
@@ -62,8 +64,15 @@ an empty spec fails the same silent way a stale one does. An
 `@packages/kyc/sentinel/SCANNER_SPEC.md` prompt token is NOT a substitute — it
 resolves against the session checkout, which is the stale copy this avoids.
 
+Carry `spec@$SPEC_SHA` on the report's **Context** line, so a degraded run can
+later be correlated with the spec edit that shipped it. Fetch every other
+sentinel file a run reads (the `*.sql` queries, the skill) with the same
+`?ref=$SPEC_SHA`, so one stamp names the whole rule set.
+
 Needs `api.github.com` in the automation's net policy. If the call fails, fall
-back to the checkout after `git pull --ff-only --no-recurse-submodules`. If
+back to the checkout after `git pull --ff-only --no-recurse-submodules` and stamp
+`SPEC_SHA=$(git rev-parse --short=12 HEAD)` — content and stamp then both come
+from that checked-out commit, and the run is already at least yellow. If
 `git rev-list --count HEAD..origin/main` is then still non-zero, the run read a
 stale spec: report the count in the **Gap** line and force the status to at
 least `:large_yellow_circle:`.
@@ -74,17 +83,26 @@ What a scanner FILES is one account-scoped `frontier_us_models` restriction,
 which cuts all three US frontier authors — `anthropic`, `google`, `openai`
 (`FRONTIER_US_MODEL_AUTHORS` in
 [`packages/db/restrictions/frontier-authors.ts`](../../db/restrictions/frontier-authors.ts)).
-An Anthropic-only `author_ban` leaves the ring free to pivot to Gemini/GPT and
-keep burning, which is why the remedy is wider than the signal.
+A ban on one frontier author leaves the ring free to pivot and keep burning,
+which is why the filed remedy cuts all three. Measurement watches `anthropic`
+and `openai`, each thresholded separately: a gate trips when either author's
+figure hits its bar, never on a blended cross-author sum. `google` is cut by
+the remedy but is not a watched measurement basis.
 
-This changes the remedy ONLY. Detection, clustering, and every reported spend
-figure remain Anthropic-based, unchanged.
+Neither the frontier block nor a frontier-author `author_ban` reaches a
+frontier author's open-weight releases: `BannedPreflightPlugin` in
+[`packages/router/plugins/banned.ts`](../../router/plugins/banned.ts) skips
+both checks when the model carries a non-empty `hf_slug` (e.g.
+`openai/gpt-oss-120b`). The watched basis is therefore the CLOSED-weight
+releases of `anthropic` and `openai` only: every measured figure, threshold
+and coverage test in this file excludes models whose current
+`analytics.stg_models.hf_slug` is non-empty. Open-weight spend on those authors
+is reported as other-author spend, never as watched burn, because no remedy a
+scanner files would stop it.
 
-The frontier block is the routine remedy, not the strongest one on the shelf. A
-case that calls for account-wide enforcement is filed as an `inference_block`
-for a human to approve, and as an `account_ban` only when the account needs to
-be locked out of the UI. Those two kinds are never the scanner's own routine
-proposal: see [Propose and enact](#read-only-propose-only).
+The frontier block is the routine remedy, not the strongest one on the shelf;
+for the account-wide kinds and who approves them, see
+[Propose and enact](#read-only-propose-only).
 
 ## ClickHouse connection — mandatory, read first
 
@@ -97,11 +115,10 @@ proposal: see [Propose and enact](#read-only-propose-only).
 - Rebuild the one and only helper, `~/chq.sh`, to target the analytics URL
   above (auth via `$CLICKHOUSE_READONLY_USER` /
   `$CLICKHOUSE_READONLY_PASSWORD` headers) and use
-  `curl --max-time 120`. Add the server settings
-  `max_execution_time=120&timeout_overflow_mode=throw` to the request. A
-  client disconnect does not cancel a ClickHouse query by itself; the former
-  570-second client ceiling therefore did not stop the 1,385-second server
-  scan. `~/chq_long.sh` (the former 570-second variant) is retired.
+  `curl --max-time 120`, plus the server settings
+  `max_execution_time=120&timeout_overflow_mode=throw` — a client disconnect
+  does not cancel a ClickHouse query by itself, so the server ceiling is the
+  real one. `~/chq_long.sh` is retired.
 - A query that cannot finish within 120 seconds is mis-shaped. Fix the query
   shape; never raise the timeout ceiling. Report every timeout in the report's
   **Gap** line, even when there is no previous target set to reuse, and force
@@ -135,8 +152,7 @@ from the [ClickHouse connection](#clickhouse-connection--mandatory-read-first)
 section. Shape every query to use that layout:
 
 - Put the time window in `WHERE created_at >= ...`. A date predicate inside
-  `sumIf`/`countIf` does not prune anything; it aggregates all history. Keep
-  `sumIf` only for the split dimension (Anthropic vs total). A nested trailing
+  `sumIf`/`countIf` does not prune anything; it aggregates all history. Keep `sumIf` only for the split dimensions (per frontier author vs total). A nested trailing
   1h predicate is legitimate when the outer `WHERE` bounds one 24h scan, so
   live and 24h figures can be computed together:
 
@@ -159,24 +175,24 @@ section. Shape every query to use that layout:
   billed usage plus BYOK usage. Name the basis and window for every reported
   figure; never present the queue figure as the gate's spend.
 
-  **Wrong:**
+  For example:
 
   ```sql
+  WITH open_weight AS (
+    -- Frontier-author releases the remedy does not reach (see Frontier block).
+    SELECT permaslug
+    FROM analytics.stg_models
+    WHERE permaslug LIKE 'anthropic/%' OR permaslug LIKE 'openai/%'
+    GROUP BY permaslug
+    HAVING argMax(ifNull(hf_slug, ''), _peerdb_version) != ''
+  )
   SELECT clerk_user_id,
     sumIf(upstream_inference_prompt_cost + upstream_inference_completions_cost,
-      created_at >= now() - INTERVAL 24 HOUR
-      AND model_permaslug LIKE 'anthropic/%')
-  FROM analytics.stg_generations
-  WHERE data_region != 'europe'
-  GROUP BY clerk_user_id;
-  ```
-
-  **Right:**
-
-  ```sql
-  SELECT clerk_user_id,
+      model_permaslug LIKE 'anthropic/%'
+        AND model_permaslug NOT IN open_weight) AS anthropic_usd,
     sumIf(upstream_inference_prompt_cost + upstream_inference_completions_cost,
-      model_permaslug LIKE 'anthropic/%') AS anthropic_usd,
+      model_permaslug LIKE 'openai/%'
+        AND model_permaslug NOT IN open_weight) AS openai_usd,
     sum(upstream_inference_prompt_cost
       + upstream_inference_completions_cost) AS total_usd
   FROM analytics.stg_generations
@@ -185,32 +201,11 @@ section. Shape every query to use that layout:
   GROUP BY clerk_user_id;
   ```
 
-  Measured 2026-07-27: `3.9s / 507M read_rows / 43.41 GiB` — below the guard
-  below.
-
 - Restrict `clerk_user_id` before aggregating. `WHERE clerk_user_id IN
   (SELECT entity_id FROM ...)` uses the sort-key prefix; aggregating every user
   and then joining a small ID set does not.
 
-  **Wrong:**
-
-  ```sql
-  SELECT u.clerk_user_id,
-    sum(u.upstream_inference_prompt_cost
-      + u.upstream_inference_completions_cost)
-  FROM analytics.stg_generations AS u
-  INNER JOIN (
-    SELECT DISTINCT entity_id
-    FROM analytics.stg_restrictions
-    WHERE _peerdb_is_deleted = 0
-      AND ((kind = 'author_ban' AND target = 'anthropic')
-        OR kind IN ('frontier_us_models', 'inference_block'))
-  ) AS b ON b.entity_id = u.clerk_user_id
-  WHERE u.data_region != 'europe'
-  GROUP BY u.clerk_user_id;
-  ```
-
-  **Right:**
+  For example:
 
   ```sql
   SELECT clerk_user_id,
@@ -219,17 +214,27 @@ section. Shape every query to use that layout:
   FROM analytics.stg_generations
   WHERE data_region != 'europe'
     AND clerk_user_id IN (
-      SELECT DISTINCT entity_id
+      -- Illustrative restricted-ID set: the full current-state collapse
+      -- (argMax over _peerdb_version) is the covered CTE in
+      -- pre-spend-signup-burst.sql.
+      SELECT entity_id
       FROM analytics.stg_restrictions
       WHERE _peerdb_is_deleted = 0
-        AND ((kind = 'author_ban' AND target = 'anthropic')
-          OR kind IN ('frontier_us_models', 'inference_block'))
+        AND revoked_at IS NULL
+        AND (expires_at IS NULL OR expires_at > now())
+      GROUP BY entity_id
+      HAVING countIf(kind IN
+          ('frontier_us_models', 'inference_block', 'account_ban')) > 0
+        OR uniqExactIf(
+             lower(if(startsWith(target, '~'), substring(target, 2), target)),
+             kind = 'author_ban'
+               AND has(['anthropic', 'openai'],
+                       lower(if(startsWith(target, '~'), substring(target, 2), target)))
+           ) = 2
     )
     AND created_at >= now() - INTERVAL 24 HOUR
   GROUP BY clerk_user_id;
   ```
-
-  Measured 2026-07-27: `0.77s / 34.4M read_rows / 1.61 GiB`.
 
 - Never use an unbounded `max(created_at)` for freshness/health. Bound it to
   7 days so the monthly partition pruning applies, and run it once per run,
@@ -237,15 +242,7 @@ section. Shape every query to use that layout:
   set is empty and the source is stale; report it as a gap rather than treating
   it as a fresh timestamp.
 
-  **Wrong:**
-
-  ```sql
-  SELECT max(created_at)
-  FROM analytics.stg_generations
-  WHERE data_region != 'europe';
-  ```
-
-  **Right:**
+  For example:
 
   ```sql
   SELECT max(created_at)
@@ -253,10 +250,6 @@ section. Shape every query to use that layout:
   WHERE data_region != 'europe'
     AND created_at >= now() - INTERVAL 7 DAY;
   ```
-
-  Measured 2026-07-27: `4.1s / 3.89B read_rows / 32.61 GiB` — the one-per-run
-  health scan, whose multi-billion row count is expected from the monthly
-  partition and exempt from the guard below.
 
 - After a run, an analysis query that read more than a few billion rows is
   mis-shaped by definition. The documented one-per-run bounded freshness scan
@@ -280,18 +273,16 @@ never write to any production table directly, never disable an account, never
 refund. Enforcement happens only through the ban-candidates API, which is where
 a scanner's authority now extends past filing: a scanner may approve and enact
 the restriction kinds the server allows an agent to enact, on cases it filed
-itself. Authorized by John Krauss (`talos`) on 2026-08-22, replacing the earlier
-propose-only rule.
+itself (authorized by John Krauss, 2026-08-22).
 
 What a scanner may do, all via the
 [`sentinel-ban-candidates` CLI](../../../.agents/skills/sentinel-ban-candidates/SKILL.md):
 
 - **File** candidates, as before (see
   [Propose via the ban-candidates API](#propose-via-the-ban-candidates-api)).
-- **Approve** a case's targets with `review <suggestionId> approved --reviewer
-  <clerk_user_id>`, one call per case, and **enact** them with `enact --yes
-  --acting-user <clerk_user_id>`, one call per case. Never loop either command
-  per target — each call posts its own Slack notification.
+- **Approve** a case's targets with `review <suggestionId> approved`, one call
+  per case, and **enact** them with `enact --yes`, one call per case. Never loop
+  either command per target — each call posts its own Slack notification.
 - **Undo** an enactment the run later finds wrong, immediately, and say so in
   the report rather than leaving it for a human to discover. `/undo` reverses
   any enacted restriction, which is what makes this authority recoverable in a
@@ -422,28 +413,21 @@ decides victim from operator.
 any restriction, `frontier_us_models` included. File the case for visibility,
 leave every target `pending_review`, and route the account to key revocation,
 holder notification, and crediting the negative balance, escalating those to a
-human. File the revocation itself as its own case rather than a Slack aside:
-one target per compromised key, `targetType: api_key`, `targetValue` the
-decimal `api_keys.id` (never key material, a hash, or a prefix),
-`proposedKind: api_key_revocation`, and an `evidence.compromised_at` holding
-the proposed moment of theft, since every review signal is a split on it. An
-optional `evidence.compromise_note` carries why. Key actions are refused on
-the agent enact path in every case, so filing is the whole of the agent's
-authority here: a human reads the before/after model, provider, colo, ASN and
-spend split against the account's other keys in Mission Control and enacts,
-which disables that one key, stamps `api_keys.compromised_at`, and writes the
-linked revocation audit row. Undo does not re-enable a key.
+human. File the revocation itself as its own case rather than a Slack aside —
+one target per compromised key, with `evidence.compromised_at` holding the
+proposed moment of theft, on the
+[API-key target contract](../../../.agents/skills/sentinel-ban-candidates/SKILL.md#api-key-targets).
+Key actions are refused on the agent enact path in every case, so filing is
+the whole of the agent's authority here: a human reviews the before/after
+split and enacts in Mission Control, and undo does not re-enable a key.
 
 When the evidence shows the account itself was taken over rather than one key
 leaked (sign-in from new infrastructure followed by key rotation, email or
-payout changes), file a compromised-account case alongside: one target per
-user, `targetType: user`, `targetValue` the Clerk user id, and
-`proposedKind: compromised_account`, with `proposedTarget`, `proposedParams`,
-and `proposedExpiresAt` left empty. This kind writes no restriction. Agent
-enactment is refused, so filing is again the whole of the agent's authority: a
-human enacts in Mission Control, which calls Clerk's set-password-compromised
-API for the user and stamps `compromised_account_enacted_at` on the target.
-Undo cannot reverse it; the user clears the state by resetting their password.
+payout changes), file a compromised-account case alongside, on the
+[compromised-account target contract](../../../.agents/skills/sentinel-ban-candidates/SKILL.md#compromised-account-targets).
+Filing is again the whole of the agent's authority: a human enacts in Mission
+Control, and undo cannot reverse it — the user clears the state by resetting
+their password.
 
 When the gate trips on a target already enacted, escalate the undo in the
 same run: name those targets to the human and let them undo through Mission
@@ -462,7 +446,7 @@ account/cluster when this holds on its emergent usage:
    cadence, or synchronized top-up spacing. The pattern must be behavioral and
    hold across multiple accounts.
 
-There is no Anthropic-share and no minimum-spend leg: a ring whose spend is
+There is no frontier-share and no minimum-spend leg: a ring whose spend is
 still ramping (e.g. a signup ring moving onto frontier models in a reseller
 pattern) is in scope as soon as its shared pattern is established, so
 intervention can happen before the spend grows.
@@ -470,23 +454,30 @@ intervention can happen before the spend grows.
 - Establish the pattern on the cluster AGGREGATE (across member accounts) over
   the rolling 24h, from `stg_`/raw generations (`analytics.stg_generations` /
   `default.generations`) and funding events — not per-account, not lifetime.
-  Report the cluster's 24h Anthropic spend and share alongside the pattern as
-  evidence.
+  Report the cluster's 24h spend and share for each frontier author alongside the pattern as evidence.
 - A single shared static attribute — email domain, card fingerprint, BIN, IP
   hash, ASN — is how you FIND a candidate cluster, not the pattern itself. An
   attribute-only cluster with no shared behavior is OUT OF SCOPE this run: do
   not file, do not post it as a finding. A single account has no
-  between-actors pattern and is likewise out of scope.
+  between-actors pattern and is likewise out of scope, except above the
+  lone-account review bar below. The gate is paid once
+  per ring, so a new signup that matches an already-established ring's
+  signup-time signature (two or more of its shared signals, one an
+  infrastructure fingerprint) is filed into that ring's case and enacted
+  under the normal enactment gates before it funds or sends traffic.
 - The gate does not replace corroboration. The shared pattern counts as at
   most one signal toward the two independent corroborating signals required to
   enact. With no share or spend bar, that two-signal standard carries the
   false-positive protection: hold clusters to it strictly, and prefer filing
   over enacting when the spend is still small.
 - This is a reporting/proposal gate, NOT a change to detection. Keep detecting
-  and clustering sub-gate candidates in your playbook/watchlist (with their
-  current Anthropic share and 24h Anthropic spend) so you surface and file them
+  and clustering sub-gate candidates in your playbook/watchlist (with their current per-author frontier shares and 24h spend) so you surface and file them
   the instant a shared pattern between the actors is established — stay silent
   on them until then.
+
+### Lone-account review filing<a id="lone-account-review-filing"></a>
+
+A single account whose trailing-1h closed-weight spend on ANY one watched author is at or above **$20,000** (`anthropic` OR `openai` at the bar, never their sum) is filed for human review, however coherent its identity, unless the enactment gate would refuse it as `agent_protected_account`: mirror that gate's signal list from `getAutoBanProtectionSignal` in [`auto-ban-protected-account.ts`](../../db/ban-actions/auto-ban-protected-account.ts) exactly, reading `analytics.stg_users` plus `analytics.dim_users.plan_tier_plan`, with an org's flags counting for its members. File the [normal shape](#propose-via-the-ban-candidates-api): one `frontier_us_models` target, a stable `ruleKey`, `urgency` `yellow`, per-author 1h and 24h figures, funding record, and KYC judgment in the evidence. A scanner NEVER approves or enacts a lone-account filing, whatever the other gates say: at this spend the account is as likely a real customer as an abuser, and only a human can tell (John Krauss, 2026-09-17, after a held $50k to $170k/h `openai` account proved a prospect). The bar is back-tested in [#44380](https://github.com/OpenRouterTeam/openrouter-web/pull/44380). The pending target keeps the run yellow, not red ([status rubric](#status-rubric-green--yellow--red)); re-posting the `ruleKey` upserts figures. Below the bar a lone account stays a silent watchlist hold.
 
 ## Additional log lines (Datadog)
 
@@ -543,25 +534,18 @@ on the same facets, but read the values as the checkout request's, not the
 webhook's. When the handoff row is missing or its reference is invalid, all
 nine come through null on the settled line.
 
-These fields shipped with
-[openrouter-web#35700](https://github.com/OpenRouterTeam/openrouter-web/pull/35700);
-lines logged before its deploy lack them. Treat a missing field as unknown,
+Lines logged before 2026-08 lack these fields. Treat a missing field as unknown,
 never as zero or as a cluster of its own — gate fingerprint searches on field
 presence (e.g. `@signup_ip_hash:*`, adjusting for the envelope's actual facet
 prefix, which `Account created` lines nest under `@extra.*`).
 
-Between 2026-08-27 10:45Z and 2026-09-08 01:00Z (checkout time) the web app
-sent Coinbase checkouts through a server-side relay, so the `cf_*` values on
-those checkouts describe the relay, not the customer. A relayed row has
-`cf_asn` 14618 or 16509, `cf_bot_score` 1, and `cf_js_detection` false; its
-`cf_ipcountry` is `US` or `SG`. Do not classify by the window alone: rows in
-the window that do not match were captured from the caller's own request and
-keep their normal weight. The rule covers `Coinbase checkout initiated` lines
-and the `public.credits` / `analytics.stg_credits` `cf_*` columns of the
-credits they settled into (settlement lag runs to 2026-09-08 11:21Z). Treat
-matching values as unknown: do not compare them with signup or card geo, and
-do not cluster on them. A shared ASN, IP hash, JA3, or JA4 across matching
-Coinbase rows comes from the relay. Stripe rows are unaffected.
+Historical caveat: Coinbase checkouts between 2026-08-27 10:45Z and 2026-09-08
+01:00Z were relayed server-side. On rows in that window matching the relay
+fingerprint (`cf_asn` 14618/16509, `cf_bot_score` 1, `cf_js_detection` false,
+`cf_ipcountry` US/SG) the `cf_*` values describe the relay, not the customer:
+treat them as unknown and never cluster on them. Covers `Coinbase checkout
+initiated` lines and the `stg_credits` `cf_*` columns they settled into;
+non-matching rows in the window and all Stripe rows keep their normal weight.
 
 ### Line-specific notes
 
@@ -585,8 +569,7 @@ Coinbase rows comes from the relay. Stripe rows are unaffected.
 
 ## Signal sources (ClickHouse) — infra/device fingerprints DO exist
 
-Do NOT conclude "no IP/ASN/device in `analytics.*`". They live in staging, not in
-`dim_users`.
+They live in staging, not in `dim_users`.
 
 - **Separate intra-day from historical.** Emergent/last-24h usage is intra-day —
   read it from `analytics.stg_generations` / `default.generations` (per-request
@@ -615,8 +598,7 @@ Do NOT conclude "no IP/ASN/device in `analytics.*`". They live in staging, not i
   near-unique because modern clients randomize the hello (GREASE). That shape
   is the trap. Because the tail is near-unique, a JA3 that several accounts
   *share* is almost by construction one of the mass-market head values, so the
-  more accounts a JA3 links, the less it means. Both values that looked like
-  rings in the 2026-08-22 02:00Z autobuy run fronted ~22k accounts each. Treat
+  more accounts a JA3 links, the less it means. Treat
   it as a client-software label: usable to describe a cohort ("all 9 came
   through the same Python HTTP client") once the cluster is already established
   on independent evidence, never to establish or widen one. The same reasoning
@@ -634,9 +616,7 @@ Do NOT conclude "no IP/ASN/device in `analytics.*`". They live in staging, not i
 - **ASN origin is available now** (not just an equality hash):
   `analytics.stg_users.signup_asn` (~94% coverage on recent cohorts) and
   `onboarding_cf_asn`; `analytics.stg_generations.asn` / `asn_organization`
-  (per-request ASN); `analytics.stg_credits.cf_asn` (payment-time ASN; on a
-  relay-window Coinbase row that matches the relay fingerprint it is the
-  relay's ASN, not the customer's; see the relay note under "Shared fields on
+  (per-request ASN); `analytics.stg_credits.cf_asn` (payment-time ASN; relay-window Coinbase rows carry the relay's ASN; see the relay note under "Shared fields on
   the key/funding lines").
 - **Known limits:** a salted `ip_hash` gives equality only — no subnet/CIDR
   clustering. The country fields below provide no city-level or
@@ -710,9 +690,7 @@ These are distinct concepts answering different questions:
   live on Postgres `public.users` (`signup_country`, `onboarding_cf_country`),
   which the reviewer enrichment reads live — not the analytics mirror.
   Payment-time network country is Postgres `public.credits.cf_ipcountry`
-  (mirrored as `analytics.stg_credits.cf_ipcountry`); on a relay-window
-  Coinbase row that matches the relay fingerprint it is the relay's country,
-  not the customer's; see the relay note under "Shared fields on the
+  (mirrored as `analytics.stg_credits.cf_ipcountry`); relay-window Coinbase rows carry the relay's country; see the relay note under "Shared fields on the
   key/funding lines".
 - **Issuer geo:** where a funding card was issued. The existing reviewer
   metrics join reads the card country from the same succeeded-charge set as
@@ -728,17 +706,9 @@ These are distinct concepts answering different questions:
   `analytics.stg_stripe_payment_methods.billing_detail_address_country`, or
   `analytics.stg_stripe_customers.billing_country`.
 
-Geo is read at reviewer view time from the existing enrichment and metrics
-payloads; scanner filing does not persist geo in target evidence. The
-cluster-level interpretation belongs in the reviewer-facing case description
-when it is part of why the case was filed.
+Geo is read at reviewer view time from the existing enrichment and metrics payloads; scanner filing does not persist geo in target evidence.
 
-The network snapshot must match the scanner moment: signup/onboarding for
-Recent Signups, wake/reload time for Sleeper, payment time for Autobuy, and
-request time for request-based checks. Only the signup/onboarding pair has a
-live reviewer read; for the payment-time moments query the `credits` columns
-above directly, and note that the issuer country shown in the reviewer panel
-spans all succeeded charges rather than the one under adjudication. A mismatch is corroborating only and
+The network snapshot must match the scanner moment — each delta's geo-evidence bullet names the moment and its columns. Note that the issuer country shown in the reviewer panel spans all succeeded charges rather than the one under adjudication. A mismatch is corroborating only and
 can never justify a filing on its own. Among accounts with both sides
 populated, roughly 28–31% already differ, so the useful shape is cluster-level:
 one issuer country across many unrelated network countries (or the reverse),
@@ -756,9 +726,7 @@ Do not cite nonexistent fields: `payment_method_details_card_country`,
   signals + rationale, baselines for what normal looks like, and open hypotheses.
 - Treat everything you know as hypotheses, not ground truth. Abuse tactics adapt;
   expect dominant patterns to decay and new ones to appear.
-- End each run by writing an updated playbook: promote confirmed signals, retire
-  ones that stopped predicting, adjust baselines, and record open hypotheses with
-  the evidence needed to confirm them.
+- End each run by writing an updated playbook: promote confirmed signals, retire ones that stopped predicting, adjust baselines, and record open hypotheses with the evidence needed to confirm them. Retiring a query that produces a scanner's trigger set is a playbook decision: write the query name and the reason in the handoff, so the next run inherits the decision and not just the shorter list.
 
 ## Window — separate the trigger set from the evidence
 
@@ -779,63 +747,52 @@ Do not cite nonexistent fields: `payment_method_details_card_country`,
 
 ## Dig in — resolve the obvious next questions before reporting
 
-- For every flag, cluster, or anomaly, anticipate a reviewer's questions and
-  answer them in the same run. Don't hand over a finding that begs a follow-up
-  you could have run yourself.
-- Keep pulling the thread: if a shared attribute looks suspicious, trace the full
-  cluster and quantify it (how many accounts, how much usage/spend, how much at
-  risk).
-- Weigh what reduces suspicion: enrichment-confirmed coherent company identity,
-  organic prior engagement, a plausible reason for dormancy-then-resumption,
-  distinct unshared infrastructure. Say so when it applies.
-- Prefer resolving a question to escalating it. Stop only at a clear dead end
-  (no data, diminishing returns) or when proceeding needs a human judgment call;
-  then state what you found, what's blocking, and the specific decision needed.
+Anticipate a reviewer's questions and answer them in the same run: trace and quantify the full cluster behind any suspicious shared attribute (accounts, usage, spend at risk), and say so when something reduces suspicion (enrichment-confirmed coherent identity, organic prior engagement, a plausible dormancy story, distinct unshared infrastructure). Prefer resolving a question to escalating it; stop only at a clear dead end or a genuine human judgment call, then state what you found, what's blocking, and the decision needed.
 
-## Anthropic usage + KYC-based prioritization
+## Frontier usage + KYC-based prioritization
 
-- For every account/cluster flagged, measure how much of its usage is Anthropic
-  (Claude) traffic and how fast that share is ramping. Read the author per
-  generation from `analytics.stg_generations` / `default.generations` (author
-  slug `anthropic`) and compute the share against the account's own total usage,
-  as a proportion — not a one-off presence check. Anthropic is among the most
-  expensive and most abused capacity, so concentration there is disproportionately
-  costly.
+- For every account/cluster flagged, measure EACH watched frontier author's
+  share of its usage (author slugs `anthropic`, `openai`) and how fast each is
+  ramping. Read the author per generation from `analytics.stg_generations` /
+  `default.generations` and compute each author's share against the account's
+  own total usage, as a proportion — never blended into one frontier share, and
+  not a one-off presence check. Frontier capacity is the most expensive and
+  most abused, so concentration there is disproportionately costly.
 - Form an explicit judgment of whether each flagged account/cluster is likely to
   clear KYC / identity review, from signals you already gather: synthetic or
   generated identities, disposable/gibberish emails and domains, absent or
   incoherent enrichment, shared ring infrastructure and fingerprints, and bot-like
   funding and behavior. The less credible the identity, the lower the odds it
   clears KYC.
-- When a flagged account shows a high rate of Anthropic usage AND looks unlikely
-  to clear KYC, propose a [frontier block](#frontier-block--the-remedy-scanners-propose):
-  file ONE account-scoped candidate per user (`proposedKind:
-  "frontier_us_models"`, no `proposedTarget`, `proposedParams: {}`) so Claude,
-  Gemini, and GPT access are all cut and the costliest spend is capped while it
-  waits for adjudication — an Anthropic-only ban just moves the spend. **This
-  frontier block is the ONLY block a scanner proposes** — do NOT file three
-  per-author `author_ban` targets, and do NOT file or post a full `account_ban`
-  for any account or cluster, in either the queue or the Slack summary. A case
-  severe enough to stop the account outright is filed as an `inference_block`
-  for a human to approve, never as an `account_ban`
-  (see [Propose and enact](#read-only-propose-only)). Rank
-  these highest and attach the Anthropic-usage evidence (share + trend) and KYC
-  rationale to every proposal.
-- A clean identity that will clearly clear KYC is a reason to hold.
-- New accounts may have little usage yet; when usage is negligible the Anthropic
-  share is not yet meaningful, so lean on the KYC judgment and act on Anthropic
-  concentration as it emerges.
+- When a flagged account shows a high rate of usage on ANY single frontier
+  author AND looks unlikely
+  to clear KYC, propose a
+  [frontier block](#frontier-block--the-remedy-scanners-propose) — **the ONLY
+  block a scanner proposes**, on the filing shape in
+  [Propose via the ban-candidates API](#propose-via-the-ban-candidates-api).
+  Rank these highest and attach the per-author frontier-usage evidence (share + trend) and KYC rationale to every proposal.
+- A clean identity that will clearly clear KYC is a reason to hold, unless the account is above the [lone-account review bar](#lone-account-review-filing), which is filed for a human either way and never enacted.
+- New accounts may have little usage yet; when usage is negligible the per-author shares are not yet meaningful, so lean on the KYC judgment and act on single-author frontier concentration as it emerges.
 
-## Restricted vs live — split every reported/filed Anthropic-spend figure
+## Restricted vs live — split every reported/filed frontier-spend figure
 
-Every Anthropic-spend figure you report or file (each per-ring figure and the
+Every frontier-spend figure you report or file (each per-ring figure and the
 aggregate) MUST be split by whether the account that generated it is ALREADY
 restricted at report time:
 
+- **Per author, never blended:** every frontier figure here is computed per
+  watched author (`anthropic`, `openai`), and every threshold reads a single
+  author's figure — `anthropic` at the bar OR `openai` at the bar. A
+  cross-author total may be reported as context, never used as a gate input.
+
 - An account is **RESTRICTED** if, right now, it is banned/disabled OR it carries
-  an applied Anthropic restriction — an enforced `inference_block` or
-  `frontier_us_models` restriction, or an author-level ban/restriction on the
-  `anthropic` author, any of which already cuts its Claude access. Read this
+  an enforced `inference_block` or `frontier_us_models` restriction, or
+  author-level bans/restrictions covering BOTH watched authors (`anthropic`
+  AND `openai`) — any of which already cuts its watched-frontier access, since
+  the watched basis is closed-weight only and the open-weight exemption applies
+  to the frontier block and the author bans alike. An
+  author ban on only one of them leaves the other burning and does NOT count
+  as restricted. Read this
   CURRENT enforcement state from `analytics.*` (the CDC'd Postgres user / ban /
   restriction tables). If a source is unavailable, say so rather than guess.
 - **`analytics.*` lags, so it can only add restrictions, never rule them out.**
@@ -850,37 +807,31 @@ restricted at report time:
   LIVE.
 - **Never assert an enforcement state from list-level counts.** Run `targets
   <suggestionId>` and quote that target's `status`, `restrictionId`, and
-  `currentRestrictionStatus`. The three states are distinct and all three are
-  gaps: `approved` + null `restrictionId` (approved, not enacted), a
-  successful archived-key response with `suggestionId`, `created: false`,
-  `targetsUpserted: 0`, `targetsAlreadyRestricted: 0`, and `slack: null` over
-  targets still `pending_review` and unrestricted (left the queue undecided —
-  frozen, so no human will ever see it; follow the
-  [archived-key response](#archived-stable-key) below), and an enforced
-  restriction still generating spend. A `pending_review` target with no
-  restriction and no archived-key response is adjudication latency, not a gap.
-  Zero `targetsUpserted` is the archived discriminator, because the request
-  requires at least one target and a live post reports at least one posted
-  target key even when it re-upserts.
-- **restricted $** = the 24h Anthropic spend summed over the accounts (in that
+  `currentRestrictionStatus`. Two states are gaps: `approved` + null
+  `restrictionId` (approved, not enacted), and an enforced restriction still
+  generating spend. A `pending_review` target with no restriction is
+  adjudication latency, not a gap. An archived case is closed: its targets are
+  ignored whatever their `status` says. Archiving leaves target rows at
+  `pending_review`, so every pending or approved sweep must `INNER JOIN`
+  `stg_ban_candidate_suggestions FINAL` on `suggestion_id = id` with
+  `archived_at IS NULL` before it reads target `status`. The lag rule above
+  still applies: confirm a sweep hit with `targets <suggestionId>` before it
+  pages.
+- **restricted $** = the 24h frontier spend summed over the accounts (in that
   ring / aggregate) that are restricted right now.
-- **live $ ("still burning")** = Anthropic spend in the TRAILING 1 HOUR ONLY,
+- **live $ ("still burning")** = per-author frontier spend in the TRAILING 1 HOUR ONLY,
   summed over the accounts that are NOT restricted right now. "Still burning" is
-  gated EXCLUSIVELY on the last hour — it is NOT the 24h remainder. A ring/account
-  whose last-1h live $ is ~$0 is treated as extinguished / already-cut this run
+  gated EXCLUSIVELY on the last hour — it is NOT the 24h remainder. A ring/account whose every frontier author's last-1h live $ is ~$0 is treated as extinguished / already-cut this run
   even if its 24h total is large; do not describe it as "still burning" or "live".
 - ALSO compute, for the SAME currently-unrestricted accounts, their
-  **non-Anthropic (other-author) spend in the trailing 1 hour**. "Still burning"
-  itself stays Anthropic-only, but a ring with significant last-1h non-Anthropic
-  live spend is worth calling out — e.g. an Anthropic-restricted ring that pivoted
-  to other authors is still burning elsewhere. Surface it alongside the Anthropic
-  live figure with the top author(s) it moved to. A ring pivoting to `google` /
-  `openai` under a legacy Anthropic-only ban is the case the frontier block
-  closes: name those two authors explicitly when they carry the pivot.
-- Report both, but LEAD with the Anthropic live $ — it is the decision-driver.
-  The 24h total and restricted $ (and restricted as a % of total) are secondary
-  context, reported unbolded after it; other-author live $ (last 1h) is called out
-  when significant.
+  **non-frontier (other-author) spend in the trailing 1 hour**. "Still burning"
+  itself stays frontier-only, but a ring with significant last-1h non-frontier
+  live spend is worth calling out — e.g. a frontier-restricted ring that pivoted
+  to other authors is still burning elsewhere. Surface it alongside the frontier
+  live figure with the top author(s) it moved to.
+- LEAD with the highest single-author frontier live $, author named, everywhere — it is the decision-driver; the
+  presentation rules (bolding, ordering, when to carry the other-author live $)
+  live in [Output](#output--post-to-slack).
 
 ## Propose via the ban-candidates API
 
@@ -905,10 +856,10 @@ echo '{...ingest body...}' | bun run sentinel:ban-candidates post -
 Scanner-specific rules on top of the skill's schema:
 
 - **File only the account-scoped `frontier_us_models` block** from the [KYC
-  section](#anthropic-usage--kyc-based-prioritization) — one target per user, no
+  section](#frontier-usage--kyc-based-prioritization) — one target per user, no
   `proposedTarget`, `{}` params (the ingest schema rejects a non-empty
   `proposedTarget` on
-  an unscoped kind) — never per-author `author_ban`s and never an `account_ban`.
+  an unscoped kind) — never an `account_ban`.
   A case that genuinely needs account-wide enforcement is filed as an
   `inference_block` for a human to approve, per
   [Propose and enact](#read-only-propose-only). The other exception is the
@@ -928,14 +879,12 @@ Scanner-specific rules on top of the skill's schema:
   to that case, not a new key: report the case link, the target ids, and the kind
   that fits, and leave the proposed-kind change to a human, per
   [Changing the proposed kind](../../../.agents/skills/sentinel-ban-candidates/SKILL.md#changing-the-proposed-kind-not-filing-a-second-case).
-  A new stable key is for a ring with no prior filing at all. Keys
-  already in the queue that name a remedy (`*_frontier_block`,
-  `*_anthropic_block_*`) keep their names — renaming one forks the deduplication
-  namespace and files a duplicate case. Archived cases are absent from `list` and
-  ingest is not a lookup — posting a key that has no case files one — so a bare
-  key is only for a ring with no prior filing at all. A ring an earlier run filed
-  under a remedy-suffixed key keeps that key, read from that run's case link or
-  report thread rather than discovered by posting. An account whose case a human
+  Keys already in the queue that name a remedy (`*_frontier_block`,
+  `*_anthropic_block_*`) keep their names, read from that run's case link or
+  report thread — renaming one forks the deduplication namespace and files a
+  duplicate case. Archived cases are absent from `list` and ingest is not a
+  lookup — posting a key that has no case files one — so a bare key is only
+  for a ring with no prior filing at all. An account whose case a human
   denied stays off-limits for posting under every `ruleKey`; the documented
   materially-new-evidence re-open report path below is the only
   recourse.<a id="archived-stable-key"></a>
@@ -946,23 +895,10 @@ Scanner-specific rules on top of the skill's schema:
   is the only way to obtain the archived case id. Zero `targetsUpserted` is
   the archived discriminator, because the request requires at least one target
   and a live post reports at least one posted target key even when it re-upserts.
-  Treat it as a no-op rather than a landed post. Run `targets <suggestionId>`
-  from that response before deciding what to do, and inspect every target's
-  `status`, `reviewerClerkUserId`, and `decidedAt`. Any target with
-  `status: denied` is terminal on its own, regardless of the
-  [Cleared by human decision](#cleared-by-human-decision--do-not-re-file)
-  section, which is a convenience record, not the authority. If that section
-  records suppression for the enumerated members, stop. Otherwise, file
-  nothing and ask in this run's report thread for the person who archived the
-  case to unarchive it, linking the returned case id without naming an actor.
-  Record that pending unarchive ask once, with its date and covered members, in
-  the [pending unarchive asks](#pending-unarchive-asks--do-not-suppress)
-  section. Until the case is unarchived, report the ring as archived,
-  unenforced, and undecided on later runs without re-asking. Its live burn is
-  not knowingly held spend and cannot make the run green. When suppression is
-  confirmed, record the answering human's name and date and enumerate the
-  target values covered by that decision. For an org-keyed entry, exclude
-  accounts that this run's own clustering places in that org.
+  Treat it as a no-op rather than a landed post. An archived case is closed: a
+  human took it out of the queue, so file nothing, do not ask to unarchive it,
+  and do not report it as a gap. Mention it once under **Context** with the
+  returned case id and move on.
 - **Legacy run-key transition:** if a ring has one or more run-suffixed legacy
   cases in the list output, read each candidate's targets and skip cases whose
   targets are all denied, then choose the earliest-created remaining case.
@@ -982,25 +918,23 @@ Scanner-specific rules on top of the skill's schema:
   Post the members observed in this run's window that are not already denied in
   the per-case targets read, including members already on the case rather than
   only newly discovered ones. This covers denials within the case being posted;
-  a denial under another case is covered only by the manually maintained
-  [Cleared by human decision](#cleared-by-human-decision--do-not-re-file)
-  section. Never pad with unobserved members, so `times_seen` remains a
+  a denial under another case is found by target value on
+  `stg_ban_candidate_targets FINAL` (`status = 'denied'` and
+  `_peerdb_is_deleted = 0`). Never pad with unobserved members, so `times_seen` remains a
   recurrence count rather than a run counter. If this leaves no targets because
   this run observed only denied members, file nothing and report in the thread
   on each new-in-run case alert for this run, or in the standalone run-summary
   thread when no such alert exists, that only denied members were observed and
   no new non-denied target was filed, and do not call the case open or UPDATED.
   Run status and re-open handling belong to the two bullets below.
-- **Human rejection is terminal for every scanner:** before filing or
-  upserting, dedup against the FULL queue, including adjudicated cases, not
-  only `pending_review`. A case whose targets are all denied is a human
-  decision that the pattern is not abuse: do not re-post or upsert it, report
-  it as open or UPDATED in Slack, or file the same account under a fresh
-  `ruleKey` to route around the denial.
-  Record the cleared account or cluster in the
-  [Cleared by human decision](#cleared-by-human-decision--do-not-re-file)
-  section with who decided and when, so subsequent runs skip it at detection
-  time rather than rediscovering it. The only path back is the
+- **Human rejection is terminal for every scanner:** a case whose targets are
+  all denied is a human decision that the pattern is not abuse: do not re-post
+  or upsert it, report it as open or UPDATED in Slack, or file the same
+  account under a fresh `ruleKey` to route around the denial.
+  Subsequent runs find the denial by target value on
+  `stg_ban_candidate_targets FINAL` (`_peerdb_is_deleted = 0`) and skip it at
+  detection time. That lookup is per target value: widening a denial to an
+  org or cluster is planned follow-up work behind the API. The only path back is the
   [materially-new-evidence re-open](#materially-new-evidence-re-open) report
   path.
   A denied case or suppressed ring's spend belongs with **spend we are
@@ -1013,21 +947,18 @@ Scanner-specific rules on top of the skill's schema:
   alone is never sufficient to justify raising a re-open; burn may corroborate
   that pattern but cannot establish it. Lifting the denial requires an operator
   to act directly on the row, outside both the review path and the scanner.
-  Where a covering cleared-decision entry exists, remove it on the documented
-  reversal before filing again. If the denial is ever lifted and the covering
-  entry is removed, the member is an ordinary non-denied member again and the
+  If the denial is ever lifted, the member is an ordinary non-denied member again and the
   normal rule posts it under the ring's existing stable key. Never post the
   target while its status is `denied`.
 
-- Put the dollar figure inside the `evidence` object (e.g. an `anthropic_usd_24h`
-  key), not a top-level field — the ingest schema has no dedicated spend field and
+- Put the dollar figure inside the `evidence` object (e.g. per-author keys: `anthropic_usd_24h`, `openai_usd_24h`), not a top-level field — the ingest schema has no dedicated spend field and
   strips the retired `usdExposure`. Each target's evidence must also carry an
   at-filing snapshot captured on first filing and resent verbatim on later posts
   alongside current figures. The exception is a figure originally filed under a
-  retired key. Recompute it under the replacement key instead of renaming or
-  resending the old value because retired keys are rejected. Upsert replaces the
-  whole evidence blob, so omitted keys are lost. In Slack/output text label it "Anthropic spend", never
-  "exposure" — see [Terminology](#terminology). For card-derived count keys,
+  retired key: recompute it under the replacement key (retired keys are
+  rejected), carrying it forward only when recomputed over the original
+  window. Upsert replaces the
+  whole evidence blob, so omitted keys are lost. In Slack/output text label it "frontier spend", never "exposure" — see [Terminology](#terminology). For card-derived count keys,
   follow
   [Card and payment-method terminology](#card-and-payment-method-terminology).
 - Map the [status rubric](#status-rubric-green--yellow--red) onto the required
@@ -1068,333 +999,172 @@ Scanner-specific rules on top of the skill's schema:
   Never split by run or wave. A 400 `user_cap_exceeded` or `target_cap_exceeded`
   response triggers the next deterministic shard key, not a run or wave suffix.
 
-### Pending unarchive asks — do not suppress
-
-This is a non-suppressing record for an archived case's one-time unarchive ask.
-Each entry carries the case id, date asked, and target values covered. Do not
-use it to skip re-filing or classify spend as knowingly held. Remove the entry
-when the case is unarchived or when a denial or confirmed suppression is
-recorded in the cleared-decision section.
-
-### Cleared by human decision — do not re-file
-
-This appendable list is keyed on the cleared account or cluster, not its
-`ruleKey`, so a re-detection remains covered. When a human denies one of its
-cases, or a reviewer confirms that an archived ring or pattern is suppressed,
-add an entry here in the scanner refresh PR or in a small docs PR so the
-decision is durable and reviewable rather than living only in a session
-scratchpad. Every new entry must enumerate the target values it covers. For an
-org-keyed entry, the run excludes accounts its own clustering places in that
-org. Only denial and confirmed suppression entries here suppress re-filing and
-count as spend we are knowingly holding. A target's denied status in its own
-case is authoritative for excluding it from posts and classifying its spend as
-knowingly held. This section carries that decision across cases, since at
-detection time no scanner-reachable lookup can find a denial by target value.
-Remove an entry only with a documented human reversal.
-
-The ingest-key CLI exposes decision attribution via `targets <suggestionId>`:
-`reviewerClerkUserId` and `decidedAt` identify who decided and when, so future
-entries should record both rather than leaving the attribution blank.
-
-- JuicyChat, Clerk org `org_2xf8t0wKrZYzNJxLAB2BqbHyqEL` —
-  `sleeper-usage-scanner` /
-  `sleeper_juicychat_aws_reload_burn_anthropic_block_r22` (case
-  `019f9c73-361d-72ca-a30f-1f3652e2e047`), denied by John Krauss on 2026-07-26:
-  reviewed and found not T&S-violating; high Anthropic-concentrated spend on a
-  reloaded dormant account is legitimate usage here. Scanners must not re-file,
-  re-upsert, or re-report this account, and its spend does not color a run
-  yellow or red.
-
-- adi@ara.so, Clerk org `org_3Crz6Y0GXcF70Nx6EjMmhBGCW8T` —
-  `sleeper-usage-scanner` /
-  `sleeper_newapi_relay_startup_credit_drain_ara_anthropic_block_r08` (case
-  `019f9852-2ae9-7136-94e7-d084ea9302a6`), denied by John Krauss on 2026-07-27
-  (06:50Z):
-  the case sat pending ~46h through two burst cycles ($815.67 then $3,963.40
-  Anthropic/24h at ~100% share) before review. Scanners must not re-file,
-  re-upsert, or re-report this account, and its spend does not color a run
-  yellow or red.
-
-- Clerk user `user_37vu8rz90Qv8Fze4cQZuNZO5iKg` —
-  `sleeper-usage-scanner` /
-  `sleeper_newapi_hillsboro_relay_baton_drain_anthropic_block_r14` (case
-  `019f999f-0e14-7281-b5de-927e9cd4240b`), denied by John Krauss on 2026-07-27
-  (07:14Z):
-  rolled off to $0 Anthropic/24h before review and was denied. Same no-re-file
-  rule.
-
-- roadtouk, Clerk user `user_32CcpAjEi35FXLirM2ir23y9ZkA` —
-  `sleeper-usage-scanner` /
-  `sleeper_roadtouk_newapi_relay_dormant_burn_frontier_block_r25` (case
-  `019fa2b0-ad9f-7bc5-a04a-f399e7291c8a`), denied by John Krauss on 2026-07-27
-  (08:30Z):
-  the reviewer approved and enacted the Anthropic `author_ban`
-  (`sleeper_roadtouk_newapi_relay_dormant_burn_anthropic_block_r24`, case
-  `019fa1d4-e23f-7c74-b6b0-9366d5cfe755`) but denied the wider
-  `frontier_us_models` widening. This is terminal for the frontier remedy on
-  this account: scanners must not re-file or upsert a frontier block for it.
-  The enacted Anthropic ban stands, and post-enforcement Anthropic and
-  non-Anthropic spend both read $0 as of 2026-07-27 12:25Z, so no pivot was
-  observed.
-
 ## Output — post to Slack
 
-- **Transport:** ingest owns the per-case alert and case link. Do not post a
-  separate top-level per-case alert or case link from the agent. When ingest
-  returns a non-null `{channel, ts}`, post the findings and reasoning as a
-  thread reply to that message. Review decisions are posted as thread replies
-  with the reviewer note. When a case has a stored Slack thread reference, the
-  server threads enactment summaries onto the case alert without repeating the
-  reviewer note. Cases without a stored thread reference receive no enactment
-  Slack message.
-- A filed case alert is new when its non-null `{channel, ts}` has a Slack `ts`
-  at or after this run's start moment, not the detection lookback window.
-  Slack `ts` is an epoch-seconds timestamp; an older one is a reused alert from
-  an earlier run. A standalone top-level line is required unless a new-in-run
-  case alert exists in the channel the server routes this run's status to and
-  has urgency at least as high as the run's status, using the server's urgency
-  mapping rather than the standalone emoji table.
-  That server mapping is green to the runs channel and both yellow and red to
-  the alerts channel.
-  For a yellow run filing a yellow case, that alert is in the alerts channel,
-  where the status routes, so no standalone line goes to the runs channel.
-  When the presence test is satisfied, the new case alert messages are the
-  run's top-level messages. Still thread per-case findings onto every non-null
-  case alert. Never drop findings or invent a synthetic case link.
-- **Transport warning:** Do NOT use `slack-remote` (it appends a "Sent using
-  @Devin" block that spawns a recursive Devin session).
-- When the presence test above is satisfied, keep the agent's findings in that
-  ingest-owned thread reply. Do not create a synthetic case link or a second
-  top-level message in the same channel. When it is not satisfied, the required
-  standalone line is the run's only top-level message, and it may share a
-  channel with a case alert whose urgency is below the run's status.
-- **Classify every run with one status emoji** (see [Status
-  rubric](#status-rubric-green--yellow--red)). Always set it — when a case is
-  filed, the value is sent as the ingest `urgency`. For a standalone summary,
-  it is the ONLY emoji on the top-level line and drives channel routing.
-- **Standalone top-level post = ONE line, verdict first, scannable in two
-  seconds:** This applies whenever the condition above requires a standalone
-  line. Otherwise, the new case alerts are the top-level messages.
+**The report is images.** Every finding is drawn as PNG charts, each with a one-line caption. Prose is limited to the one-line top-level post, the **Context**, **Gap**, **Also tracked**, and **Gates** lines, and the captions. Never describe a case, a cohort, or a watchlist item in a prose block. If you are about to write a paragraph about accounts, draw the chart instead. No raw account emails or other direct PII anywhere: not on the top-level line, not in a thread reply, not inside a chart. Use Sentinel links and user ids. Cohort attributes (first-6 BIN, issuer country, funding type, email TLD/domain) are allowed. Names, full card numbers, and addresses are not.
+
+### Top-level post
+
+- **Transport:** ingest owns the per-case alert and case link. Do not post a separate top-level alert or case link from the agent. When ingest returns a non-null `{channel, ts}`, thread the run's findings onto that message. Review decisions are posted as thread replies with the reviewer note. When a case has a stored Slack thread reference, the server threads enactment summaries onto the case alert without repeating the reviewer note. A case with no stored thread reference gets no enactment message.
+- A case alert is new-in-run when its `{channel, ts}` is non-null and the Slack `ts` (epoch seconds) is at or after this run's start moment. Post a standalone top-level line unless a new-in-run case alert exists in the channel the run's status routes to and has urgency at least as high as the run's status under the server mapping (green to the runs channel, yellow and red to the alerts channel). For a yellow run filing a yellow case, that alert is in the alerts channel, where the status routes, so no standalone line goes to the runs channel. When that alert exists, the case alerts are the run's top-level messages. Still thread the run's findings onto every non-null case alert. Never drop findings or invent a synthetic case link. A required standalone line may share a channel with a case alert whose urgency is below the run's status.
+- Never use `slack-remote` (it appends a "Sent using @Devin" block that spawns a recursive Devin session).
+- **One status emoji per run** (see [Status rubric](#status-rubric-green--yellow--red)). When a case is filed, the value is the ingest `urgency`. On a standalone line it is the ONLY emoji and it drives channel routing.
+- **Standalone line = ONE line, verdict first, scannable in two seconds:**
 
   ```text
-  <status emoji> <Scanner> <run/UTC> — <verdict in <=6 words> —
-  <the one number that matters> · detail in thread
+  <status emoji> <Scanner> <run/UTC> — <verdict in <=6 words> — <the one number that matters> · detail in thread
   ```
 
-  Bold at most ONE number, and that number is the STILL-LIVE (last-1h) Anthropic
-  $ — the spend that can still burn is the decision-driver. The 24h total is
-  secondary: append it unbolded, e.g. `*$Y* live last 1h · $X 24h Anthropic
-  total`. Never bold the 24h total. No hype adjectives ("escalated hard",
-  "ACTIVELY BURNING", "highest yet"), no :rotating_light: or :warning:
-  decoration, no bullets on the top-level line. If nothing cleared the gate, that
-  one line says so and stands alone — still open the thread for standing detail.
-  Don't manufacture patterns. If a query timed out, the verdict must say
-  `query timeout` so a degraded run cannot look like a quiet one.
+  Bold at most ONE number: the STILL-LIVE (last-1h) $ of the single highest-burning frontier author, author named. Append the 24h total unbolded, e.g. `*$Y* anthropic live last 1h · $X 24h frontier total`. No hype adjectives, no :rotating_light: or :warning:, no bullets, no mentions. If nothing cleared the gate, the line says so and still opens the thread. Do not manufacture patterns. If a query timed out, the verdict says `query timeout`.
 
 ### Status rubric (green / yellow / red)
 
-The status emoji is semantic and reflects **what action the run needs**, not
-merely whether any tracked account is spending:
+The status reflects **what action the run needs**, not whether a tracked account is spending.
 
-- `:red_circle:` — **enforcement needed fast.** We want to move to enforce
-  restrictions quickly: a new account/cluster meeting the materiality gate, a new
-  frontier block to file, or an enforcement gap that meets the rule below. A gap
-  is a target in `approved` status with `restriction_id IS NULL`, or a target in
-  `pending_review`, whose run-computed live $ (trailing-1h Anthropic) is above
-  $50 or, for a pivoted ring, whose run-computed non-Anthropic trailing-1h
-  aggregate is above $50. A target whose enactment was skipped as
-  `frontier_us_models_exempt` is resolved and never constitutes a gap.
-  Page red on the first run that observes the gap. For the same `ruleKey`, the
-  comparison figure is the figure in the most recent red gap post for that key
-  in `conversations.history` on `C0BJ51BK7P0` (#alerts-tns); this history is
-  shared across every scanner, so first-observation and re-page dedup are
-  per `ruleKey`, not per-scanner playbook. Re-page only when the applicable
-  run-computed amount — Anthropic live $ or the pivot aggregate — exceeds the
-  figure last reported red or when the gap has persisted for ≥8h since the last
-  red post. An already-paged unchanged gap is at least
-  yellow, never green; list it under the **Context** slot and post per its
-  emoji like any other run. The **Gap** line remains for degradation and
-  staleness.
-- `:large_yellow_circle:` — **needs a human eye, but enforcement is not clearly
-  warranted yet.** A genuinely ambiguous/borderline item that requires human
-  judgment this run — not a settled watchlist entry. A candidate re-open is
-  yellow when it is the run's only finding.
-- `:large_green_circle:` — **nothing to act on.** No new gated candidates,
-  nothing pending, enforcement gap closed. This is green **even if allowed or
-  watchlisted accounts are still spending** — spend we are knowingly holding
-  (e.g. a lone account with a coherent identity, or a sub-gate stockpile we're
-  watching) does NOT make a run yellow. Report it in the thread, but the run is
-  green.
+- `:red_circle:` — **enforcement needed fast.** A new account or cluster meeting the materiality gate, a new frontier block to file, or an enforcement gap. A gap is a target in `approved` status with `restriction_id IS NULL`, or a target in `pending_review`, whose run-computed live $ for ANY SINGLE frontier author (trailing-1h) is above $50 (`anthropic` at $50 OR `openai` at $50, never their sum), or, for a pivoted ring, whose non-frontier trailing-1h aggregate is above $50. Not a gap: a target skipped as `frontier_us_models_exempt`, a `pending_review` target of a [lone-account review filing](#lone-account-review-filing) whose case is still in the queue (it waits on a human by design and stays yellow at any live $), or any target whose case is archived (`archived_at IS NOT NULL` on `stg_ban_candidate_suggestions`; archiving does not rewrite target rows, so join the case and drop archived ones before reading target status). Page red on the first run that observes a gap. Dedup is per `ruleKey` across every scanner: the comparison figure is the most recent red gap post for that key in `conversations.history` on `C0BJ51BK7P0`. Re-page only when the applicable run-computed amount exceeds the figure last reported red, or when the gap has persisted 8h or more since the last red post. An already-paged unchanged gap is at least yellow, never green: carry it on the **Context** line. The **Gap** line is for degradation and staleness only.
+- `:large_yellow_circle:` — **needs a human eye, but enforcement is not clearly warranted yet.** A genuinely ambiguous item that requires human judgment this run, not a settled watchlist entry. A candidate re-open is yellow when it is the run's only finding.
+- `:large_green_circle:` — **nothing to act on.** No new gated candidates, nothing pending, no open gap. Spend we are knowingly holding (a coherent lone account below the [review bar](#lone-account-review-filing), a sub-gate stockpile on the watchlist) does not make a run yellow. Chart it in the thread if it changed, but the run is green.
 
-Rule of thumb: if the only "signals" are things already decided (held accounts,
-sub-gate watchlist) and there is no open action, the run is green. Reserve yellow
-for a real judgment call and red for "act now".
+A run that fell back to a stale checkout for the spec ([Reading this file](#reading-this-file)) or hit the query timeout ceiling ([ClickHouse connection](#clickhouse-connection--mandatory-read-first)) is at least yellow, whatever its findings.
 
-- **Standalone-summary channel routing — post any standalone summary from the
-  condition above to EXACTLY ONE channel, keyed on the emoji:**
-  - `:red_circle:` → the alerts channel `C0BJ51BK7P0` (#alerts-tns).
-  - `:large_yellow_circle:` or `:large_green_circle:` → the runs channel
-    `C0BL5TQG45C` (#tns-scanner-runs). Do NOT post run reports to
-    `C0BAUNXTXHR` (#brain-talos) — that channel is for humans directing the
-    agents, not for scanner run logs.
-  - `C0BL5TQG45C` (#tns-scanner-runs) is a machine log reviewed on a best-effort
-    daily skim, not actively watched. Anything needing timely human action this
-    run must be red; yellow standalone summaries remain routed there by design.
-  - If posting to `C0BL5TQG45C` fails (e.g. `not_in_channel`), post the run to
-    `C0BJ51BK7P0` (#alerts-tns) instead, force the status to at least
-    `:large_yellow_circle:`, and state the delivery failure on the top-level
-    line, not in the **Gap** thread reply.
+- **Route a standalone summary to EXACTLY ONE channel, keyed on the emoji:**
+  - `:red_circle:` → `C0BJ51BK7P0` (#alerts-tns).
+  - `:large_yellow_circle:` or `:large_green_circle:` → `C0BL5TQG45C` (#tns-scanner-runs), a machine log skimmed daily, not watched. Anything needing timely human action must be red. Never post run reports to `C0BAUNXTXHR` (#brain-talos).
+  - If posting to `C0BL5TQG45C` fails (e.g. `not_in_channel`), post to `C0BJ51BK7P0` instead, force at least `:large_yellow_circle:`, and state the delivery failure on the top-level line.
   - Never post the same run to both channels.
-- The top-level line and every thread reply — standalone or on an ingest case
-  alert — must not contain raw account emails or other direct PII. Use Sentinel
-  queue links and user ids. Cohort-level attributes inside `ruleKey`s and
-  evidence — first-6 BIN, issuer country, funding type, and email TLD/domain —
-  are allowed; direct identifiers (raw emails, names, full card numbers, and
-  addresses) are not.
+### Thread order
 
-One exception overrides green: a run that fell back to a stale checkout for the
-spec (see [Reading this file](#reading-this-file)), or reached the query timeout
-ceiling (see [ClickHouse connection](#clickhouse-connection--mandatory-read-first)),
-is at least yellow, whatever its findings — its findings were produced against
-stale instructions or degraded execution, so the status must not read as clean.
+Post replies on the run's `thread_ts` in this order. Rank by what a human still has to decide: enforcement-state gaps outrank watchlist and unchanged-cohort items.
+
+1. **Case blocks**, one per NEW or UPDATED case (new candidate, changed target set, changed frontier spend, or newly crossed threshold): one text line plus its charts.
+2. **Watchlist charts**: one chart per tracked cluster or account whose numbers changed this run (new members, new funding, new spend, a refund, a chargeback). An unchanged item gets one line under **Also tracked**, never a chart and never a paragraph.
+3. **Context** line (every run, including green runs with no case).
+4. **Gap** line, only when execution degraded.
+5. **Also tracked** tail, only when something is genuinely still open.
+6. **Gates** line (every run).
+
+A run with no case block and no changed watchlist item posts no chart. It still posts **Context** and **Gates**, plus **Gap** when execution degraded and **Also tracked** when something remains open.
+
+When a run threads its findings onto ingest case alerts instead of a standalone summary, repeat **Context** (and **Gap** / **Also tracked** when present) plus **Gates** at the end of EVERY case thread, so each thread is self-contained.
+
+<a id="case-block-count-format"></a>
+**Case block text line.** Bold `NEW` or `UPDATED`, then `<new_members>` new / `<total>` total non-denied targets when new members exist (optionally a short status annotation, or a verdict alone when none do), the Slack case link `<https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/<suggestionId>|Open Sentinel case>`, and the `ruleKey` in backticks. Derive `new_members` by diffing the posted set against targets read before posting, not from `targetsUpserted`. When `<new_members>` is below `<total>`, identify the new members in the timeline chart or its caption. If denied targets exist, append their count. Do not list them. Use a `q=` ring queue link only when showing all sibling cases, and say it matches `ruleKey` by substring. Archived queries use `state=archived`. Summarize unchanged re-files in one line ("N clusters unchanged, re-filed as upserts").
+
+**Charts per case block.**
+
+- **Chart 1, mandatory: lifecycle timeline.** One row per wave or cluster (per account when the case has five or fewer new members) on a shared UTC x axis. Mark signup, funding settle, first request, and the enactment moment. Draw the span from first request to enactment as a filled bar labeled with the pre-block spend and its duration in minutes. Label a wave with no pre-block traffic `$0` and the minutes from signup to block. For a case that is not enacted, draw a hollow `not enacted` marker at the run's observation time and label the open span `open <n> min · $<spend>`. Omit any mark whose event has not happened. Draw only observed events.
+- **Chart 2, mandatory: money split.** Grouped bars per case: live $ (last 1h) per burning frontier author, frontier $/24h (or the scanner's reporting window), and restricted $. Show `restricted $0` as a zero-height bar with a `$0` label. Add other-author live $ as its own bar when significant.
+- **Chart 3, optional: cadence or cohort shape.** Use it when the finding is a pattern over time or over a cohort: inter-wave gap in minutes, signups per bucket, payer-conversion rate versus the age-matched baseline with both denominators, or a cluster-level geo shape. A per-account mismatch or a coverage statistic never earns a chart.
+
+A watchlist chart uses whichever of the three shapes carries the change (a refund or new load goes on the lifecycle timeline, a signup burst on chart 3).
+
+**Caption.** One line of at most 25 words per image, in Slack mrkdwn: what the chart shows, the one number that drives the decision, and the data sources (query names, Datadog lines). No separate source line.
+
+**Rendering.** Build each chart as an SVG from the run's own numbers and render it to PNG. `matplotlib` is not available on scanner machines. Write the SVG directly and render with headless Chrome: `google-chrome --headless=new --no-sandbox --hide-scrollbars --window-size=<w>,<h+150> --screenshot=<out>.png file://<chart>.html`, where the HTML wraps the SVG with a white body and zero margin. Oversize the window height so the bottom legend is not clipped, and size the SVG to its content. Attach the PNG with the native `slack` tool `file_path` argument on the same `post_message` that carries the caption. Keep the SVG and the render script in the run directory of the playbook and reuse them on the next run. Follow `.agents/skills/viz/SKILL.md` for series colors and chrome, with fixed roles: signup, funding, and enactment marks each keep one color across every chart and every run; pre-block spend is the status color for bad; `$0` pre-block is the status color for good.
+
+**Chart content.** Every chart carries a title with the scanner name, run number, and UTC window, an axis label with the unit, and a legend. Label bars and marks so the chart reads without color. The PII rule above applies to chart text. Read the PNG back before posting and check that no label is clipped and that the legend and axis labels rendered. If a chart cannot be rendered, say so on the **Gap** line and post the numbers it would have carried as one fixed-width block.
+
+**Context** (text, one line): trigger set, aggregate counts, materiality crossers, proposed `frontier_us_models` targets, per-author frontier $/24h and shares, restricted $, live $ (last 1h), open gaps. Omit normal or redundant values. If no `ruleKey` appears anywhere in the thread, hang `<https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates?q=&state=all|Open Sentinel queue>` off this line. Always end with the `spec@<sha>` stamp from [Reading this file](#reading-this-file).
+
+**Gap** (text, one line): the concrete degradation, its staleness age, and its impact, e.g. `query timeout; reused r170 ring-membership targets, 1h stale`.
+
+**Also tracked** (text, one line per item): each genuinely still-open watchlist, held-account, method-drift, or sweep item that did not change this run.
+
+**Gates** (text, one line): `fanout ✓ · compromised-key ✓ · denial-dedup ✓ · materiality ✓`. Replace a ✓ with ✗ plus a short reason for any gate that tripped or could not be checked, and with `n/a` for one with nothing in scope. A gate is ✓ only if the run performed it.
+
+Drop per-account rosters, per-account dollar breakdowns, KYC essays, false-positive-risk boilerplate, unchanged-cohort recitations, and restated normal findings. Include false-positive risk only when it is a genuine judgment call, as one caption clause. The filed candidates and their targets live in the Sentinel queue behind the links. Link there instead of dumping account rows or a `.tsv` into Slack.
+
+**Mentions.** Never tag another agent. The one exception is a live KYC ask to Sniffer, an agent that can run a `kyc` check on a specific customer: in the thread only, using `<@U0ANC3T3U0Y>` (plain `@sniffer` does not ping), hard cap two asks per run, normally one, and only for a genuinely new, unanswered KYC question on an ambiguous individual account where a new read could change the decision. Never for an account already filed, restricted, or settled on the watchlist, never fanned across a cohort, and never when a prior Sniffer read is in hand. If unsure whether the question is new, use the plain name and no ping. Human mentions are unaffected. The top-level line never carries any mention.
+
+**Pre-post self-check.** No prose block about a case or cohort. No `**`, `](http`, leading `- `, or `#` in native mrkdwn. No agent mention except the permitted Sniffer ask. Every backticked `ruleKey` outside a case block has its link. Every PNG was read back.
+
+**Example thread.** Each `[image: ...]` line stands for one PNG attached with `file_path`, captioned by the line above it:
+
+```text
+*NEW — 12 new / 12 total non-denied targets* · <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/00000000-0000-4000-8000-000000000001|Open Sentinel case> · `autobuy_synthetic_quest_bin436797_hk_tw`
+Lifecycle of the 12 accounts: first top-up 3 min after signup, first request 11 min, enacted 19:42 UTC. Source: stg_credits, stg_generations.
+[image: lifecycle timeline, one row per account, UTC axis]
+Money: $3,608 anthropic live last 1h · $4,935 frontier/24h · restricted $0.
+[image: money split bars]
+
+*UPDATED — 2 new / 7 total non-denied targets · 3 denied · pending review* · <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/00000000-0000-4000-8000-000000000002|Open Sentinel case> · `autobuy_bin450306_sg_debit_datacenter`
+Lifecycle of the 2 new accounts: first request 9 min after signup, not enacted, open 41 min · $310 at 19:58 UTC observation. Source: stg_credits, stg_generations.
+[image: lifecycle timeline, hollow not-enacted marker at observation time]
+Money: $0 live last 1h · $21,125 frontier/24h · restricted $21,125. Enacted for `user_3Gk2vT9qLxWbNpD41sZaYcEfMhR`.
+[image: money split bars]
+
+Watchlist cluster BIN 436797: 8 signups in 24h, 6 lockstep $9.20 loads, 1 $9.19 refund, not filed. Source: stg_users, stg_credits.
+[image: lifecycle timeline, hollow not-enacted markers]
+
+*Context*
+465 top-ups / 361 accounts / $42.3k this hour · 33 materiality crossers · $155.7k frontier/24h total · spec@a1b2c3d4e5f6
+
+*Gap*
+query timeout; reused r170 ring-membership targets, 1h stale
+
+*Also tracked*
+• Bypass sweep: 1 unrestricted entity, already filed as `autobuy_org_entity_bypass_bin493724` <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/00000000-0000-4000-8000-000000000003|case>
+• Sweep complete: no new method drift
+
+*Gates*
+fanout ✓ · compromised-key ✓ · denial-dedup ✓ · materiality ✓
+```
+
+A run with no case and no changed watchlist item:
+
+```text
+*Context*
+0 new gated candidates · 0 materiality crossers · $0 live last 1h · $0 frontier/24h · restricted $0 · <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates?q=&state=all|Open Sentinel queue> · spec@a1b2c3d4e5f6
+
+*Gates*
+fanout ✓ · compromised-key n/a · denial-dedup ✓ · materiality ✓
+```
 
 
-- **Thread (replies to the top-level post)** — everything a reviewer needs, kept
-  out of the channel:
-  - Rank by what a human still has to decide: enforcement-state gaps (approved
-    but not enacted, archived while pending, enacted but still burning) outrank
-    watchlist and unchanged-cohort recitations, which collapse to one line.
-  - Use this order: actionable NEW / UPDATED case blocks first, one mandatory
-    **Context** line on every run (including green runs with no cases), then a
-    **Gap** line when execution degraded, then an **Also tracked** tail when
-    genuinely open watchlist, held-account, drift/method, or sweep items remain.
-  - When a run files cases and threads its findings onto ingest-returned case
-    alerts instead of a standalone summary, repeat the run-level **Context**
-    (and **Gap** / **Also tracked** when present) at the end of EVERY case
-    thread the run posts to, so each case thread is self-contained and a
-    reviewer never has to hunt through sibling cases for run-level context.
-  - <a id="case-block-count-format"></a>
-    Each NEW / UPDATED case block owns its data: bold `NEW` or `UPDATED` plus
-    `<new_members>` new / `<total>` total non-denied targets when new members
-    exist, optionally followed by a short status annotation, or a verdict alone
-    when none do, the `ruleKey` in backticks, and one line of selected facts.
-    Derive `new_members` by diffing the posted set against targets read before
-    posting, not from `targetsUpserted`, which counts posted target keys. When
-    `<new_members>` is below `<total>`, identify the new members in the case
-    thread. If denied targets exist, append their count separately regardless
-    of whether `<new_members>` equals `<total>`; do not list those targets.
-  - Keep at most ~2 facts per NEW / UPDATED case. The money fact is the
-    mandatory live-led split — live $ (last 1h), 24h Anthropic spend, and
-    restricted $ — and counts as one fact; never drop or collapse this split.
-    When significant, carry other-author live $ (last 1h) and its top author(s)
-    in that same money fact. Report `restricted $0` explicitly when it is zero.
-    Drop uninteresting detail such as per-account rosters or per-account dollar
-    breakdowns, KYC essays, false-positive-risk boilerplate, unchanged-cohort
-    recitations, and restated normal findings. Include false-positive risk only
-    when it is a genuine judgment call. Aggregate or context numbers get one
-    short line, not a separate section.
-  - A cluster-level geo shape — one issuer country across many unrelated
-    network countries, or the reverse — may occupy one selected fact slot when
-    it is part of the rationale. A per-account mismatch or a coverage statistic
-    never earns a Slack fact slot.
-  - The mandatory **Context** line may summarize the trigger set, aggregate counts,
-    materiality crossers, proposed `frontier_us_models` targets, Anthropic spend
-    ($/24h), Anthropic share, restricted $, live $ (last 1h), and enforcement
-    gaps. Keep it to one line and omit normal or redundant values. If there are
-    no NEW / UPDATED case blocks, the thread still contains this line and adds
-    **Gap** when execution degraded and **Also tracked** only when something is
-    genuinely still open.
-  - **Gap** is concrete degradation plus its staleness age and impact, not merely
-    "fell back to previous target sets": e.g. `query timeout; reused r170
-    ring-membership targets, 1h stale`. Include it whenever a timeout or other
-    degraded execution affected this run.
-  - **Also tracked** is a demoted tail: use one line per genuinely still-open
-    tracked thing (for example, a sweep result, watchlist item, or method
-    drift), not a second case list.
-- **Never tag another agent.** An agent handle may appear only for the live KYC
-  ask to Sniffer described below. Every other agent reference — research
-  recaps, status, a decision waiting on a human, or a cohort — uses the plain
-  name with no handle. A handle is a work order; a recap is not. Human
-  mentions are unaffected, and the top-level line never carries any mention.
-- **KYC escalation to Sniffer** — Sniffer is an agent that can run a `kyc` check
-  and research a specific customer, the escalation path for a genuine,
-  unresolved, new KYC ask when an account has high usage and it is genuinely
-  unclear whether it is legitimate. Ask in the thread only and sparingly, using
-  prod `sniffer` with `<@U0ANC3T3U0Y>`; plain `@sniffer` text does not ping.
-  The hard cap is two asks per run (normally one). Reserve them for genuinely
-  ambiguous or borderline individual accounts where a new KYC read could change
-  the decision. Never raise one for an account already filed, already
-  restricted, or settled on the watchlist; do not fan asks out across a cohort.
-  Use the handle only for a genuinely new, unanswered KYC question: no prior
-  Sniffer read is in hand, and the report does not reference, summarize, or
-  build on one. Any account whose Sniffer research the report references,
-  summarizes, or builds on is plain-name and unpinged, even while the item
-  remains open and the pending decision is material. If it is unclear whether
-  the question is new, fail closed to plain-name and unpinged; never ping on an
-  unverified "probably not answered yet." The top-level line never contains
-  these asks and remains one line with only the status emoji.
-- **Sentinel links** — for every NEW or UPDATED case (new candidate, changed
-  target set, changed Anthropic spend, or newly crossed threshold), put its
-  Slack-formatted case link first in the case block:
-  `<https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/<suggestionId>|Open Sentinel case>`.
-  Use a `q=` ring query only when showing all sibling cases, and say that it
-  matches `ruleKey` by substring. Use `state=archived` for archived queries.
-  Summarize unchanged re-files in one line ("N clusters unchanged, re-filed
-  as upserts"). This `internal.openrouter.ai` URL is a human-facing UI link
-  behind Cloudflare Access for a Slack reader to open in a browser — it is NOT
-  a programmatic API call, so it is unaffected by how the CLI reaches the
-  ingest API.
-- **Every `ruleKey` named outside a NEW / UPDATED case block is a link.** In
-  practice, this applies to **Also tracked** bullets: keep the key backticked
-  and use a rule-key queue link when showing sibling cases, or a case-id link
-  when naming one specific case. The case-block convention above remains
-  unchanged. Archived cases use `state=archived` instead of `state=all`. If no
-  rule key appears anywhere in the thread, hang one unfiltered queue link off
-  the **Context** line:
-  `<https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates?q=&state=all|Open Sentinel queue>`.
-- **Pre-post self-check** — before posting, resolve every `<@...>` / `@name` in
-  the composed post/thread to its target identity; remove agent-targeted
-  mentions except the permitted live, unresolved, new KYC ask to Sniffer
-  described above, while leaving human mentions intact. Also scan for any
-  backticked rule key outside a NEW / UPDATED case block not accompanied by a
-  queue link, or a case-id link when naming one case, and fix it.
-- The filed candidates and their per-account targets (full identifiers, evidence,
-  per-target Anthropic spend) live in the Sentinel queue reachable by those links
-  — link there instead of dumping account rows or a full-email `.tsv` into Slack.
-- A compact thread should render like this; keep this fenced example so scanner
-  runs can pattern-match the structure:
+## Writing style — Simplified Technical English<a id="writing-style"></a>
 
-  ```text
-  *Autobuy Scanner · run 184 · 19:00–20:00 UTC*
+Write every case `description`, every target `evidence` reason, every
+ban-candidates CLI `--reason` and `--notes` value, and every Slack thread reply
+in Simplified Technical English. Triage sessions that respond to a case post
+follow the same rules.
 
-  *NEW — 12 new / 12 total non-denied targets*
-  <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/00000000-0000-4000-8000-000000000001|Open Sentinel case>
-  `autobuy_synthetic_quest_bin436797_hk_tw`
-  Synthetic `.quest` ring · $3,608 live last 1h · $4,935 Anthropic/24h · restricted $0
+Rules for every sentence:
 
-  *UPDATED — 2 new / 7 total non-denied targets · 3 denied · pending review*
-  <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/00000000-0000-4000-8000-000000000002|Open Sentinel case>
-  `autobuy_bin450306_sg_debit_datacenter`
-  Enacted for `user_3Gk2vT9qLxWbNpD41sZaYcEfMhR` · $0 live last 1h · $21,125 Anthropic/24h · restricted $21,125
+- Use active voice. Name the actor.
+- Use short common words. Use one name for one thing.
+- Put one instruction or one fact in each sentence. Keep each sentence at 20
+  words or fewer.
+- Do not use contractions or semicolons.
+- Do not use phrasal verbs such as "spin up" or "dig in". Do not use marketing
+  adjectives.
+- State an inference as an inference, not as a fact.
+- Keep code, identifiers, rule keys, ids, dollar figures, and URLs unchanged.
 
-  *Context*
-  465 top-ups / 361 accounts / $42.3k this hour · 33 materiality crossers · $155.7k Anthropic/24h total
+**Case narrative.** A reviewer in Mission Control must understand the case in
+under one minute. Write the `description` in this order, with these labels:
 
-  *Gap*
-  query timeout; reused r170 ring-membership targets, 1h stale
+```text
+What happened: <N> accounts <did what> between <start> and <end> UTC.
+Signals: (1) <account-owned signal one>. (2) <account-owned signal two>.
+Would disprove: <one observation that would show a legitimate explanation>.
+Remedy: <proposedKind> on <N> `user` targets. Status: <pending review | enacted>.
+Proof: <query names, raw counts, and figures>.
+```
 
-  *Also tracked*
-  • Watchlist hold: one coherent identity remains below the action gate
-  • Bypass sweep: 1 unrestricted entity, already filed as `autobuy_org_entity_bypass_bin493724` <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/00000000-0000-4000-8000-000000000003|case>
-  • Sweep complete: no new method drift
-  ```
+Keep the first four lines free of queries and raw counts. Put queries and raw
+counts only in the Proof block. Do not repeat a section. Do not add a preamble.
 
-  A green zero-case run should render like this:
+**Target reason.** When a target's `evidence` carries a reason text, write one
+sentence. Name the two signals for that account.
 
-  ```text
-  *Context*
-  0 new gated candidates · 0 materiality crossers · $0 live last 1h · $0 Anthropic/24h · restricted $0 · <https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates?q=&state=all|Open Sentinel queue>
-  ```
+**CLI text.** Write `--notes` and `--reason` as one or two short sentences. Name
+the action, the two signals, and who authorized it. Example:
+`--notes 'Approved <N> frontier_us_models targets. Signals: <signal one>, <signal two>. Authorized by <reviewer> in thread.'`
+
+**Slack.** Keep the threading rules in [Output — post to Slack](#output--post-to-slack)
+and the mrkdwn contract in `.agents/skills/slack-mrkdwn/SKILL.md`. Before you
+post, check each sentence against the rules above and check that no line
+contains `**` or `](http`.
 
 ## Terminology
 
@@ -1403,11 +1173,10 @@ targets whose `status` is not `denied`. That set drives counts, case-block figur
 confidence, and urgency. The [case size budget](#case-sizing) is the exception.
 
 In all Slack output (top-level line, thread, per-cluster lines), label the dollar
-figure with its basis and window — for example, "Anthropic spend ($/24h,
-upstream COGS)" — never "exposure" (ambiguous). If you report a different
+figure with its basis and window — for example, "frontier spend ($/24h, upstream COGS)" — never "exposure" (ambiguous). If you report a different
 window or the queue's billed-usage-plus-BYOK `spend_30d`, name it explicitly.
 When breaking the figure into already-enforced vs still-active portions, label
-them "restricted" (banned or Anthropic-restricted now) and "live" — not
+them "restricted" (banned or frontier-restricted now) and "live" — not
 "exposure". (There is no `usdExposure` API field anymore — the ingest schema
 strips it; carry the figure in `evidence`.) For card-derived count evidence, use
 the vocabulary in
@@ -1430,33 +1199,10 @@ For `charge_attempts` and `failed_charges`, use
   Each entry is a card record created when a card is entered at checkout.
   Counts nest as charge attempts, then card entries, then fingerprints.
 
-The card-derived count keys use the following per-account query:
-
-```sql
-SELECT
-  charges.clerk_user_id AS clerk_user_id,
-  uniqExactIf(
-    cards.fingerprint,
-    cards.fingerprint IS NOT NULL AND cards.fingerprint != ''
-  ) AS distinct_card_fingerprints_attempted,
-  uniqExactIf(
-    cards.fingerprint,
-    cards.fingerprint IS NOT NULL
-      AND cards.fingerprint != ''
-      AND charges.status = 'succeeded'
-  ) AS distinct_card_fingerprints_charged,
-  uniqExactIf(
-    cards.iin,
-    cards.iin IS NOT NULL AND cards.iin != ''
-  ) AS distinct_bins_attempted
-FROM analytics.stg_stripe_charges AS charges
-INNER JOIN analytics.stg_stripe_card AS cards
-  ON charges.card_id = cards.id
-WHERE charges.clerk_user_id IN {clerkUserIds:Array(String)}
-  AND charges.card_id IS NOT NULL
-  AND charges.card_id != ''
-GROUP BY charges.clerk_user_id
-```
+The card-derived count keys use the per-account query in
+[`card-fingerprint-counts.sql`](./card-fingerprint-counts.sql); run it
+verbatim, fetching it the same way as this file when the checkout may be
+stale.
 
 The join drops charges with no card row, such as crypto and wallet flows. Keep
 the attempt counts and card-entry count on the charges table for that reason.
@@ -1465,13 +1211,12 @@ Scanners must write every card-derived key rather than omit it, because omission
 can violate the shared-key floor. Unless a scanner defines a time window, use
 the query's per-account scope.
 
-- `distinct_card_fingerprints_attempted`: `uniqExactIf(cards.fingerprint, cards.fingerprint IS NOT NULL AND cards.fingerprint != '')` over charge attempts with a matching card row.
-- `distinct_card_fingerprints_charged`: `uniqExactIf(cards.fingerprint, cards.fingerprint IS NOT NULL AND cards.fingerprint != '' AND charges.status = 'succeeded')` over succeeded charge attempts with a matching card row.
-- `distinct_bins_attempted`: `uniqExactIf(cards.iin, cards.iin IS NOT NULL AND cards.iin != '')`
-  over charge attempts with a matching card row. The reviewer console uses the same non-empty IIN
-  predicate on succeeded charges only, so its BIN list can differ. A
-  succeeded-only BIN count must use a scope-suffixed key instead of reusing
-  `distinct_bins_attempted`.
+The query defines `distinct_card_fingerprints_attempted`,
+`distinct_card_fingerprints_charged`, and `distinct_bins_attempted`, all over
+charge attempts with a matching card row. The reviewer console uses the same
+non-empty IIN predicate on succeeded charges only, so its BIN list can differ;
+a succeeded-only BIN count must use a scope-suffixed key instead of reusing
+`distinct_bins_attempted`.
 
 `distinct_cards` and `distinct_payment_methods` are retired. Scanners must not
 write either key. In this vocabulary, "card" always means a Stripe
@@ -1485,14 +1230,291 @@ both `card` and `fingerprint` because the reviewer brief keys its
 shared-fingerprint precedent off those substrings. Counts of card entries or
 BINs are outside this rule.
 
-On repost, resend the at-filing snapshot verbatim alongside current figures.
-The exception is a figure originally filed under a retired key. Recompute it
-under the new key instead of renaming or resending the old value. Carry it
-forward only if it was recomputed over the original window.
-
 ## Per-scanner deltas
 
 Only these differ between scanners; everything above is shared.
+
+### Model-lab distillation classification
+
+Run this when a model lab reports an account for distillation or one of the `[Abuse] reasoning_extraction refusal burst` monitors (`configs/terraform-monitors/monitoring/reasoning_extraction_refusal_burst.tf` at 1,000/h for any account, `reasoning_extraction_new_account_burst.tf` at 50/h for new accounts, both page `#alerts-tns`) picks one up from prompt-refusal data. It classifies each flagged entity into a routing outcome, files the account-level restriction outcomes as one Sentinel case, and researches contacts for the outreach outcomes.
+
+#### Inputs per entity
+
+- **Abuse rate** — refusals in the reported or observed window divided by total generations in the same window. Refusal counts come from Datadog `moderation_block` logs (`@extra.refusal_category`, grouped by `@extra.entity_id`); denominators from ClickHouse `default.generations` (`refusal_category` persists on generations too, but only since 2026-09-21). Raw refusal count is never sufficient: large legitimate orgs produce high absolute counts at rates near zero.
+- **Account metadata** — email and domain class (freemail vs professional), account age, lifetime purchases, max daily spend, billing and traffic country, current restriction state. Read from `analytics.dim_users` / `stg_users`, `stg_credits`, and `default.generations`.
+- **Relationship data** — HubSpot contact, lifecycle stage, and owner via the ClickHouse sync (`analytics.stg_hubspot_contacts`), matching on Clerk ID or exact email first, professional domain as fallback. The sync lags live HubSpot, so state the source when reporting owners.
+
+#### Decision script
+
+Steps 1–3 are ordered exit gates: the first match routes the entity to an outreach outcome. An entity that passes all three gates gets the most severe of steps 4–6 whose condition matches (compromised keys or restriction evasion always route to step 6, a rate at or above the step 5 bar to step 5, even when a step 4 condition like freemail also matches).
+
+**New-account rule.** An account under 7 days old at alert time (signup time from `analytics.dim_users` / `stg_users`) is a new account. The new-account monitor filters on the `days_since_signup` field of the `moderation_block` log, logged from the request user record. ClickHouse signup time is the source of truth, and refusals emitted before the field shipped are not counted, so when it fires, still confirm the account age from ClickHouse before anything else: an account 7 days old or older is out of scope for that monitor and gets no run from it (the 1,000/h monitor covers established accounts). Ownership is exclusive the other way too: when the 1,000/h monitor fires on an account under 7 days old, stop and reply that the new-account monitor owns it, since it fires on the same burst. One burst gets one run. Run the script automatically for every in-scope alert without waiting for a requester. Steps 1–3 and the [compromised-key gate](#compromised-key-gate) apply unchanged and each is a hard stop on the enact path below. The rate is refusals divided by total generations over the burst window, both from `default.generations`. The rule applies to monitor-derived cases only: a lab-reported new account runs the ordinary established-account script. For a monitor-derived new account the outcome bars replace the 50%/30% established-account bars:
+
+| Rate over the burst window | Outcome |
+|---|---|
+| above 25% | `frontier_us_models` **enacted by the agent** (file, `review ... approved`, `enact`), plus an `inference_block` target filed at `pending_review` in the same case |
+| above 15%, up to 25% | `frontier_us_models` filed at `pending_review` |
+| 15% or below | no proposal from this rule; report as unrouted |
+
+This table is the whole of steps 4 and 5 for a monitor-derived new account. Step 4's rate floor and its freemail disjunct do not apply to such an account: a new freemail account at 15% or below gets no proposal. Step 6 still applies.
+
+The enact path reuses the ordinary case flow and its audit trail, nothing new: file the case with `post` (both targets, `frontier_us_models` with `{}` params and `inference_block` unscoped), then `review <suggestionId> approved` naming only the `frontier_us_models` target id, then `enact --yes` on that target id. The `inference_block` target is never named in `review` or `enact`. Requester-less sessions are recorded as `devin:<devin_id>`, so `--notes` names the rule, the rate, the refusal count, the window and the account age.
+
+1. **Enterprise (CSM, AE, or partnership relationship)** — notify GTM and prepare information to be sent to the customer.
+2. **Active HubSpot lead, or account older than 30 days with >$50k lifetime spend or >$5k/day** — notify GTM to gauge the relationship depth.
+3. **Professional (non-freemail) email, reasonably believed to have end customers, and no China/HK connection** — prepare information to notify the customer directly.
+4. **Author ban** (scoped `author_ban` for the reporting lab) if the abuse rate is below the step 5 bar in the window — a lab-sourced report actions any nonzero rate; for monitor-derived (self-observed) cases use a 30% floor — or the account uses a freemail address (icloud, gmail, yahoo, hotmail). A monitor-derived new account skips this step entirely and follows the new-account table, freemail or not.
+5. **Frontier ban** (`frontier_us_models`) if the abuse rate is at or above 50% (a monitor-derived new account: above 25%, enacted, with an `inference_block` proposed alongside; a lab-reported new account follows the ordinary bars here and stays proposal-only), the account is implicated in distillation by multiple labs, or the account is implicated in other lab-reported abuse (cyber, CBRN, scams).
+6. **Inference block** (`inference_block`) if the account's keys are believed compromised, or it has 2+ strong connections to an account previously author- or frontier-banned for distillation (restriction evasion).
+
+Known ambiguities, resolved as follows unless the requester says otherwise: steps 1–3 are exit gates, so a step 1–3 match routes to outreach without a ban — flag any step 1–3 account with a rate at or above the step 5 bar to the requester explicitly. "End customers" in step 3 is proxied by a professional email domain. Step 2 reads as HubSpot contact exists, OR (age > 30d AND (lifetime > $50k OR daily > $5k)). Step 6b needs a link analysis over shared IP/JA3/card fingerprints against the previously banned population. An entity that matches no step (e.g. a monitor-derived case below the step 4 floor whose professional email fails step 3 on the China/HK gate, with no compromise or evasion signals) gets no proposal — report it to the requester as unrouted.
+
+#### Filing and outreach
+
+- File all step 4–6 outcomes from one run as **one case** (one `ruleKey` naming the detection, `targetType: user`), each target carrying its own `proposedKind` — `author_ban` with `proposedTarget` set to the reporting lab's author slug, `frontier_us_models` with `{}` params, `inference_block` unscoped. Everything stays `pending_review`, with one exception: the `frontier_us_models` target of a monitor-derived new account above 25% is enacted per the new-account rule. A step 6a target trips the [compromised-key gate](#compromised-key-gate): file it for visibility but never `review ... approved` or `enact` it, and escalate to a human for key revocation and holder notification.
+- Skip targets already covered: an account already in a live case for the same conduct, or carrying an equal-or-stronger active restriction (check with `list`/`targets`, not ClickHouse).
+- Per-target evidence carries at least the abuse rate, refusal count, window, account age, and the script step that matched (and which bar applied).
+- Step 1–3 outcomes get no case. Research who to contact instead: HubSpot owner (name and email) where a contact exists, otherwise the account's own email from `dim_users`, and report an account with no email as having no verified notification path. Deliver the contact list to the requester; outreach itself is a human/GTM action.
+
+### Pre-spend signup-burst detection
+
+Waves of minted accounts fund a small top-up and burn it past zero within
+minutes of signup, so a detector that keys on realized spend always fires after
+the money is gone. Flag the burst at signup instead, and file its members —
+including the ones that have not spent yet — while they are still dormant.
+
+The rule needs three conditions, not one shared attribute: a tight
+per-signup-IP-hash burst, a wider per-ASN-per-email-domain burst that survives
+the operator rotating IPs mid-wave, and realized harm from the burst's earlier
+members. The harm gate is what separates a minting run from ordinary shared
+egress — large NAT and cloud-egress buckets produce burst counts all day with no
+overdraft behind them — so never file on burst counts alone. The harm gate is
+paid once per ring, so a later signup that matches an established ring's
+signup-time signature (two or more of its shared signals, one an
+infrastructure fingerprint) goes into the ring's case and is enacted under the
+normal enactment gates without waiting for it to fund or send traffic. Do not
+gate on `signup_email_autogen_score`; plausible-looking generated addresses
+score low and the gate drops most real bursts. Per-cluster corroboration of an already-swept ring is a strong signal: the share of signup-IP cluster members with an active
+restriction distinguishes a confirmed ring's unenforced remainder from an
+unproven cluster.
+
+Count real accounts only. `stg_users` also holds the organization entity created
+behind a signup, carrying the same email and signup IP hash, so leaving
+`is_organization` rows in inflates both burst counts and lets an account's own
+organization satisfy the sibling-harm gate by itself.
+
+The canonical query lives at
+[`pre-spend-signup-burst.sql`](./pre-spend-signup-burst.sql).
+Run it verbatim rather than re-deriving it, fetched at the same `?ref=$SPEC_SHA`
+as this file (see [Reading this file](#reading-this-file)).
+
+Keep the default lookback at 24 hours. Widening it only pays off when enforcement
+has not already swept the older band, so check the covered count on the widened
+band rather than re-filing candidates.
+
+Every `analytics.stg_*` table here is a CDC replica. The staging views already
+keep only the newest row per source `id`, so no extra collapse is needed to sum a
+per-row column such as `stg_credits.amount`; what still needs collapsing is any
+key coarser than that `id`, plus the deleted flags, before filtering on it:
+`stg_users` to one live row per
+`clerk_user_id` (an account updated after signup otherwise inflates the burst
+counts), `stg_restrictions` to one row per restriction `id` via
+`argMax(..., _peerdb_version)` (a superseded version still shows
+`revoked_at IS NULL`, so a lifted restriction would silently hide a candidate),
+and `stg_credits` filtered on `_peerdb_is_deleted = 0` (tombstoned credit rows
+otherwise overstate funding and suppress the harm signal).
+Take the burst size as the per-partition maximum of the trailing count, not the
+trailing count itself, or the first members of every burst — the ones that spend
+first — stay below the threshold forever. That maximum is a partition-wide value
+though, so the harm gate cannot reuse the partition: score harm per candidate
+over the siblings within 60 minutes of its own signup, or an unrelated
+overdrawing account hours away on the same shared egress admits the whole day's
+signups behind that IP hash. Count a sibling as overdrawn only past a 50-cent
+margin over its funding (`usage > funded + 0.5`): settlement rounding and BYOK
+fees leave ordinary spent-to-zero accounts a hair over their deposits, and
+without the margin one of those satisfies the harm gate for its whole signup-IP
+group. And restrict every generations read to
+the burst members with `clerk_user_id IN (SELECT ...)` alongside
+`data_region != 'europe'`, per the [generations query shapes](#generations-query-shapes--mandatory).
+
+Use `stg_`/raw sources only. `dim_users` carries no `signup_ip_hash`, and the
+`fact_`/`dim_` marts are batch-built, so an intra-day read of them can be hours
+stale — a stalled mart makes a live burst invisible.
+
+Every CDC table lags, and only generations does not: `stg_generations` and
+`default.generations` run seconds behind live traffic, while `stg_users`,
+`stg_credits` and `stg_restrictions` have measured 24 to 36 minutes behind. So
+`stg_users` is too slow to be the trigger on a fast ring — that lag is longer
+than the signup-to-first-generation span these waves run, so the query above
+sees the ring only once part of it has spent. The lag does not invalidate the
+harm gate, since the harm comes from the burst's earlier members, which are past
+the lag window by the time a later member signs up, and case dedupe reads
+Postgres through the CLI rather than ClickHouse. It does invalidate one column:
+for a target younger than the current lag, `own_funded_usd = 0` means "not
+landed yet", not "unfunded", so never write it into a case as evidence of an
+unfunded account — check `max(created_at)` on `stg_credits` against `now()` to
+see where the boundary is, bounded to the last 7 days so partition pruning
+applies, and say funding is unknown
+for anything inside it.
+Trigger on the Datadog `Account created`
+log instead, which is queryable seconds after signup through the native
+`datadog` MCP. It carries the same values the burst partitions need, verified
+equal to their ClickHouse counterparts on live accounts:
+`@extra.cf_ip_hash` = `signup_ip_hash`, `@extra.cf_asn` = `signup_asn`,
+`@extra.cf_ja3_hash` = `signup_ja3_hash`, plus `cf_ja4`, `cf_bot_score`,
+`cf_ipcountry`, `signup_timezone`, `email` and `email_domain` — so a burst found
+on the log stream joins straight to CDC rows and to existing case evidence once
+they land. Over half of those log lines carry no CF context at all, so gate
+the search on `@extra.cf_ip_hash:*` and treat a missing fingerprint as unknown
+rather than as a cluster of its own.
+
+The key and funding lines carry the burst's own join keys: `API key created`, `Credit purchase initiated`, and the success-only `Credit purchase settled` all log `signup_ip_hash`,
+`signup_asn`, `email` / `email_domain`, `signup_at`, and
+`minutes_since_signup` (see [Additional log lines (Datadog)](#additional-log-lines-datadog) for the full field contract). So a
+burst found on `Account created` follows onto key mints and funding attempts
+on the log stream itself — filter those lines on the burst's
+`signup_ip_hash` / `signup_asn` values directly — instead of waiting out the CDC lag for `stg_users` to join them. Older lines lack the fields; treat missing as unknown.
+
+The log stream only moves the trigger earlier; it does not lower the bar. It
+holds no funding, usage, restriction or case state, so the harm gate, the
+coverage exclusion and the evidence still come from the query above — never file
+off burst counts on the stream alone. Funnel speed is not the discriminator
+either: the onboarding flow itself mints an API key, so most real signups
+produce one within a minute, and "key fast, funded fast" still leaves hundreds
+of ordinary accounts an hour. What separates a ring is a signup-IP-hash burst
+with uniform mailboxes (generated names on one or two consumer mail domains) and
+a shared TLS fingerprint. Clusters on AS13335 are our own e2e tests and are
+excluded throughout the dashboard. `gmail.com` is not excluded — the pager can
+name a gmail burst, so gmail rows must stay visible — but same-size gmail
+clusters are usually carrier NAT: treat a gmail cluster as a lead only when it
+also shares the full IP/ASN/JA3 signature, never off domain concentration
+alone.
+
+That sequence is laid out as the reading order of the "Signup Burst Detection
+(pre-spend)" Datadog dashboard
+(`configs/terraform-monitors/monitoring/signup_burst_detection/dashboard.json`),
+whose widgets are pure log queries — no generated log metric, so full
+fingerprint cardinality stays available at query time. Work it top to bottom
+rather than re-deriving the group-bys. Table 1 ranks signup shape per
+`cf_ip_hash` (signups, distinct mail domains, distinct JA3s, distinct ASNs and
+countries, mean bot score) with e2e traffic (AS13335) already excluded, and 1b/1c
+repeat it per ASN and per JA3 to catch the same ring rotating IPs inside one
+network or one TLS client. Table 2 ranks key minting and table 3 funding
+attempts per `cf_ip_hash`, so a shortlisted hash is cross-checked in each
+through the table search bar. Then set the `ip_hash` (or `asn` / `ja3` /
+`email_domain`) template variable to that cluster: the drill-down tables below
+resolve it into per-`clerk_user_id` rows, a funnel and the raw log lines, which
+is the account list a case is filed against.
+The shipped dashboard widgets predate #35700: tables 2 and 3 exclude only
+AS13335 and group by the network of the payment/key request rather than the
+signup. When the drill-down needs the signup view, query the same lines ad
+hoc through the `datadog` MCP grouped by `signup_ip_hash` / `signup_asn`,
+scoped to the domain the pager named via `email_domain` (which the lines now
+carry) rather than behind a blanket `gmail.com` exclusion — that exclusion
+would blind the query to a genuine gmail burst.
+
+Each table ranks its own buckets independently, so a hash near the top of table
+1 need not appear in tables 2 and 3 even when it has keys and funding — cross-check
+by search, never by expecting one joined row. For the same reason every column
+inside one table reads a single log search and sorts on event count: mixing
+searches or per-column sorts inside a table returns a different bucket set per
+column and renders as misaligned rows with blank cells. Bot score is
+Cloudflare's, so **low** is bot-like and 99 is human.
+
+The dashboard is a detection surface only: nothing on it is evidence of funding,
+restriction, usage or case state, and it cannot rank on harm at all. Sequence
+completion, key minting and funding attempts describe intent and shape; the
+`Credit purchase initiated` sum is attempted, not settled. `Credit purchase
+settled` is the settled counterpart on the stream — the freshest confirmation
+that a burst member's top-up actually landed, with `card_country` and
+`card_fingerprint` for cross-member funding-instrument links — but it is
+corroboration only: a missing settled line is unknown, not unfunded, and
+authoritative funding sums stay in `stg_credits` / raw Stripe. Realized harm
+and existing coverage come from the ClickHouse query above and the CLI, and
+they — not any ranking on this dashboard or line on the stream — decide
+whether a cluster becomes a candidate.
+
+Propose `frontier_us_models` for these targets rather than a ban. The evidence
+is burst membership plus the realized behaviour of the burst's siblings, which
+is one signal short of the two account-level signals a ban needs, and the
+restriction still removes the frontier-model burn path (it covers video
+generation too). Say plainly in the case description that the targets have no
+own-account usage yet, and carry the burst counts, signup timestamp, ASN, the
+sibling outcome counts, and each target's own funded amount as per-target
+evidence so the reviewer can weigh it.
+
+Keep funded-but-unspent members in the list. An account that has already taken
+its top-up and not yet generated is the highest-value catch in the window, not a
+reason to skip it — only realized own credit spend takes an account out, because
+past that point the loss has already happened and the post-spend path owns it.
+Test own model spend, not the existence of a generation row and not total
+`usage`: free-model rows are worth $0, and on a BYOK request `usage` holds only
+the OpenRouter BYOK fee, so a cent of fee would drop an account whose balance is
+still intact. `openrouter_non_byok_usage` is the credit spent on our own
+inference and is the field to threshold on, but it is nullable and some write
+paths never set it, so read it through the same legacy fallback the rest of the
+codebase uses (`packages/clickhouse/analytics/metric-registry.ts`): a NULL with
+no `provider_api_key_id` is own spend worth the row's full `usage`. Summing the
+bare column instead makes those accounts read as never having spent.
+
+Hold that exclusion at a de-minimis floor rather than at zero. Ring members
+routinely fire a fraction-of-a-cent probe generation right after minting a key,
+and a strict `> 0` test reads that probe as realized loss and drops accounts
+whose balance is still intact. A cent is the line: below it nothing has been lost, above
+it the burn has started and the post-spend path owns the account.
+
+Pool credits never appear in `stg_credits`, so an account spending from a credit
+pool reads as unbacked and one such sibling would admit its whole signup-IP group
+— the existing negative-balance query hits the same trap and drops pool holders
+from its population (`packages/clickhouse/negative-balance-usage/queries.ts`).
+Do the same here: leave accounts with an active, unexpired, enabled pool out of
+both the harm computation and the candidate list.
+
+Two staging-table hazards to keep in mind on the signup side. `stg_users` is CDC,
+so a tombstone has to be read after the collapse — filtering `_peerdb_is_deleted`
+in `WHERE` keeps the account's earlier live versions, which inflates burst counts
+and can propose a restriction on a closed account; the application-level `deleted`
+flag needs the same treatment. And `signup_asn` is nullable while `email_domain`
+defaults to `''`, and ClickHouse puts every NULL/empty key in one partition, so an
+unguarded ASN+domain window would lump all unknown-network signups on a popular
+mail domain together and satisfy the second gate on what is really one signal.
+Zero that count out instead of trusting it.
+
+The coverage exclusion tracks the watched measurement basis, which is the
+closed-weight releases of `anthropic` and `openai` (the router exempts
+open-weight `hf_slug` models from `author_ban` and `frontier_us_models` alike,
+so no filed remedy reaches them and their spend is never watched burn). Only an
+existing `frontier_us_models`, `inference_block`, `account_ban`, or `author_ban`
+rows covering both watched authors (`anthropic` AND `openai`) count as coverage:
+a ban on only one of them leaves the other open, and any rate limit leaves the
+path open at a slower pace. (The filed `frontier_us_models` remedy additionally
+cuts `google`; an account already banned on both watched authors cannot produce
+watched burn, so it is not re-filed for the unwatched leg alone.) Normalize `author_ban` targets before
+matching — analytics holds both `anthropic` and `~anthropic` forms, in mixed
+case.
+Check current case coverage with `list`/`targets` before filing, since
+ClickHouse restriction state is a floor (see the skill's [read-status section](../../../.agents/skills/sentinel-ban-candidates/SKILL.md#read-status-from-the-cli-never-from-clickhouse)).
+
+PostHog turns a dormant burst member's own onboarding into a second signal, which
+is what these candidates otherwise lack. Read `clickpipe_posthog.events` keyed on
+`distinct_id = clerk_user_id` — `analytics.int_posthog_identity_map` is
+batch-built and holds nothing for accounts minutes old. A scripted mint shows up
+as one event per funnel step and no others: `sign_up_v2`,
+`onboarding_account_type_selected`, `onboarding_billing_address_added`,
+`onboarding_api_key_created`, `click_credits_purchase`. Key creation and billing
+entry on an account that has never generated is account-level evidence, and a
+uniform `$browser`/`$os`/`$timezone`/screen-size stack across the burst
+corroborates it. Do not reach for `$device_id` as the link: these operators use a
+fresh profile per account, so it is unique per account and links nothing —
+`sign_up_v2` itself carries no `$device_id` at all, so take the signup device
+from `sign_up_success:onboarding_started`.
+
+Two timing caveats keep this as corroboration rather than a trigger. Ingest into
+ClickHouse runs about twenty minutes behind, which is longer than the whole
+signup-to-burn span on the fast rings, so the funnel is visible only after the
+spend on the accounts already generating. And `timestamp` is the browser's own
+clock, which on these profiles has read hours ahead of UTC — time-gate on
+`created_at` instead.
 
 ### Sleeper Scanner
 
@@ -1519,8 +1541,7 @@ Only these differ between scanners; everything above is shared.
   funding card's issuer country; geo remains corroborating only. Neither side
   has a live reviewer read at that granularity — for a re-load, query
   `analytics.stg_credits.cf_ipcountry` and `analytics.stg_credits.card_country`
-  on that credit row (a relay-window Coinbase row that matches the relay
-  fingerprint has no usable network country; see the relay note under "Shared
+  on that credit row (relay-window Coinbase rows have no usable network country; see the relay note under "Shared
   fields on the key/funding lines"); for a wake with no re-load, use
   `analytics.stg_generations.country` over the emergent-usage window. The
   reviewer panel's signup/onboarding country is the dormant account's original
@@ -1545,8 +1566,7 @@ Only these differ between scanners; everything above is shared.
   risk yet and blocking a real new customer chills growth, so favor precision:
   prefer clusters with converging evidence over lone borderline accounts, and
   quantify how many real-looking accounts a proposed rule would also catch.
-- **Trigger set:** all accounts that signed up in the rolling last 24h,
-  regardless of whether they've added credit.
+- **Trigger set:** all accounts that signed up in the rolling last 24h, regardless of whether they've added credit. Every run produces the lockstep view of that set with [`signup-lockstep-burst.sql`](./signup-lockstep-burst.sql) (five or more signups on one ASN inside a 10-second bucket, with funding, key and existing-target context), fetched the same way as this file when the checkout may be stale and run verbatim. Its rows are discovery leads, not filings, and the run's own playbook queries add to it rather than replace it.
 - **Scope:** disjoint from the autobuy scanner — don't reason from autobuy config
   or autobuy-driven top-ups. Manual / first-load credit behavior stays with you.
 - **Datadog lines:** `Account created`, `Onboarding completed`, `API key
@@ -1582,9 +1602,9 @@ Only these differ between scanners; everything above is shared.
   ordinary new customers also fund immediately. Do not read charges from the raw
   `fivetran_stripe.charge` mirror: it carries `customer_id` only, so
   "first load per account" is not expressible there without a customer join.
-  **Mandatory guard before proposing:** the shape alone is not rare — on
-  `outlook.com`, `^[a-z]{6,}[0-9]{4}$` matched 3,880 of 5,016 signups on
-  2026-08-15 and 5,810 of 6,321 on 2026-08-16 — so compare the cohort's
+  **Mandatory guard before proposing:** the shape alone is not rare — a
+  template like `^[a-z]{6,}[0-9]{4}$` has matched most of a day's `outlook.com`
+  signups — so compare the cohort's
   payer-conversion rate against an *age-matched* baseline: accounts at the same
   mail domain created in the same window, minus the cohort itself. Both sides
   use one basis, the real-payer bar (currently $50) of lifetime succeeded Stripe
@@ -1606,16 +1626,10 @@ Only these differ between scanners; everything above is shared.
   requires, so a shape cluster with no established shared behavior stays on
   the watchlist until the pattern is established (see the materiality gate
   reconciliation bullet below).
-  Worked example, measured 2026-08-19 on the payments bar above over
-  `outlook.com` accounts created 2026-08-15 through 2026-08-18: the 11,704
-  shape-matching accounts converted at 2.36% (276 payers, none enforced) against
-  3,118 same-window non-matching accounts at 11.16% (348 payers), a ~4.7x gap.
-  For contrast, the whole-domain all-ages rate is 3.4% (11,140 of 328,080),
-  which is *not* a valid baseline for a 4-day-old cohort: it mixes account ages
-  and would understate the separation. The signal's first filing came from a
-  human-directed dormant-funded-account analysis rather than a scanner run
-  ([case 01a0184a](https://internal.openrouter.ai/admin-utils/sentinel/ban-candidates/01a0184a-097e-75e2-a36f-10246df7810e),
-  181 targets, `frontier_us_models`, `pending_review`).
+  Worked example (2026-08-19, `outlook.com`, 4-day cohort): shape-matchers
+  converted at 2.36% against an age-matched 11.16% baseline, a ~4.7x gap,
+  while the whole-domain all-ages rate (3.4%) would have hidden the
+  separation — which is why the baseline must be age-matched.
 - **Materiality gate reconciliation:** the shared gate's pattern is established
   on trailing-24h behavior — the 3d window is the *reporting/evidence* window
   (to show the ramp), NOT a substitute threshold window. A brand-new cluster
@@ -1650,8 +1664,7 @@ Only these differ between scanners; everything above is shared.
   lag.
 - **Signal note:** `analytics.stg_credits.cf_asn` (payment-time ASN) is the most
   relevant ASN for this scanner; weight it alongside the shared
-  fingerprint-clustering signals above. A relay-window Coinbase row that
-  matches the relay fingerprint carries the relay's ASN, not the customer's;
+  fingerprint-clustering signals above. Relay-window Coinbase rows carry the relay's ASN;
   see the relay note under "Shared fields on the key/funding lines".
 - **Geo evidence:** compare the payment-time network country with the issuer
   country of the card funding the top-up under adjudication. Neither side has a
@@ -1672,15 +1685,11 @@ Only these differ between scanners; everything above is shared.
   whose key it was.
 - **Authority — files two kinds of case, enacts neither.** The account-level
   half of this scanner's subject matter is what the
-  [compromised-key gate](#compromised-key-gate) forbids acting on, so it never
-  approves and never enacts a restriction, `frontier_us_models` included, on any
-  target it files: restricting a victim breaks a paying customer's integration
-  and leaves the operator's other keys serving. Key revocation is its own
-  proposal now rather than a Slack aside — see the remedy below — and it is not
-  a restriction, but `api_key` targets are refused on the agent enact path in
-  every case, so filing remains the whole of this scanner's authority. Leave
-  every target `pending_review` and put the enforcement recommendation in the
-  thread for a human.
+  [compromised-key gate](#compromised-key-gate) forbids acting on, and
+  `api_key` targets are refused on the agent enact path in every case, so
+  filing is the whole of this scanner's authority. Leave every target
+  `pending_review` and put the enforcement recommendation in the thread for a
+  human.
 - **Data region — the one scanner that reads EU rows.** A replay wave is the
   operator's traffic, and nothing stops them replaying an EU-region holder's key,
   so dropping `europe` would hide victims and undercount the keys to revoke.
@@ -1707,35 +1716,15 @@ Only these differ between scanners; everything above is shared.
   and its victim is misclassified as the operator. Do not rebuild the key's
   traffic history here — filing the revocation already produces it, see below.
 
-  ```sql
-  WITH burst AS (
-    SELECT clerk_user_id, api_key_id
-    FROM analytics.stg_generations
-    -- No data_region predicate: this scanner covers EU rows too (see above).
-    WHERE created_at BETWEEN {burst_start:DateTime} AND {burst_end:DateTime}
-      AND clerk_user_id IN ({cohort:Array(String)})
-      -- REQUIRED: the signature that confirmed THIS wave, not just its window.
-      -- Fill in the facets that are actually uniform across it, at least one
-      -- and only those — a facet the wave does not share drops real
-      -- participants and leaves compromised keys unrevoked. E.g.:
-      --   AND asn = {wave_asn:UInt32}
-      --   AND user_agent = {wave_user_agent:String}
-      --   AND model_permaslug = {wave_model:String}
-      --   AND coalesce(origin, '') = ''
-    GROUP BY clerk_user_id, api_key_id
-  ), keys AS (
-    -- Prefiltered to the burst's own ids: joining stg_api_keys whole builds
-    -- its entire key record into the hash side for the sake of a few
-    -- hundred mint times.
-    SELECT id, created_at
-    FROM analytics.stg_api_keys
-    WHERE id IN (SELECT toInt64(api_key_id) FROM burst)
-  )
-  SELECT b.clerk_user_id, b.api_key_id,
-         k.created_at AS a_key_minted, k.id = 0 AS a_key_unresolved
-  FROM burst AS b
-  LEFT JOIN keys AS k ON k.id = toInt64(b.api_key_id)
-  ```
+  The participant and provenance query lives in
+  [`leaked-key-burst-provenance.sql`](./leaked-key-burst-provenance.sql),
+  fetched the same way as this file when the checkout may be stale. It is the
+  one sentinel query that is NOT run verbatim: its `burst` CTE carries a
+  `__WAVE_SIGNATURE__` placeholder that ClickHouse rejects as an unknown
+  identifier, so the file cannot select participants until you replace the
+  placeholder with this wave's signature predicates, each written as its own
+  `AND ...` clause (the placeholder stands for the whole conjunction). Change
+  nothing else.
 
   Carry the wave's own request signature into the participant CTE, not just its
   time window: a cohort account keeps serving its ordinary traffic during the
@@ -1761,14 +1750,7 @@ Only these differ between scanners; everything above is shared.
   `api_key` target carries the before/after split around
   `evidence.compromised_at` for the key and for its account siblings: requests,
   spend including BYOK, distinct egress and colo, first and last seen, and each
-  window's model, provider, colo, ASN and origin mix. It is built on a
-  `pending_review` target, so the reviewer has it before anyone enacts.
-
-  That split is the reviewer's surface, not this scanner's input: it exists once
-  the target is filed, and what this scanner files on is mint time and whose
-  funding drained. State the classification and the signature in the thread, so
-  the reviewer knows what the split has to show for the recommendation to stand
-  and can refuse it when it does not.
+  window's model, provider, colo, ASN and origin mix. It is built on a `pending_review` target, so the reviewer has it before anyone enacts; what this scanner files on is mint time and whose funding drained, so state the classification and the signature in the thread — that is what the split has to show for the recommendation to stand.
 
   Read the split for a life of its own rather than for volume. Traffic on the
   wave's own signature is the replay, and each dimension is broken out
@@ -1848,36 +1830,10 @@ Only these differ between scanners; everything above is shared.
 
 ### Anthropic Concentration Monitor
 
-- **Cadence:** daily.
-- **Role:** track whether the share of platform spend coming from
-  Anthropic-concentrated billing entities not currently enforced against is
-  going back up. It reports a fraction, not a dollar level: the level moves with
-  weekday and platform volume, and a leak large enough to matter is a rounding
-  error against total spend.
-- **Trigger set:** the latest settled UTC day in
-  `analytics.fact_daily_generations_activity`. Never the current UTC day — that
-  mart settles nightly and a half-loaded day reads as a spend drop, not an
-  error. Apply the monitor's freshness gate before interpreting any result.
-- **Reporting:** report-only and disjoint from the three fraud scanners. It
-  files no ban-candidates, and the shared materiality gate does not apply. Every
-  post links the
-  [Anthropic Ban Impact Hex app](https://app.hex.tech/091db13f-d26f-4224-a185-6fce9df76f90/app/Anthropic-Ban-Impact-033tvUU2vmL90YPpTEhjt9/latest).
-- **Routing:** overrides the shared emoji-keyed routing: every run, whatever the
-  emoji, goes to the alerts channel `C0BJ51BK7P0` (#alerts-tns), never the runs
-  channel `C0BL5TQG45C` (#tns-scanner-runs).
-- **Residency:** no exception was granted and none is claimed. The aggregate
-  series reads daily spend out of
-  `analytics.fact_daily_generations_activity`, which carries no prompt or
-  completion bytes and no residency dimension, so its totals include
-  EU-attributed dollars and
-  `packages/routing/AGENTS.md`
-  — scoped to "prompt/completion data" — does not reach them. The
-  identifier-bearing drilldown is where this file's global-only scoping bites:
-  it drops any entity whose `data_region` is anything other than `global` over
-  the fetched window before a name reaches Slack. Consequence to state in the
-  thread when it happens: a RED can be driven by an entity the drilldown then
-  refuses to name, so the alert has nothing to open. Report the trigger, say the
-  drilldown returned fewer rows than the trigger implies, and stop there.
-- See
-  [ANTHROPIC_CONCENTRATION_MONITOR.md](https://github.com/OpenRouterTeam/openrouter-web/blob/main/packages/kyc/sentinel/ANTHROPIC_CONCENTRATION_MONITOR.md)
-  for the cut definitions, restriction population, queries, and thresholds.
+Report-only and disjoint from the queue-feeding scanners: it files no
+ban-candidates and the shared materiality gate does not apply. Its entire
+delta — cadence, trigger set, thresholds, residency handling, and its routing
+override (every run goes to `C0BJ51BK7P0` #alerts-tns, never the runs
+channel) — lives in
+[ANTHROPIC_CONCENTRATION_MONITOR.md](./ANTHROPIC_CONCENTRATION_MONITOR.md),
+which the monitor fetches alongside this file.

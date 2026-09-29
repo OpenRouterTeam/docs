@@ -1,6 +1,7 @@
 ---
 title: "How to Use Jev: Moderation with the Jev API in TypeScript"
 date: "2026-09-23T00:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "Kenny Rogers"
 category: "tutorials"
 metaTitle: "How to Use Jev: Moderation with the Jev API in TypeScript"

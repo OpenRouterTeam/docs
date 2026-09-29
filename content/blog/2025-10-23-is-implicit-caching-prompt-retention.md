@@ -1,6 +1,7 @@
 ---
 title: "Is Implicit Caching Prompt Retention?"
 date: "2025-10-23T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Chris Clark"
 teaser: "Should customers consider providers that have implicit caching as “ZDR”? "
 headerImage:

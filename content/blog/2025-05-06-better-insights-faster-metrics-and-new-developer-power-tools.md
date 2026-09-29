@@ -1,6 +1,7 @@
 ---
 title: "Better Insights, Faster Metrics, and New Developer Power Tools"
 date: "2025-05-06T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Deeper usage insights, sharper perf metrics, and new dev tools to speed up your workflow. "
 category: "announcements"

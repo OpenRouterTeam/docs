@@ -59,10 +59,11 @@ If a field is legitimately optional, the consumer must handle the `undefined` ca
 Instrumentation is a judgment call the author makes, so do not flag a PR for lacking a metric or an event. What you do hold the author to is signal: instrumentation that is actively harmful, and monitors that do not earn their channel, per `configs/terraform-monitors/AGENTS.md`:
 
 - A metric or event tagged with a user ID, key, URL, prompt, or raw error string, or otherwise high cardinality.
-- A captured inline string literal instead of a `PostHogEvent` enum member.
+- A captured event name that is not a member of the `PostHogEvent` union in `packages/enums/posthog.ts`.
 - Metric emission that can throw, or that adds an `await` to a request-serving path.
 - A new Terraform Datadog monitor whose PR description does not state all four parts of the monitor bar: the threshold and why that number, the human action the alert triggers, the owner, and a traffic gate. Ask for a dashboard panel instead.
 - A new monitor on a brand-new metric, whose threshold cannot come from an observed baseline yet. Ask for a dashboard panel first.
+- A monitor added with, or raised to, `priority = 1` or `priority = 2` without recorded human sign-off. See `configs/terraform-monitors/REVIEW.md` → P1 or P2 monitor without human sign-off.
 - A new feature monitor routed straight to a paged channel instead of a low-signal one (default `@slack-OpenRouter-test-slack-messages`) without the author asking for that channel.
 
 Refactors, dependency bumps, and docs changes are exempt.
@@ -79,6 +80,27 @@ Flag any new `cfw-frontend-api` route whose only consumer is Mission Control
 ### 7. Net-New Cache API Uses
 
 Flag new `caches.open()` / `caches.default` code in a Worker. For caching a Worker's own responses, [Workers Cache](https://developers.cloudflare.com/workers/cache/) is the default choice: it runs before the Worker, so a hit skips execution entirely, while a Cache API hit only happens once the Worker is already running. Existing uses stay (notably the `edgeCache` middleware in `packages/cloudflare/hono/edge-cache.ts`, which sits behind Workers Cache); a net-new one needs a reason Workers Cache cannot serve — for example caching an intermediate value the handler computes mid-request, rather than the response itself.
+
+### 8. HIPAA and ePHI Impact
+
+Every PR states its HIPAA impact on the HIPAA / ePHI checklist line, per `AGENTS.md` → HIPAA and ePHI. Hold the author to the statement, not the word: a PR that says "no HIPAA impact" while matching any trigger below is flagged, and a docs-only or refactor PR that touches none of them is exempt.
+
+Flag when the diff does any of the following without naming the control that covers it:
+
+- Adds a write of inference content or a content-derived value (prompt, completion, tool call, transcript, image, audio, embedding input, classifier or guardrail output, echoed upstream error body) to any store, queue, broadcast destination, vendor, email, or Slack, and the write neither passes through the table's `applyHipaaPolicy` field policy nor refuses on HIPAA posture. Ask whether the sink is covered by the leak detector rules in `packages/clickhouse/hipaa-leak/`.
+- Adds a log line, breadcrumb, metric tag, PostHog event, or error message in a `cfw-api` inference route that could carry content and sits before `dispatchToHipaaMirrorIfNeeded` in the handler. The primary worker runs that code for HIPAA requests too and does not scrub.
+- Adds a `RoutingStepGenerator[]` or an `addBYOKEndpoints` call without `filterEndpointsByHipaaEligibility` in both required positions, or lets a private, granted, or pinned endpoint skip an eligibility filter. See `packages/routing/REVIEW.md`.
+- Adds a route, worker, proxy mount, page, playground, chat surface, navigation entry, or leaf control reachable from a HIPAA workspace without a capability classification, or classifies it `AVAILABLE_IN_ALL_MODES` without stating why the surface is safe. See `packages/entitlements/WORKSPACE_CAPABILITIES.md` and `projects/web/REVIEW.md`.
+- Adds a HIPAA guard, proxy mount, or `getUser` path in a modality worker without the matching pre-relay and post-auth pair and `HIPAA_ENFORCEMENT_SITES` entry. See `services/REVIEW.md`.
+- Treats an unknown HIPAA posture as non-HIPAA, or degrades a mirror refusal into serving locally.
+- Adds or changes a Datadog monitor that can match HIPAA telemetry and renders anything beyond identifiers and counts. See `configs/terraform-monitors/HIPAA.md`.
+- Adds a sink or a surface without extending the HIPAA E2E suite (`tests/e2e/README.md`).
+
+A yes on any bullet is not a block by itself. The block is a yes with no named control and no reviewer from the HIPAA project on the PR.
+
+### 9. Security Review Coverage
+
+When the diff crosses a boundary listed in `AGENTS.md` → Security Review (auth gate, tenant scoping, server action or route handler, caller-influenced outbound fetch, platform credential, read-then-write on balances, public response or log exposure, user-data retention, agent-facing prompts or secrets), run the matching class file against the changed lines and report its findings. Access boundaries (authorization, platform-credential, concurrency, ssrf) are indexed by `.agents/skills/security-review/SKILL.md`; data-flow boundaries (info-disclosure, data-retention, content-trust, agent-boundary) by `.agents/skills/security-review-data-trust/SKILL.md`. Both skills read their class files from `.agents/skills/security-review/classes/`. Flag a PR that crosses one of these boundaries and names no class from either skill in its Security and privacy section.
 
 ## Inference Path Performance
 
@@ -189,6 +211,19 @@ Never mock the function the test is supposed to exercise. Mock its dependencies 
 ### 5. Untagged Tests That Pin a Known Bug
 
 A passing test that asserts pre-existing buggy behavior (often flagged in the PR's reviewer-focus notes) must carry a `/** @existingBuggyBehavior */` comment and be followed by an `it.failing` (`it.fails` under vitest) asserting the intended behavior. Flag an untagged `it` that pins a bug, and flag a paired `it.failing` body that does not assert the actually intended behavior.
+
+### 6. Telemetry Assertions
+
+Flag a test that spies on or asserts `iLog`/`eLog`/`wLog`, a statsd call (`createSpyStatsd`, `setStatsd`, an `incr`/`distribution` spy), a breadcrumb (`setBreadcrumbs` spy), a PostHog capture (`posthogCaptureMock`, `captureException`), or `sendToFSLog`, and flag the setup that installs one. These assertions pin event names, message strings, and tag or property lists, not behavior. Assert on the return value, the persisted row, or the response instead. Do not flag:
+
+- A redaction assertion: a key, prompt, PII, ePHI, or payment value never reaches the log, metric tag, breadcrumb, PostHog property, or fs-log payload.
+- PostHog used as behavior rather than analytics: feature flags, a forwarded `get_session_id` / `get_distinct_id`, `reset()` on logout, `identify` with the right user, and consent gating.
+- A metric that is the only input to a no-data (dead-man's-switch) monitor or a data-loss counter on a write, replay, or billing path, where a silent emission break disables the alert. The test names the monitor.
+- Tests of the sinks themselves (`packages/instrumentation`, `packages/clients/fs-logs`, `services/dev-fs-logs`) and e2e tests that read dev-fs-logs to check what was sent upstream.
+
+### 7. Tests That Cannot Fail
+
+Flag a test that would still pass if every function it imports returned `undefined`: a constant pin (`expect(MAX_RETRIES).toBe(3)`), a `typeof x === 'function'` or `expect(true).toBe(true)` check, a mock echo that asserts the value a stub was set up to return or only that a mock was called, or an expected value computed by the code under test. Also flag a mocked-client DB or ClickHouse test that checks only SQL shape, parameter forwarding, or error passthrough while an integration test runs the same query. Do not flag a pin whose test name names the outside consumer of the literal (a HIPAA allowlist, a fail-open security default, a public API enum, a metric name a monitor reads). Rules: `.agents/skills/unit-test-writing/SKILL.md` → Tests That Cannot Fail.
 
 ## Unit Test Writing
 
@@ -577,6 +612,10 @@ Keep behavior-critical flags on the same line as their command. In a multi-line 
 Keep machine- and session-specific paths (`/home/ubuntu/...`) out of committed files; use repository-relative paths. Inspect a regenerated patch file for build-cache output before checking it in.
 
 ## Diff Hygiene and PR Description
+
+<!-- src: #43525 jamespsterling 2026-09-17 -->
+<!-- src: #43856 jamespsterling 2026-09-18 -->
+<!-- src: #46262 charlesrockhead-OR 2026-09-23 -->
 
 Keep diffs focused: no reformatting or restructuring that the change does not require, and no change that affects neither behavior nor readability. Every line changed is a line to review.
 

@@ -40,7 +40,9 @@ The selector follows these rules:
   interpolate the raw variable into a runner label. An unrecognized value
   falls through to the default provider, so jobs run on a real fleet instead
   of queueing indefinitely on a nonexistent label, and the
-  `validate-runner-provider` job fails and prints the valid values.
+  `validate-runner-provider` job reports the typo and prints the valid
+  values.
+- `validate-runner-provider` fails red on pull requests, pushes to `main` and `workflow_dispatch` runs, and posts to #alerts-ci on every non-pull-request event. In the merge queue it reports and alerts without failing: an invalid value only downgrades the fleet to the default provider, so a red run there is noise attached to somebody else's queued PR, and it would evict that PR if this job is ever promoted to a required check.
 
 Each size class uses the following canonical `runs-on` expression:
 
@@ -61,7 +63,7 @@ Size-class label mapping:
 
 A job keeps the same row on every fleet, with one exception: the `deploy-cloudflare-container.yaml` deploy job defaults to `warp-ubuntu-2404-x64-8x` but `blacksmith-16vcpu-ubuntu-2404`, because WarpBuild builds the image on a remote builder VM while Blacksmith builds it on the runner.
 
-The macOS row covers the `visual-regression-pr` job only. `warp-macos-latest-arm64-12x` is WarpBuild's M4 Pro runner (12 vCPU, 44 GB), the same size as the Blacksmith label. The two labels do not run the same macOS major: WarpBuild's `latest` alias tracks GitHub's `macos-latest` (macOS 15 today), while `blacksmith-12vcpu-macos-latest` runs a newer major (macOS 26 as of August 2026). A provider flip therefore moves the job across a macOS major, and the `darwin` snapshot baselines may need a refresh after the flip. The job uses `actions/cache` directly, so its cache entries follow the backend rule described under GitHub-hosted fallback below.
+The macOS row covers no workflow job today: the PR screenshot job (`web-e2e-pr`, formerly `visual-regression-pr`) runs on Linux since [#45464](https://github.com/OpenRouterTeam/openrouter-web/pull/45464), and only `debug-runner.yaml` still offers the macOS labels on manual dispatch. `warp-macos-latest-arm64-12x` is WarpBuild's M4 Pro runner (12 vCPU, 44 GB), the same size as the Blacksmith label. The two labels do not run the same macOS major: WarpBuild's `latest` alias tracks GitHub's `macos-latest` (macOS 15 today), while `blacksmith-12vcpu-macos-latest` runs a newer major (macOS 26 as of August 2026), so a job that returns to this row moves across a macOS major on a provider flip.
 
 `runs-on` sites are converted to the canonical expression incrementally, workflow by workflow, starting with the WarpBuild pilot workflows, because each converted site also changes checkout and cache action selection. Until a site is converted, it honors only `USE_GITHUB_RUNNERS`.
 

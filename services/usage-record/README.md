@@ -170,3 +170,7 @@ bun run test:integration:worker
 The Tiltfile will forward port 9020, which you can use
 to run commands directly against the Spanner emulator
 from the host.
+
+## Replaying the batch billing DLQ
+
+Dead-lettered `billing_chunk` envelopes on `usage-record-batch-billing-dlq` are audited and replayed with `bun run dataflow:dlq-replay` (`dataflow/src/openrouter_monorepo/usage_record/batch_billing_dlq_replay_cli.py`). In production run it through the [Replay Batch Billing DLQ](../../.github/workflows/replay-batch-billing-dlq.yaml) workflow, which sits behind the `production` environment approval and serializes runs: dispatch a dry run first (`live` unchecked; optional `job_ids` or `message_ids`, otherwise the first `max_messages` messages are audited), read the run summary and the `batch-billing-dlq-manifest-<run id>` artifact, fix whatever the blockers point at, then dispatch again with `live` checked and `dry_run_artifact_run_id` set to that dry run's id. The live run downloads the dry-run manifest, refuses if the DLQ contents no longer match its fingerprint or any selected entry carries a blocker, publishes each chunk serially with `attempt_number` reset to 1, acknowledges only after the publish is confirmed, and verifies settlement in Spanner. A `fix_reference` is required to replay permanent failures; a live run inherits it from the manifest and, when one is passed, it must match.

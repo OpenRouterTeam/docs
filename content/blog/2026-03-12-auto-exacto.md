@@ -1,6 +1,7 @@
 ---
 title: "Auto Exacto: Adaptive Quality Routing, On by Default"
 date: "2026-03-12T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Tomas Oliva"
 teaser: "Auto Exacto re-evaluates providers every 5 minutes across throughput, tool-call telemetry, and benchmark scores. For requests that include tools, it's on by default."
 headerImage:

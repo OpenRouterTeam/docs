@@ -1,6 +1,7 @@
 ---
 title: "Response Caching: Zero Cost for Identical Requests"
 date: "2026-04-30T18:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Brian Thomas"
 teaser: "Introducing the new Response Caching header: enables caching identical API requests so responses come back in a tiny fraction of the time, at zero cost."
 headerImage:

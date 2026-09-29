@@ -1,6 +1,7 @@
 ---
 title: "October 2025 BYOK platform fee update"
 date: "2025-10-01T00:00:00.000Z"
+updated: "2026-08-10T16:04:35.000Z"
 author: "OpenRouter"
 teaser: "An October 2025 update to OpenRouter's “Bring Your Own Key” (BYOK) platform fee."
 headerImage:

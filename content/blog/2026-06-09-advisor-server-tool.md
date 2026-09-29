@@ -1,6 +1,7 @@
 ---
 title: "Advisor: Give Any Model a Lifeline to a Smarter One"
 date: "2026-06-10T18:00:00.000Z"
+updated: "2026-08-19T04:09:36.000Z"
 author: "Kenny Rogers"
 teaser: "The openrouter:advisor server tool lets a fast, cheap model consult a stronger one mid-generation. Run GPT-4o Mini for the routine work. Call Claude Fable when it actually matters."
 headerImage:

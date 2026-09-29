@@ -1,6 +1,7 @@
 ---
 title: "Privacy Clarity, New Providers, OAuth Upgrade, and Gemini Gets Parallel Tools"
 date: "2025-04-28T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "A couple quality-of-life improvements for developers! "
 category: "announcements"

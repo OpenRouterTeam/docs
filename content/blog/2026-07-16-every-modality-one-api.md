@@ -1,6 +1,7 @@
 ---
 title: "Every Modality Through One API"
 date: "2026-07-16T00:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "One API for Image, Video, Audio, Embeddings & Transcription"

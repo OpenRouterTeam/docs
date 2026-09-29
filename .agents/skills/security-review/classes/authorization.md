@@ -74,7 +74,7 @@ to receive it.
 
 ### Unscoped primitive
 
-`getKeyById(id)` has no required tenant argument, while its sibling
+`getKeyByIdAdmin(id)` has no required tenant argument, while its sibling
 `getKeysById({ entityId, ids })` does; both are in
 `packages/db/api-keys/queries.ts`. The same shape exists in
 `packages/db/provider-api-keys/*` and `packages/db/presets/queries/*`.
@@ -137,6 +137,10 @@ colleague: `/user-request-summaries` (SEC-136, PR
 [#31029](https://github.com/OpenRouterTeam/openrouter-web/pull/31029)) and
 `/user-sessions` (SEC-167, PR
 [#33085](https://github.com/OpenRouterTeam/openrouter-web/pull/33085)).
+
+Two more routes had it. Any org member could uninstall the interns GitHub App for the whole org while the PAT sibling on the same disconnect route already required the creator (SEC-376, PR [#42006](https://github.com/OpenRouterTeam/openrouter-web/pull/42006)), and the org members list returned every member's email and deactivated rows to non-admins (SEC-388, PR [#42008](https://github.com/OpenRouterTeam/openrouter-web/pull/42008)).
+
+When a diff adds a gate, compare it with the sibling gate on the same row or route; when it returns org data, ask which role may see each field, and re-read the role from the primary membership row rather than the session.
 
 The accepted pattern is the caller-scoping block in
 `internalUserSessionsHandler` in `services/cfw-frontend-api/src/routes/activity/user-sessions/route.ts`:
@@ -225,6 +229,14 @@ the paths that verify it and says nothing about the read routes beside them,
 and a config applied only on fresh provisioning leaves existing instances open
 until the write path re-pushes it.
 
+### A client-settable IP decides access
+
+An IP allowlist, a network-origin check, or a pre-auth rate-limit bucket is only as strong as the header it reads. On a Worker, Cloudflare overwrites `cf-connecting-ip` on every request but forwards `cf-connecting-ipv6` (on IPv4 connections), `x-real-ip`, `x-forwarded-for`, and `true-client-ip` exactly as the client sent them. A decision keyed on any of those lets the caller pick its own address: it passes an allowlist from any network, or rotates the header for a fresh rate-limit bucket per request (PRs [#31027](https://github.com/OpenRouterTeam/openrouter-web/pull/31027), [#45763](https://github.com/OpenRouterTeam/openrouter-web/pull/45763)).
+
+Reject an allow, deny, or throttle decision that reads the address through `getClientIP` / `getClientIPFromHeaders` in `packages/network`: those prefer the client-settable headers and exist for attribution (geo, telemetry, `client_ip_hash`). The accepted primitive is `getSecureClientIP` in `packages/network/req.ts`, which reads only `cf-connecting-ip`. The same rule applies one hop later: a relay header stamped by an upstream service (`or-client-forwarded-ip`) is as spoofable as the resolver that stamped it, so a downstream allowlist may trust only the header the relay derives from the secure resolver, and must refuse, not fall back, when that header is absent (PR [#38640](https://github.com/OpenRouterTeam/openrouter-web/pull/38640); evidence: `resolveClientIpSecure` in `services/cfw-api/src/auth/check-ip-allowlist.ts`).
+
+`openrouter/no-spoofable-client-ip-header-read` catches direct reads of the spoofable header names outside `scripts/oxlint/client-ip-header-registry.ts`. It does not catch a decision made through the attribution helpers or through a relay header, and a new entry in that registry is itself a finding unless the file only attributes.
+
 ### Fabricated default workspace
 
 A workspace ID must come from authenticated context or the approved
@@ -257,6 +269,41 @@ monitor message in `configs/terraform-monitors/` branches on it.
 Thread the resolved workspace through auth, user context, cached and token
 payloads, and post-response consumers. Do not re-resolve it per consumer.
 
+### Absence coalesced into the permissive answer
+
+A security posture derived from a value that can be absent must treat absence
+as unknown and fail closed. Three shapes turn absence into the open state:
+
+- A SQL `COALESCE(joined.flag, false)` or a `?? false` over a column that
+  arrives through a `LEFT JOIN` that can miss. The soft-deleted HIPAA
+  workspace shape: the live-workspace join missed, the coalesce reported
+  `false`, and a formerly HIPAA key was served as non-HIPAA with every
+  side-channel gate open (ENT-2093, PR
+  [#42245](https://github.com/OpenRouterTeam/openrouter-web/pull/42245)).
+- A negative environment gate such as `!isProduction() && !isTest()` deciding
+  whether a sensitive behavior is on. A deployment whose `OR_ENV` was never
+  provisioned reads as "not production" and turns the behavior on; the HIPAA
+  mirror would have serialized full request and response bodies to dev
+  filesystem logs (ENT-2000, PR
+  [#40982](https://github.com/OpenRouterTeam/openrouter-web/pull/40982)).
+- An unset security control returning `ok(undefined)` meaning "this deployment
+  has none", so the caller proceeds without it. The intern provisioner wrote
+  real credentials onto a VM when the vault origin was unset in production (PR
+  [#42312](https://github.com/OpenRouterTeam/openrouter-web/pull/42312)).
+
+The accepted shape is three-valued: `resolveHipaaPosture` in
+`packages/db/auth/hipaa-posture.ts` maps `undefined` to `Unknown`, never to
+`NonHipaa`, and every gate refuses `Unknown`; `shouldEnableFsLogging` in
+`packages/clients/fs-logs/fs-logging-gate.ts` turns the sensitive behavior on
+only under a positive `OR_ENV === 'development'` check for the HIPAA worker;
+`buildVaultProvisioning` in
+`services/cfw-intern-provisioner/src/clients/vault-provisioning.ts` returns an
+error when the control is unset and the runtime is production. When a diff
+reads a flag off a nullable join, defaults an optional posture field, or gates
+on the negation of an environment predicate, ask what the code does when the
+source is `NULL`, unset, or predates the field, and require a test for that
+case.
+
 ## Patterns to copy
 
 - Use `requireWorkspaceAdmin` from
@@ -270,6 +317,13 @@ payloads, and post-response consumers. Do not re-resolve it per consumer.
   `packages/db/api-keys/get-keys-for-profile.ts`.
 - Follow the generation ownership boundary in
   `services/cfw-frontend-api/src/routes/activity/generation-ownership/route.ts`.
+- Internal-admin standing has two sources: the personal row's `is_admin`
+  flag and active membership in an internal-admin organization
+  (`getInternalAdminForAuth` in `packages/frontend/utils/auth/internal-admin.ts`).
+  A worker gate that needs internal-admin standing alone must read both
+  (`devinShellUserAuthMiddleware` in `services/cfw-internal`), or staff
+  whose standing comes only from the organization lose the surface with an
+  opaque 404 that reads as a route outage.
 
 The private-route factory at
 `services/cfw-frontend-api/src/helpers/create-private-route-app.ts`
@@ -302,6 +356,16 @@ The entity prefix prevents cross-entity access, but it does not prevent a
 caller from addressing a foreign `workspaceId` inside its own entity prefix
 or driving that workspace's quota Durable Object. The caller still must
 prove workspace authorization before either operation.
+
+A bucket that holds only public objects has no tenant scope, so the allowlist
+that builds the key is the whole boundary: the resolver must accept only
+registered dataset IDs, validated versions, and known extensions, and the
+route test asserts every rejected spelling returns 404 without a bucket read
+(evidence: `services/cfw-public-api/src/routes/datasets/exports/exports.test.ts`).
+Raw `..` or `%2e%2e` segments are collapsed by the URL parser before the router
+sees the path, so a traversal probe that returns 200 has resolved to a sibling
+public key, not escaped the allowlist. Assert the key the bucket was asked for
+rather than reading the status alone.
 
 ## Review checklist
 

@@ -49,6 +49,7 @@ time-window variables defined by Debug Prod.
   - `configs/terraform-monitors/monitoring/batch_api_oom.tf`
   - `configs/terraform-monitors/monitoring/batch_provider_poll_failures.tf`
   - `configs/terraform-monitors/monitoring/batch_ingress_failures.tf`
+  - `configs/terraform-monitors/monitoring/batch_api_capacity.tf` (no-available-instance 429s, instance connection 503s, per-role instance count, CPU, Pub/Sub backlog)
 
 ## Inputs
 
@@ -250,6 +251,22 @@ sum:openrouter.batch.identity_token.fetch.success{service:cfw-batch-api}.as_coun
 p95:openrouter.batch.identity_token.fetch.latency_ms{service:cfw-batch-api}
 ```
 
+### 1b. Cloud Run capacity rejections (no-available-instance 429s)
+
+For the `[Batch API] Cloud Run no-available-instance rejections` monitor (`batch_api_capacity.tf`). The matching logs are Cloud Run request logs (`source:gcp.cloud.run.revision`, `logName` ending in `run.googleapis.com%2Frequests`), not application logs, so none of the `batch_api.*` event names apply. The monitor is not grouped by service, so the alert does not say which role rejected: group the alert window by service and revision first.
+
+```text
+service:batch-api* @http.status_code:429 "no available instance"
+```
+
+Group by `service` (the role, e.g. `batch-api-poll`), then `revision_name` and `@http.url_details.path`. Every role is a separate Cloud Run service with its own ceiling in `services/batch-api/infra/cloudrun.tf` (`local.batch_services`), so the role name alone tells you which `max` is binding. Then read `max:gcp.run.container.instance_count{service_name:<role>} by {revision_name}` for the same window and compare it with that ceiling: at or near the ceiling is an autoscaling cap, well below it is a scale-from-zero or startup-probe delay.
+
+Role notes:
+
+- `batch-api-poll` (`/poll-job`) is capped at 100 instances x 10 concurrency (`local.batch_api_role_max_instance_counts` in `batch_api_capacity.tf` mirrors `cloudrun.tf`), and `batch_api_instance_count` warns above 80 and alerts above 95 instances for it (the query uses a strict `>`, so 81 and 96 are the first counts that fire). Each request is one `BatchJobPoller` Durable Object alarm from cfw-batch-api, so the alarm retries the poll; a rejection delays a status refresh, it does not lose a job. Sustained rejections here mean concurrent poll demand exceeded 1,000 slots or instances could not scale fast enough; total in-flight jobs is a different quantity because each alarm holds a slot only for its request.
+- Pub/Sub push roles (`batch-api-submit` `/submit-job`, `batch-api-finalize` `/finalize-job`) redeliver on 429, so correlate with the submit and finalize backlog and oldest-unacked-age monitors in the same file. Finalize can exhaust to `batch-finalize-dlq` after eight failed deliveries, and a capacity 429 counts as a failed delivery.
+- `batch-api` (ingest) rejections surface to clients through cfw-batch-api; check ingress logs (section 1) for the forwarded status.
+
 ### 2. Accept and admission
 
 Service: `batch-api`.
@@ -335,6 +352,39 @@ service:batch-api* "batch_api.sweep.spanner_query_failed"
 service:batch-api* "batch_api.sweep.row_parse_failed"
 ```
 
+For the `[Batch API] Sustained provider polling failures` monitor
+(`batch_provider_poll_failures.tf`, >10 `poll_failed` per provider and job
+in 30 minutes), group the alert window by provider and job first:
+
+```text
+service:batch-api* "batch_api.sweep.poll_failed"
+  → group by @data.jsonPayload.extra.provider_name, @data.jsonPayload.extra.job_id
+```
+
+Then split the `error` values into three branches, which have different
+causes and different next actions:
+
+- **Transport errors** (`The operation timed out.`, socket closed, HTTP
+  502/503/504): usually spread across many jobs of one provider and rarely
+  reach the per-job threshold. Treat as provider availability. Check whether
+  other jobs on the same provider polled successfully in the same window.
+- **Missing upstream job** (Vertex `The BatchPredictionJob does not exist.`
+  with status `NOT_FOUND`, OpenAI-shaped `HTTP 404: resource not found`):
+  concentrated on one job, every poll fails, and the sweep never sees a
+  terminal status. See "Upstream job gone on every poll" under Known failure
+  modes.
+- **Other adapter errors** (HTTP 401/403, HTTP 429, response parse or schema
+  failure, unknown provider status): the adapter failed on a response the
+  provider did serve. Stable 401/403 on one key points at a credential the
+  provider revoked upstream, 429 at provider-side rate limiting, and parse or
+  unknown-status failures at an adapter regression or a provider contract
+  change. Read the raw `error` before assigning provider availability.
+
+Internally deleted or disabled BYOK keys do not reach this monitor. The
+sweep resolves the key before calling the adapter: an unavailable key
+terminalizes the job, a disabled key logs `sweep.provider_key_disabled` and
+skips the tick. Neither path emits `poll_failed`.
+
 Verified fields:
 
 - `sweep.completed`: `published`, `candidates_found`, `duration_ms`
@@ -361,6 +411,9 @@ service:batch-api* @data.jsonPayload.extra.job_id:<JOB_ID> "batch_api.finalize.j
 service:batch-api* @data.jsonPayload.extra.job_id:<JOB_ID> "batch_api.finalize.results_materialize_failed"
 service:batch-api* @data.jsonPayload.extra.job_id:<JOB_ID> "batch_api.finalize.provider_key_disabled"
 service:batch-api* @data.jsonPayload.extra.job_id:<JOB_ID> "batch_api.finalize.provider_key_unavailable"
+service:batch-api* @data.jsonPayload.extra.job_id:<JOB_ID> "batch_api.finalize.settlement_blocked"
+service:batch-api* @data.jsonPayload.extra.job_id:<JOB_ID> "batch_api.finalize.settlement_block_record_failed"
+service:batch-api* @data.jsonPayload.extra.job_id:<JOB_ID> "batch_api.finalize.settlement_blocked_redelivery"
 service:batch-api* "batch_api.finalize_one.invalid_push_body"
 ```
 
@@ -480,6 +533,9 @@ the decision table to choose the next query.
 | “Estimated-usage billing elevated” | Generation emission and usage accounting | per-line `Transaction attempt` with `is_estimated_usage:true`; `fallback_usage_estimated` | provider omitted usage or output usage was malformed, causing fallback estimation |
 | “Repeated ambiguous submit retries” | Async submit worker | umbrella `Transaction attempt` with `attempt_id` and `is_retry:true`; `retrying_cheap_ambiguous_submit` | timeout or unknown provider outcome triggering the bounded retry |
 | “Batch finalized but results unavailable” | Materialization/read | `results_materialize_failed`, `completed_results_missing`, `stream_results_failed`, `serve_results.parse_failed` | immutable GCS artifact missing/unreadable, malformed materialized JSON, storage/read failure |
+| “Sustained provider polling failures” alert | Sweep/poll | `sweep.poll_failed` grouped by `provider_name` and `job_id`; `error`, `error_location`, `provider_job_id`; then `batch_accepted` and `batch_submitted_upstream` for the job | upstream job missing (404 on every poll), provider transport failure, credential revoked upstream or adapter response-contract failure |
+| “Incremental batch job stuck in_progress” or `legacy_settle_skipped_receipt_job` nonzero | Async-job charge handler (usage-record Dataflow) | `"dropped legacy terminal event for batch-billing-lane job"` on `@job_name:usage-record-async-jobs-*`, `usage-record-generations-*` or `usage-record-batch-generations-*`, fields `job_id`, `status`, `settled_generation_count` | producer emitted a legacy terminal status or legacy generation rows for a job billed by the batch billing lane |
+| “Cloud Run no-available-instance rejections” alert | Cloud Run request logs | `@http.status_code:429 "no available instance"` grouped by `service`, `revision_name`, `@http.url_details.path`; then `gcp.run.container.instance_count` for that role against its `cloudrun.tf` ceiling (section 1b) | role at its per-revision `max_instance_count`, scale-from-zero or startup-probe delay on a cold role, poll fan-out exceeding `batch-api-poll`'s slot count |
 | “Batch disappeared after provider key change” | Sweep/finalize key resolution | `sweep.provider_key_disabled`, `finalize.provider_key_disabled`, `finalize.provider_key_unavailable`, `key_unavailable_*` | disabled key is temporarily skipped; deleted key causes terminal failure because upstream cannot be retrieved |
 
 ### Known failure modes
@@ -504,11 +560,68 @@ the decision table to choose the next query.
   pending state; HTTP 402 means the settlement outcome is explicitly
   `payment_required`, such as a failed or insufficient-balance charge. This is
   a billing/access state, not a provider execution state.
+- **Upstream job gone on every poll:** the sweep has no terminal handling
+  for a provider 404. It logs `poll_failed` and retries on every tick, so the
+  job stays in flight and the polling-failures monitor keeps firing until the
+  job leaves the in-flight set. Diagnose in this order:
+  1. Note the `provider_job_id` on `poll_failed` and compare it with the
+     `upstream_batch_id` on `batch_submitted_upstream` or, when the journal
+     write failed, `submit_job.provider_outcome_journal_failed`. A
+     `poll_failed` record already proves a provider job ID was persisted;
+     a missing submit event alone is not a persistence failure.
+  2. Check whether any poll of that job ever returned a non-404 status. A
+     404 from the first poll onward means the job was never readable under
+     the persisted ID; a 404 after earlier successful polls means it was
+     removed or expired upstream.
+  3. For Vertex, the poll request is addressed to the host encoded in the
+     persisted resource name (`projects/.../locations/<region>/...`), so a
+     region or project mismatch on our side is not a cause of the poll 404
+     unless the persisted resource name itself is wrong.
+  4. Check for `batch_api.delete.requested`, `batch_api.delete.completed`,
+     `batch_api.delete.upstream_delete_failed`, and
+     `batch.adapter.upstream_batch_already_deleted` for the job. These are
+     the only structured deletion events; the client `DELETE` calls
+     themselves appear only in Cloud Run request logs.
+     Control-service `DELETE` responses are internal
+     lifecycle statuses, not provider-side deletions: a 404 there means the
+     internal row was not readable yet (or already purged), a 409 means the
+     job was not terminal. Neither proves the upstream job was deleted.
+  5. Confirm the key path is quiet: `sweep.provider_key_disabled`,
+     `sweep.adapter_resolution_failed`, and `key_unavailable_*` fire before
+     the poll and never produce `poll_failed`, so a job in this alert did not
+     fail on an internal key change.
+  Settle the cause by looking up the `upstream_batch_id` in the provider
+  console or API and recording what it shows. There is no public cancel
+  route, so an unreachable upstream job only leaves the in-flight set through
+  a terminal outcome emitted by the Batch API owner on the async-job path,
+  which also settles the job's `pending_charges` and releases the estimated
+  cost hold. Do not update `async_jobs.status` directly: that removes the
+  job from the sweep but leaves the customer's hold outstanding. The monitor
+  keeps firing until the job is terminal.
+- **Legacy terminal event dropped for a batch-billing-lane job:** a job is
+  lane-owned once its `pending_charges.settled_generation_count` is non-NULL
+  and `settled` is false. While that holds, the usage-record async-job
+  handler drops any legacy terminal event (`completed`/`failed` on the
+  async-jobs topic, or a generation row carrying the job's `async_job_id`
+  once the stored status is terminal) instead of writing it: no
+  `async_jobs.status` write, no charge insert, no whole-hold settlement. It
+  increments the Beam counter `async_job.legacy_settle_skipped_receipt_job`
+  and logs the warning above. Expected rate is zero. A nonzero rate is a
+  producer coordination bug, not a billing loss: the lane still closes the
+  job from its final chunk or reconcile and releases the remaining hold.
+  Diagnose by reading `pending_charges` for the `job_id` (settled count vs
+  expected, `settled`), confirming the lane is still advancing, then finding
+  the producer path that emitted the legacy signal. Do not write
+  `async_jobs.status` by hand: a job closed behind the lane makes the lane
+  refuse its unseen rows and strands the hold. Legacy jobs
+  (`settled_generation_count` NULL) never take this path. Alerted by
+  `batch_billing_lane_legacy_terminal_dropped.tf` into #alerts-providers.
 - **Sweep heartbeat missing:** absence of `batch_api.sweep.completed` can mean
   scheduler, Cloud Run, or Spanner query failure. The existing stalled monitor
   alerts on this condition.
 - **Pub/Sub redelivery:** finalize failures return 5xx so the message retries;
   repeated failures can indicate a poison job or memory/storage problem.
+- **Settlement blocked after a journaled billing proof:** a permanent finalize failure that lands after the billing proof is journaled cannot retry and cannot take the legacy `failed` publish (chunks may already be settling), so `terminalizeArtifactFailure` in `services/batch-api/src/finalize/finalize-batch-job.ts` writes a durable `settlement_blocked` marker into the job's `finalize_journal` GCS object, acks the delivery, and leaves the job `in_progress` with its hold live. A redelivery logs `settlement_blocked_redelivery` and skips finalization, so nothing repairs it automatically. `batch_api.finalize.settlement_blocked` fires at most once per job (`configs/terraform-monitors/monitoring/batch_finalize_settlement_blocked.tf`); `batch_api.finalize.settlement_block_record_failed` means the marker write itself failed and repeats per finalize attempt until it succeeds or the attempt cap dead-letters the job (`batch_finalize_settlement_block_record_failed.tf`, one alert group per job), and a `record_failed` line alone does not prove the marker exists. Both page #alerts-providers; recovery is the runbook at `configs/terraform-monitors/runbooks/batch-finalize-settlement-blocked.md`. Do not write `async_jobs.status` directly, for the same reason as the lane-owned case above.
 - **Ingress rate limiter fails open:** the rate-limit backend failure is logged
   as `Entity ratelimiter check failed open`; it does not reject the request.
 - **Vertex infers one schema for the whole input file:** Vertex Gemini batch

@@ -162,9 +162,9 @@ the cache) after every re-seed.
 
 Before testing, verify the model and every staged endpoint resolve an effective
 `context_length_override ?? model.context_length` value > 0
-(image-generation endpoints use the runtime default). A 500 with generic
-`Internal Server Error` on every request is the signature of an effective
-`context_length=0`.
+(image-generation endpoints use the runtime default). For text-output
+endpoints, a 500 with generic `Internal Server Error` on every request
+is the signature of an effective `context_length=0`.
 
 ### A5. Refresh the KV cache and test
 
@@ -612,7 +612,7 @@ requests 404 with `No endpoints found`). For local staging, set
 Follow the ordered catalog refresh in [local-dev-env](../local-dev-env/SKILL.md#fixtures-and-checks): restart `api`, run `api-kv-cron` successfully, then restart the consumers. Confirm each new run in Tilt.
 
 - KV warming queries ClickHouse; check `clickhouse` and `clickhouse-migrate` if the cron fails.
-- The same cron writes `web_models_cache` for `frontend-api`. Seeded Postgres rows alone do not populate that KV key. The workers share `.wrangler/shared-state`.
+- The same cron publishes the model, endpoint, and provider artifacts read together by `frontend-api`. Seeded Postgres rows or a lone `web_models_cache` key do not populate the complete catalog snapshot. The workers share `.wrangler/shared-state`.
 - For an occupied port or orphaned worker, use [kill-port](../kill-port/SKILL.md).
 
 ### 8. Test via curl
@@ -761,6 +761,7 @@ cat services/dev-fs-logs/.logs/<gen-id>/embeddings/fetch-request.log
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
 | **404 "No endpoints found"** | Endpoint not in KV cache | Refresh cache (step 7) or restart cfw-api |
+| **404 "has no realtime endpoint"** with `failed to parse endpoint features` in the worker log | Malformed `features` JSON on the row (e.g. `supports_tool_choice: true`; it must be an object). The row is silently dropped from the private cache | Fix the JSON; `cfw-realtime-api` reads private rows straight from Postgres via `ListCache`, so no KV re-warm is needed |
 | **404 from upstream** | Wrong provider URL | Check if `provider_overrides.baseUrl` is needed. Compare with `provider-url.ts` |
 | **401 from upstream** | Missing or wrong API key | Check `.env.development.local` for the provider's API key |
 | **400 from upstream** | Bad request format | Check adapter's `transformRequest()` — the `provider_model_id` or request body may be wrong |
@@ -772,7 +773,7 @@ cat services/dev-fs-logs/.logs/<gen-id>/embeddings/fetch-request.log
 | **Endpoint disappears after KV warm cron** | `pricing_versions` row missing or not yet effective under the bucketed now when cron ran (endpoint force-disabled as invalid pricing) | Insert endpoint + pricing_versions together with a backdated `effective_at`, THEN trigger the cron; restart the worker (`tilt trigger api`) if it still 404s |
 | **404 "available_providers" omits your regional endpoint** (e.g. `amazon-bedrock/us-west-2` staged but only `xai` listed) | The **Regional Surcharge filter** (`packages/routing/filters/by-regional-surcharge.ts`) drops region-slugged endpoints (Bedrock/Vertex/Azure regional rows) on global data-region requests, and a *bare* base slug in `provider.only` (e.g. `amazon-bedrock`) does **not** exempt them | Pin the full regional slug in the request: `"provider": {"only": ["amazon-bedrock/us-west-2"]}` |
 | **Endpoint visible via `curl localhost:8788/model-config?permaslug=...` but cfw-api still 404s** | cfw-api's in-isolate router-config cache (5-min TTL) and cfw-kv-cache's in-memory SWR cache are stale even though shared-state KV is fresh | After `test:cron`, restart **both** cfw-kv-cache (`cd services/cfw-kv-cache && bun run start` — note the script is `start`, not `dev`) and cfw-api. Start cfw-api first (it needs ports 8787 + inspector 9229), then cfw-kv-cache (8788); both must use `--persist-to ../../.wrangler/shared-state` (their default scripts do) or they will not share KV |
-| **KV `__scheduled` cron warm silently keeps stale endpoint data** | ClickHouse (`packages/clickhouse/docker-compose.yaml` service `clickhouse`, :8123) is down — the warm job's analytics queries fail (`Network connection lost`) and the KV write is aborted, without a loud error | Start ClickHouse (`docker compose -f packages/clickhouse/docker-compose.yaml up -d clickhouse`, confirm `curl localhost:8123/ping` → `Ok`), re-run `curl 'localhost:8787/__scheduled?cron=*/5+*+*+*+*'`, then verify the flag/endpoint actually changed in `localhost:8788/kv/all` before trusting metadata-dependent tests |
+| **KV `__scheduled` cron warm silently keeps stale endpoint data** | ClickHouse (`packages/clickhouse/docker-compose.yaml` service `clickhouse`, :8123) is down — the warm job's analytics queries fail (`Network connection lost`) and the KV write is aborted, without a loud error | Start ClickHouse (`docker compose -f packages/clickhouse/docker-compose.yaml up -d clickhouse`, confirm `curl localhost:8123/ping` → `Ok`), re-run `curl 'localhost:8794/__scheduled?cron=*/5+*+*+*+*'`, then verify the flag/endpoint actually changed in `localhost:8788/kv/all` before trusting metadata-dependent tests |
 | **Behavior doesn't change after editing `packages/router` (or other package) source while `wrangler dev` is running** | wrangler dev's watcher does not reliably rebuild on cross-package source changes (e.g. restoring a file via `git checkout`) — the worker keeps serving the old bundle | Restart cfw-api after any package-level source change, and confirm with a behavior-discriminating request rather than trusting hot reload |
 | **`GET localhost:8787/api/v1/models` or `/api/v1/models/:author/:slug/endpoints` returns 404** | Model/endpoint listing routes are owned by `cfw-public-api`, not `cfw-api` (which only serves inference routes) | Test inference through cfw-api and listing/visibility through `cfw-public-api` (`bun run dev cfw-public-api`) |
 | **Need to exercise US/EU data-region routing locally** (e.g. confirm a `global.` CRIS row is rejected by the adapter for a US-pinned request) | `getDataRegionFromRequest` derives the region from the request hostname prefix, not from a header or body field | Send `-H 'Host: us.localhost'` / `-H 'Host: eu.localhost'` to the same `localhost:8787` port; plain `localhost` is the global region |

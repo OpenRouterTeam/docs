@@ -1,6 +1,7 @@
 ---
 title: "Happy New Year! Introducing a new Auto Router"
 date: "2025-01-01T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "To start off 2025, we have an upgrade to the Auto Router, and a partnership with NotDiamond "
 category: "announcements"

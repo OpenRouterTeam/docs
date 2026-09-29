@@ -1,6 +1,7 @@
 ---
 title: "Build a Reliable Tool-Calling Agent Loop on OpenRouter"
 date: "2026-09-17T00:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "OpenRouter"
 category: "tutorials"
 metaTitle: "Build a Reliable Tool-Calling Agent Loop on OpenRouter"

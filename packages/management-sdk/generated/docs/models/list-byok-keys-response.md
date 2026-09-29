@@ -17,6 +17,7 @@ let value: ListBYOKKeysResponse = {
       isFallback: false,
       isRequired: false,
       isByokOnly: false,
+      declaredZdr: null,
       allowedModels: null,
       allowedApiKeyHashes: null,
       allowedUserIds: null,

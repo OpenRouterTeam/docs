@@ -1,6 +1,6 @@
 ---
 name: update-app-categories
-description: Add, modify, or remove app categories and subcategories in the OpenRouter marketplace — covers code, docs, and naming rules
+description: Add, modify, or remove marketplace app categories and subcategories, covering code, docs, and naming rules.
 user-invocable: true
 ---
 

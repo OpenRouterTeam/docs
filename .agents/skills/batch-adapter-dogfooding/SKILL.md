@@ -305,6 +305,27 @@ test; they generalize to any provider:
 When a new incident class appears in Linear, add it here so the next
 dogfooding run checks for it by default.
 
+## Reference fixtures (error shapes to test against)
+
+Redacted live captures from past runs, committed next to the adapter
+tests that pin them. Feed each one through the adapter's error handler
+or `parseResult` before the live run so a shape the parser cannot read
+is a known `BUG` and not a surprise:
+
+- `packages/batch/adapters/mistral/fixtures/live-error-file-line-string-body.json`:
+  a per-line failure whose `response.body` is a JSON **string**, not an
+  object. The served row must keep the provider `message` and `type`
+  (`output-parser.test.ts`).
+- `packages/batch/adapters/mistral/fixtures/live-upload-422-line-errors.json`
+  and `live-upload-422-body-validation-errors.json`: a whole-file
+  upload rejection with `detail`, `description`, and `errors[]` carrying
+  `message` and `line_number`. The batch-level error must keep at least
+  one `errors[].message` and its `line_number` (`mistral-fetch.test.ts`).
+
+When a run captures an error envelope the adapter handles wrongly, add
+the redacted capture to that adapter's `fixtures/` dir with a regression
+test, and list it here.
+
 ## Procedure
 
 1. Read the provider's research note and current official docs (batch,
@@ -319,6 +340,16 @@ dogfooding run checks for it by default.
    If provider support is unclear, the case is `UNTESTED`.
 4. Run direct-native cases first, capturing raw transcripts to a scratch
    dir. Then run the same cases through OpenRouter.
+   Record the status of the first poll after create on both surfaces:
+   a brief 404 right after a successful create can occur on either side.
+   An OpenRouter read-after-create 404 is parity only when the native API
+   shows the same lag; when native does not, it is a divergence to
+   investigate. Poll drivers must tolerate it either way.
+   When no OpenRouter batch reaches a per-line failure (a capability
+   guard blocks the only inducible case), feed the captured native
+   error-file line through the adapter's `parseResult` offline and record
+   the verdict as reproduced from a live capture, not as live OpenRouter
+   evidence (see Reference fixtures).
    Local-stack gotchas: create the E2E pull subscriptions
    (`ensureSubmitSubscription()` / `ensureFinalizeSubscription()` in
    `tests/e2e/api/batches/helpers.ts`) **before** submitting — the

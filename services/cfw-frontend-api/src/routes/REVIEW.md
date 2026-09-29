@@ -16,8 +16,8 @@ handler personalizes a response and emits `public` Cache-Control, one
 user's data gets cached and served to everyone until it expires.
 
 When reviewing a new or modified route file, flag it if the file (or
-any helper it calls) does any of the following while mounting
-`createPublicRouteApp`:
+any helper it calls) does any of the following while mounting the
+cached mode of `createPublicRouteApp`:
 
 - reads Clerk state: `getUserIdFromCookie`, `getUserFromCookie`,
   `clerkMiddleware`, anything from `@openrouter-monorepo/cfw-api/auth/*`

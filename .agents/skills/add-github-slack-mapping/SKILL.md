@@ -36,11 +36,15 @@ The release workflow keys on the git author *name* of each commit (case-insensit
 
 For bot-authored commits (`devin-ai-integration[bot]` and friends) the release announcement credits the `Co-authored-by:` human name instead, so the person's Slack *display* name (e.g. `Abhinav Pola`) must be a row too — otherwise they render as unmentioned plain text even though their GitHub login is already mapped.
 
+Not everyone who appears in a release announcement has a GitHub account: non-engineers land there through `Co-authored-by:` trailers on someone else's commit. Search every page with `gh api --paginate /orgs/OpenRouterTeam/members --jq '.[].login'`, but a miss only proves non-membership: contractors and outside collaborators have accounts too, and `.github/workflows/release-freeze.yaml` keys on the login. Confirm any login the requester supplies with `gh api users/<login>` and add it; only skip the login row once the person confirms they have no account — the author-name and email-prefix rows are what the workflow keys on. `$GITHUB_USERNAME` is then unset: use the person's git author name in its place for validation, the commit message, and the PR title (PR #41792).
+
+`Co-authored-by:` trailers also carry the bare email prefix or the full email as the author name, so `git log origin/main --format='%b' | grep -i 'co-authored-by:.*<name>'` enumerates every variant a person has shipped under. When a request covers several people at once, open one PR with all of them.
+
 The lookup is exact after lowercasing, so diacritics are distinct keys: a git author name `Damjan Kužnar` does not cover the ASCII `Damjan Kuznar` that GitHub puts in squash-merge `Co-authored-by:` trailers. Add both spellings when a name has accented characters.
 
 ### 2. Validate the inputs
 
-- `$GITHUB_USERNAME` must be non-empty.
+- `$GITHUB_USERNAME` must be non-empty, unless step 1b established that the person has no GitHub account — then their git author name takes its place everywhere below.
 - `$SLACK_ID` must match the pattern `U[A-Z0-9]{10}`. If it doesn't look right, ask the requester to confirm.
 - If any required input is missing, ask the requester to provide it before proceeding.
 

@@ -76,7 +76,7 @@ Response (200, synchronous — blocks until all calls complete):
 }
 ```
 
-Warm rows prime the exact inference URL with a credential-free `HEAD` request.
+Warm rows prime the exact inference URL with a credential-free `GET` request.
 `warmup_error` is set only when priming fails and the inference request is
 skipped. Warmup-failed rows are retained in raw results but excluded from
 benchmark aggregates.
@@ -272,8 +272,8 @@ Vercel-MC + Google SA callers). The middleware checks:
 1. The JWT's `aud` claim matches the custom audience
    `openrouter-internal-api` (Google branch) or the Vercel audience.
 2. The JWT's `email` is in `GOOGLE_OIDC_ALLOWED_EMAILS` (Google
-   branch) or the `owner`/`project` matches `VERCEL_OIDC_*` allowlists
-   (Vercel branch).
+   branch) or the `owner`/`project` matches the allowlist fixed in
+   `packages/oidc/openrouter-vercel-oidc.ts` (Vercel branch).
 
 Currently in `GOOGLE_OIDC_ALLOWED_EMAILS` (Infisical):
 
@@ -355,14 +355,13 @@ debugging 404 could be any of:
 - `Authorization` header not `Bearer …`
 - Token isn't a parseable JWT
 - Signature didn't verify against Google's or Vercel's JWKS
-- `aud` doesn't match (`GOOGLE_OIDC_AUDIENCE` /
-  `VERCEL_OIDC_AUDIENCE`)
+- `aud` doesn't match (`GOOGLE_OIDC_AUDIENCE` / the Vercel audience in
+  `packages/oidc/openrouter-vercel-oidc.ts`)
 - Claims schema parse failed (Google: missing `email`, missing
   `email_verified: true`, or non-`accounts.google.com` `iss`;
   Vercel: missing `owner` / `project` / `environment`)
 - Email not in `GOOGLE_OIDC_ALLOWED_EMAILS`
-- Vercel `owner` mismatch / `project` not in
-  `VERCEL_OIDC_ALLOWED_PROJECTS`
+- Vercel `owner` mismatch / `project` not in the in-code allowlist
 
 The actual reason lives in the container logs as an `ErrorT` with
 `status: 401` and a `location` field that identifies the failure mode.

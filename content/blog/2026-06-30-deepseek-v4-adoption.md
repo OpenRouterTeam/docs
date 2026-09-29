@@ -1,6 +1,7 @@
 ---
 title: "DeepSeek V4 Is Earning Agentic Token Share"
 date: "2026-06-30T00:00:00.000Z"
+updated: "2026-07-01T21:34:32.000Z"
 teaser: "DeepSeek doubled its token share on OpenRouter in six months. V4 Flash is the model that made it happen, and agentic workloads are driving the surge."
 headerImage:
   url: "/images/deepseek-v4-token-share-comparison.png"

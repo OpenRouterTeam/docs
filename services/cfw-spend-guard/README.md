@@ -66,7 +66,31 @@ sequenceDiagram
     Note over DO: alarm (1/min while state remains):<br/>expire holds older than maxReservationMs,<br/>age out unsettled rows past settlementWindowMs
 ```
 
-## Object lifecycle
+## Transactional rollups and bounded maintenance
+
+SQLite triggers keep a per-table dollar total, row count, accounting cutoff, and rounding-error bound in `spend_guard_totals`. They execute in the same transaction as reserve, reprice, release, heartbeat, and alarm writes. Existing ledgers bootstrap these two rows once; subsequent cold starts reuse them. No process-local cache owns accounting state.
+
+Admission uses a total only when an indexed existence check proves that no retained row lies between its accounting cutoff and the requested cutoff. Otherwise it uses the original timestamp-filtered sums/counts without advancing accounting or deleting rows on reserve. Near the admission boundary it also recomputes exact SQL sums when the accumulated floating-point error bound could affect the decision. Longer windows and clock reversal therefore remain correct without rebuilding the totals synchronously.
+
+Heartbeats advance accounting over at most 128 rows per table and retain the original rows for diagnostics, idempotency, and later window changes. Timestamp ties are never split: an oversized equal-timestamp group stays on exact-read fallback until physical alarm cleanup makes progress. A heartbeat is opportunistic, not a prerequisite for admission correctness.
+
+Each alarm deletes at most 1,024 expired rows from each of reservations, unsettled spend, and release markers, then performs bounded accounting maintenance. Remaining expired rows cause the next alarm to be scheduled in one second rather than one minute. All work still shares the object's execution thread; batching bounds an individual sweep, not its total cleanup cost.
+
+Exact-read fallback deliberately gives up the rollup speedup while accounting is stale, so a fast warm-object microbenchmark is not a steady-state or production-RPS claim.
+
+## Distributed tracing
+
+The inference Worker's SpendGuard binding captures the active `traceparent` separately for each RPC, and only when the request was already selected for Datadog or trusted benchmark tracing. HIPAA callers strip this context. The optional field is backward-compatible with older callers and is never persisted in the ledger or alarm context.
+
+Sampled requests form `or.spend_guard.rpc reserve` (caller) → `spend_guard.rpc.reserve` (service entrypoint) → `spend_guard.do.reserve` (Durable Object). Warm, release, and heartbeat use the same pattern. The receiver uses the shared `traceDurableObjectCall` helper and the `CF_VERSION_METADATA` binding; missing, malformed, or unsampled parents do not start independent traces. The receiver marks those forwarded traces for Datadog without independently sampling every RPC.
+
+Child spans cover initialization (`spend_guard.initialize`), ledger transactions (`spend_guard.ledger.*`), and storage reads and writes (`spend_guard.storage.*`). Warm and reserve DO spans carry `or.spend_guard.first_touch`. Deferred alarm/context writes remain unawaited by reserve: their tracing context stays open until the background promises settle, without changing Durable Object lifetime guarantees or admission durability.
+
+The DO span measures its handler, not time spent waiting for activation, delivery, or output-gate confirmation. Those costs remain in the enclosing RPC span; child spans can outlive the handler when background work continues. Standalone alarms do not create independent sampled traces. Trace attributes contain phase/first-touch metadata, not the tracking object, entity IDs, or request bodies.
+
+The shared tracing runtime adds a fixed bundle and startup cost that parent-selected sampling does not remove.
+
+## Initialization sequence
 
 Admission is synchronous. Every step that needs a storage round trip — arming
 the expiration alarm, persisting the sweep's copy of the limits — is issued
@@ -110,6 +134,9 @@ stateDiagram-v2
     Drained --> Cold: eviction
     Warm --> Cold: eviction before the arm lands, so the next RPC arms again
 ```
+
+Live configuration — every knob, defaults, how the stages compose, and the
+rollout order — is documented in [`CONFIG.md`](./CONFIG.md).
 
 The rules callers must follow (generation-id uniqueness, terminal release,
 timeout compensation, heartbeat cadence) and the layout conventions live in

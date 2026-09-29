@@ -302,8 +302,8 @@ not just that it appears.
 
 Run the [`thermo-nuclear-code-quality-review`](../thermo-nuclear-code-quality-review/SKILL.md)
 → fix loop to a maximum of four rounds, recording every finding as fixed,
-rejected with a reason, or out of scope. Then hand the PR to Perry with
-[`ask-perry-babysit`](../ask-perry-babysit/SKILL.md), which posts to `#agents`.
+rejected with a reason, or out of scope. Then ask Perry for a `review` with
+[`ask-perry-babysit`](../ask-perry-babysit/SKILL.md), which posts to `#agents-perry-reviews`.
 Both happen before a human reads the PR.
 
 ## 7. The PR

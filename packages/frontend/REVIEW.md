@@ -166,11 +166,6 @@ a direct child.
   per-child border replacement needs the equivalent `first:` / `last:` reset
   (`last:border-b-transparent`).
 
-This file sits under `@source '../../../packages/frontend'`, so Tailwind scans
-its raw text and mints a utility for every class name it finds — including one
-`ban-slow-utilities` rejects, which fails the whole web build. Name the banned
-patterns in prose here, never as the literal class.
-
 ## Shared client state has one source
 
 Two mounts of the same key must never be able to disagree.

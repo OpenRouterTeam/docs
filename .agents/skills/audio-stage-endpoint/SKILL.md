@@ -38,13 +38,19 @@ local Postgres DB and test it via the local cfw-stt-api worker.
    (steps 1–6). Seed data may already exist; check first.
 5. **Refresh KV** — trigger the cron to pick up new DB rows:
    ```bash
-   curl -s "http://localhost:8787/__scheduled?cron=*/5+*+*+*+*"
+   curl -s "http://localhost:8794/__scheduled?cron=*/5+*+*+*+*"
    ```
-6. **Enrich KV with `pricing_json`** — the cron does NOT
-   include `pricing_json` on endpoint objects in KV, so
-   `computeSTTUsageResponse` can't calculate costs. Run the
-   KV enrichment script (step 7) to add `pricing_json` so
-   that `usage.cost` is populated in responses.
+6. **Verify the generation-keyed catalog, not the legacy key** — the
+   cron publishes `catalog/v1/<generation>/modality_transcription` and
+   points `catalog_snapshot_v1` at it. The bare `modality_transcription`
+   key is a stale legacy artifact and may omit your rows. The published
+   artifact includes `pricing_json`, so `usage.cost` is populated
+   without manual enrichment. If the readback in step 7 shows
+   `pricing_json` missing, fix the `pricing_versions` row in Postgres
+   and re-trigger the cron. Once a generation is published the worker
+   reads the legacy key only during the first requests after a cold
+   start, before the background head read completes, so writing it
+   (Option A) is not a durable override.
 
 Workers share KV through `.wrangler/shared-state`; Tilt supplies the persist path.
 
@@ -78,6 +84,8 @@ VALUES ('<author-slug>', '<Display Name>')
 ON CONFLICT (slug) DO NOTHING
 RETURNING id;
 ```
+
+A newly created author has no `icon_uri`, so the model card falls back to the Hugging Face favicon unless the slug has an entry in `authorIconMap` (`packages/frontend/components/ui/Icons/icon-infos.ts`). Add the map entry in the adapter PR, or set `icon_uri` here, and check the rendered model page during verification. The provider icon is a separate path and does not cover this.
 
 #### 3. Understand STT adapter URL construction
 
@@ -463,15 +471,30 @@ match a different display unit, and do not introduce a non-`1`
 
 #### 7. Seed the KV cache
 
-The STT worker reads models/endpoints from a shared KV store.
-The KV key is `modality_transcription`.
+The STT worker reads models/endpoints from a shared KV store via
+`createCatalogKvCache`, which resolves the head generation from
+`catalog_snapshot_v1` and reads
+`catalog/v1/<generation>/modality_transcription`. Read that key when
+verifying; the bare `modality_transcription` key is legacy and can be
+stale:
 
-##### Option A: Direct KV write (required without Tilt, or to add `pricing_json`)
+```bash
+cd services/cfw-stt-api
+GEN=$(npx wrangler kv key get catalog_snapshot_v1 --binding KV_MODELS_AND_ENDPOINTS --local --persist-to ../../.wrangler/shared-state | jq -r .generation)
+npx wrangler kv key get "catalog/v1/$GEN/modality_transcription" --binding KV_MODELS_AND_ENDPOINTS --local --persist-to ../../.wrangler/shared-state \
+  | jq --arg provider "$PROVIDER_NAME" '.endpoints[] | select(.provider_name==$provider) | {id, pricing_json}'
+```
 
-The cfw-api cron populates KV from the DB but does **not**
-include `pricing_json` on endpoint objects. Without
-`pricing_json`, `computeSTTUsageResponse` returns null and
-`usage.cost` is missing from responses.
+If `catalog_snapshot_v1` is absent (cron never ran), the worker reads
+the bare `modality_transcription` key instead, which is the only case
+Option A applies to.
+
+##### Option A: Direct KV write (only without Tilt, when no `catalog_snapshot_v1` exists)
+
+With no published generation, the worker falls back to the bare
+`modality_transcription` key. Without `pricing_json` on the endpoint
+object, `computeSTTUsageResponse` returns null and `usage.cost` is
+missing from responses.
 
 Use a tsx script to build KV data with `pricing_json` included.
 
@@ -576,17 +599,18 @@ endpoints must use `google_cloud_stt:audio_minutes`, not
 is > 0, the adapter uses token-based billing and sets
 `response_format: json` instead of `verbose_json`.
 
-##### Option B: cfw-api cron (Tilt only — populates KV but no pricing_json)
+##### Option B: cfw-api cron (Tilt, preferred)
 
 ```bash
-curl -s "http://localhost:8787/__scheduled?cron=*/5+*+*+*+*"
+curl -s "http://localhost:8794/__scheduled?cron=*/5+*+*+*+*"
 ```
 
-This rebuilds all modality KV entries including transcription.
-**Note:** The cron-populated KV data does NOT include
-`pricing_json`, so `usage.cost` will be missing. Follow up
-with Option A to enrich the KV with pricing data if you need
-cost calculation.
+This publishes a new `catalog/v1/<generation>/*` set, including
+transcription with `pricing_json`, and moves `catalog_snapshot_v1` to
+it. If the readback shows `pricing_json` missing, the DB
+`pricing_versions` row is wrong (missing, not yet effective, or wrong
+`endpoint_id`); fix it and re-trigger the cron. Do not patch the legacy
+key.
 
 ##### After seeding
 
@@ -657,8 +681,9 @@ or `provider_info.pricingStrategy` is not set correctly.
 `computeSTTUsageResponse` reads from `provider_info`, not
 `provider_overrides`. Ensure `pricingStrategy` matches the
 provider (see step 5 table) and the `pricing_json` SKU keys
-match that strategy (see step 6). Run the KV enrichment
-script (step 7 Option A) and restart stt-api.
+match that strategy (see step 6). Fix the `pricing_versions`
+row or the endpoint's `provider_overrides.pricingStrategy`, re-trigger
+the cron (step 7 Option B), and restart stt-api.
 
 ##### Verify BYOK billing
 
@@ -682,7 +707,7 @@ endpoint row for BYOK.
 | **"No endpoints found"** | Model not in KV `modality_transcription` key | Ensure `output_modalities` includes `transcription`, then refresh cache (step 7) |
 | **"No successful provider responses"** | Upstream call failed | Check provider API key is set in `.env.development.local` or Infisical |
 | **Cost is $0 for non-BYOK** | Missing `pricing_versions` row or wrong `pricingStrategy` | Insert pricing version (step 6) and verify `provider_overrides.pricingStrategy` matches the provider (step 5 table) |
-| **Cost is missing (`usage.cost` absent)** | KV data missing `pricing_json` on endpoint | Run KV enrichment (step 7 Option A) to add `pricing_json`, then restart stt-api |
+| **Cost is missing (`usage.cost` absent)** | Generation artifact missing `pricing_json` on endpoint | Fix the `pricing_versions` row, re-trigger the cron (step 7 Option B), then restart stt-api. Option A only applies when `catalog_snapshot_v1` is absent |
 | **BYOK fee is $0 unexpectedly** | User below free tier threshold or has waiver | Check `requests_byok_monthly` vs `BYOK_FEE_MONTHLY_REQUEST_THRESHOLD`, and `byok_fee_waived_until` |
 | **`usage_updated_at` resets monthly count** | `usage_updated_at` is null | When null, `isFromPreviousUtcMonth()` returns true, resetting `requests_byok_monthly` to 0 |
 | **Billing doesn't run on abort** | `waitUntil` not registered before fetch | The STT router uses a deferred billing guard (`promiseWithResolvers`) — verify it's registered before `fetch` |

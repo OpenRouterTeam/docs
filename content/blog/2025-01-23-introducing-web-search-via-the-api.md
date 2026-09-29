@@ -1,6 +1,7 @@
 ---
 title: "Introducing Web Search via the API"
 date: "2025-01-23T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Bring all of your requests up to speed with the latest information by incorporating web search results. "
 category: "announcements"

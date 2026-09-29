@@ -12,8 +12,9 @@ Cloud Scheduler invoke the internal worker roles directly.
 | Ingest   | `batch-api`          | Cloudflare: `POST /api/v1/batches`                                                    | 2 / 4 GiB    |           1 | 1 / 200   | 15 min  |
 | Submit   | `batch-api-submit`   | Pub/Sub: `POST /submit-job`                                                           | 4 / 8 GiB    |           1 | 0 / 50    | 60 min  |
 | Finalize | `batch-api-finalize` | Pub/Sub: `POST /finalize-job`                                                         | 2 / 4 GiB    |           1 | 0 / 200   | 60 min  |
-| Control  | `batch-api-control`  | Cloudflare: `GET /api/v1/batches` and `GET /api/v1/batches/:id`                       | 2 / 4 GiB    |          40 | 1 / 100   | 5 min   |
-| Sweep    | `batch-api-sweep`    | Scheduler: `POST /sweep`                                                              | 1 / 2 GiB    |           1 | 0 / 1     | 15 min  |
+| Control  | `batch-api-control`  | Cloudflare: `GET /api/v1/batches`, `GET /api/v1/batches/:id`, `DELETE /api/v1/batches/:id` | 2 / 4 GiB    |          40 | 1 / 100   | 5 min   |
+| Sweep    | `batch-api-sweep`    | Scheduler: `POST /sweep`; operator: `POST /finalize-replay`                           | 1 / 2 GiB    |           1 | 0 / 1     | 15 min  |
+| Poll     | `batch-api-poll`     | Cloudflare `BatchJobPoller` DO alarm: `POST /poll-job`                                | 1 / 2 GiB    |          10 | 0 / 10    | 2 min   |
 
 `BATCH_SERVICE_ROLE` is required and Zod-validated at startup. Production
 rejects the local-only `dev-all` role, and each production role mounts only its
@@ -47,6 +48,12 @@ The resource values are intentionally conservative starting points:
 - Sweep is I/O-heavy provider polling and fan-out. Concurrency/max 1 prevent
   overlapping full candidate scans; 15 minutes is comfortably above the normal
   poll duration without sharing status or worker slots.
+- Poll handles one job per request: read the row, call the provider status
+  endpoint, and either publish finalize or report the job as still open. The
+  `BatchJobPoller` Durable Object in `cfw-batch-api` owns the per-job timer.
+  Ingress starts it after an accepted submit, and its alarm calls `/poll-job`
+  until the outcome is terminal. The sweep stays on as the reconciler for jobs
+  whose Durable Object was never started.
 
 These defaults respond to the 100-200 MB production scale run, where the shared
 1 CPU/2 GiB service reached 99-100% CPU p99, instances exceeded their memory
@@ -134,14 +141,43 @@ adapter contracts, provider adapters, and endpoint skins live in
   `limit` + `after` cursor pagination and optional status/creation-time filters.
   List items always set `results` to `null`; this path reads only Spanner and
   never invokes the payment gate or GCS result storage.
+- `DELETE /api/v1/batches/:id` — deletes a settled batch: owner-scoped read
+  (same predicates as GET), BYOK key preflight, `deleted_at` tombstone on the
+  `async_jobs` row (the row is never removed; GET/list read it as 404), native
+  upstream delete where the adapter declares `nativeDeletion.supported`, purge of
+  the whole `{billableEntityId}/{jobId}/` GCS prefix, then `purged_at`. In-flight
+  batches (including `completed` rows whose results are not yet materialized)
+  return 409; a failed cleanup returns a retryable 5xx and a repeated DELETE
+  resumes from the tombstone; only a fully purged batch returns 404.
 - `POST /sweep` — Cloud Scheduler-driven sweep that reads in-flight jobs via
   the `async_jobs_sweep_v2` Spanner index, polls upstream status, and claims a
   generation-CAS `finalize_journal` before publishing terminal work. The same
   journal grants one finalize delivery renewable execution ownership. Each tick
   scans up to 1000 rows, filters active journals in GCS with bounded concurrency,
   and performs provider work for at most 200 eligible jobs so claimed rows do
-  not starve newer candidates.
+  not starve newer candidates. A finalize that published the terminal status
+  row holds its lease rather than closing the journal, because the row lands
+  asynchronously (Pub/Sub → Dataflow → Spanner): once it lands the job leaves
+  the in-flight scan, and if the message is lost the stale claim re-runs
+  finalize and re-emits it, spending one attempt per re-run. The journal
+  closes (`completed_at`) only when a claim observes the row already
+  terminal. A claim that finds a journal whose
+  `FINALIZE_MAX_ATTEMPTS` executions are spent publishes a dead-letter record
+  to `batch-finalize-dead-letter-records` and closes the journal instead of
+  dispatching it again. A closed or settlement-blocked journal's row stays
+  in-flight in Spanner, so the sweep stamps its `last_polled_at` without a poll
+  and it rotates to the back of the scan window instead of being reread every
+  tick.
+- `POST /finalize-replay` — operator-driven replay of one dead-lettered job.
+  The body is a `batch-finalize-dead-letter-records` message posted verbatim;
+  its generation authorizes reopening exactly the journal it closed, with a
+  fresh attempt budget, and the regular finalize message is published. A
+  stale or duplicate record returns `409`; a job with no journal returns `404`.
+  Mounted on the sweep role behind the same Cloud Run IAM (`run.invoker`).
 - `/healthz` returns `200`.
+
+Deletion resolves the stored provider key ID using its current credentials. Rotating a key within the same provider account is supported; switching accounts can make the original resources inaccessible, and a not-found response from the new account does not prove deletion in the old account. Keep the platform Vertex output bucket/prefix unchanged while its batches still need cleanup: the adapter reconstructs each job's slash-terminated output prefix from that configuration and its job ID. Customer-owned Vertex BYOK storage is excluded from cleanup.
+
 - Public routes use internal auth after the CF ingress authenticates the end
   user. Cloud Run IAM first validates the caller's Google OIDC identity. The
   ingress, submit pusher, finalize pusher, and scheduler service accounts can
@@ -163,8 +199,13 @@ adapter contracts, provider adapters, and endpoint skins live in
   GCS results once terminal output exists.
 - `GET /api/v1/batches`: scan caller-scoped `async_jobs` rows newest first,
   apply public status and creation-time filters, and return metadata-only pages.
+- `DELETE /api/v1/batches/:id`: tombstone the caller-scoped row, delete the
+  upstream batch when the provider supports it, purge the job's GCS prefix, and
+  stamp `purged_at`.
 - `/sweep`: read sweep candidates from Spanner and finalize terminal upstream
   jobs in the background.
+- `/finalize-replay`: reopen a dead-lettered finalize journal from its DLQ
+  record and republish the finalize message.
 - Finalize: poll upstream status, copy completed output to GCS, emit generation
   billing rows (BYOK usage is classified as `byok_usage_inference` and billed
   via an auth-service key lookup), upload generation log content, and publish
@@ -295,13 +336,14 @@ The batch path is two services: this Cloud Run service plus the
 Exercise the full ingress -> Cloud Run hop:
 
 ```bash
-curl -i -X POST http://localhost:8800/api/beta/batches \
+curl -i -X POST http://localhost:8800/api/v1/batches \
   -H 'content-type: application/json' \
   -d '{"endpoint":"/v1/chat/completions","model":"openai/gpt-4o","requests":[{"custom_id":"r1","body":{"model":"openai/gpt-4o","messages":[{"role":"user","content":"hi"}]}}]}'
 ```
 
-The ingress mounts batch routes at `/api/beta/batches` during beta (reverts to
-`/api/v1/batches` per OPE-5383); this service always serves `/api/v1/batches`.
+The ingress mounts batch routes at both `/api/beta/batches` and
+`/api/v1/batches`. The v1 prefix is canonical, and the beta prefix will be
+retired later under OPE-5383; this service always serves `/api/v1/batches`.
 
 ### Dev Bucket Smoke Test
 
@@ -335,9 +377,7 @@ curl https://api.openai.com/v1/files \
 
 ## Deploy
 
-Deploy manually via the `deploy-cloudrun-service.yaml` workflow
-(`service-name: batch-api`). Infra is applied via
-`apply-cloudrun-terraform.yaml`.
+The release workflow builds the Batch API image, applies its Terraform, then deploys the same image to all production roles. For an out-of-band deploy, dispatch `deploy-cloudrun-service.yaml` (`service-name: batch-api`) and `apply-cloudrun-terraform.yaml` as needed.
 
 ## Staging
 
@@ -435,6 +475,19 @@ at the staging service URL. The rest of the loop (submit fan-out, sweep cron,
 finalize, results in the staging bucket) runs unattended.
 
 ### Production rollout
+
+Poll service prerequisite: apply the Cloud Run Terraform that adds
+`batch-api-poll` before you deploy the `cfw-batch-api` Worker with the
+`BatchJobPoller` Durable Object. The Worker reads `BATCH_API_POLL_URL` from
+`wrangler.toml`. Confirm that value matches the `batch-api-poll` run.app URL
+that Terraform prints after the apply.
+
+The same apply sets `BATCH_SWEEP_FRESHNESS_SECONDS=600` on the sweep role
+(app default 10s). Until the Worker with the Durable Object is deployed, the
+sweep is the only poller and revisits each job at most every 10 minutes
+instead of every minute, so expect fewer `candidates_found` per tick and up
+to 10 minutes of extra finalization delay during that window. Reverting the
+Terraform restores the 10s window.
 
 1. Apply Terraform first. It preserves the existing `batch-api` resource as
    ingest and creates the four new services; the old image ignores the role env,

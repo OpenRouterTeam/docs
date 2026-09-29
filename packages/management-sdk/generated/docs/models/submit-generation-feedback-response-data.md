@@ -1,0 +1,17 @@
+# SubmitGenerationFeedbackResponseData
+
+## Example Usage
+
+```typescript
+import { SubmitGenerationFeedbackResponseData } from "@openrouter-monorepo/management-sdk-generated/models";
+
+let value: SubmitGenerationFeedbackResponseData = {
+  success: true,
+};
+```
+
+## Fields
+
+| Field                             | Type                              | Required                          | Description                       | Example                           |
+| --------------------------------- | --------------------------------- | --------------------------------- | --------------------------------- | --------------------------------- |
+| `success`                         | *true*                            | :heavy_check_mark:                | Whether the feedback was recorded | true                              |

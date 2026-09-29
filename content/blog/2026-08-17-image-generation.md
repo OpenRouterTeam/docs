@@ -1,6 +1,7 @@
 ---
 title: "OpenRouter Image Generation: A Code-First API Tutorial"
 date: "2026-08-17T00:00:00.000Z"
+updated: "2026-09-24T19:10:57.000Z"
 author: "OpenRouter"
 category: "tutorials"
 metaTitle: "OpenRouter Image Generation: A Code-First API Tutorial"

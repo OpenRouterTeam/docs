@@ -8,8 +8,12 @@ Internal Cloudflare Worker serving admin-key-gated API endpoints for service-to-
 graph TD
     Buddy["Buddy Agent"] -->|buddy key| BR["buddy-api routes"]
     Fanda["Fanda Billing"] -->|fanda key| FR["fanda-api routes"]
-    Cron["CF Cron Triggers"] --> CR["cron routes"]
-    MC["Mission Control\nOIDC auth"] -->|trigger| CR
+    Ledger["Ledger Agent\nSlack-driven"] -->|ledger key| LR["ledger-api routes"]
+    LR --> HS["HubSpot provider leads\nprovider_lead_analysis\nprovider_lead_score"]
+    Cron["CF Cron Triggers"] -->|not yet migrated| CronTasks
+    Cron -->|CRON_SCHEDULE| CTW["CronTaskWorkflow\nCloudflare Workflow, one instance per task"]
+    MC["Mission Control\nOIDC auth"] -->|trigger| CR["cron routes"]
+    CTW --> CronTasks
     CR --> CronTasks["Scheduled Tasks\nch-metrics-sync\nprovider-monitor\ndeepseek-balance-check\nmodels-snapshot\nhn-openrouter-monitor\narxiv-openrouter-monitor\ncheck-invalid-indexes\nsignup-domains-report\nweekly-models-report\nsequence-overdue-invoices\npublish-sequence-daily-usage\nmonthly-employee-credit-stipend\nauto-enroll-exacto-models\nauto-unenroll-exacto-models\nauto-hide-deprecated-endpoints\nauto-delete-hidden-endpoints\nsettle-stale-pending-charges\ncf-analytics-sync\nstripe-credit-reconciliation\ncleanup-payment-cf-handoffs"]
     PM["Provider Monitor"] -->|admin key| PMR["provider-monitor routes"]
     PMR --> Surge["Endpoint Error Surge\nfailed baseline smoke test"]
@@ -23,7 +27,7 @@ graph TD
     CronTasks --> Slack["Slack Notifications"]
     CronTasks --> R2["R2 Storage\nmodels-snapshot"]
     CronTasks --> DD["Datadog\nmetrics sync"]
-    Scanners["Sentinel Scanners"] -->|HMAC| BanAPI["ban-candidates API\ningest, review/approval, batch enact"]
+    Scanners["Sentinel Scanners"] -->|Devin OIDC| BanAPI["ban-candidates API\ningest, review/approval, batch enact"]
     BanAPI --> BanStore["Postgres ban-candidates\nsuggestions, targets, evidence"]
     MC -->|approve / review decisions| BanAPI
     BanAPI --> Restr["Restrictions\nenact approved targets"]
@@ -36,9 +40,13 @@ graph TD
 | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/routes/`                                            | Route handlers (buddy-api, fanda-api, cron, provider-monitor, admin, automated, promo-codes, skills dashboard API)                                                                                                                                       |
 | `src/routes/buddy-api/`                                  | Buddy agent CRUD for models/endpoints/pricing versions — reads include hidden entities, and all mutation routes go through a safe-by-default apply layer (`apply-preview.ts`) that previews changes before applying. Model/endpoint responses expose a normalized `reasoning_config` (via `packages/models` `parseModelReasoningConfig`) with schema nullability aligned to the DB row |
+| `src/routes/ledger-api/`                                 | Ledger agent provider-lead scoring: `GET` lead application data + deterministic quick score, `POST` analysis (preview by default, `apply: true` writes to HubSpot). Contract in `src/routes/ledger-api/README.md` |
 | `src/routes/ban-candidates/`                            | Sentinel ban-candidate ingest, a review/approval endpoint for candidate targets, and batch-enact (`enact.ts` / `enact-target.ts`) that turns approved candidates into `packages/db` restrictions |
 | `src/routes/skills/`                                     | Internal skills dashboard API (relocated from web) — CRUD, delete, version management                                                                                                                                                                    |
 | `src/routes/cron/tasks.ts`                               | `CronTask` enum and `executeCronTask` dispatcher for all scheduled jobs. All tasks are manually triggerable via `POST /api/v1/internal/cron/trigger` (CRON_SECRET or OIDC auth)                                                                          |
+| `src/routes/cron/schedule.ts`                            | `CRON_SCHEDULE`: the cron expression to task-group mapping. Its expressions must match `[triggers].crons` in `wrangler.toml` 1:1 (enforced by `src/cron-triggers.test.ts`)                                                                                                |
+| `src/routes/cron/dispatch.ts`                            | `scheduled()` handler logic: resolves the fired expression to its slot and starts one `CronTaskWorkflow` instance per task (id `<slot>-<task>-<scheduledTime>`). The instances run concurrently                                                                        |
+| `src/workflows/cron-task/workflow.ts`                    | `CronTaskWorkflow`: runs one task as a durable `step.do`. One instance per task keeps each task under its own 256KB log cap, so a noisy task cannot truncate the logs of another. Steps are not retried; the next cron fire is the retry. A schedule entry written as `{ task, next }` makes the parent's instance start `next` after its own task step, also when that step failed |
 | `src/routes/cron/monthly-employee-credit-stipend.ts`     | Monthly employee credit stipend cron task                                                                                                                                                                                                                |
 | `src/routes/cron/models-snapshot/`                       | Hourly model catalog diff with R2 storage and Slack alerts                                                                                                                                                                                               |
 | `src/routes/cron/weekly-models-report.ts`                | Weekly model catalog diff report (pricing changes, new/removed models) posted to Slack                                                                                                                                                                   |
@@ -63,7 +71,7 @@ graph TD
 | `src/workflows/credit-expiration.ts`             | `CreditExpirationWorkflow` Cloudflare Workflow (binding `CREDIT_EXPIRATION_WORKFLOW`) that runs the credit-expiration pipeline (live expiration is gated by `dryRun`, with an optional `limit` input capping how many candidates are processed), persisting results to `credit_expiration_runs` for Mission Control display               |
 | `src/workflows/data-deletion.ts`                         | `UserDeletionWorkflow` Cloudflare Workflow (binding `USER_DELETION_WORKFLOW`) that runs each `packages/user-deletions` target as a durable step, with longer polling retries for R2/GCS lifecycle deletions, then settles and rolls up the parent status |
 | `src/routes/provider-monitor/providers-cache.ts`         | Cached provider list for monitor runs (5-min TTL via `FetchDeduper`)                                                                                                                                                                                     |
-| `src/middlewares/`                                       | Auth middlewares (admin key, buddy key, fanda key, cron key, percy key)                                                                                                                                                                                  |
+| `src/middlewares/`                                       | Auth middlewares (admin key, buddy key, fanda key, ledger key, cron key, percy key)                                                                                                                                                                                  |
 | `src/durable-objects/`                                   | Durable Object bindings (ProviderToSMonitor)                                                                                                                                                                                                             |
 | `src/app.ts`                                             | Hono app setup and route registration                                                                                                                                                                                                                    |
 

@@ -106,6 +106,7 @@ wiring:
 - Icon exhaustiveness in `packages/providers/configs/icons.ts` (return
   `undefined` if no icon asset exists yet — the switch must stay
   exhaustive)
+- Model-author icon. The provider icon above and the model-card icon are two separate paths: the model card resolves its icon from the model author slug via `authorIconMap` in `packages/frontend/components/ui/Icons/icon-infos.ts`, falling back to `model_authors.icon_uri` and then to the Hugging Face favicon. A new author slug with neither renders the Hugging Face logo. Add a map entry for the author slug (favicon URL or local asset), or set `icon_uri` on the author row, and confirm the rendered model card. Deepgram ([#29137](https://github.com/OpenRouterTeam/openrouter-web/pull/29137)), Fish Audio ([#31607](https://github.com/OpenRouterTeam/openrouter-web/pull/31607)), and AssemblyAI each needed a follow-up PR for this.
 - Provider monitor at `packages/provider-monitors/configs/<slug>/index.ts`
   and registration in `packages/provider-monitors/configs/all/index.ts` —
   follow [`add-provider-monitor`](../add-provider-monitor/SKILL.md)
@@ -129,6 +130,7 @@ Before opening the foundation PR, confirm every item:
 - [ ] An API-key getter exists in `packages/providers/configs/api-key.ts`.
 - [ ] The icon registry has a case or explicit `undefined` in
       `packages/providers/configs/icons.ts`.
+- [ ] The model author slug resolves to a real icon: an `authorIconMap` entry in `packages/frontend/components/ui/Icons/icon-infos.ts` or `icon_uri` on the `model_authors` row, covered by `icon-infos.test.ts`.
 - [ ] `<PROVIDER>_API_KEY` appears in `env.manifest.json` under the
       manifest path of every worker serving the provider's modality
       (`/services/cfw-stt-api` and/or `/services/cfw-tts-api`), under

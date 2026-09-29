@@ -11,7 +11,7 @@ bun run dev:up
 ```
 
 - The API defaults to `http://localhost:8787`; use Tilt's reported origin when ports differ.
-- The worker's dev script generates `.dev.vars` from Infisical and local overrides.
+- The worker's dev script loads Infisical values and `.env.development.local` overrides into memory; nothing is written to `.dev.vars`.
 
 ## Architecture
 
@@ -45,8 +45,8 @@ graph TD
 
 `wrangler dev` does not run tail consumers, so spans are dropped unless the local
 trace pipeline is running. Press **enable telemetry** in Tilt, then open the
-[Jaeger UI](http://localhost:16686) and select the `cfw-api` service. Set
-`OTEL_DATADOG_EXPORT=1` to also export to Datadog APM. See
+[Jaeger UI](http://localhost:16686) and select the `cfw-api` service. Local
+traces stay in Jaeger. See
 [`services/otel/README.md`](../otel/README.md#local-development).
 
 ### Performance Profiling and Flamegraphs
@@ -108,7 +108,7 @@ Call `buildZodGuard` on a Zod schema **at the module level**. Do not call `build
 
 ```typescript
 import { z } from 'zod';
-import { buildZodGuard } from '@openrouter-monorepo/type-utils/zod';
+import { buildZodGuard } from '@openrouter-monorepo/lib-zod';
 
 const MoonshotCacheSchema = z.object({
   usage: z.object({

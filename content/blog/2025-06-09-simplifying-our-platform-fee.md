@@ -1,6 +1,7 @@
 ---
 title: "Simplifying Our Platform Fee"
 date: "2025-06-09T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "We’re rolling out a simpler and more transparent platform fee structure: "
 category: "announcements"

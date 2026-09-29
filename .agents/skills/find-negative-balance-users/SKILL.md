@@ -121,7 +121,7 @@ field (`packages/clickhouse/negative-balance-usage/queries.ts`) plus
 `usage_usd` and `requests` is present as `@extra.<field>`, so cohorts can be
 grouped in the logs UI without a ClickHouse round trip. The
 logs only cover the scanned window; for overspenders outside it start from
-[this Hex query](https://app.hex.tech/091db13f-d26f-4224-a185-6fce9df76f90/hex/Hourly-Negative-Balances-0340yJ6bVBnLR4HFthhEHA/draft/logic?rhid=019fc9c0-5dc1-758b-94f0-20bfd984ab18)
+[this Hex query](https://hc.hex.tech/openrouter/hex/Hourly-Negative-Balances-0340yJ6bVBnLR4HFthhEHA/draft/logic?rhid=019fc9c0-5dc1-758b-94f0-20bfd984ab18)
 or the query in this skill.
 
 Rules for filing:

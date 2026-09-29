@@ -32,11 +32,7 @@ CLICKHOUSE_URL=http://localhost:8123 CLICKHOUSE_USERNAME=default \
   scripts/clickpipes/generate-endpoint-requests-mappings.ts
 ```
 
-Mapped columns keep their `DEFAULT`: the pipe writes whatever the message
-carries and ClickHouse fills the column only when the JSON key is absent, so
-`model_call_started_at DEFAULT started_at` and `attempt_opening_status DEFAULT
-status` stay mapped. Only `inserted_at` is left out entirely, so `now64(3)`
-always wins.
+A mapped column does not get its `DEFAULT` expression when the JSON key is absent: the pipe writes the column's type default instead (`0` for an `Int32`, `''` for a `String`, `false` for a `Bool`), unlike the HTTP `JSONEachRow` insert into `endpoint_requests`, which evaluates the expression. So the publisher must send every mapped column whose `DEFAULT` differs from its type default, such as `model_call_started_at DEFAULT started_at`, `attempt_opening_status DEFAULT status`, `api_key_id DEFAULT -1`, `allow_fallbacks DEFAULT true`, and `row_kind DEFAULT 'attempt'`; `ModelCallWriter` sets all of them on every row. Only `inserted_at` is left out of the mapping entirely, so ClickHouse applies `now64(3)` itself.
 
 The checks live in
 `packages/clickhouse/integration/clickpipes/endpoint-requests-mappings.test.ts`
@@ -66,7 +62,7 @@ with a colocated unit test in
 ### 2. Bootstrap the state bucket (first apply only)
 
 `tfstate-clickhouse-clickpipes-infra-openrouter-ai` does not exist yet, and
-`terraform init` needs it for the `backend "gcs"` block in `config.tf`, so the
+`tofu init` needs it for the `backend "gcs"` block in `config.tf`, so the
 first run cannot create the bucket through its own backend — `init` fails with
 `Failed to get existing workspaces: bucket doesn't exist`. `-backend=false` is
 not a way around it either: it initializes for `validate` only, and `apply` then
@@ -84,8 +80,8 @@ gcloud storage buckets update gs://tfstate-clickhouse-clickpipes-infra-openroute
 
 cd services/clickhouse-clickpipes/infra
 rm -rf .terraform    # drop a backend recorded by an earlier failed init
-terraform init
-terraform import -var 'production_service_id=<service-id>' \
+tofu init
+tofu import -var 'production_service_id=<service-id>' \
   module.tfstate-bucket.google_storage_bucket.tfstate \
   tfstate-clickhouse-clickpipes-infra-openrouter-ai
 ```
@@ -97,13 +93,13 @@ flag is missing.
 The `gcloud` flags match `configs/terraform/modules/tfstate-bucket`, so the
 import leaves no diff on the bucket itself; the first `plan` then shows its IAM
 policy (`google_storage_bucket_iam_policy.tfstate`) alongside the pipe. Every
-later run is a plain `terraform init`, and the bucket and its IAM stay under
+later run is a plain `tofu init`, and the bucket and its IAM stay under
 Terraform.
 
 ### 3. Plan and apply the pipe
 
 ```bash
-terraform plan -var 'production_service_id=<service-id>'
+tofu plan -var 'production_service_id=<service-id>'
 ```
 
 Expected: exactly one `clickhouse_clickpipe` to create (`endpoint-requests`),
@@ -163,7 +159,7 @@ checked without cloud credentials:
    `terraform-apply`.
 2. Whether the state bucket exists (step 2) and whether the `objectUser` grant
    the `tfstate-bucket` module writes has taken effect for `terraform-apply`. A
-   CI dispatch before step 2 fails in `terraform init`.
+   CI dispatch before step 2 fails in `tofu init`.
 
 Until both are confirmed, run this module locally with an engineer's
 credentials. Adding it to the dispatch list before that would only move the
@@ -175,7 +171,7 @@ The pipe carries `prevent_destroy`, so a destroy fails the plan until that block
 is removed in the same change.
 
 ```bash
-terraform destroy -var 'production_service_id=<service-id>'
+tofu destroy -var 'production_service_id=<service-id>'
 ```
 
 Expected: the pipe is gone from the ClickHouse Cloud console and its

@@ -1,6 +1,7 @@
 ---
 title: "Quasar Alpha and Optimus Alpha Reveal"
 date: "2025-04-14T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Quasar Alpha and Optimus Alpha, which both topped the charts during testing, were early test versions of... "
 category: "announcements"

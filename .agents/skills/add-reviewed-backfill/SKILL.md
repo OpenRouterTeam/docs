@@ -115,6 +115,16 @@ Provide at least one reviewed preset with label, description, and input. Mark
 audited production presets `locked: true`; the server treats locked input as
 authoritative even when the browser submits edits.
 
+Size presets against measured production density, not the id range alone. A
+handler that fails oversized chunks makes a preset whose densest window exceeds
+the row cap unrunnable; a `chunk_span` no wider than the row cap cannot be
+oversized (see `backfill-refund-stripe-ids`).
+
+Count and log only what a delivery made durable. A failed delivery counts the
+rows it stamped and nothing it merely planned, since the redelivery re-reads
+and counts the rest; counting the whole plan inflates the dry-run evidence
+(see `backfill-refund-stripe-ids/counts.ts`).
+
 Emit a low-cardinality adoption/outcome signal and task-specific structured
 completion and failure logs. Generic queue metrics do not replace the
 task-specific evidence an operator needs. Document:

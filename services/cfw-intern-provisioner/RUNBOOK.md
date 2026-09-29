@@ -87,7 +87,9 @@ reboots:
 3. **write-env** — writes `/etc/<bot>/env` (`docker --env-file`
    shape, `chmod 600`, `chattr +i`) with `OPENROUTER_API_KEY`,
    `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`,
-   `ORI_STATE_DIR=/workspace/<bot>/.ori`, and
+   `ORI_INTERN_ID=<internId>` (the same id the vault sidecar gets as
+   `ORI_VAULT_AGENT_ID`; `ori features add` reads it to check the
+   intern's own vault), `ORI_STATE_DIR=/workspace/<bot>/.ori`, and
    `ORI_PI_INSTALL_DIR=/workspace/<bot>/.ori/pi-runtime` (which keeps
    ori's `pi` harness install on the persistent volume instead of the
    container's ephemeral layer, where `--rm` + `Restart=always` would
@@ -125,6 +127,12 @@ image builds). The runtime image is built + published by
 `OpenRouterIncubator/ori` (`.github/workflows/runtime-image.yml`), not by
 this repo — see `docker/AGENTS.md`.
 
+## Which hosts an intern's provisioned secrets reach
+
+The provisioner writes `openrouter_api_key` and `slack_bot_token` into the intern's own vault with `hosts` set, from `INTERN_VAULT_SECRET_HOSTS` in `packages/helpers/intern-vault-secrets.ts`: the OpenRouter key goes only to `openrouter.ai`, `us.openrouter.ai` and `eu.openrouter.ai`, and the Slack bot token only to `slack.com`, `files.slack.com` and `files-origin.slack.com`. A secret with `hosts` NULL is substituted into a request to any host, which is what let an agent send `__openrouter_api_key__` somewhere else and receive the real key there. A request carrying the placeholder to any other host goes out with the placeholder unsubstituted, and the vault logs `outbound_placeholder_secret_failed` with `error_code: 'not_found'` and the hostname.
+
+Rows written before this were bound by `postgres/migrations/20260929000438_bind_intern_provisioned_vault_secret_hosts.sql`, which audits each one as `secret_updated` from source `provisioner` with `details.change = 'host_binding_backfill'`. Its `migrate:down` returns exactly those rows to NULL while they still hold the backfilled list. A new host the runtime calls with either secret has to be added to the constant and backfilled the same way, or those calls go out unauthenticated.
+
 ## Which runtime image is an intern on?
 
 `interns.runtime_metadata.vm_birth_config.runtime_image` records the
@@ -136,6 +144,19 @@ On the VM, the answer is `/etc/<bot>/runtime-image` (configured) and
 `docker inspect --format '{{.Config.Image}}' ori-<bot>` (actually
 running). Those two disagreeing is precisely the `unchanged` failure
 described below.
+
+## Where an intern's feature catalog comes from
+
+Every intern gets the features in `github.com/OpenRouterLabs/ori-feature-catalog` (today, `google-workspace`). ori can declare a feature two ways: as an `ori.md` `features:` source, which every runtime reads and which ori deprecated in favour of packages, or as a package named in the workspace `package.json` `ori.features` and installed under `node_modules`, which only runtimes carrying `ori features add` read. An intern has exactly one of the two for the catalog, never both (the runtime would load the feature twice, the package shadowing the source) and never neither.
+
+- **vendor-feature-catalog** (startup script, every bootstrap) downloads the catalog archive from codeload into `/workspace/<bot>/vendor/ori-feature-catalog`, at the ref the intern already uses: a pinned spelling in `ori.md`, else the spelling recorded in `vendor/ori-feature-catalog/.ori-catalog-source`, else the provisioner's (`resolveInternFeaturesSources`). It swaps the new copy in with `mv --exchange`. A failed download, or an archive whose `features/<dir>/package.json` names are not `<scope>/<dir>`, keeps the copy already there. It installs nothing; the next agent start does. The helper it writes is `/var/lib/<bot>/feature-catalog.js`.
+- **probe** and **select** (`ExecStartPre` lines of the agent unit, every start) run that helper inside `${ORI_RUNTIME_IMAGE}`, the image the unit is about to run. The probe writes `/var/lib/<bot>/feature-catalog-probe/result.json`, which the line before it clears. Select reads it and declares the catalog as packages (`file:./vendor/ori-feature-catalog/features/<dir>` in `dependencies` and `ori.features`, installed with bun) or as the `ori.md` source. An image swap restarts the unit, so a channel switch re-decides it on the new image. The startup script is not re-run for a swap.
+- The probe asks the runtime to do what packages need, not what its help says or which version it is. In a scratch workspace it runs `ori features add file:<scratch package>`. That happens in its own container with `--network none`, no workspace mount and no env file, and with an environment of only `PATH`, a scratch `HOME` and `ORI_TELEMETRY=0`. The runtime reads packages when that exits 0 and records the package in the scratch `package.json` `ori.features`. A runtime without the command exits 2 on the unknown subcommand. A version floor cannot decide it: an alpha is stamped `<last stable>-alpha+<sha>`, so alphas built before and after ori#3075 share one version, and a source-built image reports `0.0.0-local`. The journal line `[feature-catalog] runtime probe:` carries the exit status and output. A missing result counts as "does not read packages".
+- It stays on the `ori.md` source when `ori.md` lists any other feature source (an own source must keep winning a duplicate feature id, and packages compose after sources), or when there is no usable vendored copy. A features list it cannot edit as plain scalars is left alone.
+- A move never edits the live workspace until the new state is built and verified. It builds `package.json`, `bun.lock` and `node_modules` in `/workspace/.<bot>.feature-catalog-staging`, next to the workspace on the same filesystem. It copies `node_modules` and runs `bun install` there. It verifies each catalog package by content: the installed copy's file tree hashes the same as the vendored feature's, and every dropped catalog package is gone from `ori.features`, `dependencies` and `node_modules`. Only then does it commit, by renames: `node_modules` by an atomic `mv --exchange` (`renameat2` `RENAME_EXCHANGE`), and each file by rename over the old one. The order keeps every intermediate state booting with the catalog. Toward packages, `package.json` lands before `ori.md` drops its source. Toward `ori.md`, `ori.md` gains its source first.
+- A failure, or a kill, before the commit leaves the workspace byte-identical, exits 1, and the next start retries from scratch after clearing the staging directory. Staging refuses to start unless the filesystem has room for two copies of `node_modules` plus 64 MiB. On a runtime that cannot read packages, the `ori.md` source is added first by a single rename, because that runtime was not reading any package declaration anyway. The probe has a 30s budget and selection a 60s budget, each bounding every child it runs. The agent unit's `TimeoutStartSec` is 120s plus both budgets and 15s per container (240s), so the vault and turn-key probes after it keep their own time. The lines are `-`-prefixed, so a failed probe or selection never stops the agent. A stable runtime links an `ori.md` source itself at `ori start`, so the helper does not run `ori init`.
+
+To see which one an intern is on, read `/var/lib/interns/<bot>/workspace/<bot>/package.json` (`ori.features`) and `ori.md`, and `journalctl -u ori-<bot>` for the `[feature-catalog]` line each start prints.
 
 ## Upgrading an intern's runtime image
 
@@ -163,12 +184,17 @@ directory already exists (`startup-script/features.ts`, and
 **Restart** in the dashboard is NOT this request. It re-requests the
 running image through the runtime-image endpoint and the VM's reconcile
 timer bounces the agent's unit in place, so it needs the timer and
-never touches the instance. The dashboard's reprovision route 409s a
-`running` intern, and the provisioner refuses one at the dispatch stamp
+never touches the instance. The dashboard's reprovision route asks for
+confirmation before resetting a `running` intern whose agent is
+answering (409 `live_vm_reset_confirmation_required` unless the body
+carries `confirmLiveVmReset`); the Runtime tab's Re-provision dialog
+sends it, so the dashboard re-bootstraps a live VM from that button.
+The provisioner still refuses one at the dispatch stamp
 (`running_refused`, checked under OCC so a VM that came up between the
-route's read and the dispatch is not reset). To re-bootstrap a live VM
-on purpose, enqueue with both flags (the shared-secret header is the
-legacy auth path `authenticateEnqueue` still accepts):
+route's read and the dispatch is not reset) without the
+`allowLiveVmReset` waiver. To re-bootstrap a live VM by hand instead,
+enqueue with both flags (the shared-secret header is the legacy auth
+path `authenticateEnqueue` still accepts):
 
 ```bash
 curl -X POST "$INTERN_PROVISIONER_URL/enqueue" \
@@ -378,6 +404,139 @@ Three things to know before relying on this:
 
 Verified end to end on 2026-09-11 against a live intern: a hand-written token reconciled within 60s, metadata reported `applied` with the token echoed into `intern-runtime-image-applied-version`, and the agent container's pid changed.
 
+### Rolling the whole fleet
+
+The procedure above is for one intern. Doing all of them is a different job: the dashboard costs at least two clicks per intern, gives no census, and cannot tell you in advance which interns need the two-step. Drive it from the frontend API instead.
+
+Everything below was executed against production on 2026-09-21 (ORI-2224), which took the fleet from 2 interns on `0.15.4` to 18.
+
+#### Run it from the browser console, not a shell
+
+A `fetch()` loop pasted into DevTools on any `openrouter.ai` page carries the session cookie automatically. Do not extract `__session` into a file for `curl` — it buys nothing, and a paste that silently captured the wrong text looks identical to one that worked until you check the file's shape.
+
+`copy()` is a DevTools command-line helper and is not always defined. Read results out of `console.table` rather than depending on it.
+
+#### 1. Census — and it must cover every workspace
+
+The list endpoint is workspace-scoped and answers `400 invalid_query` without it. Nothing but the error body tells you that:
+
+```javascript
+await fetch(`/api/frontend/v1/private/interns?workspaceId=${WORKSPACE_ID}`, { credentials: 'include' })
+```
+
+Each row carries `runtimeMetadata.running_ori_version`, `running_runtime_image` and `runtime_image_state`, which is enough to decide who needs touching.
+
+**One call is not a fleet census, and this is the trap that spoiled the 2026-09-21 rollout.** That request returns one workspace's interns. The rollout ran against one workspace, reported "18 of 20", and silently left five live hosted interns untouched in other workspaces — `ada`, `csbot`, `earnest`, `poppy` and `union-alpha`, every one of them `RUNNING` and every one named in ORI-2224's own scope.
+
+Do not size the fleet from the list endpoint, and do not size it from the quota either. `MAX_INTERNS_PER_WORKSPACE` in `packages/db/interns/quota-contract.ts` bounds *creates* rather than existing rows, so a workspace can hold more interns than its current cap allows — and the cap itself moves (#45569 raised both caps to 100). Neither number tells you how many interns exist.
+
+**GCE is the only fleet-wide source of truth.** Take the denominator from it first — production VMs only, see below — then enumerate the workspaces needed to cover it:
+
+```bash
+gcloud compute instances list --project=ext-interns-spawner-000 \
+  --filter="labels.provisioning-source=production" --format='value(name,status)'
+```
+
+Reconcile that count against the sum of your per-workspace censuses before touching anything, and again at the end. A rollout that cannot state its own denominator has not finished.
+
+**Count production VMs only, by label.** `ext-interns-spawner-000` is the one project and has no sandbox, so `intern-e2e-*` and `intern-test-*` VMs sit in it alongside production interns, and a local provisioner run creates a real VM there too — see `AGENTS.md` → the local-provisioning warning. The `provisioning-source` label names the deployment that created a VM (ORI-2252), and the filter above counts only `production`:
+
+- `production` is stamped only by the deployed worker: `provisioningSourceForDeployment` claims it on the exact `OR_ENV = "production"` that `wrangler.toml` `[vars]` pins, and on nothing else. Tilt, `bun run dev` and the `[env.e2e]` fixtures stamp `local`.
+- **A VM with no label is unknown, never production**, and the filter above leaves it out. The label is written at `instances.insert`; a reprovision adds it to a VM that has none (the 409 branch of `createComputeInstance`); and the four-hourly `provisioning-source` reconcile adds it to every other VM whose intern row is in production's database, reading the id from the `intern-id` label or, failing that, the `intern-id` metadata item. So the fleet converges within four hours of a deploy with no operator action.
+- A label once written is never changed by either backfill: only the creator knows where a VM came from.
+- List what is still unlabelled, and read why from the reconcile's log line (`cfw-intern-provisioner: provisioning-source reconcile complete`, fields `labelled` / `label_failed` / `not_ours` / `unidentified`):
+
+  ```bash
+  gcloud compute instances list --project=ext-interns-spawner-000 \
+    --filter="-labels.provisioning-source:*" --format='value(name,labels.intern-id)'
+  ```
+
+  An unlabelled VM that survives a reconcile is one production cannot vouch for: its intern row is not in production's database (`not_ours` — a local or test VM, or litter), or it carries no intern id at all (`unidentified`). `label_failed` is a VM production does own whose `setLabels` did not land; the `intern_id_label_backfill{surface:sweep,outcome:failed}` metric carries the reason, and the next tick retries. Check it against its intern row before calling it either a missed intern or litter.
+
+**And a census cannot cross Clerk entities at all.** Per-workspace is not the outer bound: the per-intern routes resolve the entity from the caller's cookie, so an intern under another entity answers **404** and is indistinguishable from one that does not exist. On 2026-09-21 two design-partner interns 404'd from a session that reached all 23 others. Repeating the census per workspace does not find them; only GCE does, and only Mission Control can act on them (ORI-2251).
+
+GCE metadata is also the fastest census, and the only entity-independent one. Each instance carries `intern-id`, `intern-running-ori-version` and `intern-runtime-image-state`, which is the whole inventory without a single API call:
+
+```bash
+gcloud compute instances describe <instance> --project=ext-interns-spawner-000 \
+  --zone=us-central1-a --format='json(metadata.items)'
+```
+
+#### 2. Split on `availability.reason`, per intern
+
+`GET /api/frontend/v1/private/interns/<id>/runtime-image` returns `data.availability`. Sort the fleet into exactly two groups:
+
+- **`available`** — takes a direct Update.
+- **`vault_sidecar_config_stale`** — needs Restart first, then Update, for the reason given under "First check whether the intern can be upgraded at all" above.
+
+Ask the API for every intern rather than predicting the split. `vm_birth_config.runtime_image` looks like a clean proxy for it and is not: in the 2026-09-21 census `leo-mcgarry` was born on `da357e59` and read stale while three other `da357e59` interns read `available`. Eleven of seventeen were stale, and no property of the row predicted which.
+
+#### 3. A blind bulk POST is safe
+
+`vault_sidecar_config_stale` is enforced by the **provisioner**, not the route: it answers `424` and changes nothing, which the route translates. A loop that POSTs to every intern without filtering cannot brick a stale one. Filter anyway so the output is readable, but the safety does not depend on your filter being right.
+
+#### 4. The Update call
+
+Send `channel: 'stable'` and let the provisioner resolve the newest digest. Hardcoding a digest pins you to whatever was current when you wrote the script.
+
+Two rules on `expectedImage`, which is the compare-and-swap:
+
+- **Pass the image you just read back**, not one transcribed from console output. `console.table` truncates the digest in the cell itself, not merely on screen, so there is no copyable value in the table — the read-then-write shape below is the only safe way to supply it.
+- **Omit it entirely when a swap is already pending.** It is compared against `effectiveRuntimeImage` (`services/cfw-intern-provisioner/src/runtime-image/expected-image-precondition.ts`), which returns `null` once `desiredSetAt` is set and `runningImage` is not — so any intern in `runtime_image_state: failed` answers `412` if you pass it.
+
+That makes the right shape a read-then-write per intern, which is also idempotent and safe to re-run at any point in the rollout:
+
+```javascript
+const { runtimeImage, availability } = (await get(id)).data;
+if (availability.kind !== 'available') return skip(availability.reason);
+if (runtimeImage.runningImage === runtimeImage.currentImage) return skip('current');
+const body = { channel: 'stable' };
+if (runtimeImage.runningImage) body.expectedImage = runtimeImage.runningImage;
+await post(id, body);
+```
+
+Re-run that after every batch. It is the whole rollout driver — it skips what is not ready and what is already done, so there is no state to track by hand.
+
+#### 5. The stale group: restart in batches, then finish
+
+`POST /api/frontend/v1/private/interns/<id>/reprovision` with `{ confirmLiveVmReset: true }`. Without that field a serving intern answers `409 live_vm_reset_confirmation_required`, and the confirmation is not a formality: the reset drops whatever the agent is doing. Tell the owners before a sweep.
+
+Batches of four worked. Allow about three minutes, then run the finisher.
+
+**A restart does not reach current stable on its own.** Every one of the eleven came back on its startup script's birth-pinned image — `remy` went `0.14.1` to `0.14.3` on the reboot alone. The second step is genuinely required; `runtimeImage.hasStaleVaultSidecar: false` on the re-read is the signal the restart did its job — that is the field name the API returns, whatever your script happens to call the column.
+
+#### A 502 on reprovision may mean the work already started
+
+This is the one that costs a VM. See ORI-2245.
+
+Two of eight reprovision requests answered `502 upstream_unavailable` **after** the provisioner had started the workflow. `markInternEnqueued` never runs on that path, so the row records nothing, and the response says `"Please try again in a moment."` A retry is not deduplicated: on one of the two, the second workflow found the VM mid-reset, therefore not `Live`, and took the archive-gated delete-and-recreate path instead of an in-place refresh. The VM and its boot disk were deleted.
+
+**Before retrying a 502, check GCE for whether the first request landed:**
+
+```bash
+gcloud compute operations list --project=ext-interns-spawner-000 \
+  --filter="targetLink~<intern-slug>" --sort-by=~insertTime \
+  --format='table(operationType,status,insertTime)' --limit=10
+```
+
+A `reset` within the last couple of minutes means the workflow started and you must **not** retry. Absence of one means it is safe.
+
+Do not infer this from the HTTP response. A `200` on the retry is consistent with both readings — it does not prove the first attempt was a no-op — and a `409` guard does exist but only fires for `UpstreamConflict`, which is not raised for a reprovision already in flight.
+
+#### Checking your own instance probe
+
+Intern VM names carry an `intern-` prefix that the provisioning slug does not:
+
+```bash
+gcloud compute instances list --project=ext-interns-spawner-000 --format='value(name,status)'
+```
+
+`gcloud compute instances describe <slug>` without the prefix fails for every intern including live ones, which reads exactly like a deleted VM. Run any absence check against a known-live intern first.
+
+#### One judgement call the scripts cannot make
+
+`channel: 'stable'` moves an alpha-tracking intern onto stable. Check who owns an intern on an `-alpha` build before sweeping it; refreshing it in-channel may be what its owner wants.
+
 ## The vault CA (there is nothing to rotate)
 
 Since ORI-1912 there is no shared root, and so no rotation procedure.
@@ -450,7 +609,10 @@ architecture this replaced (ORI-1921 deleted all three).
   `sync-mcp-servers-<bot>.timer` to merge into the workspace's
   `mcp.json`. Same auth and identity-only body as `/instructions`; the
   list is re-read from the credential rows, not the wire. 200 means
-  "requested", never "applied".
+  "requested", never "applied", and is sent before the stamps run: the
+  fan-out continues under `waitUntil`, in parallel across instances, so
+  the response does not grow with the fleet. A stamp failure shows up on
+  `mcp_servers_push{outcome:error}` and the reconcile below repairs it.
 - `POST /api/v1/interns/archive-now` — operator request for a workspace
   archive on a VM that is still Live. Same body and auth as `/enqueue`;
   stamps the request and returns 202. It does NOT reprovision and does
@@ -463,9 +625,31 @@ architecture this replaced (ORI-1921 deleted all three).
 (staff + org-admin gated); the GCP credentials that can write instance
 metadata are bound to this worker, not to that one.
 
-There is deliberately **no scheduled trigger**. An auto-update would
-call the same handler with the same body, so adding one later needs no
-rewrite — we want to watch upgrades go through by hand first.
+The runtime-image and instructions routes deliberately have **no
+scheduled trigger**. An auto-update would call the same handler with
+the same body, so adding one later needs no rewrite — we want to watch
+upgrades go through by hand first.
+
+The MCP server list is the exception. `/mcp-servers` is still the
+operator's push, but a scheduled reconcile
+(`src/vm-desired-state/mcp-servers/mcp-servers-reconcile.ts`, on the
+five-minute cron) also re-derives every running intern's list from the
+current credential rows and re-stamps only the instances whose
+`ORI_MCP_SERVERS_B64` bytes differ or whose `ORI_MCP_SERVERS_VERSION`
+is missing or malformed; a push stamped at or after the tick's own
+timestamp is left alone. Without it a release that changes the
+derivation reached a running intern only through a later push or a
+rebuild. Each tick considers at most `MCP_SERVERS_RECONCILE_BATCH_LIMIT`
+interns in a per-tick random order, so a fleet above the limit is
+covered across ticks rather than the same head re-read every time; the
+`batch_full` field on the tick's summary log flags when the limit was
+reached. Per-intern failures are logged and counted, never fatal to the
+tick; a tick that fails as a whole (row read or token mint) counts on
+`openrouter.intern_provisioner.mcp_servers_reconcile_run{outcome:error}`,
+and no points at all on that metric means the cron is not reaching the
+rider. Kill switch: set `INTERN_MCP_SERVERS_RECONCILE_ENABLED=false` on
+the worker (the metric then reports `outcome:disabled`); the push and
+the create-time stamp keep working.
 
 ### Auth on these routes, and what it actually does today
 
@@ -573,6 +757,33 @@ read from git but git does not prove what is deployed, and
 `wrangler deploy --dry-run` proves a binding is emitted, not which
 binding a live request resolves. Reach for this route during an
 incident, before reasoning about the config.
+
+## How much an intern logs (`ORI_LOG_LEVEL`)
+
+Since ori#2771 `ORI_LOG_LEVEL` governs what the runtime EXPORTS as well as what it prints. At the default `info` the audit stream stays out of Datadog; at `debug` it ships every streaming delta, which is the 340,000 records a week ORI-2041 measured across the fleet and removed. So this is a per-investigation knob, not a deployment posture.
+
+`INTERN_LOG_LEVEL` on this worker is the only thing that sets it, and it is written into `/etc/<bot>/env` and `/etc/vault-tunnel-<bot>/env` alike — both, because the `ori vault-tunnel` sidecar is a separate process with its own logger, and a level on the agent alone turns up half the intern.
+
+**Unset writes no line at all**, which is what every intern provisioned before this had and what ori's own `info` default already gives. It is deliberately not defaulted to `info`: writing the binary's default would look deliberate while changing nothing, and would pin the fleet to today's default the day ori's moves. An unrecognised value (`DEBUG`, `verbose`) fails `ensureEnv` at boot rather than reaching a VM, because ori repairs one to `info` in silence and an operator would read the resulting quiet intern as the knob not working.
+
+Setting it means adding `INTERN_LOG_LEVEL` to `[vars]` in `wrangler.toml` and deploying. It is deliberately absent from that file today, the same call `INTERN_TURN_IDENTITY_ENABLED` makes beside it: it defaults to off, and it appears in the change that turns it on. A reviewed diff is the right ceremony for a value that moves the whole deployment's export volume.
+
+The level lands **at VM creation only**. Setting `INTERN_LOG_LEVEL` and deploying changes nothing for any intern already running.
+
+### Changing it on a running intern
+
+**Decided: the metadata reconcile channel, the same one that moves an intern's runtime image. Not a reprovision, and not a control on the daemon.** Nothing below is built yet — this records which one to build, so the next person does not reopen the question.
+
+Neither of the other two answers survives the requirement, which is "turn ONE misbehaving intern up, look, turn it back down":
+
+- **A reprovision** is the only thing that works today, and it is the wrong instrument. The level comes from deployment config, so raising it for one intern means raising it for the deployment, and every intern created or refreshed in that window gets it too. The blast radius is the fleet for a question about one box.
+- **A control on the daemon** — an authenticated route that sets the level in place — has the best steady state, since it needs no restart and drops no turn. It is also the slowest path to first use: it needs an ori change, a release, and a reprovision or image swap of every intern before it can be used once, plus its own auth and audit story. That is a feature, not a knob, and it does not answer the question this quarter.
+- **The metadata channel** already does per-intern config, downward, with no release: write the key, a 60s timer picks it up, the VM reports back what it applied. It was driven end to end against a live intern on 2026-09-11 (see "Testing an unreleased build on one intern"), and it rolls back by writing the previous value with a new version token. The cost it accepts is a container restart, which interrupts an in-flight turn — the same cost the runtime-image swap already charges, on the same channel, for the same reason.
+
+Two things the implementation has to get right, both visible from the runtime-image reconcile it copies:
+
+1. **The level cannot live in `/etc/<bot>/env`.** That file is written once and then `chattr +i`; the reconcile needs a second, non-immutable file the way `/etc/<bot>/runtime-image` is one, named as an extra `--env-file` on both `docker run` lines.
+2. **That file has to exist from first boot, even empty.** `docker run --env-file` on a missing path fails the run, unlike systemd's forgiving `EnvironmentFile=-`. A reconcile that creates the file only when a level is first set would leave every intern unable to start its containers.
 
 ## Where the logs go
 
@@ -818,11 +1029,25 @@ in `src/index.ts` — same body and auth as `/enqueue`, 202 on accept,
 worker then dispatches one `InternDestroyWorkflow` instance
 (`src/destroy-workflow.ts`).
 
-**Scope, deliberately:** dashboard-only. There is no CLI, no bulk
-mode, and **no cron reconciler**. That is a design decision, not an
-oversight — the conditional-purge contract below depends on there
-being no background process that sweeps up leaked resources. Do not
-add one without revisiting it.
+**Scope, deliberately:** customer-triggered teardown is dashboard-only.
+There is no CLI, no bulk mode, and **no background process that purges
+a row whose resources leaked**. That is a design decision, not an
+oversight — the conditional-purge contract below depends on it. Do not
+add one without revisiting this paragraph.
+
+Two things exist alongside it, and neither weakens that contract:
+
+- The **destroy sweep** (`src/destroy/sweep/`) re-dispatches teardowns
+  that stalled or failed, up to `DESTROY_SWEEP_MAX_ATTEMPTS`. It re-runs
+  the sequence and never purges a row the sequence refused to purge, so
+  what it sweeps up is *attempts*, not leaked resources.
+- The staff-only **clear-stuck-teardown** route on `cfw-internal`
+  deletes one `destroy_failed` row after a human has confirmed its
+  resources are gone — see
+  [Clearing a teardown nothing can finish](#clearing-a-teardown-nothing-can-finish).
+  Per-row, human-triggered, and it releases nothing itself. The
+  confirmation is the gate, which is the thing a background reaper
+  could never supply.
 
 ### The nine steps
 
@@ -970,6 +1195,16 @@ row from `destroy_failed` back to `destroying` and re-runs the whole
 sequence; every resource step is idempotent, so the already-released
 ones no-op.
 
+A row the sweep gave up on while still `destroying` (at
+`DESTROY_SWEEP_MAX_ATTEMPTS` and unwritten for 10 minutes) gets the
+same button: the dashboard re-arms it instead of showing "Deleting…".
+The delete always reaches this worker, which decides whether a run is
+live. The dashboard route answers **202** `teardown: "dispatched"` when
+the delete started a teardown and **409** `teardown_in_flight` when one
+was already running and nothing new was started. Before ORI-2254 the
+route answered 200 for any row already `destroying` without calling
+this worker, so the click reported success and dispatched nothing.
+
 Cloudflare reserves a terminal Workflow instance id **forever**, so a
 retry cannot reuse the previous id. `decideDestroyDispatch`
 (`src/destroy-dispatch.ts`) mints attempt+1 and
@@ -989,6 +1224,97 @@ intern. It does not close the orphaned-Slack-app window described
 under [Abandoned interns](#abandoned-interns-minted-slack-app-never-installed)
 — an app minted before its credential row landed is not reachable from
 any intern row, so teardown cannot find it either.
+
+### Clearing a teardown nothing can finish
+
+Clicking Delete again is the whole recovery story **only while a retry
+can still succeed**. Two cases it cannot reach:
+
+- **`deletion_unverified`.** A step returned `Ok` without proving the
+  resource was gone (`TeardownOutcome.Unverified`), usually because the
+  project the resource lives in could not be addressed. The purge is
+  refused so the possible leak stays traceable, and retrying re-runs the
+  same unprovable delete. **No flag clears this at any layer** —
+  `acknowledge_orphans` gates the `Orphaned` branch only, so sending it
+  changes nothing here.
+- **Past the attempt cap.** At `DESTROY_SWEEP_MAX_ATTEMPTS` (5) the
+  sweep stops dispatching. A customer's own Delete still dispatches
+  directly and bypasses the cap, so these are not frozen — but nothing
+  re-stamps them on its own, so an old row carries whatever failure codes
+  were deployed when it last ran. **Find these by `attempt`, not by
+  code.**
+
+Both leave a `destroy_failed` row that holds no quota (the cap counts
+skip a row whose failures are all `deletion_unverified`) but that nobody
+can remove. To clear one:
+
+1. Read the leak list. Each entry names a resource that may still exist:
+
+   ```sql
+   SELECT status,
+          metadata -> 'destroy' ->> 'attempt'  AS attempt,
+          jsonb_array_elements(metadata -> 'destroy' -> 'failures') AS failure
+   FROM interns
+   WHERE id = '<intern-id>';
+   ```
+
+2. **Confirm every one of those resources is actually gone**, in the
+   provider console or CLI — the GCE instance, its snapshots, the
+   Cloudflare tunnel and DNS record, the GCS log objects, the vault
+   secrets, the OpenRouter key. This step is the entire safety of what
+   follows. Nothing in the request verifies it.
+3. Clear the row, naming back every step you confirmed. In Mission Control, open **Ori Fleet** (`/admin-utils/ori-fleet`), filter the status to `destroy_failed`, and open the intern: a row the route accepts shows a **Stuck teardown** section listing its failures, and **Clear stuck teardown…** asks you to confirm each step before it deletes the row. To rehearse this on a laptop first, the `mission-control-ori-fleet` skill (`.agents/skills/mission-control-ori-fleet/SKILL.md`) runs it against a seeded row on the local stack. The same call by hand:
+
+   ```bash
+   curl -X POST "$CFW_INTERNAL_URL/api/v1/internal/interns/<intern-id>/clear-stuck-teardown" \
+     -H "x-openrouter-admin-key: $ADMIN_API_KEY" \
+     -H "authorization: Bearer $EMPLOYEE_TOKEN" \
+     -H 'content-type: application/json' \
+     -d '{"entityId":"<entity-id>","verifiedSteps":["delete-gcp-vm","delete-snapshots"]}'
+   ```
+
+`verifiedSteps` must cover every step with a recorded failure or the
+route answers `409 steps_not_verified` and lists what is missing. That
+is deliberate: it makes it impossible to clear a row without having read
+its leak list. A `409 not_stuck` means the row is not `destroy_failed`
+and you are pointed at the wrong intern.
+
+The route deletes the row, its junction and log cascades, and its
+exclusively-owned credentials. **It releases nothing in the cloud** — if
+the confirmation in step 2 was wrong, the resource is now leaked with
+nothing pointing at it, which is the outcome the conditional purge
+exists to prevent. `intern_clear_stuck_teardown_cleared` records who
+cleared what.
+
+### A row that never recorded where its VM is
+
+The most common `deletion_unverified` row says a VM may exist (`vmPossiblyCreated` is true) but records no project for it: no `runtime_metadata.vm_birth_config`, no linked runtime credential, and no `runtime_metadata.vm_insert_projects`. The teardown logs it in this order:
+
+```text
+cfw-intern-provisioner: VM teardown has no recorded project
+cfw-intern-provisioner: VM absent from an unverified project
+cfw-intern-provisioner: snapshots left in place because the VM delete did not settle
+```
+
+It stamps `delete-gcp-vm` and `delete-snapshots`, both `deletion_unverified`. A retry fails the same way every time, whatever consent the dispatch carries.
+
+**The terminal state for this shape is the operator clear above, by decision.** The teardown does not treat an empty answer from the service account's project as proof, and must not be changed to. A wedged row is visible and costs nothing. Purging a row over a VM that is alive in a project nobody searched leaves a machine running and billing with nothing pointing at it, which is what #33834 fixed.
+
+Only rows whose `create-gcp-vm` ran before #45490 (2026-09-21) can be in this shape. Since then `attemptVmInsert` records the target project on the row before it issues the insert, and a failed record stops the insert, so a newer row with no recorded project never had an insert issued.
+
+A row in this shape without workspace consent stops earlier, on `request-workspace-archive: no zone recorded for the intern VM` or `no GCP project recorded for the intern VM`. That is a pre-resource step: nothing was deleted, and `clear-stuck-teardown` refuses the row. Re-dispatch the teardown with `acknowledgeWorkspaceLoss: true` first, plus `acknowledgeOrphans: true` for the Slack app: in Mission Control's **Ori Fleet**, the intern's **Failed teardown** section does both with **Delete intern…** and **Delete without backup**, and archived interns in `destroying` or `destroy_failed` stay listed there. With no VM there is no workspace to lose, and the run then reaches the two `deletion_unverified` failures above.
+
+To confirm step 2 of the clear for this shape, search by the instance name the log lines print as `@extra.instance_name` (`intern-<provisioning_slug>`). `ext-interns-spawner-000` is the only intern project with the Compute API enabled, so it is the project to search:
+
+```bash
+P=ext-interns-spawner-000
+NAME=intern-<provisioning_slug>
+gcloud compute instances list --project=$P --filter="name=$NAME" --format='value(name,zone,status)'
+gcloud compute disks list     --project=$P --filter="name=$NAME" --format='value(name,zone)'
+gcloud compute snapshots list --project=$P --filter="sourceDisk~$NAME" --format='value(name)'
+```
+
+All three empty means the VM, its boot disk and its snapshots are gone. Then clear with `"verifiedSteps":["delete-gcp-vm","delete-snapshots"]`.
 
 ## Re-provisioning a completed or terminated intern
 
@@ -1031,31 +1357,100 @@ hand-delete the `interns` row in Postgres: that leaves the VM, the
 Cloudflare tunnel, the Slack app, the GCS log objects, and the
 OpenRouter key live with nothing pointing at them.
 
+## Rolling out an ingress change
+
+An intern's tunnel forwards only the exact daemon paths in
+`INTERN_PUBLIC_PATHS` (`src/clients/tunnel-ingress-rules.ts`) and
+404s everything else at the Cloudflare edge. Add the exact path a consumer
+calls, never a prefix.
+
+**It reaches running interns by itself, within one four-hourly tick.**
+Every push records the hash of the rules it sent on the intern row
+(`runtime_metadata.cf_tunnel_ingress_hash`): `create-cf-tunnel` on
+provision and re-provision, and the ingress reconcile
+(`src/ingress-reconcile/`) on the `23 */4 * * *` tick. The reconcile
+compares each running intern's recorded hash with the hash of the current
+rules and re-PUTs the tunnel configuration where they differ, or where no
+hash was ever recorded. It calls the Cloudflare API only; the VM, the agent
+and any turn in flight are not touched, and nobody needs to re-provision or
+restart anything.
+
+**It pushes only to a VM that reports an authenticating ori.** Before a
+push it reads the version the VM itself reported
+(`intern-running-ori-version` in the instance metadata, written by the
+runtime-image timer from the image's version label) and pushes only at or
+above `MIN_AUTHENTICATING_ORI_VERSION` (`src/ingress-reconcile/ori-version-floor.ts`,
+0.15.1: the `ori tui` session reads were open to anyone before it, and ori
+before 0.8.0 also served `/api/invoke` to anyone; the rules forward both). An older version is `unauthenticated_runtime`; no report, an
+unparseable one, or a failed read is `version_unknown`. Both are skipped,
+logged with the version and the floor, and checked again next tick, so a
+VM that upgrades is picked up with no action. A VM with no runtime-image
+timer never reports a version; a re-provision gives it one, and that is the
+only case that needs a human.
+
+The same rule binds anyone widening the list: a path may be added only if
+every running ori at or above the floor authenticates it; if not, raise the
+floor in the same change. Each entry of `INTERN_PUBLIC_PATHS` names, as
+`authenticatedSince`, the first release that refuses it without the bearer,
+and `ori-version-floor.test.ts` fails while the floor is below any of them.
+Interns still on 0.15.0 are skipped as `unauthenticated_runtime` until they
+upgrade; until then, `ori tui --host` against them gets the edge 404.
+
+- Steady state is one database read and no GCE or Cloudflare call: the
+  version is read only for a tunnel whose recorded hash is stale.
+- A push that fails leaves the old configuration and the old hash, so the
+  next tick retries it. At most 100 pushes per tick; the rest wait a tick
+  as `deferred`.
+- `INTERN_SKIP_CF_TUNNEL=true` turns it off (`outcome:disabled`), as it
+  does the tunnel step.
+
+Watch it with `openrouter.interns.tunnel_ingress_reconcile{outcome:*}`
+(one count per running intern per tick; a panel on the Intern Provisioning
+dashboard) and `openrouter.interns.tunnel_ingress_reconcile_run{outcome:*}`.
+After a rules change, expect one tick of `pushed` for every running intern
+on a current ori, then `current`. `unauthenticated_runtime` and
+`version_unknown` repeat every tick until the VM reports a current ori. `push_failed` and `record_failed` repeat until they stop
+failing, and each intern is logged as `tunnel ingress reconcile intern`
+with its `intern_id` and the error. `tunnel_missing` is a running intern
+with no Cloudflare tunnel of its name; a re-provision recreates it.
+
+To check one intern from outside, ask the edge rather than the database:
+an allowlisted path answers from the daemon, and anything else is an empty
+404 from Cloudflare.
+
 ## Transferring an intern (workspace move, account handover)
 
-Two different operations hide behind the word "transfer" and they are not the same size. An intern row carries both `entity_id` (the Clerk account that owns it) and `workspace_id` (the workspace inside that account). Moving between workspaces of one account is three UPDATEs and no reboot. Moving between accounts re-tenants every entity-scoped resource the intern holds — the row, the OpenRouter key, its credentials, its vault — while keeping the intern's id, slug, URLs, VM, boot disk and Slack app exactly as they are. `POST /api/v1/internal/interns/:internId/transfer` on `cfw-internal` does this in one staff-triggered call (ORI-1928); see below.
+Two different operations hide behind the word "transfer" and they are not the same size. An intern row carries both `entity_id` (the Clerk account that owns it) and `workspace_id` (the workspace inside that account). Moving between workspaces of one account moves the rows the intern owns and its own vault, with no reboot (see below). Moving between accounts re-tenants every entity-scoped resource the intern holds — the row, the OpenRouter key, its credentials, its vault — while keeping the intern's id, slug, URLs, VM, boot disk and Slack app exactly as they are. `POST /api/v1/internal/interns/:internId/transfer` on `cfw-internal` does this in one staff-triggered call (ORI-1928); see below.
 
 ### Between workspaces of the same account
 
-Nothing baked onto the VM references `interns.workspace_id`. The only tenant id on the VM is `ORI_VAULT_WORKSPACE_ID` in `/etc/<bot>/env`, and despite the name it holds the ENTITY id — `buildVaultProvisioning` passes `entityId` (`src/clients/vault-provisioning.ts`), and so does the vault agent token, `hex(HMAC-SHA256(entityId NUL internId))`. A workspace move inside one account is therefore a database-only change: no reprovision, no downtime, nothing to re-stamp.
+Staff move an intern with **Move to workspace…** on its Ori Fleet sheet in Mission Control, which calls `POST /api/v1/internal/interns/:internId/move-workspace` on `cfw-internal` (`services/cfw-internal/src/routes/interns/move-intern-workspace.ts`, ORI-2515). The body is `{ entityId, fromWorkspaceId, toWorkspaceId, dryRun }`, and `dryRun` is required. The owner, org, VM, Slack app and URLs by id stay the same. The destinations come from `GET /api/v1/internal/interns/:internId/move-workspace/destinations`.
 
-```sql
--- the destination must belong to the same entity and still be live
-SELECT id, entity_id, deleted_at FROM workspaces WHERE id = :to_workspace;
+This is not a database-only change, and the old hand-run UPDATEs must not be used. Since workspace-scoped vaults (#43352), intern connection workspaces (#45914) and per-workspace MCP servers (#45921), a bare `UPDATE interns SET workspace_id` does three kinds of damage:
 
-UPDATE interns SET workspace_id = :to_workspace
-  WHERE id = :intern_id AND entity_id = :entity_id;
-UPDATE api_keys SET workspace_id = :to_workspace
-  WHERE id = (SELECT openrouter_key_id FROM interns WHERE id = :intern_id);
-UPDATE intern_archives SET workspace_id = :to_workspace
-  WHERE intern_id = :intern_id;
-```
+- It strands the intern's own vault under the source workspace UUID. The vault reads that namespace only through `interns.workspace_id` (`findInternWorkspace`). The vault key's AAD is `(workspaceId, agentId)`, so repointing `agent_vaults.workspace_id` by hand breaks decryption as well.
+- It leaves the intern's scoped connections (`data.scope_intern_id`: MCP, GitHub, Google, Slack-member links) in the source workspace. `IS_SCOPE_INTERN_LIVE` then fails for them, so the MCP reaper revokes them within about ten minutes, and the GitHub refresher revokes and uninstalls.
+- It leaves the VM's MCP server list (`ORI_MCP_SERVERS_B64`) and the `ori.md` Connected-APIs block naming the source workspace's servers. The instructions block is never restamped without a persona save or a reprovision.
 
-Three things to check before running it:
+The route runs four steps in this order, and each one is recorded in `runtime_metadata.transfer.steps_done`, so a re-run resumes where it stopped:
 
-1. `interns_entity_name_uq_v2` is UNIQUE on `(entity_id, workspace_id, creator_user_id, name)` WHERE `archived_at IS NULL`. A same-named intern by the same creator already in the destination collides.
-2. Visibility is per creator. A member who does not administer the destination workspace sees only rows whose `creator_user_id` is them (`internVisibilityPredicate`, `packages/db/interns/queries.ts`), so repoint `creator_user_id` too if the intern should belong to someone else after the move.
-3. The API key row follows the intern so it lists next to it. Leave it behind and the key stays live but invisible in the workspace view — the case ENT-1784 closed.
+1. **`rows_moved`**: `moveInternToWorkspace` (`packages/db/interns/queries-workspace-move.ts`), in one transaction under the same locks as `transferInternTenant`. It moves the `interns` row, its API key and the key's guardrail choices, the credentials the intern owns, and its archives. The credentials it owns are the rows scoped to it plus the non-reusable rows it binds; a row recorded under the source UUID has `vault_namespace` re-recorded to the destination. Workspace-shared and reusable connections stay where they are. The move refuses with nothing written when:
+   - the intern left the source or is not `running`;
+   - the destination is not a live workspace of the entity;
+   - the creator cannot open the destination (an active org member reaches the default workspace, an org admin reaches every workspace, and a named workspace needs a `workspace_members` row);
+   - the creator already has an intern of that name there;
+   - another intern binds a credential it owns;
+   - a vault grant touches it;
+   - the destination is at `MAX_INTERNS_PER_WORKSPACE`.
+2. **`vault`**: `POST /v1/vaults/retenant` moves the intern's own vault from the source UUID to the destination UUID, keeping the vault id and re-wrapping its key. From the row move until this step is recorded, reads of the intern's workspace-namespace secrets fail, while its entity-namespace secrets (OpenRouter key, Slack token) keep working. Vault writes for the intern are refused with `conflict` (`isInternVaultTransferPending`). A failure answers 502 (409 on a vault conflict). The step counts only once it is persisted. A vault that moved but whose step did not record answers 503 `vault_step_not_recorded`, and the move stops there, because the vault fences on the persisted record. Re-run the move; the vault replay is a no-op.
+3. **Completion**: `completed_at` lands before the VM refresh, because the VM's MCP secret fetch is refused while a transfer is in progress. If the stamp does not land, the move answers 503 `completion_not_recorded` and never refreshes the VM. Re-run to finish.
+4. **`vm_config`**: the route calls the provisioner's `/mcp-servers` (every running intern of the entity) and `/instructions` (this intern). The VM merges the new list within a minute. `vmConfig: "requested"` means the provisioner accepted both calls. `/instructions` stamps before it answers, but `/mcp-servers` answers 200 and stamps in the background, so a lost MCP push is visible only in the provisioner's own `mcp servers push` log. The */5 MCP sweep restamps on drift either way. A refused call does not fail the move: the response says `vmConfig: "failed"`, and re-running a finished move repeats only this step.
+
+A move stopped after its rows landed stays resumable. `GET .../move-workspace/destinations` returns it as `pendingMove` (`fromWorkspaceId`, `toWorkspaceId`), because the intern row alone no longer names the source. Mission Control's Move to workspace dialog offers **Finish move** for it, which re-sends those coordinates.
+
+Nothing on the VM needs re-stamping for the vault. `ORI_VAULT_WORKSPACE_ID` holds the entity id (`buildVaultProvisioning`), which does not change, and the egress overlay follows `interns.workspace_id`.
+
+Workspace-shared connections and vaults belong to their workspace, so the intern stops reaching the source's and starts reaching the destination's. The destination's shared connections are all on for it, because exclusions are keyed to the source rows. The dry run's `report` lists what changes: `connectionsLost` and `connectionsGained`, the shared-vault secret names lost and gained, the entity legacy shared vault if ownership sits with only one of the two workspaces, and `ownSecretCount`. The intern's API key also picks up the destination's budgets, guardrails, BYOK keys and data policies.
 
 ### Between accounts: the transfer endpoint
 
@@ -1073,10 +1468,10 @@ Pre-flight refuses, naming every failing check in one response, when:
 
 - the intern is not `Running`. A healthy agent that the health sweep just saw serving is NOT a refusal: moving a working intern is the whole point of a whiteglove handover, and the transfer re-bootstraps the VM by design, so schedule it with the customer instead (see the outage window below);
 - the destination workspace is missing, soft-deleted, or its `entity_id` does not match `toEntityId`;
-- `toCreatorUserId` is not a member of the destination workspace. Both destination checks run again inside the move transaction, with the workspace and membership rows locked `FOR SHARE` so neither can be deleted until the move commits; a destination that changed after pre-flight refuses with nothing written, and the route answers 409 `destination_workspace_invalid` or `destination_creator_not_member`;
-- a live intern already holds `(toEntityId, toWorkspaceId, toCreatorUserId, name)` — the same collision `interns_entity_name_uq_v2` enforces in the same-account section above;
-- any credential the intern holds (`runtime_credential_id`, `vcs_credential_id`, or one bound through `intern_connection_credentials`) is also referenced by any other intern — in any account, archived or not. A shared OpenRouter-owned credential is never cloned into the destination — the transfer refuses instead of silently forking it. The same check runs again inside the move transaction with the candidate credential rows locked `FOR UPDATE` (binding a credential takes `FOR KEY SHARE` on it through the foreign key, which that lock blocks), so a binding added after pre-flight still refuses the whole move with nothing written, and the route answers 409 `shared_credential`;
-- `fromEntityId` equals `toEntityId`. This route moves an intern between accounts; a move between workspaces of one account needs no vault or VM change and is the SQL in the section above.
+- `toCreatorUserId` cannot open the destination workspace. An explicit `workspace_members` row grants access. A personal account's own user and an active org admin reach every workspace, and an active org member reaches the default workspace, which has no member rows (`lockCreatorWorkspaceAccess`, `packages/db/interns/creator-workspace-access.ts`). Both destination checks run again inside the move transaction, with the workspace and the proving membership row locked `FOR SHARE` so neither can be deleted until the move commits; a destination that changed after pre-flight refuses with nothing written, and the route answers 409 `destination_workspace_invalid` or `destination_creator_not_member`;
+- a live intern already holds `(toEntityId, toWorkspaceId, toCreatorUserId, name)`, the collision `interns_entity_name_uq_v2` enforces;
+- any credential the intern holds is also referenced by any other intern. That covers `runtime_credential_id`, `vcs_credential_id`, one bound through `intern_connection_credentials`, and every row scoped to it (`data.scope_intern_id`: its own MCP, GitHub, Google and Slack-member links). Scoped rows move with the intern. Left behind, they fail `IS_SCOPE_INTERN_LIVE`, the MCP reaper revokes them, and the GitHub refresher revokes and uninstalls. Their `vault_namespace` follows the intern's own vault: the source entity becomes the destination entity (the vault step moves that vault), and the source workspace becomes the destination workspace (it held none of their secrets, or the move would have refused). This check covers any account, archived or not. A shared OpenRouter-owned credential is never cloned into the destination — the transfer refuses instead of silently forking it. The same check runs again inside the move transaction with the candidate credential rows locked `FOR UPDATE` (binding a credential takes `FOR KEY SHARE` on it through the foreign key, which that lock blocks), so a binding added after pre-flight still refuses the whole move with nothing written, and the route answers 409 `shared_credential`;
+- `fromEntityId` equals `toEntityId`. This route moves an intern between accounts; a move between workspaces of one account is the `move-workspace` route in the section above.
 
 A shared vault in the source entity (`agent_id IS NULL`, holding secrets other interns in that account may also read) is reported in the response rather than refused on: whether this intern actually reads one of those secrets is not knowable from the data, so the endpoint names it instead of blocking a healthy transfer on an unknowable dependency.
 
@@ -1096,7 +1491,7 @@ A completed transfer does not block a later one: an intern handed to account X c
 
 What travels with the intern: its id, slug and URLs, the VM and boot disk, the Slack app and its install, the OpenRouter key (repointed) and every vault secret (re-wrapped, not re-encrypted). What does not move, because neither carries a tenant column: `intern_logs` and `intern_icons`, both keyed by `intern_id` alone.
 
-**Break-glass**, for when the endpoint refuses on a check that does not apply here, or `cfw-internal` cannot reach the provisioner: the row moves can be run by hand with the guarded UPDATEs in `packages/db/interns/queries-transfer.ts` (`transferInternTenant`), which is the same shape as the same-account SQL above extended to `interns.entity_id`, `api_keys.clerk_user_id` (the owning entity, not the creator) and `intern_credentials.entity_id`. Follow with `POST /v1/vaults/retenant` on the vault directly, and finish with a manual `/enqueue` to the provisioner carrying `reprovision: true, allowLiveVmReset: true`, checking that the 202 body says `dispatch.action` is `create`. Move the vault only after the row move has landed. Doing it the other way round strands the vault: with the vault moved first but `interns.entity_id` still the source, `findInternWorkspace` fails for the destination too (the intern still belongs to the source entity), so the vault is unreadable from both sides — the destination doesn't own the intern yet, and the source no longer owns the vault — and a crash between the two steps leaves it sitting under an entity that owns no intern at all.
+**Break-glass**, for when the endpoint refuses on a check that does not apply here, or `cfw-internal` cannot reach the provisioner: the row moves can be run by hand with the guarded UPDATEs in `packages/db/interns/queries-transfer.ts` (`transferInternTenant`), which move `interns.entity_id`, `api_keys.clerk_user_id` (the owning entity, not the creator) and `intern_credentials.entity_id` (plus `workspace_id` for scoped rows). Follow with `POST /v1/vaults/retenant` on the vault directly, and finish with a manual `/enqueue` to the provisioner carrying `reprovision: true, allowLiveVmReset: true`, checking that the 202 body says `dispatch.action` is `create`. Move the vault only after the row move has landed. Doing it the other way round strands the vault: with the vault moved first but `interns.entity_id` still the source, `findInternWorkspace` fails for the destination too (the intern still belongs to the source entity), so the vault is unreadable from both sides — the destination doesn't own the intern yet, and the source no longer owns the vault — and a crash between the two steps leaves it sitting under an entity that owns no intern at all.
 
 Exercise the whole path locally with `tilt trigger intern-transfer-smoke` under `tilt up -- --interns` (`services/cfw-internal/scripts/local-transfer-smoke.ts`). It builds its own org-owned source intern carrying an API key minted under the org entity, a runtime credential, an archive and a vault secret, moves it to a second org as a dry run and then for real, asserts every one of those rows and the secret landed at the destination, and removes everything it created. It never touches the shared `seed-local` fixture.
 

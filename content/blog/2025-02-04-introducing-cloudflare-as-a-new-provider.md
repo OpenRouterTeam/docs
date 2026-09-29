@@ -1,6 +1,7 @@
 ---
 title: "Introducing Cloudflare as a new provider"
 date: "2025-02-04T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Clouldflare is live now with a new to OpenRouter Gemma model + popular Llama models. "
 category: "announcements"

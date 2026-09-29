@@ -1,11 +1,6 @@
 ---
 name: verify-quality-tournament-scenarios
-description: >-
-  Cross-cutting end-to-end test scenarios for the quality-tournament
-  wizard (ECO-1153) — prompt visibility, run against baseline, pricing
-  accuracy, human judging flow, progress bar accuracy, Postgres eval-run
-  persistence for both judge modes, and server-side log-filter parity.
-  Sub-skill of verify-quality-tournament-wizard-ui.
+description: Cross-cutting end-to-end scenarios for the quality-tournament wizard (ECO-1153), covering prompt visibility, baseline runs, pricing accuracy, human judging, progress bar, eval-run persistence, and log-filter parity. Sub-skill of verify-quality-tournament-wizard-ui.
 allowed-tools: Bash,Edit,Read,Write,Browser
 user-invocable: true
 ---

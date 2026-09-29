@@ -29,6 +29,8 @@ at dispatch, so Ada knows how to behave, but the server decides again on every w
 | `assist` | Propose; a Slack-approved action is written. The autonomous tool refuses (`mode_not_auto`). Used for calibration. |
 | `auto` | Call `support__autonomous_ticket_action` first; if any gate refuses, fall back to Slack approval for the same action. |
 
+Backlog cases can also be started from Mission Control (Support → Launcher), which calls the console `dispatch` route. Such a case is identical for Ada: the ticket is assigned to Ada first, the intake payload and `case_token` carry origin `backlog`, and `modes.backlog` applies. The console refuses to start any case while `modes.backlog` is `off`. The first approve or autonomous result Ada reports on a console-started case is shown to the operator as its outcome (`auto_sent`, `approved_sent`, `dry_run`, `awaiting_approval`, `escalated`, or `refused` with the reason), so Ada must not retry a refused call with a different action to change what the console shows.
+
 A missing or malformed policy resolves to the defaults: every origin `assist`,
 `assign_priorities` and `auto_send_priorities` `low,normal`, `min_confidence` 0.7,
 `max_auto_replies_per_ticket_per_day` 3, and no category or tag deny list. It never

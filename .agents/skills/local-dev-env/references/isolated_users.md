@@ -6,7 +6,7 @@ Use the seeded `dev+clerk_test@openrouter.ai` account for ordinary local testing
 
 1. Start the stack with [local-dev-env](../SKILL.md). Confirm `webhooks` and `clerk-webhook` are running so new Clerk users sync into local Postgres.
 1. Follow [Clerk sign-in tokens](../../clerk-dev-signin-token/SKILL.md), replacing `--email dev+clerk_test@openrouter.ai` with `--fresh`. Save the returned `user_id` for the commands below. With no user option, the script reuses a machine account; it does not create an isolated user per test.
-1. Open the web app's `/sign-in`, enter the returned email, choose **Use another method** → **Email code**, and enter `424242`. Browser automation can instead consume the returned ticket using the linked guide.
+1. Consume the returned ticket on `/sign-in` as described in the linked guide. If page JavaScript is unavailable, enter the returned email in the form, choose **Use another method** → **Email code**, and enter `424242`.
 1. For a personal account, complete **Individual** onboarding. Copy its newly created API key, skip adding a payment method, and finish onboarding. This creates the user's own workspace and key. For onboarding tests, assert the initial state before completing these steps.
 
 A fresh account starts with no credits and no admin grant. Use its own key for auth tests; the shared unlimited seed key bypasses the state being tested.

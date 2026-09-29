@@ -3,7 +3,7 @@ name: unit-test-writing
 description: Guidelines for writing high-quality unit tests — covers naming, structure,
   assertions, branching, coverage, fixtures and mocks (process-global bun:test mocks,
   `@ts-expect-error` probes), fake timers, ClickHouse TTL fixture timestamps, pinning a
-  known bug with `@existingBuggyBehavior`, and test organization.
+  known bug with `@existingBuggyBehavior`, tests that cannot fail, and test organization.
 user-invocable: false
 ---
 
@@ -151,3 +151,30 @@ Each test case must read like a proof:
 ## 11. Pinning a Known Bug
 
 **Tag tests that pin a known bug.** When you knowingly write a passing test that asserts pre-existing buggy behavior, put a `/** @existingBuggyBehavior */` comment directly above the `it`, and follow it with an `it.failing` (`it.fails` under vitest) asserting the fixed behavior. The pin keeps regression coverage today; the failing test turns red once the bug is fixed. `openrouter/require-buggy-behavior-failing-pair` enforces the pair.
+
+---
+
+## 12. Logs, Metrics, and fs-log
+
+This section also covers breadcrumbs and PostHog captures.
+
+**Do not assert on log lines, metric emissions, breadcrumbs, PostHog captures, or fs-log calls.** They pin message strings, event names, and tag or property lists, break on every wording change, and do not prove the behavior worked. Assert on the return value, the persisted row, or the response instead. Do not install `setStatsd(createSpyStatsd())`, `setStatsd(noopStatsd)`, `spyOn(logger, 'eLog')`, or a `sendToFSLog` mock to keep a test quiet: `getStatsd()` defaults to a no-op, and log output in tests is harmless. When the code under test takes a logger or statsd as a required injected dependency, pass a no-op and assert nothing on it.
+
+Three cases are worth a test:
+
+- **Redaction.** A key, prompt, PII, ePHI, or payment value never reaches the log context, metric tags, breadcrumbs, PostHog event properties, or fs-log payload, or a scrubber runs before the sink. Assert the absence, after a minimal positive control that the line or event fired; without one the check passes when nothing is emitted.
+- **Monitor-critical metrics.** The metric is the only input to a no-data (dead-man's-switch) monitor, such as a liveness heartbeat or a cron `*_complete` counter, or it is a data-loss counter on a write, replay, or billing path (`*.insert_failed`, `*.dead_lettered`, `generation_billing.publish_failed`, the Spanner generations inserter). A silent emission break disables the alert. Assert only that metric, and name the monitor in the test.
+- **PostHog as behavior.** Feature flags, a `get_session_id` / `get_distinct_id` value the code forwards, `reset()` on logout, `identify` with the right user, and consent gating are behavior, not analytics.
+- **The sinks themselves.** Tests in `packages/instrumentation`, `packages/clients/fs-logs`, and `services/dev-fs-logs`, and e2e tests that read dev-fs-logs to check what was sent upstream.
+
+---
+
+## 13. Tests That Cannot Fail
+
+**Delete or rewrite a test that would still pass if every function it imports returned `undefined`.** It observes no behavior, so it catches no defect. Call the subject inside the test body with one concrete input and assert the literal output or the observable effect. Full principle: `principle-test-behavior-not-implementation` in OpenRouterTeam/agent-plugins.
+
+- **Constant pin.** The assertion restates an exported constant, config default, or table row (`expect(MAX_RETRIES).toBe(3)`). Test the code that reads the value with one input instead. Keep a pin only when something outside the code depends on the literal (a HIPAA plugin allowlist, a fail-open security default, a public API enum, a metric name a monitor reads), and name that consumer in the test name.
+- **Weak assertion.** Only `toBeDefined`, `toBeTruthy`, `typeof x === 'function'`, `not.toThrow`, or `expect(true).toBe(true)`. Assert the exact value.
+- **Mock echo.** The assertion checks the value a stub was set up to return, or only that a mock was called. Assert the payload the dependency received or the state after the call.
+- **Self-referential.** The expected value comes from the code under test (`expect(parse(x)).toEqual(parse(x))`).
+- **Duplicate of integration coverage.** A mocked-client DB or ClickHouse test that checks only SQL shape, parameter forwarding, or error passthrough while an integration test runs the same query. Move any filtering, scoping, ordering, or error-mapping case the integration suite lacks into it, then delete the mocked test.

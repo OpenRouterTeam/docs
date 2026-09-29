@@ -1,6 +1,7 @@
 ---
 title: "Standardized finish reasons"
 date: "2025-01-23T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Models now return standardized finish\_reason values, aligned with OpenAI-style conventions. "
 category: "announcements"

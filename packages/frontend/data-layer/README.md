@@ -13,8 +13,8 @@ layer provides the shared plumbing only:
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `query-client.ts`       | `DEFAULT_QUERY_OPTIONS`, SSR-safe `getQueryClient()`                                                                    |
 | `server-query-client.ts` | `getServerQueryClient()` — per-request server client for RSC prefetching + `<HydrationBoundary>` (see `AGENTS.md`)     |
-| `fetch-api-query.ts`    | `fetchAPIQuery` — the shared `queryFn` body (URL serialization, envelope unwrap, abort signal, optional Zod validation) |
-| `fetch-server-api-query.ts` | `fetchServerAPIQuery` — server-only `queryFn` body for RSC prefetches: same URL serialization, cookie-forwarding transport, Zod validation, throws `APIQueryError` |
+| `fetch-api-query.ts`    | `fetchAPIQuery` — the shared `queryFn` body (URL serialization, envelope unwrap, abort signal); the response is typed by the shared response type, never a runtime schema |
+| `fetch-server-api-query.ts` | `fetchServerAPIQuery` — server-only `queryFn` body for RSC prefetches: same URL serialization, cookie-forwarding transport, throws `APIQueryError` |
 | `api-query-error.ts`    | `APIQueryError` (thrown at the TanStack boundary), `extractErrorT`                                                      |
 | `query-keys.ts`         | `createQueryKeys` — namespaced key factories                                                                            |
 | `use-api-mutation.ts`   | `useAPIMutation` — Result-native mutations with required invalidation                                                   |
@@ -128,7 +128,6 @@ export function guardrailsViewOptions(workspaceId: string) {
     queryFn: ({ signal }) =>
       fetchAPIQuery<GuardrailsView>("/api/frontend/v1/private/guardrails", {
         searchParams: { workspace_id: workspaceId },
-        schema: GuardrailsViewSchema,
         signal,
       }),
   });
@@ -176,8 +175,6 @@ for the full mutation and call-site conventions.
 ```ts
 import type { Widget } from "./types";
 
-import { WidgetSchema } from "./schemas";
-
 import { fetchAPIQuery } from "@openrouter-monorepo/frontend/data-layer/fetch-api-query";
 import { createQueryKeys } from "@openrouter-monorepo/frontend/data-layer/query-keys";
 import { useAPIMutation } from "@openrouter-monorepo/frontend/data-layer/use-api-mutation";
@@ -196,7 +193,6 @@ export function widgetListOptions(workspaceId: string) {
     queryFn: ({ signal }) =>
       fetchAPIQuery<Widget[]>("/api/frontend/v1/private/widgets", {
         searchParams: { workspace_id: workspaceId },
-        schema: WidgetSchema.array(),
         signal,
       }),
   });
@@ -206,10 +202,7 @@ export function widgetDetailOptions(id: string) {
   return queryOptions({
     queryKey: widgetKeys.detail(id),
     queryFn: ({ signal }) =>
-      fetchAPIQuery<Widget>(`/api/frontend/v1/private/widgets/${id}`, {
-        schema: WidgetSchema,
-        signal,
-      }),
+      fetchAPIQuery<Widget>(`/api/frontend/v1/private/widgets/${id}`, { signal }),
   });
 }
 

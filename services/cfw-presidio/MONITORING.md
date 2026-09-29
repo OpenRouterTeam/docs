@@ -276,10 +276,10 @@ Cloudflare Containers do not expose infrastructure metrics (CPU, memory, disk I/
 
 | Parameter | Value |
 |-----------|-------|
-| Analyzer pool size (per hub) | EU 100/140, NAW 50/100, NAE 22/40, APAC 5/10 (warm/width) |
+| Analyzer pool size (per hub) | EU 100/170, NAW 150/200, NAE 30/50, APAC 8/13 (warm/width) |
 | Anonymizer pool size (per hub) | EU 6/12, NAW 5/10, NAE 3/6, APAC 2/4 (warm/width) |
 | Sleep timeout | 10 minutes |
-| Max instances (wrangler) | 300 per type |
+| Max instances (wrangler) | 450 per type |
 | Analyzer instance type | `standard-4` (4 vCPU, 12 GiB RAM, 20 GB disk) |
 | Anonymizer instance type | `basic` (1/4 vCPU, 1 GiB RAM, 4 GB disk) |
 | Analyzer gunicorn workers | 4 (`WORKERS` in `analyzer.Dockerfile`) |
@@ -295,10 +295,10 @@ request is ever dropped by the mapping:
 
 | Hub | Coverage | Analyzer warm/width | Anonymizer warm/width |
 |-----|----------|--------------------:|----------------------:|
-| `EU` | Europe, Middle East, Africa | 100 / 140 | 6 / 12 |
-| `NAW` | North America West | 50 / 100 | 5 / 10 |
-| `NAE` | North America East, Latin America (default hub) | 22 / 40 | 3 / 6 |
-| `APAC` | Asia Pacific, South Asia, Oceania | 5 / 10 | 2 / 4 |
+| `EU` | Europe, Middle East, Africa | 100 / 170 | 6 / 12 |
+| `NAW` | North America West | 150 / 200 | 5 / 10 |
+| `NAE` | North America East, Latin America (default hub) | 30 / 50 | 3 / 6 |
+| `APAC` | Asia Pacific, South Asia, Oceania | 8 / 13 | 2 / 4 |
 
 Analyzer sizing is derived from offered load rather than request rate,
 re-measured 2026-09-01: `openrouter.presidio.fetch_attempt{stage:analyze,
@@ -312,9 +312,9 @@ large-text share rose, so its offered load grew. Anonymizer sizing is
 unchanged (223ms mean service time, 1 worker, 70% utilization). Hub pooling
 multiplexes demand that per-colo pools could not share: on the same 2-day
 5-minute dataset, per-colo pools sized to their own peaks need 340-426 warm
-instances while the pooled hub demand needs 146. The warm floor is 177
-analyzer + 16 anonymizer instances; total addressable width is 290 analyzer +
-32 anonymizer, under the 300-per-type `max_instances` ceiling even if every
+instances while the pooled hub demand needs 146. The warm floor is 288
+analyzer + 16 anonymizer instances; total addressable width is 433 analyzer +
+32 anonymizer, under the 450-per-type `max_instances` ceiling even if every
 hub bursts to full width simultaneously (a colocated test in
 `pool-sizing.test.ts` enforces `sum(width) <= max_instances - 10`).
 
@@ -333,11 +333,18 @@ the abandoned indices were reclaimed, took EU to 140 (transition peak 290).
 `getPresidioPoolTransitionBudget` computes that peak and a colocated test
 asserts it against the previously deployed widths.
 
-NAW is sized below its demand on purpose. Its recurring bursts measure
-440-600 instances of offered load between 5-minute p95 and peak, more than the
-whole width budget, so NAW bursts still fail open until `max_instances` rises.
-Every hub's width also stays within `warm + 4 * ceil(warm / 4)`, the widest
-ceiling the escalation ladder below reaches in three consecutive failures.
+The table was widened on 2026-09-15, with `max_instances` raised from 300 to
+450, after a tenant moved its guarded traffic to ~70k-token prompts on
+2026-09-13: NAW sat pinned at its 100 ceiling with 40k-190k pool-exhausted
+routes per hour for 30 hours and EU at 140 with 4k-12k per hour at its peaks,
+while NAE and APAC stayed in the hundreds. A first attempt at 600 was
+rejected at deploy time by the account vCPU quota, so the shipped ceiling is
+half that widening. The deploy adds width only, so its transition peak equals
+the new 433 total. NAW's recurring bursts still measure 440-600 instances of
+offered load between 5-minute p95 and peak, so its widest bursts continue to
+fail open at 200. Every hub's width also stays within
+`warm + 4 * ceil(warm / 4)`, the widest ceiling the escalation ladder below
+reaches in three consecutive failures.
 
 Jurisdiction routing is unchanged: EU/US data regions still select the DO
 jurisdiction namespace independently of the hub name, and regional requests
@@ -357,8 +364,11 @@ is in-region RTT for callers outside the hub anchor (demand-weighted estimate
 p50 service time. Rollback is reverting the colo→hub mapping to per-colo
 names; orphaned hub instances idle out within 10 minutes.
 
-Raising `max_instances` still requires Cloudflare's per-account container
-limit to be confirmed; `max_instances` stays at 300 until then.
+`max_instances` is a per-class cap, not a reservation, but Cloudflare checks
+the declared caps against the account vCPU quota at deploy time: `600 ×
+standard-4` was rejected on 2026-09-15 ("Surpassed total account limits"),
+and `450 × standard-4` is what currently deploys. Read the quota from the
+Cloudflare dashboard, and raise it, before declaring a higher cap.
 
 An escalation records `http_error` for a non-2xx container response or
 `slow_response` for a warm (non-cold-start) success over a payload-dependent
@@ -369,7 +379,8 @@ characters, where a warm analyzer legitimately exceeds 2,500 ms. Bodies of
 100K characters or more never escalate on latency, since analyze time there
 reflects the payload rather than pool pressure. Each escalation grows the
 burst extent exponentially (`max(ceil(warm / 4), 2 * burst)`), so full width
-takes two escalations for EU and three for NAE, NAW and APAC, and the
+takes three escalations in every hub except NAW, which reaches its ceiling in
+two, and the
 worker fire-and-forgets warmup pings (`ctx.waitUntil`) to the newly opened
 indices, visible as a `presidio.warmup.*` burst during escalations. A
 response that triggers an escalation is still returned unchanged to the
@@ -395,16 +406,15 @@ awake instance-hour.
 
 | Component | Calculation | Derived monthly cost |
 |-----------|-------------|----------------------|
-| Analyzer warm floor | `177 × $0.113 × 720` | ~$14,401 |
+| Analyzer warm floor | `288 × $0.113 × 720` | ~$23,431 |
 | Anonymizer warm floor | `16 × $0.010 × 720` | ~$115 |
-| **Total warm floor** | | **~$14,516/month** |
+| **Total warm floor** | | **~$23,546/month** |
 
 The per-colo topology pinned 249 analyzer and 276 anonymizer instances
 across 23 table colos (~$21,254/month at these rates). The four-hub topology
-pins 177 analyzer and 16 anonymizer instances (~$14,516/month), roughly
-$6,700/month lower warm spend, with the anonymizer floor collapsing hardest
-because per-colo sizing pinned 12 anonymizer instances in every table colo.
-The analyzer figure excludes CPU; on-demand instances outside the warm floor
+pinned 177 analyzer and 16 anonymizer instances (~$14,516/month) until the
+2026-09-15 widening raised the analyzer floor to 288 (~$23,546/month). The
+analyzer figure excludes CPU; on-demand instances outside the warm floor
 add cost.
 
 This is a derived estimate, not an invoice figure. Actual infrastructure

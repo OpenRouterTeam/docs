@@ -1,6 +1,7 @@
 ---
 title: "Use OpenRouter Models in Cursor: Try it with Moonshot AI's Kimi K2"
 date: "2025-07-14T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Explore it in action: See how effortlessly you can run Kimi K2 in Cursor using OpenRouter’s flexible model routing. "
 category: "tutorials"

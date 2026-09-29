@@ -1,6 +1,7 @@
 ---
 title: "Presets: How To Seamlessly Transfer Model Configurations Across Apps"
 date: "2025-07-29T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Customize once and use everywhere. Server-side presets now simplify your model workflows. "
 category: "tutorials"

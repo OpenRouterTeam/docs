@@ -1,6 +1,7 @@
 ---
 title: "Never Pay for Empty AI Responses Again"
 date: "2025-03-25T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Introducing Zero Token Insurance for All Models "
 category: "announcements"

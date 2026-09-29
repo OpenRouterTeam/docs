@@ -1,6 +1,7 @@
 ---
 title: "GPT-5.5 Price Increase: What It Actually Costs"
 date: "2026-05-04T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "Justin Summerville"
 teaser: "OpenAI doubled per-token prices with GPT-5.5 but the model is less verbose. We measured real usage to see the net cost impact."
 headerImage:

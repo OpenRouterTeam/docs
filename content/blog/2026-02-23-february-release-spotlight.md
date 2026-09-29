@@ -1,6 +1,7 @@
 ---
 title: "February Release Spotlight"
 date: "2026-02-23T00:00:00.000Z"
+updated: "2026-06-24T16:29:34.000Z"
 author: "OpenRouter"
 teaser: "Benchmarks on model pages, a new free model router, and improved cost transparency between providers. "
 headerImage:

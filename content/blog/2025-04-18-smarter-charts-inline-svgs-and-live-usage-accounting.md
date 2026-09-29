@@ -1,6 +1,7 @@
 ---
 title: " Smarter Charts, Inline SVGs, and Live Usage Accounting"
 date: "2025-04-18T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Smarter analytics, smoother previews, and instant cost visibility—all now live on OpenRouter. "
 category: "announcements"

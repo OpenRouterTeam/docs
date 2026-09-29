@@ -1,6 +1,7 @@
 ---
 title: "Human-in-the-Loop Tools for the Agent SDK"
 date: "2026-05-08T12:00:00.000Z"
+updated: "2026-09-24T21:04:19.000Z"
 author: "Kenny Rogers"
 teaser: "Human-in-the-loop tools in the OpenRouter Agent SDK let your agent auto-resolve routine decisions and pause for human input on high-stakes ones, with two hooks and zero loop-management code."
 headerImage:

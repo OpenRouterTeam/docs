@@ -1,6 +1,7 @@
 ---
 title: "How to Enforce AI Data Residency Without Building Local Infrastructure"
 date: "2026-06-22T00:00:00.000Z"
+updated: "2026-09-24T18:00:31.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "Enforce AI Data Residency at the Routing Layer"

@@ -69,6 +69,7 @@ tilt trigger fake-provider
 tilt trigger gcp-batch-api
 tilt trigger cfw-batch-api
 tilt trigger dataflow-async-jobs     # writes async_jobs rows into the Spanner emulator
+tilt trigger dataflow-batch-billing   # settles incremental billing chunks so jobs reach completed
 tilt trigger redis
 tilt trigger serverless-redis-http   # without it every submit 429s
 tilt trigger dev-fs-logs             # request evidence under services/dev-fs-logs/.logs/
@@ -136,7 +137,7 @@ directly — auth, header verification, internal-token signing and rate limiting
 only exist there:
 
 ```bash
-curl -sS -X POST http://127.0.0.1:8800/api/beta/batches \
+curl -sS -X POST http://127.0.0.1:8800/api/v1/batches \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"endpoint":"/v1/chat/completions","model":"openai/gpt-5-nano",
@@ -146,6 +147,13 @@ curl -sS -X POST http://127.0.0.1:8800/api/beta/batches \
 Internal-only behavior needs a key whose entity is in `INTERNAL_ENTITY_IDS`
 (`packages/routing/helpers/constants.ts`); create that key locally in
 `api_keys` — never edit seed files.
+
+To drive a `gcp-batch-api` route that the ingress does not mount yet (a lower
+stack layer), sign the `x-openrouter-internal-auth` token yourself with the
+`INTERNAL_AUTH_SIGNING_KEY` from `services/cfw-api/.dev.vars` and include the
+caller's `workspaceId` (read it from the seeded key's `api_keys.workspace_id`);
+a token without it is rejected with `400 No active workspace resolved for this
+request.` before any route logic runs.
 
 ### Evidence
 
@@ -216,6 +224,8 @@ Requirements and conventions:
   `is_byok_only=true`, so the public-key suite gets a 400 `does not have a
   :batch endpoint`. Flip the flag for the run, refresh the model caches on
   both `cfw-batch-api` and `gcp-batch-api`, and restore it afterwards.
+- The per-job Durable Object poller is LiveConfig-gated and off by default locally, so the happy path reaches finalize only through `POST /sweep`. The sweep skips rows younger than `BATCH_SWEEP_FRESHNESS_SECONDS` (default 600), which is longer than the test's 60s wait. The Tiltfile exports `BATCH_SWEEP_FRESHNESS_SECONDS=1` on `gcp-batch-api`; a run that logs `sweep found 0 candidates, published 0` means that override is missing.
+- `callFakeBatchResource` (delete e2e) authenticates with `FAKE_PROVIDER_API_KEY`, defaulting to `sk-fake-batch-local`. Tilt starts the fake provider with the Infisical value, so export that variable from `services/cfw-api/.dev.vars` before the run or the assertions read 401.
 - Probe the stack at collection time and `describe.skipIf` with a `[WARN]`
   naming the unreachable services — the suite must stay green in
   environments that only boot cfw-api (`findUnavailableBatchServices` in
@@ -236,6 +246,16 @@ Requirements and conventions:
 
 Re-run the relevant tests after **every** push that changes behavior, not
 just at PR creation ([`e2e-testing`](../e2e-testing/SKILL.md)).
+
+## E2E finalize takeover (ECO-4064)
+
+`tests/e2e/api/batches/finalize-takeover.test.ts` proves the Cloud Run finalize takeover path against the real local stack: a first finalize execution dies after acquiring the durable journal claim, the sweep reclaims the stale claim with a new `finalize_generation`, a second execution finishes, and billing settles exactly once. A clean control batch runs first so generation IDs and the settled charge can be compared byte for byte.
+
+- Failure injection is the `x-batch-finalize-failpoint: park-at-first-fence` header on `POST /finalize-job` (`services/batch-api/src/finalize/finalize-failpoint.ts`). It parks the first lease renewal until the journal shows a newer generation, so the worker "dies" after the claim and before any terminal or billing write. Only the `dev-all` role mounts the header reader (`services/batch-api/src/app.ts`); production roles ignore the header, and `app.test.ts` pins that.
+- The test drives the two finalize deliveries by hand (pull the `batch-finalize` emulator message, POST it as the push envelope, same as `runSubmitStage`) and reclaims the stale claim by backdating `dispatched_at` in the GCS journal past `FINALIZE_DISPATCH_STALE_MS` and then calling `POST /sweep`. Journal helpers live in `finalize-takeover-helpers.ts`.
+- Local sweep eligibility needs `BATCH_SWEEP_FRESHNESS_SECONDS=10` on `gcp-batch-api` (set in the Tiltfile). The production default of 600s assumes the Durable Object poller, which is off locally, so without the override the sweep reports zero candidates and every batch e2e times out with no finalize message.
+- The journal in the local billing mode carries `attempted_generation` and `attempt_count` but no `billing_proof`. Assert on the generation fields plus the settled charge, not on the proof.
+- Negative proof: drop the `isCurrentExecution` check in `readOwnedJournal` (`services/batch-api/src/finalize/finalize-journal-schema.ts`), `tilt trigger gcp-batch-api`, rerun. The stale worker then returns `finalized: true` and step 6 fails. Restore the file afterwards.
 
 For a new provider, the fake upstream comes from the
 [`fake-batch-provider`](../fake-batch-provider/SKILL.md) phase — land it

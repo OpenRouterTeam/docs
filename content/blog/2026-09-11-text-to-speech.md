@@ -1,6 +1,7 @@
 ---
 title: "OpenRouter Text-to-Speech: API Tutorial in 5 Minutes"
 date: "2026-09-11T00:00:00.000Z"
+updated: "2026-09-24T23:03:15.000Z"
 author: "OpenRouter"
 category: "tutorials"
 metaTitle: "OpenRouter Text-to-Speech: API Tutorial in 5 Minutes"

@@ -27,6 +27,7 @@ the local cfw-stt-api worker.
    ```bash
    tilt trigger stt-api && tilt wait --for=condition=Ready uiresource/stt-api
    ```
+   If the worker needs the real `OPENAI_API_KEY`, start it as described in setup step 1 instead.
 4. **dev-fs-logs running** — for log verification
 
 #### Which worker handles what
@@ -56,20 +57,23 @@ does not exist, copy from cfw-api:
 cp services/cfw-api/.dev.vars services/cfw-stt-api/.dev.vars
 ```
 
-**Important**: Verify that `OPENAI_API_KEY` in `.dev.vars` is a real key
-(not a placeholder like `...`). If it's a placeholder, replace it with
-the key from Infisical:
+The copied file carries the cfw-api `OPENAI_API_KEY` value, which might be a placeholder. Don't read the file to check, don't edit it, and don't write the real key into it. Instead, leave the file as it is and pass the worker only that one key from `/tests/e2e`, in memory. When a `.dev.vars` file exists, `wrangler dev` reads it and ignores the process environment even with `CLOUDFLARE_INCLUDE_PROCESS_ENV=true`, so the command below reads the same file through `--env-file` instead; on that path the process environment wins over the file, and `env -i` limits that environment to `PATH`, `HOME`, and the key, so no other host variable becomes a worker binding. Start stt-api yourself instead of running `tilt trigger stt-api`, mirroring the `stt-api` `serve_cmd` in the Tiltfile. Both listen on port `8792`, so stop the Tilt copy first. The standalone worker runs in the foreground, so give it its own shell:
 
 ```bash
-export INFISICAL_TOKEN=$(infisical login --method=universal-auth \
-  --client-id=${INFISICAL_CLIENT} --client-secret=${INFISICAL_SECRET} \
-  --silent --plain)
-OPENAI_KEY=$(infisical secrets get OPENAI_API_KEY \
-  --projectId="771b7bc0-6578-41b0-886e-9fcdb66e9173" \
-  --env=dev --path="/tests/e2e" --plain)
-sed -i "s|^OPENAI_API_KEY=.*|OPENAI_API_KEY=${OPENAI_KEY}|" \
-  services/cfw-stt-api/.dev.vars
+tilt disable stt-api
+source scripts/infisical/agent-auth.sh && infisical_auth \
+  && infisical_get /tests/e2e OPENAI_API_KEY STT_OPENAI_API_KEY \
+  && (cd services/cfw-stt-api && env -i PATH="$PATH" HOME="$HOME" \
+    CLOUDFLARE_INCLUDE_PROCESS_ENV=true OPENAI_API_KEY="$STT_OPENAI_API_KEY" \
+    bunx wrangler dev --env-file .dev.vars --port "${CFW_STT_API_PORT:-8792}" --inspector-port 0 \
+    --persist-to ../../.wrangler/shared-state \
+    --var CFW_PUBLIC_API_PORT:"${CFW_PUBLIC_API_PORT:-8793}" --var OTEL_OTLP_HTTP_PORT:"${OTEL_OTLP_HTTP_PORT:-4318}")
+unset -v STT_OPENAI_API_KEY
 ```
+
+The port defaults match the Tiltfile. In a worktree that has an `.env.worktree` file, set `CFW_PUBLIC_API_PORT` and `OTEL_OTLP_HTTP_PORT` in your shell to the values from that file before you run the command; Tilt reads `CFW_STT_API_PORT` only from the process environment, so it already matches. The worker is ready when `curl -sf http://127.0.0.1:8792/health` exits 0, which is the same probe that Tilt uses. The `unset` runs after Wrangler exits, so the key doesn't outlive the worker in a persistent shell. To hand the port back to Tilt afterwards, run `tilt enable stt-api && tilt trigger stt-api && tilt wait --for=condition=Ready uiresource/stt-api`; `enable` alone doesn't start a manual resource. The Tilt worker reads `.dev.vars` unchanged, so it has whatever `OPENAI_API_KEY` value that file already had.
+
+For the authentication and read rules, see [infisical-agent-auth](../infisical-agent-auth/SKILL.md).
 
 #### 2. Seed STT Models into KV
 
@@ -79,7 +83,7 @@ You may need to seed KV directly.
 
 **Option A: Try the cron first**
 ```bash
-curl -s http://127.0.0.1:8787/__scheduled
+curl -s http://127.0.0.1:8794/__scheduled
 ```
 Then check if KV is populated by making a test request.
 
@@ -102,6 +106,7 @@ in-memory `FetchDeduper` cache (5-minute TTL):
 ```bash
 tilt trigger stt-api && tilt wait --for=condition=Ready uiresource/stt-api
 ```
+If you started the standalone real-key worker from setup step 1, the Tilt resource is disabled and this command does nothing. Instead, stop the Wrangler process (press Control+C in its shell) and rerun the step 1 command.
 
 #### 3. Verify Setup
 
@@ -263,7 +268,7 @@ What you're looking for in the response:
 |---------|-------|-----|
 | "STT models not found in KV" | KV not seeded | Seed via wrangler or cron |
 | "Model X does not exist" (400) | KV cache stale | Restart stt-api to clear FetchDeduper |
-| "Provider returned 401" | Invalid OPENAI_API_KEY | Replace placeholder in `.dev.vars` |
+| "Provider returned 401" | Invalid OPENAI_API_KEY | Start the worker with the real key as in setup step 1 |
 | "Provider returned 400" | Malformed audio file | Check WAV header construction |
 | Prerequisite check fails | cfw-api not running at 8787 | `tilt trigger api` |
 | cfw-api unresponsive or a port remains occupied | Inspect the current `api` logs and listener; the symptom alone does not identify the cause | Use [kill-port](../kill-port/SKILL.md) for cleanup and restart with local-dev-env |
@@ -325,8 +330,14 @@ format tests, `errors.test.ts`, `helpers.ts` with `callTtsApi`).
 bun run dev dev-fs-logs
 
 # terminal 2
-cd tests/e2e && bun test api/tts
+cd tests/e2e && OPENROUTER_API_KEY=sk-or-v1-unlimitedkey bun run test:e2e api/tts
 ```
+
+Gotchas:
+
+- Run through `bun run test:e2e` (Vitest, the CI runner), not `bun test`. The inline snapshots are Vitest-formatted and fail under `bun test` on newline placement, and `bun test` stalls on the audio-returning tests until their timeout.
+- Set `OPENROUTER_API_KEY=sk-or-v1-unlimitedkey` explicitly. The e2e config prefers `OPENROUTER_API_KEY` over the seeded local key, so any other key in the shell environment turns every assertion into `401 User not found`.
+- If the worker is not on 8791, point the suite at it with `OPENROUTER_TTS_API_BASE=http://127.0.0.1:<port>`.
 
 ### Adding the new provider to e2e
 

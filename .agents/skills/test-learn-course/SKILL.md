@@ -1,11 +1,6 @@
 ---
 name: test-learn-course
-description: >-
-  Test the /learn course (learn-course-content.ts) locally through a single file,
-  without deploying. Simulates a coding agent + learner conversation over the
-  local course content, grades the transcript for teaching behavior, and can
-  reproduce lossy summarizing fetchers (the Hermes failure mode). Use when
-  changing the /learn course or evaluating whether it actually teaches.
+description: Test the /learn course locally without deploying by simulating and grading an agent-learner conversation. Use when changing or evaluating the course, including Hermes-style lossy summarizing fetchers.
 allowed-tools: Bash
 user-invocable: true
 ---

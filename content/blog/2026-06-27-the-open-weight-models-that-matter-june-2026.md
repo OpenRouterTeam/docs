@@ -1,6 +1,7 @@
 ---
 title: "The Open Weight Models that Matter: June 2026"
 date: "2026-06-27T00:00:00.000Z"
+updated: "2026-06-29T16:18:50.000Z"
 author: "Chris Clark"
 teaser: "A slew of compelling open-weight models have shipped from new players in both China and the US. As of June 2026, these are the four open-weight models that matter the most — and when to reach for each."
 headerImage:

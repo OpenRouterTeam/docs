@@ -1,6 +1,7 @@
 ---
 title: "AI Governance Checklist: Your LLM Architecture Comes First"
 date: "2026-06-22T19:00:00.000Z"
+updated: "2026-09-24T23:03:15.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "The AI Governance Checklist That Maps to Your Stack"

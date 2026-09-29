@@ -63,10 +63,9 @@ functions (SEC-309).
 
 Neither has an accepted in-repo remedy yet. Current-branch evidence of the
 open shape: the Mode 2 comment in
-`services/cfw-secret-vault/src/routes/resolve.ts` and its counterpart in
-`services/cfw-secret-vault/src/container/outbound-handler.ts` record that the
-route-level `isInjectableDestination` gate does not hold system-wide and that
-per-secret destination binding is the fix. The proposed remedy is the same in
+`services/cfw-secret-vault/src/egress/outbound-handler.ts` records that
+placeholders resolve for ANY destination the agent names, and that binding
+each secret to its permitted hosts at write time is the fix. The proposed remedy is the same in
 both incidents: bind the resource to its permitted destinations, tables, or
 functions when the operator writes it, and check the agent's request against
 that binding. A gate keyed on something the agent supplies is a routing
@@ -131,7 +130,7 @@ a fence-lookalike line and an instruction is proven to land inside the fence
 as data; copy `services/cfw-synapse/src/uses/review/untrusted.test.ts`. A
 vault or provisioner change that decides what an agent may reach ships a
 denial test for a destination, tenant, or secret the agent did not earn; copy
-`services/cfw-secret-vault/src/routes/resolve.test.ts` or
+`services/cfw-secret-vault/src/egress/egress-route.test.ts` or
 `services/cfw-intern-provisioner/src/clients/gcp/gcp-instance-metadata-strip.test.ts`.
 Report a missing test as `TEST GAP`, never as a vulnerability finding.
 

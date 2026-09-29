@@ -43,11 +43,11 @@ Create the adapter file. Follow this structure:
 
 ```ts
 import type { ErrorT } from '@openrouter-monorepo/instrumentation/error';
-import type { AsyncResult } from '@openrouter-monorepo/type-utils/result-monad';
+import type { AsyncResult } from '@openrouter-monorepo/lib-result';
 import type { OpenAIParams } from './openai';
 
 import { definedValues } from '@openrouter-monorepo/type-utils';
-import { isErr, ok } from '@openrouter-monorepo/type-utils/result-monad';
+import { isErr, ok } from '@openrouter-monorepo/lib-result';
 import { OpenAICompatibleInternalStreamAdapter } from './openai/internal-stream-adapter';
 
 // Define a Params type extending OpenAIParams with provider-specific fields
@@ -131,11 +131,9 @@ export const adapterFactory = {
 
 `IS_OPENAI_CHAT_FAMILY_ADAPTER` is an exhaustive `satisfies Record<AdapterName, boolean>` map, so adding a new `AdapterName` is a **compile error until you classify it here**. Set it to `true` if the adapter extends `OpenAICompatibleInternalStreamAdapter` (the default for OpenAI chat-completions-wire providers, including `VLLMOpenAIAdapter` and `EncodedImageOpenAIAdapter`), or `false` if it extends a base class with native `reasoning_details` support (Anthropic Messages, OpenAI Responses, Gemini, or any image/internal-stream-only adapter). A router-side test (`packages/router/plugins/normalize-request/get-default-reasoning-return-mechanism.test.ts`) asserts the map matches the set derived from the adapter class hierarchy, so a misclassification fails CI.
 
-### 4. Add mapping in `packages/providers/configs/get-adapter-class.ts`
+### 4. Adapter selection is data-driven, no code mapping
 
-Most providers use the default `adapterName` from `providerInfo` and do **not** need a special case in this file. Only add a `case` to the `switch (providerName)` block if the provider needs model-specific adapter selection (e.g., OpenAI routes different models to different adapters).
-
-For the typical case, the adapter is configured via the provider's `adapterName` field in the database — no code change needed here.
+An endpoint resolves its adapter as `provider_overrides.adapterName ?? providers.adapter_name` (`packages/routing/endpoints/constructor.ts`). There is no code switch: set the provider's `adapter_name` in the database for the default, and set `provider_overrides.adapterName` on an endpoint when a specific model needs a different adapter on the same provider (for example Claude models on Azure, Bedrock, or Vertex, and GPT models on Azure that speak the Responses wire). Nothing in code checks that the override is present, so an endpoint created without it runs on the provider default and fails at validation or its first request.
 
 ### 5. Write tests in `packages/router/adapters/${ADAPTER_FILE}.test.ts`
 
@@ -144,7 +142,7 @@ Create tests using `createMockAdapterFromEndpoint` and `assertOk`:
 ```ts
 import { Model } from '@openrouter-monorepo/models/id';
 import { createMockModelEndpoint } from '@openrouter-monorepo/providers/test/mock-endpoint';
-import { assertOk } from '@openrouter-monorepo/type-utils/result-monad';
+import { assertOk } from '@openrouter-monorepo/lib-result';
 import { describe, expect, it } from 'vitest';
 import { createMockAdapterFromEndpoint } from '../mocks/mock-adapter';
 import { ${PROVIDER_NAME}Adapter } from './${ADAPTER_FILE}';
@@ -193,10 +191,16 @@ Key testing patterns:
 bun run test packages/router/adapters/${ADAPTER_FILE}.test.ts
 ```
 
-If the new adapter also adds a `ProviderName`, regenerate the cfw-api zod guards or the `typecheck` CI job fails with `generated_zod_guards_are_stale`:
+Adding an `AdapterName` (or a `ProviderName`) changes the enum sets baked into the cfw-api zod guards. Regenerate them or the `typecheck` CI job fails with `generated_zod_guards_are_stale`:
 
 ```bash
 cd services/cfw-api && bun scripts/generate-zod-guards.ts
+```
+
+An OpenAI chat-family adapter also changes the reviewed membership snapshot, so the `unit` job fails on `openAiChatAdapterSet derivation > membership only changes via a reviewed snapshot diff` until you update and commit it:
+
+```bash
+bun test packages/router/plugins/normalize-request/openai-chat-adapter-set.test.ts --update-snapshots
 ```
 
 The `mcp-regen-check` CI job also fails until the MCP toolset picks up the new enum value. Follow the `add-mcp-tool` skill's 3-step regen (`bun run generate:openapi`, then `bun run regen` in `services/cfw-mcp`, then `bun test`) and commit `services/cfw-mcp/generated/`.
@@ -209,9 +213,8 @@ The `mcp-regen-check` CI job also fails until the MCP toolset picks up the new e
 | `packages/router/adapters/${ADAPTER_FILE}.ts` | New adapter class |
 | `packages/router/adapters/adapter-factory.ts` | Import + factory entry |
 | `packages/enums/openai-chat-family-adapters.ts` | Classify as OpenAI chat-family or not |
-| `packages/router/adapters/adapter-capabilities.ts` | Add to `openAiToolMessageAdapterNames` if the adapter class sets `acceptsOpenAiToolMessages` (allowlist, not exhaustive — enforced by the `openai-chat-adapter-set.test.ts` drift/snapshot test, not the compiler) |
+| `packages/router/adapters/adapter-capabilities.ts` | Classify the adapter's `ServerToolRehydrationWire` (`OpenAIToolMessages` if the class sets `acceptsOpenAiToolMessages`, `AnthropicMessages` / `GeminiFunctionCalls` for those hierarchies, otherwise `undefined`). Exhaustive record, compile error until added; `openai-chat-adapter-set.test.ts` checks it against the class hierarchy |
 | `packages/router/adapters/adapter-wire-shape.ts` | Add a `case` to the matching wire-shape switch (exhaustive via `satisfies never` in `default` — compile error until categorized) |
-| `packages/providers/configs/get-adapter-class.ts` | Only if model-specific routing needed |
 | `packages/router/adapters/${ADAPTER_FILE}.test.ts` | New test file |
 
 ## Canonical examples

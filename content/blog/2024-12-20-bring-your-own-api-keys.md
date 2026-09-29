@@ -1,6 +1,7 @@
 ---
 title: "Bring Your Own API Keys"
 date: "2024-12-20T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Combine your provider limits and/or cloud credits with OpenRouter, and unify your analytics. "
 category: "announcements"

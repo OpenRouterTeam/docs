@@ -7,8 +7,9 @@ auth token, and streams the request body straight through to the upstream
 service.
 
 This worker wires up auth, secrets, instrumentation, and routes requests to
-`/api/beta/batches` paths for the Batch API. The deploy/dev plumbing is verified
-and batch route forwarding is in place.
+`/api/beta/batches` and `/api/v1/batches` paths for the Batch API, with the v1
+prefix canonical. The deploy/dev plumbing is verified and batch route
+forwarding is in place.
 
 ## Architecture
 
@@ -38,13 +39,17 @@ It does not parse batch payloads, call providers, write GCS, publish Pub/Sub, or
 read Spanner. Those responsibilities live in `services/batch-api`; shared
 schemas/routes/adapters/skins live in `packages/batch`.
 
-Successful `GET /api/beta/batches` collection responses are cached at the edge
+The one exception is result delivery: when the `batch_direct_gcs_results` LiveConfig key is `{ "enabled": true }` (or the caller's billable entity id is in its `entity_allowlist`), a `GET /api/v1/batches/{id}` asks control for a results handoff. Control still runs the ownership, deletion, and payment checks, then returns the batch object without `results` plus the `output/results` URI, and the worker streams that object from GCS into `results` with a read-only OAuth access token minted from `BATCH_GOOGLE_APPLICATION_CREDENTIALS_JSON`.
+
+Successful `GET /api/v1/batches` collection responses are cached at the edge
 for ten seconds by default. Entries preserve the complete query string and are
 isolated by a SHA-256 digest derived from the caller's Authorization header and
 authenticated entity/workspace scope; raw API keys and identity values are
 never included in cache keys. Set `BATCH_LIST_EDGE_CACHE_TTL_SECONDS` to an integer
 from 1 through 60, or set it to `0` to disable caching. Clients receive
-`Cache-Control: private`; errors, submits, and individual batch reads are never cached.
+`Cache-Control: private`; errors, submits, deletes, and individual batch reads are never
+cached. A cached collection page is not purged by a `DELETE`, so a batch deleted within the
+TTL can still appear in a list for up to that window; its `GET` already returns `404`.
 
 ## Key Modules
 
@@ -79,12 +84,13 @@ same override (see [.dev.vars.example](./.dev.vars.example)).
 Exercise the full ingress -> Cloud Run hop:
 
 ```bash
-curl -i -X POST http://localhost:8800/api/beta/batches \
+curl -i -X POST http://localhost:8800/api/v1/batches \
   -H 'content-type: application/json' -d '{}'
 ```
 
-> Routes are mounted at `/api/beta/batches` during beta (reverts to
-> `/api/v1/batches` per OPE-5383).
+> The ingress mounts batch routes at both `/api/beta/batches` and
+> `/api/v1/batches`. The v1 prefix is canonical, and the beta prefix will be
+> retired later under OPE-5383.
 
 ## Commands
 

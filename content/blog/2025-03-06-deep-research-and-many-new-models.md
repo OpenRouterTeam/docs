@@ -1,6 +1,7 @@
 ---
 title: "Deep Research & Many New Models"
 date: "2025-03-06T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "The first deep research tool available through the OpenRouter API is live, with full citations directly in the API response. "
 category: "announcements"

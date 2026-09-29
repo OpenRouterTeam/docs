@@ -26,6 +26,98 @@ everything above it is unchanged and still works on its own.
 
 Add what you learn. Where this file and reality disagree, reality wins.
 
+## Before you trust a stack somebody left running
+
+**A `tilt up -- --interns` that has been up for hours is the most expensive
+state this stack has.** Both of its slow failures are silent, both leave
+`local-intern` answering `/health` with 200, and both leave `docker ps` showing
+every container up. Measured 2026-09-19 on a stack up 22 hours: every model
+call on the machine had been failing for hours, and nothing on the Tilt screen
+said so.
+
+Run these three first. They take seconds, and they are the difference between a
+hunt and a wasted morning.
+
+```bash
+. ./.env.worktree 2>/dev/null   # ports are per-worktree; without this you probe the wrong ones
+
+# 1. Is the install current? A lockfile bump on main breaks every worker that
+#    restarts after it, and the only symptom is `pending` in Tilt.
+[ bun.lock -nt node_modules ] && echo 'STALE -> bun install' || echo 'install current'
+
+# 2. Do the workers answer? `pending` is not `dead`, and Tilt never says dead.
+for p in ${CFW_API_PORT:-8787} ${CFW_PUBLIC_API_PORT:-21021} \
+         ${CFW_FRONTEND_API_PORT:-8795} 8796; do
+  printf '%-6s %s\n' "$p" "$(curl -s -m 5 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$p/health")"
+done
+
+# 3. Is the published tunnel hostname still a hostname?
+H=$(cat .dev/local-intern/api-tunnel-host 2>/dev/null); echo "host=${H:-<none>}"; dig +short "$H"
+```
+
+Each one maps to a failure that has actually happened here:
+
+**A stale install kills every worker that restarts.** `bun install` is not
+optional after main moves. The workers fail to bundle
+(`Could not resolve "@opentelemetry/core"`), Tilt reports them `pending` rather
+than failed, and `local-intern` stays green because the container was already
+running. On 2026-09-19 five workers were down this way — including `api`, where
+every model call lands. The reinstall alone brought four of them back.
+
+**A quick tunnel dies without cloudflared exiting.** Cloudflare revokes the
+registration, the `*.trycloudflare.com` name goes NXDOMAIN, and cloudflared
+logs `control stream encountered a failure while serving` and retries forever.
+Every model call then fails `VAULT_DESTINATION_NO_DNS_RECORDS` and retries
+until the turn is abandoned. `api-tunnel` now watches its own hostname and goes
+red instead (`api_tunnel_hostname_gone`), but a stack started before that fix
+will still sit there green and mute, so probe 3 stays worth running.
+
+**When the tunnel is replaced, the containers do not follow.** The hostname is
+read once, at container start, into `ORI_OPENROUTER_BASE_URL`. After any
+`tilt trigger api-tunnel`, restart the intern and re-create every slot, in this
+order, or they keep calling the hostname that just went away:
+
+```bash
+tilt trigger api-tunnel         # new hostname
+tilt trigger vault-secret-seed  # re-binds the seeded OpenRouter key to the new hostname
+tilt trigger local-intern       # base intern re-reads it
+bun run intern:slot down <slot> && bun run intern:slot up <slot> [--ori-source <checkout>]
+```
+
+The seeded `openrouter_api_key` is host-bound like a provisioned intern's: the vault substitutes it only for `openrouter.ai`, `us.openrouter.ai`, `eu.openrouter.ai` and the API tunnel hostname that was live when `vault-secret-seed` ran. Skip the re-seed and every model call sends the literal placeholder, and the vault logs `outbound_placeholder_secret_failed` with `error_code: 'not_found'` for the new hostname.
+
+**Probe with `-o /dev/null`, never a reusable file.** `curl -o /tmp/out` leaves
+the *previous* response in place when a connection fails, so a dead port prints
+the last healthy service's body next to its `000`. Five dead workers read as
+ambiguous for exactly this reason. And macOS has no `timeout`, so
+`timeout 30 curl ...` exits 127 and reads as a failure of whatever you were
+probing.
+
+## Testing a released version, with no registry access
+
+The two loops below build an ori *checkout*. To test a published release —
+"does the stable that shipped this morning work?" — make a worktree at its tag
+and point `ORI_SOURCE` at that:
+
+```bash
+gh release list --repo OpenRouterIncubator/ori --limit 5     # find the tag
+git -C ~/c0de/ori worktree add ~/c0de/ori-v0151 ori-monorepo-v0.15.1
+ORI_SOURCE=~/c0de/ori-v0151 tilt up -- --interns
+# or, against a stack someone else is running:
+bun run intern:slot up rel151 --ori-source ~/c0de/ori-v0151
+```
+
+This is the path to prefer even when `docker pull` works, and the only one that
+works when it does not: the registry is GAR, `gcloud` sessions expire, and a
+`docker pull` of `:stable` then fails with
+`error getting credentials`. `ORI_SOURCE` never touches the registry. Use an
+**unencoded** worktree path — the managed `.ori-worktrees` names `%2F`-encode
+the branch and the build cannot find its entry file.
+
+What you give up is the published bytes: a source build is stamped
+`0.0.0-local+<sha>` rather than the release version, and it is built for this
+machine's architecture only. The code is the tag's.
+
 ## Putting an unreleased ori build under test — pick a loop first
 
 Most of what you want from this skill is one of these two, so they are here
@@ -168,7 +260,11 @@ curl -s localhost:8889/metrics | grep ori_vault_egress
 
 ### Reading the local log file
 
-The collector's `file/logs` exporter writes every log record it receives to `.dev/otel/logs.jsonl`, one OTLP/JSON `ExportLogsServiceRequest` per line, rotated at 100 MB with three backups beside it, so it never holds more than 400 MB. The cfw-\* workers reach it through `packages/cloudflare/instrumentation/dev-log-exporter.ts`, which forwards the logger's development output as OTLP logs under the worker's Datadog service (`cfw-intern-provisioner`, `cfw-secret-vault`, `api`) and its statsd metrics to Prometheus on `:8889`. Fidelity gates read failure names from this file.
+The collector's `file/logs` exporter writes every log record it receives to `.dev/otel/logs.jsonl`, one OTLP/JSON `ExportLogsServiceRequest` per line, rotated at 100 MB with three backups beside it, so it never holds more than 400 MB. The cfw-\* workers reach it through `packages/cloudflare-worker-instrumentation/dev-log-exporter.ts`, which forwards the logger's development output as OTLP logs and its statsd metrics to Prometheus on `:8889`. Fidelity gates read failure names from this file.
+
+**Read the `service.name`, and know which question it answers.** A worker with a Datadog entry carries that name (`cfw-secret-vault`, `cfw-intern-provisioner`, `cfw-frontend-api`, `cfw-intern-api`); every other worker carries its own (`api`, `public-api`, `mcp`, …). Until ORI-2140 the second group all carried `api`, so `public-api` was indistinguishable from cfw-api and a census of the file read as "public-api exports nothing". It was exporting the whole time, under cfw-api's name.
+
+**A worker whose console shows a line the file does not has wedged its exporter, and `tilt trigger <resource>` is the fix.** Compare `tilt logs <resource>` against the file before concluding anything about a worker's telemetry: the two disagreeing is the signature, and it is isolate-scoped, so a restart clears it. Both exporters used to be able to lose a flush to the event that armed it and stay mute for the isolate's life with no warning — 143 minutes of silence from the span exporter (ORI-2001), 2h45m from the log exporter (ORI-2140). Both are fixed; the comparison is still the instrument that would name a third.
 
 ```bash
 jq -c '.resourceLogs[] | {service: (.resource.attributes[] | select(.key == "service.name") | .value.stringValue), body: [.scopeLogs[].logRecords[].body.stringValue]}' .dev/otel/logs.jsonl | tail
@@ -179,7 +275,8 @@ jq -c '.resourceLogs[] | {service: (.resource.attributes[] | select(.key == "ser
 `tilt up -- --interns` exports ori's own logs and metrics to the real Datadog org. Nothing else leaves the laptop:
 
 - **Traces stay in Jaeger.** The local pipeline samples nothing, so APM cost would scale with every laptop.
-- **Only `service:ori` is exported.** `filter/ori_only` in `dev/otel-collector-config.datadog.yaml` drops every record whose `service.name` is not `ori`. The workers emit statsd under production metric names, and many production monitors carry no `env:` filter, so a worker's records stay in the local file and Prometheus.
+- **Only the interns domain is exported.** `filter/interns_only` in `dev/otel-collector-config.datadog.yaml` passes ori's logs and metrics, plus the `cfw-secret-vault` and `cfw-intern-provisioner` logs (so a forced local failure reaches the Ori Health boards' logs under `env:local`, ORI-1962), and drops everything else. The workers emit statsd under production metric names, and many production monitors carry no `env:` filter, so a worker's metrics, and every other worker's logs, stay in the local file and Prometheus.
+- **Run outcomes do not reach Datadog.** ori's `agent_run` and `cli_error` events go through the local public-api and log as `service:api`, which the filter drops. So the Ori <harness>: Adoption dashboard never shows a laptop run, and Ori Interns: Health is pinned to `env:production`. Read `ori_agent_runs_total` on the collector's Prometheus port instead.
 - **Every record is `env:local`** (the collector upserts `deployment.environment`, and both containers stamp it through `OTEL_RESOURCE_ATTRIBUTES`) **and names you**: logs carry `@developer.id:<git config user.email>`, metrics the tag `developer.id` with `@` normalized to `_`.
 
 ```text
@@ -187,7 +284,7 @@ env:local service:ori @developer.id:you@openrouter.ai     # logs
 sum:ori_daemon_heartbeats{env:local,developer.id:you_openrouter.ai}.as_count()   # metrics
 ```
 
-The Tiltfile fetches `DD_API_KEY` from Infisical and writes it, with your git email, to the gitignored `.datadog-export.env` in `dev/` that `dev/docker-compose.otel.datadog.yaml` names as its `env_file`. An `env_file` rather than Tilt's process environment, because `writeDevVars()` copies that whole environment into every worker's `.dev.vars`, and putenv-ing a live Datadog key would spread it across the repo. Without Infisical access or a git email, Tilt prints one line saying why and the stack comes up local-only.
+The Tiltfile fetches `DD_API_KEY` from Infisical and writes it, with your git email, to the gitignored `.datadog-export.env` in `dev/` that `dev/docker-compose.otel.datadog.yaml` names as its `env_file`. An `env_file` rather than Tilt's process environment, so a live Datadog key stays with the collector container instead of reaching every worker that inherits Tilt's environment. Without Infisical access or a git email, Tilt prints one line saying why and the stack comes up local-only.
 
 ```bash
 OTEL_DATADOG_EXPORT=0 tilt up -- --interns   # local sinks only
@@ -231,6 +328,20 @@ Both containers set `ORI_TELEMETRY_ENDPOINT` to the local public-api (`http://ho
    "event":{"type":"turn.succeeded", ...}}`. A `turn.succeeded` carrying
    `generationIds` is a real model call through local cfw-api — cross-check it
    against a fresh directory under `services/dev-fs-logs/.logs/`.
+
+1. **Attach `ori tui` the way a user does**, through `intern-tunnel-edge`, the
+   local copy of the intern's Cloudflare tunnel and its ingress allowlist:
+
+   ```bash
+   ORI_DAEMON_TOKEN=${ORI_DAEMON_TOKEN:-dev-daemon-not-a-credential} \
+     ori tui --host http://seed-local.localhost:7071
+   ```
+
+   This is the command the intern page's Terminal access card copies after
+   Reveal token. A path the edge does not list answers an empty 404 there, as
+   it does on a real intern: `curl -s -o /dev/null -w '%{http_code}'
+   http://seed-local.localhost:7071/api/events` is `404`, while `/api/sessions`
+   is `401` from the daemon without the bearer.
 
 At this point you have a working intern. Everything below is about talking to
 it from the web UI, which needs a logged-in user and therefore more setup.
@@ -358,9 +469,14 @@ characters or composer features the tab lacks — attachments, modes, server
 tools, memory.
 
 The seeded `seed-local` and `seed-running` rows are `running`, which is what
-the tab requires: a non-running intern gets a note instead of a composer. Do
-not re-add routing metadata (e.g. `cf_tunnel_hostname`) to the seed fixture;
-`INTERN_DAEMON_ORIGIN_OVERRIDE` is what routes every row to the local daemon.
+the tab requires: a non-running intern gets a note instead of a composer.
+`INTERN_DAEMON_ORIGIN_OVERRIDE` is what routes every row to the local daemon,
+through `intern-tunnel-edge` at `http://seed-local.localhost:7071`, which
+applies production's tunnel ingress allowlist. `seed-local` carries
+`cf_tunnel_hostname: seed-local.localhost` only so the page can show it (the
+Infrastructure card and the Terminal access command); routing never reads it.
+
+Two running interns cannot exhaust the 30-turns-per-minute limiter (one turn per intern at a time, a short turn takes about 3 s). To hit it, clone `seed-running` into a few more `running` rows with `INSERT INTO interns SELECT ... FROM jsonb_populate_record(null::interns, to_jsonb(i) || '{"id": ..., "name": ..., "provisioning_slug": ...}')`, run six-wide parallel rounds, and delete the clones afterwards. The override routes the clones to the same daemon, no vault or runtime change needed. Naming a `session_id` of your own on the first prompt does not make later prompts steer into that turn (they get `409 busy`), so steering is not a shortcut here.
 
 ### Getting a session without a password
 
@@ -507,9 +623,24 @@ two of them invisible for structural reasons: nothing local routed by `Host`,
 and no local destination answered a `3xx`, so neither code path was reachable
 from a laptop at all.
 
-What is gated today:
+**The registry is the list; this page is not.** Print it, rather than trusting
+any table:
 
-| gate | the production defect a green stack would otherwise hide |
+```bash
+bun run services/cfw-secret-vault/scripts/local-fidelity/index.ts list
+```
+
+That prints every gate, whether it runs on every stack or only on request, and
+the production defect it catches — read straight off `gate-registry.ts`, so it
+is right the day someone adds one. A hand-copied table is not: this page listed
+12 of 20 gates before `list` existed, and every one of the 8 it omitted was a
+gate a reader never learned about.
+
+What follows is **not** that list. It is the subset whose *operation* is
+non-obvious — what the gate actually drives, what its control feeds it, and the
+outage each one was written after. Read it for the gate you are about to debug.
+
+| gate | how it works, and what it was written after |
 | --- | --- |
 | `intern-telemetry` | an intern whose telemetry never leaves the box — the sidecar reaches Datadog through OTLP or not at all, so a missing endpoint stays invisible until a monitor built on those series never fires |
 | `container-health` | a container failing its Docker healthcheck behind a green Tilt resource — two independent truths, and on a real VM the same mismatch reports the sidecar healthy whenever the AGENT's daemon is up |
@@ -519,6 +650,12 @@ What is gated today:
 | `vault-edge-in-path` | local egress reaching something other than the vault edge on 8822 — from inside the sidecar, the edge must refuse `Host: slack.com` with 403 and answer unauthenticated `/v1/egress` with 401, and its control aimed at cfw-api must see cfw-api's 404. On 2026-09-14 intern-api shared the edge's port and every sidecar egress call reached intern-api's 404 (ORI-1980) |
 | `vault-restart` | a vault deploy stranding the agent's own direct egress — the traffic class ori's retry layer does not cover |
 | `local-telemetry-error` | an ori failure logged at info like every other telemetry event, or at a status its `failure_kind` does not name, so `status:error` and Datadog Error Tracking miss faults or page on user mistakes |
+| `cancelled-run-outcome` | a cancelled run that reads as a failure on its trace — `ori.run.outcome:"cancelled"` was unreachable on the span while the metric emitted it for the same run, so a Datadog error filter returned failures AND everything anybody stopped. It starts a turn, cancels it at the first `assistant.text.delta`, and requires the exported `ori.run` span to carry `ori.run.outcome:cancelled` with `status.interrupted` and no error status; its control drives a turn to `turn.succeeded` and requires the gate to refuse it for not being cancelled. Not a startup gate: two real turns plus a sweep, a batch and a Jaeger index each. Run it by name (`local-fidelity gate cancelled-run-outcome`) or through `all`. A build without the fix reports BLIND, because `ori.run.outcome:cancelled` is unreachable there at all |
+| `one-shot-run-trace` | a one-shot command that exports no run trace at all — the ori builtin ends a run with `turn.succeeded` and never a session terminal, so every `ori code` run waited out a 30s settle window its own process outlived, and the ~100% loss sat documented in `otel-export.md` rather than tracked (ORI-2030). It runs one headless `ori code` turn inside the agent container and requires its `ori.run` span in Jaeger, reporting `ok` and not `ori.run.incomplete`; its control runs the same turn with `OTEL_EXPORTER_OTLP_ENDPOINT` emptied, which must leave no span. Not a startup gate. A build without the drain reports BLIND |
+| `tool-diagnostics-metadata` | a failed tool exporting its own output — a file's contents, a command's output, a database's rows — to Datadog, or exporting so little that the failure carries no tool, duration or code at all. Not on every stack: it arms `tool-failure` on the shared fake-provider and drives a real turn. The probe is the run's own tool output, read off the invoke stream, and the control attaches that text back to the record the run really exported and requires the gate to refuse it. Nothing local could force a failed tool result before ORI-2028, because the tag ori's diagnostic mirror handled (`tool.result.failed`) is one no first-party harness has emitted since the claude and pi harnesses were deleted |
+| `export-volume` | an ori whose audit stream exports one OTLP log record per streamed token, so the Health boards' ori logs are 97% noise and `ORI_LOG_LEVEL` cannot turn it down (ORI-2041) — it drives one turn in a session of its own and fails when that turn exported more than 40 OTLP log records, counted from the log file's offset when the turn started across both exporters (the audit stream carries `command_id`, the lifecycle exporter `ori.session.id`). Measured 2026-09-17: 104 records before the fix and 24 after. Not a startup gate. Its control has two arms, a live turn against a ceiling of one record and a preserved pre-fix capture in `fixtures/` |
+| `mcp-tool-call` | a local intern that cannot call a tool on an MCP server a member connected from the dashboard — it connects `mcp-fake` through frontend-api's `/start`, the fake's `/authorize` and `/callback` with a Clerk session for `seed-local`'s owner, waits for `mcp-servers-sync` to name it in `mcp.json` and for the vault's 60-second route cache, drives one turn calling `<key>__echo` with a nonce, and requires the fake's record to hold that nonce with the access token the fake minted for this connect. The fake refuses `/mcp` without that token, so the record exists only when the vault injected it. Its control disables the connection with `PATCH is_enabled:false`, waits for `mcp.json` to drop it, and requires the same assertion to refuse the turn for the missing call. Not a startup gate: about three minutes and one turn per half. Before ORI-2338 nothing local called a tool over a user-connected server: `drill:mcp-refresh` inserts its row with no vault origin |
+| `export-redaction` | an ori that exports a log attribute or a span attribute without redacting it, so the `cwd` and `traceAttributes` a caller hands `agent.invoke` leave the process verbatim while the message beside them is redacted (ORI-2026) — it plants a host-path canary in both, drives one turn, and requires it in neither the `service:ori` records nor the `ori.run` span, with `detail` and `gate.canary` still present reading `<user-path>` so a deleted field cannot read as a boundary that held. A canary in a tool result would have been vacuous: tool content logs at debug and never reaches the export. Not a startup gate: a turn plus the run trace's 30s settle. Both control arms are live, feeding each half the run id those records and that span do carry |
 
 **Adding one is a module beside them and a line in `gate-registry.ts`.** Not a
 new Tilt resource, not a new script to discover, and not an edit to the resource
@@ -898,6 +1035,71 @@ chat loop uses, so the injected value is one local cfw-api accepts; override it
 with `ORI_LOCAL_SEED_SECRET_VALUE` if you need a genuinely remote upstream to
 answer.
 
+### Acting identity (`--turn-identity`)
+
+`tilt up -- --interns --turn-identity` runs the stack the way production does once acting identity is on (ori RFC 0013, "Acting Identity"): the vault sidecar, not the agent's container, authenticates each inbound turn, and frontend-api signs every dashboard chat request so the sidecar can name who sent it. Without the flag nothing about the stack changes.
+
+What the flag does, all in the `Tiltfile`:
+
+- mints a LOCAL Ed25519 keypair into `.dev/local-intern/` (`local-invoke-keypair.ts`, git-ignored, never the production key) and hands the private half to `frontend-api` as `INTERN_INVOKE_SIGNING_KEY`;
+- gives `vault-sidecar` its turn key paths, the verify listener on `ORI_LOCAL_VAULT_VERIFY_PORT` (default `8081`), `ORI_DAEMON_TOKEN` and the public half as `ORI_INVOKE_PUBLIC_KEY`;
+- gives `local-intern` `ORI_TURN_VERIFIER_URL` and mounts the sidecar's `turn.pub` alone, read-only, after waiting for the sidecar to mint it.
+
+It needs a runtime image that has the verify listener (ori at or after `343c7b6cf`; `ori-runtime:alpha` once that build is published, or `ORI_SOURCE=<ori checkout on main>`). On an older image the sidecar mints no turn key and `local-intern` refuses to start after 30 seconds, naming `turn.pub`.
+
+Chat with the **`seed-local`** intern. The platform's signature binds the intern's id, this sidecar IS `seed-local`, and every intern's chat is routed to this one daemon, so a request for any other intern is signed for a different id and the sidecar refuses it. That refusal is the design working, not a bug in the stack.
+
+What to look for:
+
+- `tilt logs secret-vault`: `outbound_secrets_injected` carries `acting_user`. A dashboard turn reads `clerk:<your user id>`; a request outside any turn reads `-`; an older sidecar reads `absent`.
+- `tilt logs vault-sidecar`: a refused verification names its reason (`signature`, `stale`, `unauthorized`).
+- A bearer-only turn: POST `/api/invoke` on `localhost:$ORI_LOCAL_INTERN_PORT` with `authorization: Bearer $TOKEN`, where `TOKEN` is the local daemon token the `Tiltfile` hands `local-intern`, and a body of `{"type":"agent.invoke","commandId":"x","prompt":"hi"}`. It is admitted, because the bearer still works, and its egress reads `acting_user: -`, because the bearer names nobody.
+
+Slack is not covered locally: the sidecar gets no `SLACK_SIGNING_SECRET` from this stack.
+
+### Connecting an MCP server from the dashboard (ORI-2338)
+
+`--interns` runs an MCP server you can connect the way a member connects Linear, and delivers it to `local-intern` the way a VM gets it. A tool call then crosses the whole production path: the dashboard's OAuth connect, the vault origin and token it stores, the `mcp.json` delivery, ori listing the tools, and the vault injecting the token on egress.
+
+Three resources do it:
+
+- **`mcp-fake`** (`services/cfw-intern-provisioner/scripts/local-mcp-oauth-fake.ts`) is the provider: RFC 9728 and RFC 8414 metadata, `/register`, an `/authorize` that approves at once and redirects back, a `/token` that exchanges the code and rotates refresh tokens, and a Streamable HTTP `/mcp` with one tool, `echo`. `/mcp` refuses every request without an access token it minted, and the intern never holds that token, so a served `echo` means the vault injected it. It logs `mcp_fake_token_minted`, `mcp_fake_request_refused` and `mcp_fake_tool_called`, tokens as fingerprints, and appends the same to `.dev/local-intern/mcp-fake/record.jsonl`.
+- **`mcp-fake-tunnel`** gives it a public https hostname in `.dev/local-intern/mcp-fake-host`. The connect flow refuses a non-https server, its SSRF guard refuses loopback, and the vault refuses private ranges, so a loopback URL cannot work.
+- **`mcp-servers-sync`** (`services/cfw-intern-provisioner/scripts/local-mcp-servers-sync.ts`) does what the provisioner's push and a VM's `sync-mcp-servers-<bot>` timer do. Every 60 seconds it derives `seed-local`'s list with the production derivation and merges it into `.dev/local-intern/workspace/mcp.json` with the VM's own merge helper. The provisioner's push stamps GCE metadata, so without this nothing reaches the local intern.
+
+frontend-api's `SECRET_VAULT_URL` and key are pinned to this stack's vault, and under `--interns` so are `intern-provisioner`'s `INTERN_VAULT_EGRESS_URL` and key. `intern-provisioner` stays manual.
+
+Under `--interns`, frontend-api also runs with `--local-upstream localhost:<WEB_PORT>` (`CFW_FRONTEND_API_LOCAL_UPSTREAM`), so it sees each request as arriving at the web app, as it does in production, where both are `openrouter.ai`. The connect builds its OAuth `redirect_uri` from its own request URL. Without the flag that URL named frontend-api's port, and the callback, which does store the connection, left the browser on a JSON 404 at `localhost:8795/workspaces/...` instead of the Interns page. Measured 2026-09-23.
+
+By hand:
+
+1. `cat .dev/local-intern/mcp-fake-host`, then on the Interns page's **Connections** tab click **Add custom server** and enter `https://<that host>/mcp` as the Server URL, leaving Authentication on OAuth. **Continue** goes through the fake's consent, which approves at once, and lands back on the Connections tab with the server listed. **Test tools** on its card reports `1 tool found: echo`.
+2. Within two minutes `jq . .dev/local-intern/workspace/mcp.json` names it under a key like `<host with dots as _>`. `tilt logs mcp-servers-sync` prints `local_mcp_servers_synced` when it changes.
+3. Wait a minute after connecting (the vault caches host routes for 60 seconds, misses included), then ask `seed-local` in a new conversation on its Chat tab to use the echo tool on the MCP server you connected, naming it `<key>__echo`, with a word. It answers with the word, and `tilt logs mcp-fake` shows `mcp_fake_tool_called` with the same `token` fingerprint as the `mcp_fake_token_minted` line for its client.
+
+   Name the server in the prompt. ori exposes MCP tools through its `tool-search` tool rather than in the model's first tool list, so "use your echo tool" got "I don't have an echo tool" and a shell `echo` instead. A prompt of the form "reply with exactly what it returned" was refused by Anthropic's classifier as duplicating model outputs, after the call had already been made.
+4. Turning the connection off on the Connections tab removes the entry on the next sync, and the tool is gone on the next turn.
+
+Reading a failure:
+
+- `mcp_fake_request_refused` with `reason: no-bearer` or `unknown-token` means the call reached the fake without the minted token: the vault did not inject. Read `tilt logs secret-vault` for the request to the fake's host.
+- No refusal and no call means the intern never reached the fake: check `mcp.json` names it, and that the turn listed the tool.
+- ori does not start its own OAuth flow on a 401 from an MCP server here. An `mcp.json` entry for the fake with no connection behind it, so nothing injected, drew one refused `initialize`, and `tool-search` reported `MCP server "<key>" is unavailable: Streamable HTTP error: ... "invalid_token"` in under 200 ms (measured 2026-09-23 on `ori-runtime:alpha`).
+- The quick tunnel's hostname changes whenever `mcp-fake-tunnel` restarts, and the fake's tokens die with `mcp-fake`. After either, connect again.
+
+The `mcp-tool-call` gate drives the same path without a browser. It needs a development Clerk key, from `CLERK_SECRET_KEY` or read from Infisical (`/projects/web`, dev) with an Infisical session:
+
+```bash
+bun run services/cfw-secret-vault/scripts/local-fidelity/index.ts gate mcp-tool-call
+bun run services/cfw-secret-vault/scripts/local-fidelity/index.ts control mcp-tool-call
+```
+
+It connects the fake through `/start`, `/authorize` and `/callback` as the member who owns `seed-local` (replacing a live connection to the fake), waits for `mcp.json` and the route cache, runs one turn calling `echo` with a nonce, and requires the fake to have recorded that nonce with the token it minted for this connect. The control turns the connection off and requires the same assertion to fail. Both disconnect when they finish, and each takes about three minutes.
+
+To drive the token refresher against the connection: `tilt trigger intern-provisioner`, then `bun run drill:mcp-refresh --credential <id>` from `services/cfw-intern-provisioner`, with the id from the Connections tab or `GET /status`. `tilt logs mcp-fake` shows the `refresh_token` mint, the row's `last_refresh` reads `refreshed`, and the next `echo` call carries the new token's fingerprint. Disable `intern-provisioner` again afterwards: while it runs, every connect and every toggle makes frontend-api's push reach it, and the push mints a GCP token before it finds no VM.
+
+STDIO servers are not covered: their secrets reach a VM over its instance identity, which a laptop does not have.
+
 ### Running a plain `tilt up` alongside this
 
 Without `--interns` nothing above happens: the vault stays bound to
@@ -925,11 +1127,29 @@ curl -s -o /dev/null -w '%{http_code}\n' localhost:$PORT/no-such-path     # 404
 ```
 
 Those three are the whole smoke. Anything past them with a key is the
-`ori-code-api` gate's call (`services/cfw-intern-api/AGENTS.md`), and the
-interns sub-app registers middleware only, so even inside the gate you land
-on the catch-all 404. There are no lifecycle routes yet (ORI-1875), so this
-checks auth and the gate and nothing else. It does not read the `seed-local`
-rows and is not a replacement for that seed or for the chat loop above.
+`ori-code-api` gate's call (`services/cfw-intern-api/AGENTS.md`). The chat
+completion route (`POST /:internId/chat/completions`, ORI-1877) is now served;
+everything else under the prefix still ends at the catch-all 404 until the
+lifecycle routes (ORI-1875) land. Exercising the chat route end to end needs
+`tilt up -- --interns`, so it does not replace the seed or the chat loop above.
+
+## Testing ori's harness against this stack
+
+The daemon takes a whole turn over HTTP, so harness behaviour is testable without a browser: `POST /api/invoke` (see the smoke test above) streams the turn back as NDJSON.
+
+**Driving turns, reading the evidence, and telling a harness bug from one of this stack's local-only divergences is its own skill.** Read [`harness-bug-hunt`](../harness-bug-hunt/SKILL.md) before a run: it covers what a run costs, running scenarios with `bun run intern:drive` against your own slot, the manifest, the map from one turn to the request the provider saw, the bar a finding has to clear, and the traps that have taken this stack down. What follows is only what the stack itself does not tell you.
+
+**Read every port from Tilt.** With `bun run dev:ports on` nothing is on its default: Jaeger, OTLP and the workers all move, and only the intern stays on 7070. `tilt get uiresources -o json | jq -r '.items[] | "\(.metadata.name) \([.status.endpointLinks[]?.url] | join(" "))"'` lists them.
+
+**What one turn sends back.** A caller-chosen `sessionId` creates the session on first use, and later turns with the same id continue it — send `createSession: true` with an id you have just minted, or the daemon reads and decodes its whole event log first (ORI-2012). Every line wraps a `runtime.event`. A turn ends in exactly one of `turn.succeeded`, `turn.failed`, `turn.cancelled` or `turn.interrupted`. `turn.succeeded` carries `usage` (`generationIds`, `costUsd`, tokens) and `durationMs`; `turn.failed` carries `failure: { code, kind, stage, retryable, attempts, upstreamStatus, message }`. Retries appear as `retry.scheduled` and `retry.completed`, and `forceRollover: true` on a turn produces `compaction.started` and `compaction.completed` before it runs, with the continuation under a **new** session id.
+
+**`cwd` on an invoke is ignored for an intern.** The audit event records the `cwd` you sent, but `run.started` reports `/workspace` and every tool runs there. Two sessions on one intern share every file. Until that changes, give each test session its own directory in the prompt, and do not run two sessions that write the same file names at once — `intern:drive` does this for you with `{{cwd}}`.
+
+**A worker on bare `wrangler dev` needs `DEV_COLLECTOR_WRANGLER_VARS`.** It reads no `.dev.vars`, so without the var its dev log and span exporters post to 4318 and, with dev ports on, nothing arrives. The symptom is one `dev log exporter could not post to the local collector` warning in the resource's own log. `scripts/tilt-wrangler-dev-collector-port.test.ts` fails when a resource leaves it off.
+
+**`bun test <file>` is a name filter in Bun 1.4.** Pass `./<file>` when a check runs one test file, or it reports "had no matches" and exits non-zero.
+
+**Run a fidelity gate through Tilt.** `tilt trigger stack-fidelity`, then `tilt logs stack-fidelity`. Running `local-fidelity/index.ts gate <name>` from a plain shell uses the default ports, not the stack's, and fails on connection errors that are not there.
 
 ## When it misbehaves
 
@@ -1054,14 +1274,25 @@ there, then `bun run kill-ports` for remaining service listeners.
 
 ### Intern slots: your own intern on someone else's stack
 
-A slot is three things of your own attached to the running
-`tilt up -- --interns` stack: `openrouter-local-intern-<slot>`,
-`openrouter-local-vault-sidecar-<slot>`, and a `local-vault-edge.ts` process. It
-shares that stack's vault, cfw-api, tunnel, collector, database and seeded
-intern, so there is no second Tilt and no seed change.
+A slot is its own intern attached to the running `tilt up -- --interns` stack:
+`openrouter-local-intern-<slot>`, `openrouter-local-vault-sidecar-<slot>`, a
+`local-vault-edge.ts` process, and its own `https://<quick tunnel>/api/v1` front
+door. It shares that stack's cfw-api, collector and database, and by default its
+vault and intern-api, so there is no second Tilt.
+
+Every slot is a separate intern, `slot-<slot>`, in `seed-local`'s workspace and
+owned by the same member, created the way the provisioner creates one: an
+entity-owned OpenRouter key with no creator, recorded as
+`interns.openrouter_key_id` and stored in the slot intern's vault as
+`openrouter_api_key`, and a vault agent token derived for that intern. The key
+is derived from the vault signing secret and the intern id, so `up` after `down`
+lands on the same intern and the same key. Its secrets, rate limit and dashboard
+rows are its own, never `seed-local`'s. `seed-local` gets its own minted key the
+same way from `vault-secret-seed`, not the stack-wide `sk-or-v1-unlimitedkey`.
 
 ```sh
 bun run intern:slot up agent1 --ori-source ~/c0de/ori   # omit --ori-source to run the stack's image
+bun run intern:slot up agent1 --log-level debug         # omit --log-level to inherit the stack's
 bun run services/cfw-secret-vault/scripts/local-fidelity/index.ts check --slot agent1
 bun run services/cfw-secret-vault/scripts/local-fault.ts arm vault-5xx --slot agent1
 bun run intern:slot list
@@ -1071,24 +1302,126 @@ bun run intern:slot down agent1
 - `<slot>` matches `^[a-z0-9-]{1,20}$`. Run every command for a slot from the
   checkout that ran `up`: the state file is
   `.dev/local-intern/slots/<slot>.json` there.
-- The containers are the base stack's, cloned by `docker inspect`: same command
-  and env, with the proxy and vault-edge ports re-pointed at the slot's and
-  `ori.slot=<slot>` added to `OTEL_RESOURCE_ATTRIBUTES`. Every port is assigned
-  by Docker (`-p 127.0.0.1::<port>`) or the OS (the edge binds port 0) and read
-  back into the state file. Nothing derives a port.
+- **`--log-level <level>` sets `ORI_LOG_LEVEL` on both of the slot's containers**
+  (ORI-2046), which is what makes a level-sensitive change provable without
+  `docker rm` on the slot's container and a hand-written `docker run -e`. Omit it
+  and the slot inherits the base stack's level, which is ori's own `info` unless
+  someone set one. Measured 2026-09-17 on `c06cdb830` (ori#2771 in it), one turn
+  through `local-fidelity gate export-volume --slot`: **104** exported OTLP log
+  records at `debug`, 79 of them `assistant.text.delta`, against **24** and no
+  deltas at all with the flag omitted. A level ori does not know (`DEBUG`,
+  `verbose`) is refused rather than passed on, because ori repairs one to `info`
+  in silence and a quiet slot would read as evidence about your change.
+- Without `--provisioned`, the containers are the base stack's, cloned by `docker inspect`: same command and env, with the proxy and vault-edge ports re-pointed at the slot's, the slot's intern in `ORI_VAULT_AGENT_ID`, `ORI_VAULT_AGENT_TOKEN`, `service.instance.id` and `ORI_INTERN_ID`, its front door in `ORI_OPENROUTER_BASE_URL`, and `ori.slot=<slot>` added to `OTEL_RESOURCE_ATTRIBUTES`. Each container port is published on a free loopback port `up` picks from 30000-32767 (`-p 127.0.0.1:<host>:<port>`), outside both the Colima VM's and the Mac's ephemeral ranges, where outbound connections inside the VM can hold a port the Mac sees as free, the edge binds port 0 and the OS assigns it, and every port lands in the state file. Nothing derives a port.
+- A slot's containers may be stopped and started, or restarted, for break-it tests. Their host ports are fixed, so each comes back on the port the state file names and the agent still reaches its sidecar. A port Docker assigned moved on every start: a restarted sidecar came back on a new port while the agent's `HTTPS_PROXY` kept the old one, and the turn retried "Unable to connect" until it was cancelled.
 - A slot command never stops, restarts or re-claims the base stack's
   containers. `up` claims only `-<slot>` names, and refuses one that another
   checkout started; `down` removes only containers labelled
   `ori.local.slot=<slot>` with those names.
 - Vault faults armed with `--slot` fire on the slot's edge only. Provider
-  faults (`provider-429`, `provider-500`, `unknown-tool`) live on the one
+  faults (`provider-429`, `provider-500`, `unknown-tool`, `tool-failure`) live on the one
   shared fake-provider, and arming or disarming any fault clears it, so they
   reach the base stack and every slot alike.
-- Slots share the seeded intern's vault rate limit (6000 requests per minute).
+- `rate-limited` and `credential-missing` can be armed on a slot: the vault rate-limits per agent and every slot is its own agent, and `credential-missing` takes the slot intern's own key out of its vault and puts the same derived key back. Before slots had their own intern they were base-stack only, because each changed state every intern read.
 - A slot is never reaped. `intern:slot list` shows what is running; `down` it
   when you are done.
-- Linux runs the base stack with host networking, where Docker cannot assign
-  ports, so `up` refuses there.
+- Slots need Colima at 16 GiB or more. At the 8 GiB default, three slots plus an ori image build OOM-killed ClickHouse on 2026-09-16 and took the Lima port forwards down with it; `colima start --cpu 8 --memory 20` recovered it.
+- Linux runs the base stack with host networking, where Docker publishes no ports, so `up` refuses there.
+
+#### Its own base URL, routed the way openrouter.ai routes it
+
+The agent's `ORI_OPENROUTER_BASE_URL` is the slot's own quick tunnel, in front of
+`services/cfw-secret-vault/scripts/local-api-zone-router.ts`. In production Cloudflare sends every path
+cfw-intern-api's `routes` claim (`/api/v1/interns*`, `/api/v1/vault*`) to that
+worker and the rest to cfw-api; the router reads the same patterns out of the
+source's `services/cfw-intern-api/wrangler.toml`. So an intern calling its own
+vault listing through its normal base URL (`ori features add`'s preflight)
+reaches intern-api here as it does there, with the vault injecting the intern's
+own key. The stack's `api-tunnel` fronts the same router, pointed at
+`CFW_INTERN_API_PORT`, from its next start. A fresh quick-tunnel hostname is
+judged live at Cloudflare's resolver (1.1.1.1), the one the vault asks, not the
+laptop's, which caches the first seconds' NXDOMAIN and used to kill the tunnel.
+
+#### A branch's workers: `--web-source`
+
+```sh
+bun run intern:slot up v1 --web-source ~/c0de/ow-my-branch          # vault, intern-api, tunnel edge, frontend-api
+bun run intern:slot up v1 --web-source ~/c0de/ow-my-branch --web    # and its web app
+bun run intern:slot dashboard v1                                    # URLs for the slot's intern, and how to sign in
+```
+
+`up` reads the command the stack's Tilt is running for `secret-vault`,
+`intern-api`, `intern-tunnel-edge`, `frontend-api` (and `web`) with
+`tilt get cmds`, moves every port the stack uses to one allocated for the slot,
+and runs it from the web source, so every Infisical read and every pin is Tilt's
+own. They share the stack's Postgres and `.wrangler/shared-state` (the source's
+is made a link to the stack's; a real directory there is refused, not moved).
+The slot's vault edge, intern-api and frontend-api all point at the branch's
+vault; the branch's intern-api and frontend-api dial the daemon through the
+branch's tunnel edge, whose ingress rules are the branch's; the slot's front door
+routes the intern-api paths to the branch's intern-api. Nothing on the stack
+restarts. `down` stops all of it. Run `bun install` in the source first; `up`
+runs the source's `turbo run compile` itself. `intern:slot daemon <slot> GET
+/api/features` reaches the daemon through that edge, so a path the branch's
+ingress does not forward answers the edge's 404.
+
+#### A provisioned slot: `--provisioned`
+
+```sh
+bun run intern:slot up p1 --provisioned --web-source ~/c0de/ow-provisioner-branch
+bun run intern:slot up p1 --provisioned --provisioner-source ~/c0de/ow-provisioner-branch --web-source ~/c0de/ow-vault-branch
+bun run intern:slot restart p1 --image us-central1-docker.pkg.dev/ext-interns-spawner-000/interns/ori-runtime:stable
+```
+
+The slot's agent is started from the startup script the provisioner source
+renders (`--provisioner-source`, else `--web-source`, else the stack's checkout)
+for the slot's intern, with `render-startup-script.ts`, the way a VM gets it:
+
+- its env is the rendered `/etc/<bot>/env`, and the sidecar's the rendered
+  `/etc/vault-tunnel-<bot>/env`, with only the laptop's transport put in place of
+  the VM's (proxy host and port, `NO_PROXY`, the base URL, the OTLP endpoint);
+- the workspace is built by the script's own `docker run`s from
+  `prepare-features-volume` and `vendor-feature-catalog`, at `/workspace/<bot>`;
+- `ori-<bot>.service`'s `ExecStartPre` lines run in order with their `-`
+  prefixes, under one `TimeoutStartSec` budget for the whole start the way
+  systemd applies it, and a start that runs out fails even inside a `-` line;
+- then its `ExecStart` runs as the slot's container, published instead of on
+  the host network.
+
+VM paths are re-rooted in `.dev/local-intern/slots/<slot>/` (`workspace/`,
+`vm/`, `vault-ca/`) and the VM's loopback CONNECT port becomes the slot's
+published one; everything else is the unit's. `unit-start.json` there records
+every pre-start line, its exit and its output. `restart --image <ref>` (or
+`--ori-source`) is an image swap: it rewrites the unit's `EnvironmentFile` and
+runs the kept unit again, without re-running the startup script, as
+`sync-runtime-image` does. Timers, cloudflared, the `/var/lib/interns` remount and
+the image pull are VM-only and do not run.
+
+#### Fixtures
+
+```sh
+bun run intern:slot secret v1 set weather_token --value v --hosts api.weather.gov            # intern scope, entity spelling
+bun run intern:slot secret v1 set region --value us --scope shared --spelling workspace      # workspace-shared, UUID spelling
+bun run intern:slot secret v1 list
+bun run intern:slot feature v1 add file:./fixtures/weather                                   # ori features add, in the container
+bun run intern:slot feature v1 stage-broken broken-one                                       # a feature whose entry throws
+bun run intern:slot daemon v1 POST /api/schedules/opsdemo/trigger                            # run a schedule, and its operation()
+bun run intern:slot exec v1 -- ori operations
+bun run intern:slot up v1 --agent-env ORI_DEV_WATCH_POLL=                                    # KEY= removes: ori's OS watcher
+bun run intern:slot up v1 --fresh                                                            # start from an empty workspace
+```
+
+A slot keeps its workspace across `down` and `up`, as a VM keeps its disk; `--fresh` clears it first, and every `intern:e2e` scenario uses it. Faults armed with `--slot` match the slot's own tunnel hostname, and `down` disables the slot intern's key until the next `up`. Inotify in the agent container sees only edits made inside it: a file written from the Mac into the bind-mounted workspace (virtiofs) raises no event, which is why slots poll by default.
+
+Secrets go through the vault's own `POST /v1/secrets` with its admin key (read
+from the environment, the vault's `.dev.vars` or Infisical dev). `hosts` omitted
+means null, which egress sends to any host.
+
+#### Scenarios: `intern:e2e`
+
+`bun run intern:e2e list` names the committed end-to-end scenarios and the
+sources each needs; `.agents/skills/prove-intern-change/SKILL.md` is how to use
+them.
 
 A stale checkout is the other half of this, and the stack says so itself: under
 `--interns` the Tiltfile prints the checkout, branch, HEAD and distance from
@@ -1100,6 +1433,10 @@ is invisible unless you already know to count.
 
 ## Related
 
+- `.agents/skills/harness-bug-hunt/SKILL.md` — driving real model turns at an
+  intern slot with `bun run intern:drive`, the oracles a hunt needs, and the
+  bar a harness finding has to clear. Use it for anything about ori's harness
+  behaviour; use this skill for the stack that behaviour runs on.
 - `.agents/skills/intern-local-e2e/SKILL.md` — the full provisioning path
   (wizard, Slack, vault, real GCP VM). Use it when the change under test is
   provisioning, Slack integration, or the VM lifecycle; use this skill when

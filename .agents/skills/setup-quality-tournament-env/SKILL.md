@@ -1,11 +1,6 @@
 ---
 name: setup-quality-tournament-env
-description: >-
-  Set up the local environment for quality-tournament wizard verification —
-  dev stack startup, dev Clerk login (via clerk-dev-signin-token), admin gate grant in
-  local Postgres, agent-browser connection, and evidence capture
-  (screenshots + ffmpeg screen recording; agent-browser record drops the
-  session). Sub-skill of verify-quality-tournament-wizard-ui.
+description: Set up the local environment for quality-tournament wizard verification (dev stack, dev Clerk login, admin gate grant, agent-browser, screenshot and ffmpeg evidence capture). Sub-skill of verify-quality-tournament-wizard-ui.
 allowed-tools: Bash,Edit,Read,Write,Browser
 user-invocable: true
 ---
@@ -39,8 +34,10 @@ agent-browser connect 29229
 ## Admin gate
 
 `labs/quality-tournament/page.tsx` calls `getAdminForPage()` and redirects
-non-admins to `/`. The check reads `users.is_admin` for the signed-in
-Clerk user from the local Postgres DB, cached for 60s.
+non-admins to `/`. The check resolves the staff flag for the signed-in
+Clerk user through the cookie-authenticated `/api/frontend/v1/private/users/current`
+route (cfw-frontend-api reads `users.is_admin` from the local Postgres DB),
+cached for 60s.
 
 ```bash
 # Get the signed-in Clerk user id
@@ -50,7 +47,7 @@ agent-browser eval "window.Clerk?.user?.id"
 bun run db:test-user --user-id <clerk_user_id> --admin true
 ```
 
-Wait 60+ seconds for the `is-admin-v2` cache entry to expire before
+Wait 60+ seconds for the admin gate cache to expire before
 reloading, then confirm you stay on the page:
 
 ```bash
@@ -87,6 +84,25 @@ Confirm `ffprobe -show_entries format=duration` reports a real duration
 before attaching.
 
 ## Notes
+
+### Synthetic source fixtures
+
+Prefer real locally seeded generations. If using a temporary synthetic source for a narrow UI check, keep its ID consistent across the initial transaction list, prompt previews, filtered-generation IDs, and prompt hydration. A visible row alone may still be unselectable: missing/non-replayable previews exclude it, and a zero filtered-generation count sets the selection limit to zero. Prevent background query refresh from replacing the temporary row while testing, then restore every fixture edit. Label source data as synthetic in evidence. Do not mock judge responses when claiming live judging.
+
+For skipped-judging progress regressions, stagger at least two replay shards: return a media comparison first and a text comparison later. Verify the driver `progressByPhase.judging` snapshots across both arrivals and completion, not only the final count. The redesigned progress bar can count evaluated prompt rows rather than judge calls. Label any read-only diagnostic overlay separately from product UI and restore its subscriber afterward.
+
+For Pairwise count checks, distinguish comparison tasks from underlying judge requests: each pair uses forward and position-swapped calls. The live summary multiplies completed comparison tasks by `JUDGE_CALLS_PER_PAIR`. The saved summary uses stored judgments. An unavailable judge can therefore produce one completed task, two displayed live calls, zero stored judgments, and zero saved calls. Capture the run plan, final judging progress, and replay shard count before diagnosing a count mismatch. Human judging uses no model calls. Verify pending and completed saved runs separately, including retained picks after reopening.
+
+### Decisions-backed judges
+
+Before spending tokens on a replay, verify the configured Decisions model exists in the local catalog, has Decisions output modality and a routable endpoint, and that the catalog has been published to local KV. The usual CSV seed may not yet include a recently launched model. Rerunning it cannot create missing entries. Start `cfw-decisions-api` on `CFW_DECISIONS_API_PORT` (default 8824) and retain its logs separately from Next/Tilt output. A response saying `Model <slug> does not exist` is catalog resolution failure, not proof of a missing provider key or failed provider authentication.
+
+For a successful UI run, correlate the fresh timestamp in `services/dev-fs-logs/.logs/default/decisions/fetch-request.log` with `submit.log` and `transaction-attempt.log`. Export only explicit safe fields (timestamp, provider, model, upstream URL, question/answer counts, status, success, retries). Tilt can replay older worker lines with new ingestion timestamps, so its `--since` filter alone is not sufficient to identify the current call. Three Jev criteria produce four questions including the fixed overall choice. Validate recording duration and representative frames with ffprobe/ffmpeg before sharing: a processed recording can be truncated even when raw segments retain the complete flow. Recover raw segments rather than rerun paid evaluations.
+
+#### Devin Secrets Needed
+
+- Existing local-dev/Clerk credentials described by the linked setup skills.
+- For a TypeSafe-backed judge, `TYPESAFE_AI_API_KEY` must be available to the Decisions worker. Confirm presence without printing its value.
 
 - The local `cfw-api` server uses `sk-or-v1-unlimitedkey` for auth — the
   tournament's SDK calls are authenticated via the Clerk session cookie,

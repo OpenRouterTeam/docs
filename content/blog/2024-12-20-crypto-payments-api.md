@@ -1,6 +1,7 @@
 ---
 title: "Crypto Payments API"
 date: "2024-12-20T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "The first way to script on-chain payments for any LLM 💸 "
 category: "announcements"

@@ -1,6 +1,7 @@
 ---
 title: "Best Embedding Models in 2026"
 date: "2026-09-23T00:00:00.000Z"
+updated: "2026-09-24T18:03:21.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "Best Embedding Models in 2026: RAG, Multilingual, Code, and Image"

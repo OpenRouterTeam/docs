@@ -1,6 +1,7 @@
 ---
 title: "Introducing Nitro and Floor Price Shortcuts"
 date: "2025-02-12T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "We're rolling out new sorting shortcuts to give you more control over how OpenRouter selects providers "
 category: "announcements"

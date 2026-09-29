@@ -1,6 +1,7 @@
 ---
 title: "Updates to Our Free Tier: Sustaining Accessible AI for Everyone"
 date: "2025-07-10T00:00:00.000Z"
+updated: "2026-06-11T20:49:47.000Z"
 author: "OpenRouter"
 teaser: "Introducing new models to sustain accessible AI inference. "
 category: "announcements"
