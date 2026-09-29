@@ -22,7 +22,7 @@ Add what you learn. Where this file and reality disagree, reality wins.
 | Requirement | Check | If missing |
 |---|---|---|
 | `cloudflared` | `which cloudflared` | `brew bundle` |
-| Infisical session | `infisical secrets --env=dev --path=/services/cfw-intern-provisioner` | `infisical login` |
+| Infisical session | `infisical run --env=dev --path=/services/cfw-intern-provisioner --include-imports=false --projectId=771b7bc0-6578-41b0-886e-9fcdb66e9173 -- true` exits 0 (don't list or print the values) | `infisical login`; agents follow [infisical-agent-auth](../infisical-agent-auth/SKILL.md) |
 | gcloud, authed | `gcloud auth list` | `gcloud auth login` |
 | Docker running | `docker ps` | start OrbStack/Docker |
 | Slack workspace you can install apps into | — | — |
@@ -45,6 +45,28 @@ bun run dev:up
 tilt trigger intern-provisioner
 tilt wait --for=condition=Ready uiresource/intern-provisioner --timeout=300s
 ```
+
+`intern-api` needs no trigger and no `--interns`: it is in the `apis` group
+with `frontend-api` and `public-api` and starts on every `tilt up`, deps
+included (`postgres-seed`, `api-kv-cron`, `worker-gates-seed`). It listens on
+`CFW_INTERN_API_PORT`, default `8823` (`dev:ports on` remaps it in
+`.env.worktree`, which your shell does not read, so source it first). Nothing
+in this skill's wizard path goes through it, but it is the quickest sign the
+stack is up before you open the wizard:
+
+```bash
+[ ! -f .env.worktree ] || . ./.env.worktree
+PORT=${CFW_INTERN_API_PORT:-8823}
+curl -s localhost:$PORT/health                                            # 200 ok
+curl -s -o /dev/null -w '%{http_code}\n' localhost:$PORT/api/v1/interns   # 401, no key
+curl -s -o /dev/null -w '%{http_code}\n' localhost:$PORT/no-such-path     # 404
+```
+
+Do not confuse its `/health` on `8823` with the provisioner's
+`/api/v1/interns/health` on `8816`. The chat completion route (ORI-1877) is
+served, but the lifecycle routes (ORI-1875) are not, so the wizard and the
+seed in `services/cfw-intern-provisioner/AGENTS.md` remain the ways to create
+an intern.
 
 Follow [local-dev-env](../local-dev-env/SKILL.md) for service readiness. Tilt reads `.env.worktree` itself; a shell command such as cloudflared needs the matching port explicitly.
 
@@ -113,22 +135,22 @@ This does not survive re-provisioning, which re-mints a local key.
 | `Slack is not configured on this server` | `INTERN_DNS_ZONE` is unset. The text names `INTERN_SLACK_REDIRECT_BASE_URL`, which is fine. |
 | `cookie mint failed` | `INTERN_SLACK_INSTALL_SIGNING_KEY` unset (needs ≥32 chars). |
 | Clerk `host_invalid` at the OAuth callback | Web's dev proxy followed the worker's Clerk handshake 307 server-side, re-sending `host: localhost:<port>`. Fixed by `redirect: 'manual'` in `devCorsProxyRequest`. If it recurs, count your tunnels first. |
-| `enqueue failed … config_missing` | `INTERN_PROVISIONER_ENQUEUE_SECRET` differs between frontend-api and the provisioner. It lives under the *provisioner's* Infisical path, which frontend-api cannot read. |
-| `missing/invalid secrets: [...]` | The provisioner is starting without its Infisical bridge — check its `package.json` still has `x` + `dev`, and `services/cfw-intern-provisioner/scripts/dev.ts` still calls `writeDevVars()`. |
-| `INTERN_GCP_SERVICE_ACCOUNT_JSON must be valid JSON` | The stored value ends with a newline; `serializeDevVar` escapes it to a literal `\n` that `JSON.parse` rejects. Fixed by trimming in `writeDevVars`. |
+| `enqueue failed … config_missing` | `INTERN_PROVISIONER_ENQUEUE_SECRET` differs between frontend-api and the provisioner. It lives under the *provisioner's* Infisical path, which frontend-api cannot read. If `tilt logs frontend-api` shows the `could not read INTERN_PROVISIONER_ENQUEUE_SECRET` warning, the Tiltfile's Infisical read failed at startup: under a machine identity (`INFISICAL_TOKEN`) every `infisical secrets get` needs `--projectId`. |
+| `missing/invalid secrets: [...]` | The provisioner is starting without its Infisical bridge — check its `package.json` still has `x` + `dev`, and `services/cfw-intern-provisioner/scripts/dev.ts` still calls `wranglerDevEnv()`. |
+| `INTERN_GCP_SERVICE_ACCOUNT_JSON must be valid JSON` | The stored value ends with a newline that `JSON.parse` rejects. `buildWranglerDevEnv` trims the end of every Infisical value; check that the launcher still goes through it. |
 | `ORI_ADAPTER_UNAUTHORIZED` in Slack | Expected. See *The intern's own key*. |
 | `402 Insufficient credits` from a local call | Your local `credits` table is empty: `INSERT INTO credits (created_at, amount, clerk_user_id, note) VALUES (now(), 100, '<clerk_user_id>', 'local testing');` |
 
 ## How secrets reach a worker
 
-`wrangler dev` reads `.dev.vars` — not the shell, not Infisical. Each service
-bridges the gap itself:
+`wrangler dev` reads neither the shell nor Infisical on its own. Each service
+bridges the gap itself with a filtered in-memory environment (no `.dev.vars`):
 
 ```
 package.json "x"   → infisical run --path=/services/<svc> -- tsx
 package.json "dev" → bun run x scripts/dev.ts
-scripts/dev.ts     → writeDevVars()   # process.env → .dev.vars
-                   → wrangler dev
+scripts/dev.ts     → wranglerDevEnv()   # Infisical export → filtered child env
+                   → wrangler dev (zx({ env: wranglerEnv }))
 ```
 
 A service without that chain starts with **no secrets and no error saying so**.
