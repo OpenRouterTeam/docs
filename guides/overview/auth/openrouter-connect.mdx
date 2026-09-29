@@ -15,26 +15,26 @@ tag: Beta
 
 <Badge color="blue">Beta</Badge>
 
-OpenRouter Connect lets a platform provision OpenRouter for its own customers. Instead of asking each customer to sign up, add a payment method, and create keys, your organization creates a customer organization on their behalf and receives a management key scoped to it. You can then create API keys, set limits, and inspect usage for that customer from your own product.
+OpenRouter Connect lets a platform provision OpenRouter for its own customers. Instead of asking each customer to sign up, add a payment method, and create keys, your parent organization creates a customer organization on their behalf and receives a management key scoped to it. You can then create API keys, set limits, and inspect usage for that customer from your own product.
 
-Your customers configure model and provider access, budgets, and data policies in your product, and OpenRouter enforces those controls on your behalf and provides the trust and safety layer underneath. OpenRouter bills your organization, and you bill your customers.
+Your customers configure model and provider access, budgets, and data policies in your product, and OpenRouter enforces those controls on your behalf and provides the trust and safety layer underneath. OpenRouter bills your parent organization, and you bill your customers.
 
 Connect has three goals.
 
-- Give every customer their own OpenRouter organization, so usage and keys stay separate per customer while billing goes to your organization.
-- Let your platform create those organizations programmatically or from the dashboard, without a manual signup flow for each customer.
+- Give every customer their own OpenRouter organization, so usage and keys stay separate per customer while billing goes to your parent organization.
+- Let your platform create those customer organizations programmatically or from the dashboard, without a manual signup flow for each customer.
 - Hand your platform a management key for each customer organization, so your backend can manage that customer's configuration and API keys through the [Management API](/guides/overview/auth/management-api-keys).
 
 <Warning>
-Connect is not enabled by default. The OpenRouter team must manually grant the Connect entitlement to each organization that will create customer organizations. Until the entitlement is granted, the organization cannot view the Connect page or create customer organizations through the dashboard or the API. Contact your OpenRouter account team to request access.
+Connect is not enabled by default. The OpenRouter team must manually grant the Connect entitlement to each parent organization that will create customer organizations. Until the entitlement is granted, the parent organization cannot view the Connect page or create customer organizations through the dashboard or the API. Contact your OpenRouter account team to request access.
 </Warning>
 
 ## Requirements to use Connect
 
 - Your parent account must be an OpenRouter organization. Personal accounts cannot use Connect.
-- The organization must have the Connect entitlement, granted by OpenRouter.
+- The parent organization must have the Connect entitlement, granted by OpenRouter.
 - To use the Connect dashboard, you must be an admin of the parent organization.
-- To use the Connect API to create customer orgs, you need a [management API key](https://openrouter.ai/settings/management-keys) created in the parent organization.
+- To use the Connect API to create customer organizations, you need a [management API key](https://openrouter.ai/settings/management-keys) created in the parent organization.
 
 ## Terms
 
@@ -42,22 +42,31 @@ Connect is not enabled by default. The OpenRouter team must manually grant the C
 | --- | --- |
 | Parent organization | Your own OpenRouter organization. It holds the Connect entitlement and creates customer organizations. |
 | Customer organization | A dedicated OpenRouter organization for one of your customers, created by your parent organization. |
-| Parent management key | A management key created in your parent organization. It creates customer organizations. |
+| Connect management key | Any management key created in your parent organization. It creates customer organizations. |
 | Customer management key | A management key scoped to one customer organization, returned when that organization is created. It manages everything inside that customer organization. |
 
 ## How customer organizations work
 
-Each customer organization is owned by a managed user created from the owner email you provide. The organization keeps the customer name you provide, for example `Acme Corp`. When someone is signed in to a customer organization, the OpenRouter header shows a `Connect org · Your Organization` badge, where `Your Organization` is the name of your parent organization.
+Each customer organization is owned by a managed user created from the owner email you provide. The customer organization keeps the customer name you provide, for example `Acme Corp`. When someone is signed in to a customer organization, the OpenRouter header shows a `Connect org · Your Organization` badge, where `Your Organization` is the name of your parent organization.
 
-The customer name identifies the customer within your organization. Names are compared after trimming whitespace and ignoring case, so `Acme Corp` and ` acme corp ` refer to the same customer. Creating the same customer again never creates a duplicate. If a management key for that customer was already delivered, the request fails with `409` and the message "This customer organization already exists".
+The customer name identifies the customer within your parent organization. Names are compared after trimming whitespace and ignoring case, so `Acme Corp` and ` acme corp ` refer to the same customer. Creating the same customer again never creates a duplicate. If a management key for that customer was already delivered, the request fails with `409` and the message "This customer organization already exists".
 
 Usage in a customer organization is billed to your parent Connect organization. You do not need to add credits to each customer organization.
 
-Your parent management key creates customer organizations but cannot manage anything inside them. Use each customer management key for that. A customer management key is an ordinary management key for its customer organization. It cannot create further customer organizations. You can create more management keys inside a customer organization, for example to replace a lost or rotated key.
+Your Connect management key creates customer organizations but cannot manage anything inside them. Use each customer management key for that. A customer management key is an ordinary management key for its customer organization. It cannot create further customer organizations. You can create more management keys inside a customer organization, for example to replace a lost or rotated key.
 
-## Create an organization with the API
+## Create a parent organization in the dashboard
 
-Send a `POST` request to `/api/v1/organization` with your management API key.
+1. Sign in to OpenRouter and go to [Preferences](https://openrouter.ai/settings/preferences).
+2. In the **Organization** row, click **Create** and enter a name for your parent organization. If you already belong to an organization, the row shows **Manage** instead of **Create**. In that case, you can use an organization you are an admin of as your parent organization.
+3. Switch to the new parent organization.
+4. Ask your OpenRouter account team to grant the Connect entitlement to the parent organization. The [Connect page](https://openrouter.ai/settings/connect) shows "Page not found" until the entitlement is granted.
+
+## Create a customer organization with the API
+
+Create a [management key](https://openrouter.ai/settings/management-keys) while the parent organization is selected. Any management key created in the parent organization is a Connect management key.
+
+Send a `POST` request to `/api/v1/organization` with your Connect management key.
 
 ```bash
 curl https://openrouter.ai/api/v1/organization \
@@ -81,7 +90,7 @@ No other fields are accepted.
 
 ### Response
 
-A successful request returns `200` with the customer organization, the grant that links it to your organization, and a management key for the customer organization.
+A successful request returns `200` with the customer organization, the grant that links it to your parent organization, and a management key for the customer organization.
 
 ```json
 {
@@ -120,23 +129,23 @@ Use the returned management key to call the [Management API](/guides/overview/au
 | --- | --- |
 | `400` | The request body is invalid, for example a missing or empty `name` or an invalid `email`. |
 | `401` | The management key is missing or invalid. |
-| `403` | The key is not a management key, the parent account is not an organization, or the organization does not have Connect enabled. |
+| `403` | The key is not a management key, the parent account is not an organization, or the parent organization does not have Connect enabled. |
 | `409` | The request conflicts with existing state, for example the customer organization already exists and its management key was already delivered, an account already exists for the owner email, the customer organization was deleted, or provisioning for the same customer is already in progress. |
 | `429` | Too many requests. Wait and retry. |
 | `500` | Unexpected error. Retrying the same request is safe. |
 
-## Create an organization in the dashboard
+## Create a customer organization in the dashboard
 
-1. Sign in to OpenRouter and switch to the organization that has Connect enabled.
-2. Go to the [Connect page](https://openrouter.ai/settings/connect). If the page shows "Page not found", the organization does not have the Connect entitlement yet.
+1. Sign in to OpenRouter and switch to your parent organization.
+2. Go to the [Connect page](https://openrouter.ai/settings/connect). If the page shows "Page not found", the parent organization does not have the Connect entitlement yet.
 3. Click **New customer**.
 4. Enter the **Organization name** and the **Owner email**. The owner email creates the managed owner account for the customer organization.
 5. Click **Create organization**. You may be asked to verify your identity with multi-factor authentication first.
 6. Copy the management key shown after creation and store it securely. It cannot be retrieved again.
 
-The Connect page lists the customer organizations your organization has created.
+The Connect page lists the customer organizations your parent organization has created.
 
-## Provision the customer organization
+## Configure the customer organization
 
 Authenticate with the customer management key to call the [Management API](/guides/overview/auth/management-api-keys) as the customer organization. How you set up each customer organization depends on your product and your customer's use case.
 
@@ -148,6 +157,43 @@ Authenticate with the customer management key to call the [Management API](/guid
 <Note>
 Coming soon. API routes to register and manage your customers' end users are in development. Each end user will be able to have their own guardrails and budgets. Until these routes ship, identify end users with `external.user` on API keys and `user` on inference requests.
 </Note>
+
+### Create a customer organization API key
+
+Authenticate with the customer management key to create an API key in the customer organization. Set `external.user` to your identifier for the end user who will use the key.
+
+```bash
+curl https://openrouter.ai/api/v1/keys \
+  -X POST \
+  -H "Authorization: Bearer $CUSTOMER_MANAGEMENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Acme Corp production",
+    "limit": 100,
+    "limit_reset": "monthly",
+    "external": {
+      "user": "acme_employee_1042"
+    }
+  }'
+```
+
+The response returns `201` with the plaintext key in `key` and the key's metadata in `data`. `data.external_user` echoes the `external.user` value you set. Store `key` securely, because OpenRouter cannot show it again.
+
+```json
+{
+  "data": {
+    "name": "Acme Corp production",
+    "hash": "...",
+    "limit": 100,
+    "limit_reset": "monthly",
+    "external_user": "acme_employee_1042",
+    "workspace_id": "..."
+  },
+  "key": "sk-or-v1-..."
+}
+```
+
+Pass `workspace_id` to create the key in a specific workspace you created for the customer. The ID comes from the [create a workspace](/api/api-reference/workspaces/create-a-workspace) response.
 
 ## Send inference requests
 
@@ -181,11 +227,11 @@ Read usage per customer organization to bill your customers.
 
 ## Integration checklist
 
-1. Create an OpenRouter organization and ask the OpenRouter team to grant the Connect entitlement.
-2. Create a management key in the parent organization and store it in your secrets manager.
+1. Create a parent organization and ask the OpenRouter team to grant the Connect entitlement.
+2. Create a Connect management key in the parent organization and store it in your secrets manager.
 3. Build the flow in your product that creates a customer organization for each new customer.
 4. Store each customer management key securely, keyed by your customer identifier.
-5. Provision each customer organization with the workspaces, guardrails, BYOK credentials, and API keys it needs.
+5. Configure each customer organization with the workspaces, guardrails, BYOK credentials, and API keys it needs.
 6. Send inference requests with the customer organization's API key and set `user` to your end-user identifier.
 7. Read usage from responses, the Analytics API, or Broadcast to bill your customers.
 8. Pay your OpenRouter invoice.
