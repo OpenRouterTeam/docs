@@ -17,7 +17,7 @@ icon: map-location-dot
 
 In-Region Routing (IRR) keeps your AI workloads inside a designated geographic region. When you send a request through a region-specific base URL, the request is decrypted within that region and is only routed to provider endpoints in that region. Prompts and completions are processed entirely in-region and never leave it at any point in the request lifecycle.
 
-In-region routing is available for the European Union (EU) and United States (US) on the Business and Enterprise plans. Organization admins can upgrade to Business under **Account Type** in [Settings > Preferences](https://openrouter.ai/settings/preferences). For Enterprise, [contact our enterprise team](https://openrouter.ai/enterprise/form).
+In-region routing is available for the European Union (EU) and United States (US) on the Business and Enterprise plans. There is no setting to turn on: once your account is on one of these plans, you choose the region for each request by sending it to that region's base URL. Organization admins can upgrade to Business in [Settings > Manage plan](https://openrouter.ai/settings/manage-plan). For Enterprise, [contact our enterprise team](https://openrouter.ai/enterprise/form).
 
 ## Using In-Region Routing
 
@@ -232,6 +232,6 @@ OpenRouter's in-region guarantee covers everything OpenRouter controls: where yo
 
 ## Getting Started
 
-- Organization admins can upgrade to the Business plan under **Account Type** in [Settings > Preferences](https://openrouter.ai/settings/preferences). For Enterprise, [contact our enterprise team](https://openrouter.ai/enterprise/form).
+- Organization admins can upgrade to the Business plan in [Settings > Manage plan](https://openrouter.ai/settings/manage-plan). For Enterprise, [contact our enterprise team](https://openrouter.ai/enterprise/form). There is nothing to turn on afterward: send requests to `https://eu.openrouter.ai` or `https://us.openrouter.ai`.
 - Review [Sovereign AI](/guides/features/sovereign-ai) for combining in-region routing with ZDR and data collection controls
 - Configure [BYOK](/guides/overview/auth/byok) keys with region-appropriate deployments as described above
