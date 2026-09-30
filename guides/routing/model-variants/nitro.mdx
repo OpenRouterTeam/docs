@@ -37,4 +37,6 @@ Append `:nitro` to any model ID:
 
 Because priority tier endpoints are billed at priority rates, a `:nitro` request served by a priority endpoint is charged that endpoint's priority pricing. As always, billing follows the tier the provider actually serves: if the provider sheds the request to its default tier, you're billed the default rate. See [Service Tiers](/guides/features/service-tiers) for the full comparison of tier-selection options.
 
+`:nitro` does not admit `ultrafast` endpoints. To use OpenAI's [Ultrafast mode](https://developers.openai.com/api/docs/guides/ultrafast-mode) tier, set [`service_tier: "ultrafast"`](/guides/features/service-tiers) or name the `openai/ultrafast` endpoint slug in `provider.order` or `provider.only`.
+
 If you want throughput sorting without priority tier eligibility, set `provider.sort` to `"throughput"` instead of using `:nitro`.
