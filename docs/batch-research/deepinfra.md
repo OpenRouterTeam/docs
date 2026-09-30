@@ -165,13 +165,13 @@ Each factual claim carries one of those tags. Load-bearing `[capture]` claims na
 - [capture] `image_url: {url: "https://..."}` to a PNG on a public host succeeded on `Qwen/Qwen3-VL-30B-A3B-Instruct` (`live-multimodal-input.jsonl` line `image-url-001`, `live-multimodal-output.jsonl`).
 - [capture] A `data:image/png;base64,...` URL succeeded (`image-data-url-004`).
 - [capture] A URL serving HTML failed per row with `code: "400"`, message "Failed to download one or more images. Ensure URLs are reachable and serve a supported image MIME type (image/jpeg, image/png, image/webp, image/gif)." (`live-multimodal-error.jsonl`). An unreachable image URL failed with the same message (`live-multimodal-rejected-error.jsonl`).
-- [capture] The provider fetches the URL server-side and the failure is row-level, not batch-level. `batchAdapterSupportsImageUrls` can be `supported: true` for this adapter, with the supported MIME list above recorded for the docs matrix.
+- [capture] The provider fetches the URL server-side and the failure is row-level, not batch-level. `imageUrls` can be `supported: true` for this adapter, with the supported MIME list above recorded for the docs matrix.
 
 ## 16. Remote file and PDF URL inputs
 
 - [capture] `{type: "file", file: {filename, file_data: "https://.../x.pdf"}}` succeeded when the URL served `application/pdf` (`live-multimodal-input.jsonl` line `file-url-002`, `live-multimodal-output.jsonl`).
 - [capture] `file: {file_id: "https://..."}` failed per row with "file_id is not supported; send the PDF inline as file_data (data:application/pdf;base64,...) or as an https URL" (`live-multimodal-rejected-error.jsonl` line `file-url-003`). A URL not serving `application/pdf` failed with "Failed to download the PDF. Ensure the URL is reachable and serves application/pdf." (`file-url-alt-004`).
-- [capture] `batchAdapterSupportsFileUrls` can be `supported: true` provided the serializer emits the URL in `file_data`, never `file_id`.
+- [capture] `fileUrls` can be `supported: true` provided the serializer emits the URL in `file_data`, never `file_id`.
 - [unconfirmed] Non-PDF file types were not probed.
 
 ## 17. Native deletion

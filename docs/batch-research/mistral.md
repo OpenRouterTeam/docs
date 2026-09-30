@@ -515,22 +515,8 @@ none has an OpenRouter batch family.
   (`output-sad2-4.jsonl`), unlike an unfetchable `image_url`, which is a
   per-line 400. Whether that is a Mistral-side silent drop or a fetch of
   arXiv's HTML 404 page is **unconfirmed**.
-- Adapter switches: `image-url-support.ts:29-33` marks Mistral
-  `supported: false` with the comment "native batch image behavior is not
-  verified", but the live capture above verifies it works, see divergence D3.
-  `file-url-support.ts:27-29` returns `true` for Mistral, but admission also
-  requires the model to accept `file` input, `supports_multipart`, and
-  `features.supports_file_urls` (`resolve-batch-content-options.ts`), and
-  the generic content guard `assert-supported-batch-content.ts` rejects
-  `file`/document parts otherwise. Live: `file` parts failed admission on
-  `ministral-8b-2512` and `mistral-small-2603`
-  (`terminal-failed-file-url-*.json`), a Mistral-native `document_url` part
-  failed admission on every model (`terminal-failed-document-url.json`),
-  and a `file` part with a URL `file_data` on
-  `mistral-medium-3.5-20260430` was admitted and submitted upstream
-  (`batch_api.batch_submitted_upstream`, `in-progress-file-url-mistral-medium.json`)
-  but had not finished when this note was written, so the OpenRouter-served
-  result of a file URL is **unconfirmed**.
+- Public image URL re-captured on 2026-09-29 through the adapter's own lowering (`mistralInternalRequestToBatchInput`) and upload, submit, and poll functions against `https://api.mistral.ai` with `MISTRAL_API_KEY`: on `ministral-8b-2512` the `image_url` row returned 200 `Python` with 149 prompt tokens against 17 for the text-only control, and an unfetchable URL produced the same per-line 400 `invalid_request_file` / `3310` row in the error file. The job ended `SUCCESS` with `succeeded_requests: 2`, `failed_requests: 1` (**live capture** committed as `packages/batch/adapters/mistral/fixtures/live-image-url-*`, pinned by `image-url.golden.test.ts`; job and file ids are replaced with `*-test` placeholders and response body ids with `resp-TEST<nn>`, nothing else is edited).
+- Adapter declaration: `mistral/url-support.ts` marks Mistral `imageUrls` supported on the strength of these captures (D3, resolved). Text-only Mistral models are still refused before upload by the model modality check in `skins/image-input-capability.ts`. its `fileUrls` returns supported, but admission also requires the model to accept `file` input, `supports_multipart`, and `features.supports_file_urls` (`resolve-batch-content-options.ts`), and the generic content guard `assert-supported-batch-content.ts` rejects `file`/document parts otherwise. Live: `file` parts failed admission on `ministral-8b-2512` and `mistral-small-2603` (`terminal-failed-file-url-*.json`), a Mistral-native `document_url` part failed admission on every model (`terminal-failed-document-url.json`), and a `file` part with a URL `file_data` on `mistral-medium-3.5-20260430` was admitted and submitted upstream (`batch_api.batch_submitted_upstream`, `in-progress-file-url-mistral-medium.json`) but had not finished when this note was written, so the OpenRouter-served result of a file URL is **unconfirmed**.
 
 ## Divergences found between adapter and observed/documented behavior
 
@@ -571,12 +557,7 @@ none has an OpenRouter batch family.
   only if someone cancels the job in the Mistral console, since there is no
   public cancel route (section 10). Smallest fix: treat `cancelled` with
   `output_file_id` set like `completed` for artifact and billing purposes.
-- **D3. `image-url-support.ts` comment is stale.** It says Mistral's
-  native batch image behavior "is not verified"; `ministral-3b-latest`
-  processed two public image URLs in batch (**live capture**
-  `output-img-3.jsonl`). The `supported: false` decision may still be right
-  (fetch failures surface as per-line 3310 rows, and the Batch API is
-  text-only today) but the comment should cite this note.
+- **D3. Resolved 2026-09-29: image URLs are enabled.** The switch said Mistral's native batch image behavior "is not verified" while `ministral-3b-latest` processed public image URLs in batch (**live capture** `output-img-3.jsonl`). A fresh capture on `ministral-8b-2512` (section 14) is committed as a fixture and `mistral/url-support.ts` now declares `imageUrls` supported for Mistral. Unfetchable URLs remain per-line 3310 failures billed as failed rows by Mistral, the same as the sync API.
 - **D4. `failure_codes` can never populate.** `extractBatchFailureCodes`
   reads `errors[].code`; Mistral's `BatchError` is `{message, count}`
   (official docs:

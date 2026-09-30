@@ -423,7 +423,7 @@ Both supported natively on the chat wire, fetched server-side by xAI.
   (image_download_error=image_fetch_http_error): the image host returned
   HTTP status 404 … [WKE=invalid_image]`. **[capture]** Caveat: the
   *valid* image request never completed (see A4), so
-  `batchAdapterSupportsImageUrls` should stay unsupported until a valid
+  `imageUrls` should stay unsupported until a valid
   image probe finishes.
 - **Files/PDFs** — the field is `file.url`, **not** OpenAI's
   `file.file_url`; `file_url` is rejected per line with `FileContent must

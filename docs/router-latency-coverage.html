@@ -314,6 +314,8 @@ figure { margin: 0; display: flex; flex-direction: column; gap: 12px; }
 .tl { display: block; width: 100%; min-width: 980px; height: auto; }
 .tl .row-label { fill: var(--fg); font-family: var(--sans); font-size: 12.5px; }
 .tl .row-num { fill: var(--muted-fg); font-family: var(--mono); font-size: 11px; }
+.tl .row-phase { fill: var(--muted-fg); font-family: var(--mono); font-size: 10.5px; }
+.tl .row-phase.note, .tl .row-phase .note { font-family: var(--sans); font-style: italic; }
 .tl .reg-label { fill: var(--muted-fg); font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; font-weight: 600; }
 .tl .reg-label.w1 { fill: var(--grape-text); }
 .tl .mark-label { fill: var(--fg); font-family: var(--mono); font-size: 11px; font-weight: 500; }
@@ -372,8 +374,11 @@ td.ev code, td.why code { background: transparent; padding: 0; font-size: 11.5px
 td.ev code { display: block; }
 td.tk { white-space: nowrap; font-family: var(--mono); font-size: 12px; }
 td.tk .none { color: var(--muted-fg); }
+td.counted { min-width: 280px; }
+td.counted .expl, td.counted .gap { display: block; margin-top: 4px; }
+td.counted .gap b { color: var(--coral-text); font-weight: 600; }
 .edge-table { min-width: 1020px; }
-.ledger-table { min-width: 1120px; }
+.ledger-table { min-width: 1040px; }
 
 .chip {
   display: inline-block;
@@ -462,12 +467,13 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
     <p class="lede">A chat request to cfw-api passes through about 28 steps between the worker receiving it and the last background write. Router latency measures two windows of that path. <code>router_latency_v2</code> is everything the user waits for before the first provider dispatch, with nothing subtracted: guardrails, tools, parsing and routing models inside it are counted and labelled. <code>post_dispatch</code> subtracts the time we spend waiting on providers, tools and guardrails. This page puts every step on that timeline and marks whether it counts as OpenRouter time, gets subtracted, lands in the wrong bucket, or falls outside both windows.</p>
     <div class="verdict">
       <span class="label">Bottom line</span>
-      <p><code>router_latency_v2</code> is the whole wait before the first provider dispatch, guardrails, tools, parsing and routing models included; the breakdown labels them and nothing is subtracted. Values from before PLA-3058 subtracted that time, so they are not comparable. <code>post_dispatch</code> still subtracts provider, tool and guardrail time. For plain chat traffic, <code>router_latency_v2 + post_dispatch</code> is the best number we have. Across all traffic, 5 request paths emit no number at all. Our stream CPU overlaps the provider, so the delay it adds is reported separately as stream delay.</p>
+      <p><code>router_latency_v2</code> is the whole wait before the first provider dispatch, guardrails, tools, parsing and routing models included; the breakdown labels them and nothing is subtracted. Values from before PLA-3058 subtracted that time, so they are not comparable. <code>post_dispatch</code> still subtracts provider, tool and guardrail time. For plain chat traffic, <code>router_latency_v2 + post_dispatch</code> is the best number we have. Across all traffic, 4 request paths emit no number at all. A served response-cache hit never dispatches, so it is measured as its own <code>router_v2_cache_hit</code> series instead. <code>response_cache_hit</code> is <code>true</code> on that series and <code>false</code> on every <code>router_v2*</code> sample. Our stream CPU overlaps the provider, so the delay it adds is reported separately as stream delay.</p>
     </div>
     <div class="formula" role="region" aria-label="How the two numbers are computed">
 <pre><span class="fn">router_latency_v2</span> = firstUpstreamDispatchAtMs <span class="kw">-</span> startedAtMs   <span class="cm">// nothing subtracted</span>
 <span class="fn">post_dispatch</span>     = (lastByteToClientAtMs <span class="kw">-</span> firstUpstreamDispatchAtMs) <span class="kw">-</span> excluded   <span class="cm">// every surface that answers a client</span>
                     (provider returned <span class="kw">-</span> firstUpstreamDispatchAtMs) <span class="kw">-</span> excluded      <span class="cm">// batch submit, which has no client</span>
+<span class="fn">router_v2_cache_hit</span> = cachedResponseCompletedAtMs <span class="kw">-</span> startedAtMs <span class="kw">-</span> clientWaitMs   <span class="cm">// served response-cache hit, which never dispatches</span>
 <span class="fn">unexplained</span>       = router_latency_v2 <span class="kw">-</span> every recorded interval   <span class="cm">// reported, never subtracted; reads 0 once every await is wrapped</span>
 
 <span class="cm">excluded causes   </span><span class="str">upstream  retried_providers  parsing  tools  guardrails  routing_models  agent_loop</span>
@@ -494,7 +500,7 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
       <span class="out" style="flex: 2"></span>
     </div>
     <ul class="legend">
-      <li><span class="sw own"></span><span><span class="name">Counted, labelled</span><span class="count">18 steps</span></span><span class="desc">Counted in router latency and labelled: with an own phase, or before dispatch with the excluded cause (<code>guardrails</code>, <code>tools</code>, <code>parsing</code>, <code>routing_models</code>) that only <code>post_dispatch</code> subtracts.</span></li>
+      <li><span class="sw own"></span><span><span class="name">Counted, labelled</span><span class="count">18 steps, and part of row 8</span></span><span class="desc">Counted in router latency and labelled: with an own phase, or before dispatch with the excluded cause (<code>guardrails</code>, <code>tools</code>, <code>parsing</code>, <code>routing_models</code>) that only <code>post_dispatch</code> subtracts.</span></li>
       <li><span class="sw unattr"></span><span><span class="name">Counted, no label</span><span class="count">5 steps</span></span><span class="desc">Counted as OpenRouter time, but with no phase of its own. CPU-only steps fold into the next phase that awaits I/O; post-dispatch work shows only inside the <code>post_dispatch</code> total.</span></li>
       <li><span class="sw excl"></span><span><span class="name">Subtracted</span><span class="count">3 steps</span></span><span class="desc">Correctly removed from <code>post_dispatch</code> as provider or client time, as are tools, guardrails and agent-loop calls after dispatch. <code>router_latency_v2</code> subtracts nothing.</span></li>
       <li><span class="sw inflate"></span><span><span class="name">Counted, should not be</span><span class="count">0 steps</span></span><span class="desc">Third-party time counted as ours. Makes OpenRouter look slower.</span></li>
@@ -504,119 +510,161 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
 
     <figure>
       <div class="fig-scroll">
-        <svg class="tl" viewBox="0 0 1120 772" role="img" aria-label="Schematic timeline of 28 request steps across three regions: the router_latency_v2 window from the origin receipt of a relayed request, or the handler start, up to first provider dispatch, the post_dispatch window up to the last byte to the client, and work after it. Each step is coloured by how router latency classifies it.">
+        <svg class="tl" viewBox="0 0 1120 1216" role="img" aria-label="Schematic timeline of 28 request steps across three regions, with step 12 broken into three nested sub-rows: the router_latency_v2 window from the origin receipt of a relayed request, or the handler start, up to first provider dispatch, the post_dispatch window up to the last byte to the client, and work after it. Each step is coloured by how router latency classifies it and labelled with its Datadog phase names, or with why it has none.">
           <!-- regions -->
-          <rect class="r-w1" x="310" y="52" width="410" height="680"/>
-          <rect class="r-w2" x="720" y="52" width="290" height="680"/>
-          <rect class="r-out" x="1010" y="52" width="100" height="680"/>
+          <rect class="r-w1" x="310" y="52" width="410" height="1124"/>
+          <rect class="r-w2" x="720" y="52" width="290" height="1124"/>
+          <rect class="r-out" x="1010" y="52" width="100" height="1124"/>
           <text class="reg-label w1" x="530" y="20" text-anchor="middle">ROUTER_LATENCY_V2 WINDOW</text>
           <text class="reg-label w1" x="865" y="20" text-anchor="middle">POST_DISPATCH WINDOW</text>
           <text class="reg-label" x="1060" y="20" text-anchor="middle">OUTSIDE</text>
 
           <!-- row separators -->
-          <line class="rowline" x1="0" y1="84" x2="1110" y2="84"/>
-          <line class="rowline" x1="0" y1="108" x2="1110" y2="108"/>
+          <line class="rowline" x1="0" y1="96" x2="1110" y2="96"/>
           <line class="rowline" x1="0" y1="132" x2="1110" y2="132"/>
-          <line class="rowline" x1="0" y1="156" x2="1110" y2="156"/>
-          <line class="rowline" x1="0" y1="180" x2="1110" y2="180"/>
+          <line class="rowline" x1="0" y1="168" x2="1110" y2="168"/>
           <line class="rowline" x1="0" y1="204" x2="1110" y2="204"/>
-          <line class="rowline" x1="0" y1="228" x2="1110" y2="228"/>
-          <line class="rowline" x1="0" y1="252" x2="1110" y2="252"/>
+          <line class="rowline" x1="0" y1="240" x2="1110" y2="240"/>
           <line class="rowline" x1="0" y1="276" x2="1110" y2="276"/>
-          <line class="rowline" x1="0" y1="300" x2="1110" y2="300"/>
-          <line class="rowline" x1="0" y1="324" x2="1110" y2="324"/>
+          <line class="rowline" x1="0" y1="312" x2="1110" y2="312"/>
           <line class="rowline" x1="0" y1="348" x2="1110" y2="348"/>
-          <line class="rowline" x1="0" y1="372" x2="1110" y2="372"/>
-          <line class="rowline" x1="0" y1="396" x2="1110" y2="396"/>
+          <line class="rowline" x1="0" y1="384" x2="1110" y2="384"/>
           <line class="rowline" x1="0" y1="420" x2="1110" y2="420"/>
-          <line class="rowline" x1="0" y1="444" x2="1110" y2="444"/>
-          <line class="rowline" x1="0" y1="468" x2="1110" y2="468"/>
+          <line class="rowline" x1="0" y1="456" x2="1110" y2="456"/>
           <line class="rowline" x1="0" y1="492" x2="1110" y2="492"/>
-          <line class="rowline" x1="0" y1="516" x2="1110" y2="516"/>
-          <line class="rowline" x1="0" y1="540" x2="1110" y2="540"/>
+          <line class="rowline" x1="0" y1="528" x2="1110" y2="528"/>
           <line class="rowline" x1="0" y1="564" x2="1110" y2="564"/>
-          <line class="rowline" x1="0" y1="588" x2="1110" y2="588"/>
-          <line class="rowline" x1="0" y1="612" x2="1110" y2="612"/>
+          <line class="rowline" x1="0" y1="600" x2="1110" y2="600"/>
           <line class="rowline" x1="0" y1="636" x2="1110" y2="636"/>
-          <line class="rowline" x1="0" y1="660" x2="1110" y2="660"/>
-          <line class="rowline" x1="0" y1="684" x2="1110" y2="684"/>
+          <line class="rowline" x1="0" y1="672" x2="1110" y2="672"/>
           <line class="rowline" x1="0" y1="708" x2="1110" y2="708"/>
+          <line class="rowline" x1="0" y1="744" x2="1110" y2="744"/>
+          <line class="rowline" x1="0" y1="780" x2="1110" y2="780"/>
+          <line class="rowline" x1="0" y1="816" x2="1110" y2="816"/>
+          <line class="rowline" x1="0" y1="852" x2="1110" y2="852"/>
+          <line class="rowline" x1="0" y1="888" x2="1110" y2="888"/>
+          <line class="rowline" x1="0" y1="924" x2="1110" y2="924"/>
+          <line class="rowline" x1="0" y1="960" x2="1110" y2="960"/>
+          <line class="rowline" x1="0" y1="996" x2="1110" y2="996"/>
+          <line class="rowline" x1="0" y1="1032" x2="1110" y2="1032"/>
+          <line class="rowline" x1="0" y1="1068" x2="1110" y2="1068"/>
+          <line class="rowline" x1="0" y1="1104" x2="1110" y2="1104"/>
+          <line class="rowline" x1="0" y1="1140" x2="1110" y2="1140"/>
 
           <!-- markers inside post_dispatch -->
-          <line class="sub-boundary" x1="928" y1="52" x2="928" y2="740"/>
-          <text class="mark-label soft" x="924" y="752" text-anchor="end">upstream EOF, onComplete</text>
+          <line class="sub-boundary" x1="928" y1="52" x2="928" y2="1184"/>
+          <text class="mark-label soft" x="924" y="1196" text-anchor="end">upstream EOF, onComplete</text>
 
           <!-- window boundaries -->
-          <line class="boundary" x1="310" y1="50" x2="310" y2="732"/>
-          <line class="boundary" x1="720" y1="50" x2="720" y2="732"/>
-          <line class="boundary" x1="1010" y1="50" x2="1010" y2="732"/>
+          <line class="boundary" x1="310" y1="50" x2="310" y2="1176"/>
+          <line class="boundary" x1="720" y1="50" x2="720" y2="1176"/>
+          <line class="boundary" x1="1010" y1="50" x2="1010" y2="1176"/>
           <text class="mark-label" x="310" y="42" text-anchor="middle">startedAtMs</text>
           <text class="mark-label" x="720" y="42" text-anchor="middle">first dispatch</text>
           <text class="mark-label" x="1010" y="42" text-anchor="middle">last byte to client</text>
 
-          <!-- rows: labels -->
-          <text class="row-num" x="8" y="76">1</text><text class="row-label" x="34" y="76">Cross-region relay</text>
-          <text class="row-num" x="8" y="100">2</text><text class="row-label" x="34" y="100">Region-lock user lookup</text>
-          <text class="row-num" x="8" y="124">3</text><text class="row-label" x="34" y="124">Clerk cookie auth</text>
-          <text class="row-num" x="8" y="148">4</text><text class="row-label" x="34" y="148">Live-config read</text>
-          <text class="row-num" x="8" y="172">5</text><text class="row-label" x="34" y="172">Auth, router config, Router import</text>
-          <text class="row-num" x="8" y="196">6</text><text class="row-label" x="34" y="196">Request body read</text>
-          <text class="row-num" x="8" y="220">7</text><text class="row-label" x="34" y="220">HIPAA mirror dispatch check</text>
-          <text class="row-num" x="8" y="244">8</text><text class="row-label" x="34" y="244">Skin transform, request validation</text>
-          <text class="row-num" x="8" y="268">9</text><text class="row-label" x="34" y="268">Response-cache lookup</text>
-          <text class="row-num" x="8" y="292">10</text><text class="row-label" x="34" y="292">Preset resolution</text>
-          <text class="row-num" x="8" y="316">11</text><text class="row-label" x="34" y="316">Credit authorization</text>
-          <text class="row-num" x="8" y="340">12</text><text class="row-label" x="34" y="340">Model selection, incl. classifier LLMs</text>
-          <text class="row-num" x="8" y="364">13</text><text class="row-label" x="34" y="364">Guardrail plugins (4)</text>
-          <text class="row-num" x="8" y="388">14</text><text class="row-label" x="34" y="388">Bleep and tool-filter calls</text>
-          <text class="row-num" x="8" y="412">15</text><text class="row-label" x="34" y="412">Known-CSAM screen</text>
-          <text class="row-num" x="8" y="436">16</text><text class="row-label" x="34" y="436">File parsing, web search plugin</text>
-          <text class="row-num" x="8" y="460">17</text><text class="row-label" x="34" y="460">Subagent resume (server tools)</text>
-          <text class="row-num" x="8" y="484">18</text><text class="row-label" x="34" y="484">Pool charge, token estimate</text>
-          <text class="row-num" x="8" y="508">19</text><text class="row-label" x="34" y="508">Rate limit, spend guard</text>
-          <text class="row-num" x="8" y="532">20</text><text class="row-label" x="34" y="532">Request build, BYOK decrypt</text>
-          <text class="row-num" x="8" y="556">21</text><text class="row-label" x="34" y="556">Durable Object offload hop</text>
-          <text class="row-num" x="8" y="580">22</text><text class="row-label" x="34" y="580">Provider: first token to last token</text>
-          <text class="row-num" x="8" y="604">23</text><text class="row-label" x="34" y="604">Our stream CPU: parse, plugins, skin</text>
-          <text class="row-num" x="8" y="628">24</text><text class="row-label" x="34" y="628">Slow-client backpressure</text>
-          <text class="row-num" x="8" y="652">25</text><text class="row-label" x="34" y="652">Gap before a fallback provider</text>
-          <text class="row-num" x="8" y="676">26</text><text class="row-label" x="34" y="676">Final chunks, usage, skin flush</text>
-          <text class="row-num" x="8" y="700">27</text><text class="row-label" x="34" y="700">Post-response bookkeeping</text>
-          <text class="row-num" x="8" y="724">28</text><text class="row-label" x="34" y="724">waitUntil: ClickHouse, Stripe, usage</text>
+          <!-- rows: labels, then Datadog phase names or why there are none; 12a-12c are indented sub-rows of 12 -->
+          <text class="row-num" x="8" y="75">1</text><text class="row-label" x="34" y="75">Cross-region relay</text>
+          <text class="row-phase" x="34" y="89">relay</text>
+          <text class="row-num" x="8" y="111">2</text><text class="row-label" x="34" y="111">Region-lock user lookup</text>
+          <text class="row-phase" x="34" y="125">auth</text>
+          <text class="row-num" x="8" y="147">3</text><text class="row-label" x="34" y="147">Clerk cookie auth</text>
+          <text class="row-phase" x="34" y="161">auth</text>
+          <text class="row-num" x="8" y="183">4</text><text class="row-label" x="34" y="183">Live-config read</text>
+          <text class="row-phase note" x="34" y="197">no phase (folds into next)</text>
+          <text class="row-num" x="8" y="219">5</text><text class="row-label" x="34" y="219">Auth, router config, Router import</text>
+          <text class="row-phase" x="34" y="233">auth, bootstrap</text>
+          <text class="row-num" x="8" y="255">6</text><text class="row-label" x="34" y="255">Request body read</text>
+          <text class="row-phase" x="34" y="269">body_read</text>
+          <text class="row-num" x="8" y="291">7</text><text class="row-label" x="34" y="291">HIPAA mirror dispatch check</text>
+          <text class="row-phase note" x="34" y="305">no phase (folds into next)</text>
+          <text class="row-num" x="8" y="327">8</text><text class="row-label" x="34" y="327">Skin transform, request validation</text>
+          <text class="row-phase" x="34" y="341"><tspan class="note">folds into next · </tspan>private_catalog<tspan class="note"> with a grant or pin</tspan></text>
+          <text class="row-num" x="8" y="363">9</text><text class="row-label" x="34" y="363">Response-cache lookup</text>
+          <text class="row-phase" x="34" y="377">response_cache<tspan class="note"> · hit: router_v2_cache_hit</tspan></text>
+          <text class="row-num" x="8" y="399">10</text><text class="row-label" x="34" y="399">Preset resolution</text>
+          <text class="row-phase" x="34" y="413">preset_resolution</text>
+          <text class="row-num" x="8" y="435">11</text><text class="row-label" x="34" y="435">Credit authorization</text>
+          <text class="row-phase" x="34" y="449">credit_authorization</text>
+          <text class="row-num" x="8" y="471">12</text><text class="row-label" x="34" y="471">Model selection</text>
+          <text class="row-phase" x="34" y="485">model_selection</text>
+          <text class="row-num" x="8" y="507">12a</text><text class="row-label" x="50" y="507">Sticky routing reads</text>
+          <text class="row-phase" x="50" y="521">sticky_session<tspan class="note"> · also records before row 12</tspan></text>
+          <text class="row-num" x="8" y="543">12b</text><text class="row-label" x="50" y="543">File resolution</text>
+          <text class="row-phase" x="50" y="557">media_hydration</text>
+          <text class="row-num" x="8" y="579">12c</text><text class="row-label" x="50" y="579">Classifier and routing-service calls</text>
+          <text class="row-phase" x="50" y="593">routing_models</text>
+          <text class="row-num" x="8" y="615">13</text><text class="row-label" x="34" y="615">Guardrail plugins (4)</text>
+          <text class="row-phase" x="34" y="629">guardrails</text>
+          <text class="row-num" x="8" y="651">14</text><text class="row-label" x="34" y="651">Bleep and tool-filter calls</text>
+          <text class="row-phase" x="34" y="665">guardrails, tools</text>
+          <text class="row-num" x="8" y="687">15</text><text class="row-label" x="34" y="687">Known-CSAM screen</text>
+          <text class="row-phase" x="34" y="701">known_csam</text>
+          <text class="row-num" x="8" y="723">16</text><text class="row-label" x="34" y="723">File parsing, web search plugin</text>
+          <text class="row-phase" x="34" y="737">parsing, tools</text>
+          <text class="row-num" x="8" y="759">17</text><text class="row-label" x="34" y="759">Subagent resume (server tools)</text>
+          <text class="row-phase" x="34" y="773">tools</text>
+          <text class="row-num" x="8" y="795">18</text><text class="row-label" x="34" y="795">Pool charge, token estimate</text>
+          <text class="row-phase" x="34" y="809">credit_authorization</text>
+          <text class="row-num" x="8" y="831">19</text><text class="row-label" x="34" y="831">Rate limit, spend guard</text>
+          <text class="row-phase" x="34" y="845">rate_limit, spend_guard</text>
+          <text class="row-num" x="8" y="867">20</text><text class="row-label" x="34" y="867">Request build, BYOK decrypt</text>
+          <text class="row-phase" x="34" y="881">request_build, prompt_cache, upstream</text>
+          <text class="row-num" x="8" y="903">21</text><text class="row-label" x="34" y="903">Durable Object offload hop</text>
+          <text class="row-phase" x="34" y="917">media_hydration, unexplained, upstream</text>
+          <text class="row-num" x="8" y="939">22</text><text class="row-label" x="34" y="939">Provider: first token to last token</text>
+          <text class="row-phase" x="34" y="953">upstream, retried_providers</text>
+          <text class="row-num" x="8" y="975">23</text><text class="row-label" x="34" y="975">Our stream CPU: parse, plugins, skin</text>
+          <text class="row-phase" x="34" y="989">upstream</text>
+          <text class="row-num" x="8" y="1011">24</text><text class="row-label" x="34" y="1011">Slow-client backpressure</text>
+          <text class="row-phase" x="34" y="1025">upstream</text>
+          <text class="row-num" x="8" y="1047">25</text><text class="row-label" x="34" y="1047">Gap before a fallback provider</text>
+          <text class="row-phase" x="34" y="1061">fallback_retry</text>
+          <text class="row-num" x="8" y="1083">26</text><text class="row-label" x="34" y="1083">Final chunks, usage, skin flush</text>
+          <text class="row-phase note" x="34" y="1097">post_dispatch only</text>
+          <text class="row-num" x="8" y="1119">27</text><text class="row-label" x="34" y="1119">Post-response bookkeeping</text>
+          <text class="row-phase note" x="34" y="1133">outside</text>
+          <text class="row-num" x="8" y="1155">28</text><text class="row-label" x="34" y="1155">waitUntil: ClickHouse, Stripe, usage</text>
+          <text class="row-phase note" x="34" y="1169">outside</text>
 
-          <!-- rows: bars -->
-          <rect class="b-own" x="314" y="65" width="24" height="14" rx="2"/>
-          <rect class="b-own" x="342" y="89" width="20" height="14" rx="2"/>
-          <rect class="b-own" x="364" y="113" width="22" height="14" rx="2"/>
-          <rect class="b-unattr" x="393" y="137" width="12" height="14" rx="2"/>
-          <rect class="b-own" x="406" y="161" width="52" height="14" rx="2"/>
-          <rect class="b-own" x="412" y="185" width="58" height="14" rx="2"/>
-          <rect class="b-unattr" x="471" y="209" width="8" height="14" rx="2"/>
-          <rect class="b-unattr" x="480" y="233" width="26" height="14" rx="2"/>
-          <rect class="b-own" x="507" y="257" width="14" height="14" rx="2"/>
-          <rect class="b-own" x="522" y="281" width="10" height="14" rx="2"/>
-          <rect class="b-own" x="533" y="305" width="13" height="14" rx="2"/>
-          <rect class="b-own" x="547" y="329" width="55" height="14" rx="2"/>
-          <rect class="b-own" x="603" y="353" width="29" height="14" rx="2"/>
-          <rect class="b-own" x="603" y="377" width="23" height="14" rx="2"/>
-          <rect class="b-own" x="603" y="401" width="13" height="14" rx="2"/>
-          <rect class="b-own" x="633" y="425" width="29" height="14" rx="2"/>
-          <rect class="b-own" x="633" y="449" width="35" height="14" rx="2"/>
-          <rect class="b-own" x="669" y="473" width="14" height="14" rx="2"/>
-          <rect class="b-own" x="684" y="497" width="13" height="14" rx="2"/>
-          <rect class="b-own" x="698" y="521" width="12" height="14" rx="2"/>
-          <rect class="b-deflate" x="711" y="521" width="8" height="14" rx="2"/>
-          <rect class="b-own" x="711" y="545" width="8" height="14" rx="2"/>
-          <rect class="b-excl" x="743" y="569" width="185" height="14" rx="2"/>
-          <rect class="b-excl" x="746" y="593" width="182" height="14" rx="2"/>
-          <rect class="b-excl" x="800" y="617" width="128" height="14" rx="2"/>
-          <rect class="b-unattr" x="758" y="641" width="12" height="14" rx="2"/>
-          <rect class="b-unattr" x="929" y="665" width="21" height="14" rx="2"/>
-          <rect class="b-out" x="1013" y="689" width="57" height="14" rx="2"/>
-          <rect class="b-out" x="1013" y="713" width="87" height="14" rx="2"/>
+          <!-- rows: bars; 12a-12c sit inside the row 12 bar -->
+          <rect class="b-own" x="314" y="71" width="24" height="14" rx="2"/>
+          <rect class="b-own" x="342" y="107" width="20" height="14" rx="2"/>
+          <rect class="b-own" x="364" y="143" width="22" height="14" rx="2"/>
+          <rect class="b-unattr" x="393" y="179" width="12" height="14" rx="2"/>
+          <rect class="b-own" x="406" y="215" width="52" height="14" rx="2"/>
+          <rect class="b-own" x="412" y="251" width="58" height="14" rx="2"/>
+          <rect class="b-unattr" x="471" y="287" width="8" height="14" rx="2"/>
+          <rect class="b-unattr" x="480" y="323" width="10" height="14" rx="2"/>
+          <rect class="b-own" x="491" y="323" width="6" height="14" rx="2"/>
+          <rect class="b-unattr" x="498" y="323" width="8" height="14" rx="2"/>
+          <rect class="b-own" x="507" y="359" width="14" height="14" rx="2"/>
+          <rect class="b-own" x="522" y="395" width="10" height="14" rx="2"/>
+          <rect class="b-own" x="533" y="431" width="13" height="14" rx="2"/>
+          <rect class="b-own" x="547" y="467" width="55" height="14" rx="2"/>
+          <rect class="b-own" x="549" y="503" width="12" height="14" rx="2"/>
+          <rect class="b-own" x="563" y="539" width="12" height="14" rx="2"/>
+          <rect class="b-own" x="577" y="575" width="23" height="14" rx="2"/>
+          <rect class="b-own" x="603" y="611" width="29" height="14" rx="2"/>
+          <rect class="b-own" x="603" y="647" width="23" height="14" rx="2"/>
+          <rect class="b-own" x="603" y="683" width="13" height="14" rx="2"/>
+          <rect class="b-own" x="633" y="719" width="29" height="14" rx="2"/>
+          <rect class="b-own" x="633" y="755" width="35" height="14" rx="2"/>
+          <rect class="b-own" x="669" y="791" width="14" height="14" rx="2"/>
+          <rect class="b-own" x="684" y="827" width="13" height="14" rx="2"/>
+          <rect class="b-own" x="698" y="863" width="12" height="14" rx="2"/>
+          <rect class="b-deflate" x="711" y="863" width="8" height="14" rx="2"/>
+          <rect class="b-own" x="711" y="899" width="8" height="14" rx="2"/>
+          <rect class="b-excl" x="743" y="935" width="185" height="14" rx="2"/>
+          <rect class="b-excl" x="746" y="971" width="182" height="14" rx="2"/>
+          <rect class="b-excl" x="800" y="1007" width="128" height="14" rx="2"/>
+          <rect class="b-unattr" x="758" y="1043" width="12" height="14" rx="2"/>
+          <rect class="b-unattr" x="929" y="1079" width="21" height="14" rx="2"/>
+          <rect class="b-out" x="1013" y="1115" width="57" height="14" rx="2"/>
+          <rect class="b-out" x="1013" y="1151" width="87" height="14" rx="2"/>
         </svg>
       </div>
-      <figcaption>Schematic. The order and overlap of steps are real; bar lengths are not durations. Row 1 is the landing worker's <code>relay</code> phase: for a relayed request whose clock check passes, the window starts at the origin receipt. Auth, router config and the body read run in parallel (rows 5 and 6). Row 12 is mostly own <code>model_selection</code> time. The classifier model calls and routing-service calls inside it are counted and labelled <code>routing_models</code>, and <code>model_selection</code> leaves them out of its own value. Classifier cache reads stay in <code>model_selection</code>. Each classifier interval ends at its caller's timeout when the model call runs longer. Many rows only run for some requests; the ledger below says when.</figcaption>
+      <figcaption>Schematic. The order and overlap of steps are real; bar lengths are not durations. Under each step are its Datadog phase names: the <code>phase:</code> values on <code>openrouter.router.tx_attempt_latency_breakdown</code>, which are also the keys of <code>router_latency_v2_own_by_phase</code> and <code>router_latency_v2_excluded_by_cause</code> in logs; <code>unexplained</code> and <code>fallback_retry</code> are logged as <code>router_latency_v2_unexplained</code> and <code>router_latency_v2_fallback_retry</code>. A step with no phase of its own says where its time goes instead: CPU-only steps fold into the next phase, row 26 shows only in the <code>post_dispatch</code> total, and rows 27 and 28 fall outside both windows. <code>agent_loop</code> has no row: only a server-tool user request records it, once per agent-loop call it sends, and <code>post_dispatch</code> subtracts it. See "Server-tool user request" in <a href="#edge-h">Which requests get a number</a>. Row 1 is the landing worker's <code>relay</code> phase: for a relayed request whose clock check passes, the window starts at the origin receipt. Auth, router config and the body read run in parallel (rows 5 and 6). Rows 12a to 12c break step 12 into the phases nested inside <code>model_selection</code>. Their bars sit inside the row 12 bar, but their order inside it is not shown. <code>model_selection</code> leaves their time out of its own value, so the phases stay additive. The sub-rows count as part of step 12, so the step and category counts do not change. Classifier cache reads stay in <code>model_selection</code>, and each classifier interval in row 12c ends at its caller's timeout when the model call runs longer. Many rows only run for some requests; the ledger below says when.</figcaption>
     </figure>
   </section>
 
@@ -625,7 +673,7 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
       <h2 id="edge-h">Which requests get a number</h2>
       <span class="meta">17 request paths</span>
     </div>
-    <p class="section-intro">A metric is only emitted when a request dispatches to a provider through the router adapter. <code>computeRouterLatencyV2</code> returns null without a first dispatch. When no endpoint was attempted, <code>logTxAttempt</code> writes no log line and only the server-tool user request emits a metric.</p>
+    <p class="section-intro">A metric is only emitted when a request dispatches to a provider through the router adapter. <code>computeRouterLatencyV2</code> returns null without a first dispatch. When no endpoint was attempted, <code>logTxAttempt</code> writes no log line and only the server-tool user request emits a metric. A served response-cache hit emits its own series instead.</p>
     <div class="table-scroll">
       <table class="edge-table">
         <thead>
@@ -637,9 +685,9 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="step">Chat, streaming or not, one provider</td>
             <td><span class="chip c-ok">emitted</span></td>
             <td><span class="chip c-ok">emitted</span></td>
-            <td class="why">The path the metric was built for. Still subject to the wrong-bucket steps in the timeline. <code>post_dispatch</code> is null when the transaction log is written before the client has read the last byte. <span class="chip c-flag">inferred</span></td>
-            <td class="ev"><code>packages/instrumentation/router-latency-v2/compute.ts · computeRouterLatencyV2</code><code>packages/router/index.ts · lastByteToClientAtMs</code></td>
-            <td class="tk"><span class="none">n/a</span></td>
+            <td class="why">The path the metric was built for. Still subject to the wrong-bucket steps in the timeline. The metrics are emitted in <code>waitUntil</code> after the client response stream settles, from one result per request, so a log written before the client reads the last byte still gets <code>post_dispatch</code>. <code>post_dispatch</code> is null when the client disconnects or the stream errors, when a rejected response never reaches a client, and when the stream has not settled after 20s. The Transaction attempt log line is still computed when it is written, so its <code>router_latency_v2_post_dispatch</code> is null when the client has not read the last byte by then.</td>
+            <td class="ev"><code>packages/instrumentation/router-latency-v2/compute.ts · computeRouterLatencyV2</code><code>packages/router/index.ts · routerLatencyV2Result</code><code>packages/router/helpers/client-stream-last-byte.ts · computeRouterLatencyV2AfterClientStream, ROUTER_LATENCY_V2_CLIENT_STREAM_WAIT_MS</code><code>packages/instrumentation/router-latency-v2/metrics.ts · emitRouterLatencyV2MetricsInWaitUntil</code><code>packages/router/helpers/log-tx-attempt.ts · routerLatencyV2LogResult</code></td>
+            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2796">PLA-2796</a></td>
           </tr>
           <tr>
             <td class="step">Provider fallback or retry after dispatch</td>
@@ -647,7 +695,7 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td><span class="chip c-ok">emitted</span></td>
             <td class="why">The gap between attempts stays in <code>post_dispatch</code> and is reported as a <code>fallback_retry</code> total. The retry's own phases are not broken out.</td>
             <td class="ev"><code>packages/instrumentation/router-latency-v2/compute.ts · calculateFallbackRetryMs</code></td>
-            <td class="tk"><span class="none">not ticketed</span></td>
+            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-3096">PLA-3096</a></td>
           </tr>
           <tr>
             <td class="step">Embeddings, rerank, TTS, STT, image, Decisions API</td>
@@ -662,8 +710,8 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="step">Server-tool user request<span class="sub">the user's request with server tools enabled</span></td>
             <td><span class="chip c-ok">emitted</span></td>
             <td><span class="chip c-ok">emitted</span></td>
-            <td class="why">The request never runs an adapter, so the first agent-loop call is stamped as first dispatch. <code>router_latency_v2</code> counts everything before it, a subagent resume included, labelled <code>tools</code>. In <code>post_dispatch</code>, each agent-loop call is subtracted as <code>agent_loop</code> until its body ends, and each tool run as <code>tools</code>; orchestration between turns counts as ours. Tagged <code>server_tools_root:true</code>, with endpoint tags such as <code>byok</code> and <code>has_free_model</code> set to <code>unknown</code>. Metric only, no log line.</td>
-            <td class="ev"><code>packages/instrumentation/router-latency-v2/agent-loop-tracker.ts · trackAgentLoopFetch</code><code>packages/router/plugins/server-tools/agent-loop-latency.ts · buildAgentLoopHttpClient, buildToolLatencyHooks</code><code>packages/router/helpers/emit-server-tools-root-router-latency.ts · server_tools_root:true</code></td>
+            <td class="why">The request never runs an adapter, so the first agent-loop call is stamped as first dispatch. <code>router_latency_v2</code> counts everything before it, a subagent resume included, labelled <code>tools</code>. In <code>post_dispatch</code>, each agent-loop call is subtracted as <code>agent_loop</code> until its body ends, and each tool run as <code>tools</code>; orchestration between turns counts as ours. Tagged <code>server_tools_root:true</code>, with endpoint tags such as <code>byok</code> and <code>has_free_model</code> set to <code>unknown</code>. Metric only, no log line. Like chat, the metric waits for the client response stream to settle, so <code>post_dispatch</code> ends at the last byte and is null on a disconnect or after 20s.</td>
+            <td class="ev"><code>packages/instrumentation/router-latency-v2/agent-loop-tracker.ts · trackAgentLoopFetch</code><code>packages/router/plugins/server-tools/agent-loop-latency.ts · buildAgentLoopHttpClient, buildToolLatencyHooks</code><code>packages/router/helpers/emit-server-tools-root-router-latency.ts · server_tools_root:true, server_tools_root_router_latency</code></td>
             <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2784">PLA-2784</a></td>
           </tr>
           <tr>
@@ -686,8 +734,8 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="step">Client disconnects, upstream can't be cancelled</td>
             <td><span class="chip c-ok">emitted</span></td>
             <td><span class="chip c-none">none</span></td>
-            <td class="why">No last byte reaches the client, so <code>compute</code> runs without a completion time and <code>post_dispatch</code> is null. The provider keeps draining in <code>waitUntil</code>, and that time is not counted as ours. <code>router_latency_v2</code> ends at first dispatch, so it is unaffected.</td>
-            <td class="ev"><code>packages/network/cloudflare.ts · lastByteAtMs</code><code>packages/router/helpers/log-tx-attempt.ts · compute(router.lastByteToClientAtMs)</code><code>packages/router/index.ts · pipeResult.drainAfterDetach, 'detached_upstream_drain'</code></td>
+            <td class="why">No last byte reaches the client. The client stream settles as cancelled, so <code>compute</code> runs without a completion time and <code>post_dispatch</code> is null. The provider keeps draining in <code>waitUntil</code>, and that time is not counted as ours. <code>router_latency_v2</code> ends at first dispatch, so it is unaffected.</td>
+            <td class="ev"><code>packages/network/cloudflare.ts · lastByteAtMs</code><code>packages/network/edge-stream.ts · waitForLastByteToClient</code><code>packages/router/helpers/client-stream-last-byte.ts · waitForClientStreamLastByte</code><code>packages/router/index.ts · pipeResult.drainAfterDetach, 'detached_upstream_drain'</code></td>
             <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
@@ -725,6 +773,15 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2786">PLA-2786</a></td>
           </tr>
 
+          <tr>
+            <td class="step">Response-cache hit<span class="sub">chat completions, responses, messages and cursor</span></td>
+            <td><span class="chip c-ok">own series</span></td>
+            <td><span class="chip c-none">none</span></td>
+            <td class="why">A served hit returns before the router dispatches, so it has no <code>router_latency_v2</code> window. It emits <code>latency_type:router_v2_cache_hit</code> once instead: recorder start to the cached response's server-side completion, less the time spent waiting on the client. A buffered hit completes when the route hands the whole body over, which assumes no I/O between that point and the route's <code>Response</code>. <span class="chip c-flag">inferred</span> A streamed replay completes when its close is accepted, and every replay write and close wait is subtracted as client wait. That also takes out any wait before the runtime starts reading the body. <span class="chip c-flag">inferred</span> Replay CPU reads about 0ms on the frozen clock. A client that disconnects first, or a replay write that fails, gets no sample. The series has no phase breakdown; the row 9 lookup is inside it. Tagged <code>response_cache_hit:true</code>. A lookup hit that falls through to live inference dispatches and is measured normally, with <code>response_cache_hit:false</code>. HIPAA traffic never gets a hit: caching is refused on the HIPAA worker and for HIPAA or unknown posture.</td>
+            <td class="ev"><code>services/cfw-api/src/utils/cache-hit-sse.ts · onServed?.({ completedAtMs: closedAtMs, clientWaitMs })</code><code>services/cfw-api/src/routes/chat-completions/index.ts · reportCacheHitLatency({ completedAtMs: Date.now(), clientWaitMs: 0 })</code><code>services/cfw-api/src/routes/chat-completions/index.ts · streamingCacheFallthrough = true</code><code>packages/router/helpers/response-cache-hit-router-latency.ts · createResponseCacheHitLatencyReporter</code><code>packages/instrumentation/router-latency-v2/recorder.ts · completeResponseCacheHit</code><code>packages/router/cache/eligibility.ts · isHipaaSideChannelRefused</code></td>
+            <td class="tk"><span class="none">n/a</span></td>
+          </tr>
+
           <tr class="group"><td colspan="6">No number at all</td></tr>
           <tr>
             <td class="step">Rejected before dispatch<span class="sub">auth, validation, rate limit, credits, no endpoint</span></td>
@@ -733,14 +790,6 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="why">No first dispatch, so compute returns null. Correct: there is no provider wait to compare against.</td>
             <td class="ev"><code>packages/instrumentation/router-latency-v2/compute.ts · computeRouterLatencyV2</code><code>packages/router/helpers/log-tx-attempt.ts · attemptedEndpoints.length === 0</code></td>
             <td class="tk"><span class="none">by design</span></td>
-          </tr>
-          <tr>
-            <td class="step">Response-cache hit</td>
-            <td><span class="chip c-none">none</span></td>
-            <td><span class="chip c-none">none</span></td>
-            <td class="why">The cached response returns before the router dispatches.</td>
-            <td class="ev"><code>services/cfw-api/src/routes/chat-completions/index.ts · cacheResult?.hit</code></td>
-            <td class="tk"><span class="none">not ticketed</span></td>
           </tr>
           <tr>
             <td class="step">HIPAA workspace, primary worker</td>
@@ -786,56 +835,52 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
       <h2 id="ledger-h">Step ledger</h2>
       <span class="meta">row numbers match the timeline</span>
     </div>
+    <p class="section-intro">"Counted as" gives each step's category from the legend, then why. A step that is still counted wrong ends with a known-gap note and its ticket.</p>
     <div class="table-scroll">
       <table class="ledger-table">
         <thead>
-          <tr><th>#</th><th>Step</th><th>Runs when</th><th>Counted today as</th><th>Should be</th><th>Evidence</th><th>Ticket</th></tr>
+          <tr><th>#</th><th>Step</th><th>Runs when</th><th>Counted as</th><th>Evidence</th><th>Ticket</th></tr>
         </thead>
         <tbody>
-          <tr class="group"><td colspan="7">router_latency_v2 window: handler start, or an earlier relay or pre-handler auth step, to first dispatch</td></tr>
+          <tr class="group"><td colspan="6">router_latency_v2 window: handler start, or an earlier relay or pre-handler auth step, to first dispatch</td></tr>
           <tr>
             <td class="num">1</td>
             <td class="step">Cross-region relay<span class="sub">preRelayGuard, then fetch to another region</span></td>
             <td class="when">China traffic, or mixed-traffic colo</td>
-            <td><span class="chip c-own">relay</span></td>
-            <td><span class="chip c-ok">correct</span> When the clock check passes. For a verified relay, the origin stamps its receipt time and its own elapsed time up to the relay <code>fetch</code> (the pre-relay guard and request build) in <code>or-relay-origin-start-ms</code> and <code>or-relay-origin-elapsed-ms</code>, overwriting any values the client sent. The landing worker trusts them only when the relay pre-shared key verifies, and compares them with its own proxy-middleware entry time. <code>ok</code> (implied transit from 0 to <code>MAX_RELAY_TRANSIT_MS</code>): the window starts at the origin receipt and <code>relay</code> covers receipt to landing entry. <code>behind</code> (negative transit) or <code>ahead</code> (above the bound): durations only, so <code>relay</code> covers the origin elapsed time ending at landing entry and the transit is not counted. <code>invalid</code> (a header missing or not a non-negative integer, the clocks more than a minute apart, or an origin elapsed time above a minute): the headers are ignored and the relay is outside the window. The clock-independent round trip is still emitted as <code>openrouter.api.relay_hop.duration_ms</code> as the reference for tuning the bound.</td>
+            <td class="counted"><span class="chip c-own">relay</span><span class="expl">The whole hop counts only when the clock check passes. For a verified relay, the origin stamps its receipt time and its own elapsed time up to the relay <code>fetch</code> (the pre-relay guard and request build) in <code>or-relay-origin-start-ms</code> and <code>or-relay-origin-elapsed-ms</code>, overwriting any values the client sent. The landing worker trusts them only when the relay pre-shared key verifies, and compares them with its own proxy-middleware entry time. <code>ok</code> (implied transit from 0 to <code>MAX_RELAY_TRANSIT_MS</code>): the window starts at the origin receipt and <code>relay</code> covers receipt to landing entry. <code>behind</code> (negative transit) or <code>ahead</code> (above the bound): durations only, so <code>relay</code> covers the origin elapsed time ending at landing entry and the transit is not counted. <code>invalid</code> (a header missing or not a non-negative integer, the clocks more than a minute apart, or an origin elapsed time above a minute): the headers are ignored and the relay is outside the window. The clock-independent round trip is still emitted as <code>openrouter.api.relay_hop.duration_ms</code> as the reference for tuning the bound.</span></td>
             <td class="ev"><code>services/cfw-api/src/middlewares/relay-clock.ts · stampRelayOrigin</code><code>services/cfw-api/src/middlewares/relay-clock.ts · checkRelayClock</code><code>services/cfw-api/src/middlewares/relay-clock.ts · MAX_RELAY_TRANSIT_MS</code><code>services/cfw-api/src/middlewares/proxy.ts · serveLocally</code><code>services/cfw-api/src/middlewares/pre-handler-auth-timing.ts · ROUTER_LATENCY_V2_OWN_PHASES.Relay</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2971">PLA-2971</a></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">2</td>
             <td class="step">Region-lock user lookup<span class="sub">getUser to check regional-routing entitlement</span></td>
             <td class="when">Non-global data region (EU and similar)</td>
-            <td><span class="chip c-own">auth</span></td>
-            <td><span class="chip c-ok">correct</span> On every surface that mounts the middleware: the cfw-api text routes (chat completions, responses, messages, completions and cursor), embeddings, rerank, Decisions, image, video, TTS and STT. TTS and STT get the helper from their host worker. Video keeps the span and its source in the recorder snapshot that the job's Durable Object restores.</td>
+            <td class="counted"><span class="chip c-own">auth</span><span class="expl">Counted on every surface that mounts the middleware: the cfw-api text routes (chat completions, responses, messages, completions and cursor), embeddings, rerank, Decisions, image, video, TTS and STT. TTS and STT get the helper from their host worker. Video keeps the span and its source in the recorder snapshot that the job's Durable Object restores.</span></td>
             <td class="ev"><code>services/cfw-api/src/middlewares/region-lock-eligibility.ts · recordPreHandlerAuthSpan</code><code>services/cfw-api/src/middlewares/pre-handler-auth-timing.ts · createRouterLatencyV2Recorder</code><code>services/cfw-embeddings-api/src/routes/embeddings/submit.ts · createRouterLatencyV2Recorder(c, requestStartTime)</code><code>services/cfw-tts-api/src/app.ts · createRouterLatencyV2Recorder,</code><code>packages/instrumentation/router-latency-v2/recorder.ts · preHandlerAuthSources: this.#preHandlerAuthSources</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2831">PLA-2831</a></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">3</td>
             <td class="step">Clerk cookie auth</td>
             <td class="when">Non-Cloudflare cookies present</td>
-            <td><span class="chip c-own">auth</span></td>
-            <td><span class="chip c-ok">correct</span> On the same surfaces as row 2. The pre-relay verification on a would-relay colo records a span that the origin never uses: a relayed request counts that check inside the landing worker's <code>relay</code> phase (row 1), and a rejected one never dispatches.</td>
+            <td class="counted"><span class="chip c-own">auth</span><span class="expl">Counted on the same surfaces as row 2. The pre-relay verification on a would-relay colo records a span that the origin never uses: a relayed request counts that check inside the landing worker's <code>relay</code> phase (row 1), and a rejected one never dispatches.</span></td>
             <td class="ev"><code>services/cfw-api/src/middlewares/clerk.ts · recordPreHandlerAuthSpan</code><code>services/cfw-api/src/middlewares/hipaa-pre-relay-guard.ts · guardCookieSession</code><code>services/cfw-api/src/middlewares/pre-handler-auth-timing.ts · createRouterLatencyV2Recorder</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2832">PLA-2832</a></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
 
           <tr>
             <td class="num">4</td>
             <td class="step">Live-config read</td>
             <td class="when">Every request</td>
-            <td><span class="chip c-unattr">next I/O phase</span></td>
-            <td>Correct as CPU. <code>getMany</code> never awaits KV; cold or stale keys revalidate in the background via <code>waitUntil</code>, so no own phase. On the frozen clock its CPU folds into the next interval that awaits I/O, the parallel <code>auth</code> and <code>bootstrap</code> phases. <span class="chip c-flag">inferred</span> Size it from <code>cpuTime</code>.</td>
+            <td class="counted"><span class="chip c-unattr">next I/O phase</span><span class="expl">CPU only. <code>getMany</code> never awaits KV; cold or stale keys revalidate in the background via <code>waitUntil</code>, so no own phase. On the frozen clock its CPU folds into the next interval that awaits I/O, the parallel <code>auth</code> and <code>bootstrap</code> phases. <span class="chip c-flag">inferred</span> Size it from <code>cpuTime</code>.</span></td>
             <td class="ev"><code>packages/cloudflare/live-config.ts · live_config_revalidate</code><code>services/cfw-api/src/routes/chat-completions/index.ts · getRouterLiveConfigs</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2794">PLA-2794</a></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">5</td>
             <td class="step">Auth, router config, Router import<span class="sub">run in parallel</span></td>
             <td class="when">Every request</td>
-            <td><span class="chip c-own">auth</span><span class="chip c-own">bootstrap</span></td>
-            <td><span class="chip c-ok">correct</span></td>
+            <td class="counted"><span class="chip c-own">auth</span><span class="chip c-own">bootstrap</span></td>
             <td class="ev"><code>services/cfw-api/src/routes/chat-completions/index.ts · recordOwn('auth', recordOwn('bootstrap'</code></td>
             <td class="tk"><span class="none">n/a</span></td>
           </tr>
@@ -843,8 +888,7 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="num">6</td>
             <td class="step">Request body read</td>
             <td class="when">Every request</td>
-            <td><span class="chip c-own">body_read</span></td>
-            <td><span class="chip c-ok">correct</span></td>
+            <td class="counted"><span class="chip c-own">body_read</span></td>
             <td class="ev"><code>services/cfw-api/src/routes/chat-completions/index.ts · 'body_read'</code></td>
             <td class="tk"><span class="none">n/a</span></td>
           </tr>
@@ -852,35 +896,31 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="num">7</td>
             <td class="step">HIPAA mirror dispatch check</td>
             <td class="when">Every request; forwards HIPAA workspaces</td>
-            <td><span class="chip c-unattr">next I/O phase</span></td>
-            <td>Correct as CPU. The entitlement and metering guards return without awaiting, and only a forwarded request does I/O, which then emits only from the mirror. An own phase would read near zero; its CPU folds into the next own phase that awaits I/O. <span class="chip c-flag">inferred</span> Size it from <code>cpuTime</code>.</td>
+            <td class="counted"><span class="chip c-unattr">next I/O phase</span><span class="expl">CPU only. The entitlement and metering guards return without awaiting, and only a forwarded request does I/O, which then emits only from the mirror. An own phase would read near zero; its CPU folds into the next own phase that awaits I/O. <span class="chip c-flag">inferred</span> Size it from <code>cpuTime</code>.</span></td>
             <td class="ev"><code>services/cfw-api/src/routes/chat-completions/index.ts · dispatchToHipaaMirrorIfNeeded</code><code>services/cfw-api/src/middlewares/hipaa-dispatch.ts · dispatchToHipaaMirrorIfNeeded</code></td>
             <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">8</td>
             <td class="step">Skin transform, request validation<span class="sub">full Zod parse in validateRouterRequest</span></td>
-            <td class="when">Every request; CPU grows with body size</td>
-            <td><span class="chip c-unattr">next I/O phase</span></td>
-            <td>No wall-clock phase: the Workers clock does not advance during synchronous CPU, so a phase would read near zero. The CPU folds into the next own phase that awaits I/O, such as <code>response_cache</code> or <code>preset_resolution</code>. <span class="chip c-flag">inferred</span> Size it from <code>cpuTime</code> cohorts instead.</td>
-            <td class="ev"><code>services/cfw-api/src/routes/chat-completions/index.ts · transformChatCompletionsRequest</code><code>packages/router/helpers/request.ts · validateRouterRequest</code><code>packages/instrumentation/router-latency-v2/cpu-only-steps.md · cpuTime</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2794">PLA-2794</a></td>
+            <td class="when">Every request; CPU grows with body size; the private catalog read only with private model or endpoint grants, or an internal endpoint pin</td>
+            <td class="counted"><span class="chip c-unattr">next I/O phase</span><span class="chip c-own">private_catalog</span><span class="expl">No wall-clock phase: the Workers clock does not advance during synchronous CPU, so a phase would read near zero. The CPU folds into the next own phase that awaits I/O, such as <code>response_cache</code> or <code>preset_resolution</code>. <span class="chip c-flag">inferred</span> Size it from <code>cpuTime</code> cohorts instead. The one await is the private catalog: for a caller with grants or a pin, model-slug resolution in <code>validateRouterRequest</code> reads the request's private model and endpoint caches first, and that read is own <code>private_catalog</code>.</span></td>
+            <td class="ev"><code>services/cfw-api/src/routes/chat-completions/index.ts · transformChatCompletionsRequest</code><code>packages/router/helpers/request.ts · validateRouterRequest</code><code>packages/instrumentation/router-latency-v2/cpu-only-steps.md · cpuTime</code><code>packages/router/helpers/request.ts · findPrivateModelVariantWithTopEndpoint</code><code>packages/routing/endpoints/cache.ts · measureOwnWith(opts.routerLatencyV2Recorder, 'private_catalog', fetcher)</code><code>packages/routing/models/cache.ts · measureOwnWith(opts.routerLatencyV2Recorder, 'private_catalog', fetcher)</code><code>packages/routing/private-routing-caches.ts · buildPrivateRoutingCaches</code></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">9</td>
             <td class="step">Response-cache lookup<span class="sub">body sha256, cache.get with 500ms timeout, twice</span></td>
             <td class="when">Response caching opted in</td>
-            <td><span class="chip c-own">response_cache</span></td>
-            <td><span class="chip c-ok">correct</span> Cache open, <code>cache.get</code> and the opt-in <code>cache.clear</code> are own <code>response_cache</code>. The body sha256 before them is CPU and folds into that phase. Production <code>unexplained</code> has read 0 since this phase shipped (PLA-2794).</td>
-            <td class="ev"><code>services/cfw-api/src/utils/response-cache.ts · measureOwnWith(routerLatencyV2Recorder, 'response_cache'</code><code>services/cfw-api/src/utils/response-cache.ts · checkCache, CACHE_LOOKUP_TIMEOUT_MS</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2794">PLA-2794</a></td>
+            <td class="counted"><span class="chip c-own">response_cache</span><span class="expl">Cache open, <code>cache.get</code> and the opt-in <code>cache.clear</code> are own <code>response_cache</code>. The body sha256 before them is CPU and folds into that phase. Production <code>unexplained</code> has read 0 since this phase shipped (PLA-2794). On a served hit the lookup is inside <code>router_v2_cache_hit</code> instead, which has no breakdown.</span></td>
+            <td class="ev"><code>services/cfw-api/src/utils/response-cache.ts · measureOwnWith(routerLatencyV2Recorder, 'response_cache'</code><code>services/cfw-api/src/utils/response-cache.ts · checkCache, CACHE_LOOKUP_TIMEOUT_MS</code><code>packages/instrumentation/router-latency-v2/recorder.ts · completeResponseCacheHit</code></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">10</td>
             <td class="step">Preset resolution</td>
             <td class="when">Preset in the request</td>
-            <td><span class="chip c-own">preset_resolution</span></td>
-            <td><span class="chip c-ok">correct</span></td>
+            <td class="counted"><span class="chip c-own">preset_resolution</span></td>
             <td class="ev"><code>packages/router/index.ts · 'preset_resolution'</code></td>
             <td class="tk"><span class="none">n/a</span></td>
           </tr>
@@ -888,80 +928,95 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="num">11</td>
             <td class="step">Credit authorization</td>
             <td class="when">Every request</td>
-            <td><span class="chip c-own">credit_authorization</span></td>
-            <td><span class="chip c-ok">correct</span></td>
+            <td class="counted"><span class="chip c-own">credit_authorization</span></td>
             <td class="ev"><code>packages/router/index.ts · recordOwn('credit_authorization'</code></td>
             <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">12</td>
-            <td class="step">Model selection<span class="sub">auto-router and phaser classifier LLMs, TypeSafe decide and its fallback model, Switchyard fetch, sticky routing reads, file resolution</span></td>
-            <td class="when">Every request; the classifier LLM calls only with those routers and only on a classifier cache miss; file resolution only for file inputs</td>
-            <td><span class="chip c-own">model_selection</span><span class="chip c-own">sticky_session</span><span class="chip c-own">media_hydration</span><span class="chip c-own">routing_models</span></td>
-            <td><span class="chip c-ok">correct</span> The classifier model calls and routing-service calls count, labelled <code>routing_models</code>; <code>model_selection</code> leaves that time out of its own value so the phases stay additive. The sticky-session cache open and the model-pin read in <code>initPlugins</code> run before model selection starts; they are also own <code>sticky_session</code>, outside <code>model_selection</code>.</td>
-            <td class="ev"><code>packages/router/plugins/base/resolve-endpoints.ts · measureOwnWith</code><code>packages/routing/endpoints/prioritize-endpoints-by-session.ts · 'sticky_session'</code><code>packages/router/plugins/file-resolver/index.ts · 'media_hydration'</code><code>packages/instrumentation/router-latency-v2/compute.ts · NESTED_OWN_PHASES</code><code>packages/instrumentation/router-latency-v2/compute.ts · NESTED_EXCLUDED_CAUSES</code><code>packages/classifier/base/base-tagger.ts · BaseTagger, tagCached</code><code>packages/router/plugins/phaser/cache-api-task-type-tagger.ts · #timedTag</code><code>packages/router/plugins/phaser/classify-anchor-task-type.ts · classifyPhaserAnchorTaskType</code><code>packages/instrumentation/router-latency-v2/measure.ts · measureExcludedUntil</code><code>packages/router/plugins/decisions-router/resolve-decision-route.ts · decisionClient.decide</code><code>packages/router/plugins/switchyard-router/index.ts · requestSwitchyardDecision</code><code>packages/router/index.ts · STICKY_SESSION_CACHE_NAME</code><code>packages/router/plugins/base/read-cached-model-slug.ts · getModelPin</code><code>packages/instrumentation/router-latency-v2/compute.ts · routerLatencyV2Ms: windowMs</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-3058">PLA-3058</a></td>
+            <td class="step">Model selection<span class="sub">each plugin's endpoint resolution; 12a to 12c are the phases nested inside it</span></td>
+            <td class="when">Every request</td>
+            <td class="counted"><span class="chip c-own">model_selection</span><span class="expl">Each plugin's <code>resolveEndpoints</code> hook is own <code>model_selection</code>. Compute leaves the nested <code>sticky_session</code>, <code>media_hydration</code> and <code>routing_models</code> time (12a to 12c) out of it, so the phases stay additive. The sub-rows count as part of this step.</span></td>
+            <td class="ev"><code>packages/router/plugins/base/resolve-endpoints.ts · measureOwnWith(routerLatencyV2Recorder, 'model_selection'</code><code>packages/instrumentation/router-latency-v2/compute.ts · NESTED_OWN_PHASES</code><code>packages/instrumentation/router-latency-v2/compute.ts · NESTED_EXCLUDED_CAUSES</code></td>
+            <td class="tk"><span class="none">n/a</span></td>
+          </tr>
+          <tr>
+            <td class="num">12a</td>
+            <td class="step">Sticky routing reads<span class="sub">sticky-session cache reads; also the cache open and model-pin read before model selection</span></td>
+            <td class="when">More than one eligible endpoint and no manual provider order; the cache open and model-pin read run before model selection</td>
+            <td class="counted"><span class="chip c-own">sticky_session</span><span class="expl">The reads inside model selection are own <code>sticky_session</code>, nested in <code>model_selection</code>. The sticky-session cache open and the model-pin read in <code>initPlugins</code> run before model selection starts; they are also own <code>sticky_session</code>, outside <code>model_selection</code>.</span></td>
+            <td class="ev"><code>packages/routing/endpoints/prioritize-endpoints-by-session.ts · 'sticky_session'</code><code>packages/routing/endpoints/prioritize-endpoints-by-session.ts · Manual provider order is set</code><code>packages/router/index.ts · STICKY_SESSION_CACHE_NAME</code><code>packages/router/plugins/base/read-cached-model-slug.ts · getModelPin</code></td>
+            <td class="tk"><span class="none">n/a</span></td>
+          </tr>
+          <tr>
+            <td class="num">12b</td>
+            <td class="step">File resolution</td>
+            <td class="when">File inputs</td>
+            <td class="counted"><span class="chip c-own">media_hydration</span><span class="expl">Own <code>media_hydration</code>, nested in <code>model_selection</code>.</span></td>
+            <td class="ev"><code>packages/router/plugins/file-resolver/index.ts · 'media_hydration'</code></td>
+            <td class="tk"><span class="none">n/a</span></td>
+          </tr>
+          <tr>
+            <td class="num">12c</td>
+            <td class="step">Classifier and routing-service calls<span class="sub">auto-router and phaser classifier LLMs, TypeSafe decide and its fallback model, Switchyard fetch</span></td>
+            <td class="when">Only with those routers; the classifier LLM calls only on a classifier cache miss</td>
+            <td class="counted"><span class="chip c-own">routing_models</span><span class="expl">The classifier model calls and routing-service calls count, labelled <code>routing_models</code>; <code>model_selection</code> leaves that time out of its own value so the phases stay additive.</span></td>
+            <td class="ev"><code>packages/classifier/base/base-tagger.ts · BaseTagger, tagCached</code><code>packages/router/plugins/phaser/cache-api-task-type-tagger.ts · #timedTag</code><code>packages/router/plugins/phaser/classify-anchor-task-type.ts · classifyPhaserAnchorTaskType</code><code>packages/instrumentation/router-latency-v2/measure.ts · measureExcludedUntil</code><code>packages/router/plugins/decisions-router/resolve-decision-route.ts · decisionClient.decide</code><code>packages/router/plugins/switchyard-router/index.ts · requestSwitchyardDecision</code><code>packages/instrumentation/router-latency-v2/compute.ts · routerLatencyV2Ms: windowMs</code></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">13</td>
             <td class="step">Guardrail plugins<span class="sub">moderation, Lakera, Model Armor, Presidio</span></td>
             <td class="when">Guardrail enabled</td>
-            <td><span class="chip c-own">guardrails</span></td>
-            <td><span class="chip c-ok">correct</span> The user waits for it, so it counts, labelled <code>guardrails</code>.</td>
+            <td class="counted"><span class="chip c-own">guardrails</span><span class="expl">The user waits for it, so it counts, labelled <code>guardrails</code>.</span></td>
             <td class="ev"><code>packages/router/plugins/moderation/index.ts · runPreflight</code><code>packages/router/plugins/lakera/index.ts · runPreflight</code><code>packages/router/plugins/model-armor/index.ts · runPreflight</code><code>packages/router/plugins/content-filter/index.ts · applyPresidioFilters</code><code>packages/instrumentation/router-latency-v2/compute.ts · routerLatencyV2Ms: windowMs</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-3058">PLA-3058</a></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">14</td>
             <td class="step">Bleep and tool-filter calls<span class="sub">SVC_BLEEP; TypeSafe decision API</span></td>
             <td class="when">Bleep: internal admin, Bleep requested and PII filters configured; tool-filter: internal admins</td>
-            <td><span class="chip c-own">guardrails</span> <span class="chip c-own">tools</span></td>
-            <td><span class="chip c-ok">correct</span> The user waits for them, so they count, labelled <code>guardrails</code> and <code>tools</code>.</td>
+            <td class="counted"><span class="chip c-own">guardrails</span><span class="chip c-own">tools</span><span class="expl">The user waits for them, so they count, labelled <code>guardrails</code> and <code>tools</code>.</span></td>
             <td class="ev"><code>packages/router/plugins/content-filter/index.ts · #runContextualFilters, #applyBleepPrimaryFilters</code><code>packages/router/plugins/tool-filter/index.ts · #decide</code><code>packages/instrumentation/router-latency-v2/compute.ts · routerLatencyV2Ms: windowMs</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-3058">PLA-3058</a></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">15</td>
             <td class="step">Known-CSAM screen</td>
             <td class="when">Screening in a non-observe mode</td>
-            <td><span class="chip c-own">known_csam</span></td>
-            <td><span class="chip c-ok">correct</span> Mandatory, so it stays OpenRouter time.</td>
+            <td class="counted"><span class="chip c-own">known_csam</span><span class="expl">Mandatory, so it stays OpenRouter time.</span></td>
             <td class="ev"><code>packages/router/plugins/known-csam-observation/index.ts · measureOwnWith(this.opts.routerLatencyV2Recorder, 'known_csam'</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2794">PLA-2794</a></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">16</td>
             <td class="step">File parsing, web search plugin</td>
             <td class="when">File inputs; web plugin enabled</td>
-            <td><span class="chip c-own">parsing</span><span class="chip c-own">tools</span></td>
-            <td><span class="chip c-ok">correct</span> The user waits for them, so they count, labelled <code>parsing</code> and <code>tools</code>.</td>
+            <td class="counted"><span class="chip c-own">parsing</span><span class="chip c-own">tools</span><span class="expl">The user waits for them, so they count, labelled <code>parsing</code> and <code>tools</code>.</span></td>
             <td class="ev"><code>packages/router/plugins/file-parser/index.ts · SPAN_PLUGIN_FILE_PARSER</code><code>packages/router/plugins/web-search/index.ts · #prepareSearch</code><code>packages/instrumentation/router-latency-v2/compute.ts · routerLatencyV2Ms: windowMs</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-3058">PLA-3058</a></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">17</td>
             <td class="step">Subagent resume<span class="sub">the subagent's tool model call, a full /responses generation</span></td>
             <td class="when">Client replays a suspended subagent</td>
-            <td><span class="chip c-own">tools</span></td>
-            <td><span class="chip c-ok">correct</span> The user waits for the resumed run, so it counts, labelled <code>tools</code>.</td>
+            <td class="counted"><span class="chip c-own">tools</span><span class="expl">The user waits for the resumed run, so it counts, labelled <code>tools</code>.</span></td>
             <td class="ev"><code>packages/router/plugins/server-tools/subagent/resume-orchestrator.ts · ROUTER_LATENCY_V2_EXCLUDED_CAUSES.Tools</code><code>packages/router/plugins/server-tools/subagent/execute-subagent.ts · callResponsesStream</code><code>packages/instrumentation/router-latency-v2/compute.ts · routerLatencyV2Ms: windowMs</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-3058">PLA-3058</a></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">18</td>
             <td class="step">Pool charge, token estimate<span class="sub">Upstash round-trip; tokenizer CPU</span></td>
             <td class="when">Pool keys; token estimate on every attempt</td>
-            <td><span class="chip c-own">credit_authorization</span></td>
-            <td><span class="chip c-ok">correct</span> The Upstash acquire runs after authorization, so the two spans are sequential. Tokenizer CPU reads near zero on its own and folds into the next phase that awaits I/O: <code>spend_guard</code>, or <code>rate_limit</code> when the concurrent rate-limit check also awaits I/O (row 19). Production bounds it at 7 to 14ms (PLA-2794).</td>
+            <td class="counted"><span class="chip c-own">credit_authorization</span><span class="expl">The Upstash acquire runs after authorization, so the two spans are sequential. Tokenizer CPU reads near zero on its own and folds into the next phase that awaits I/O: <code>spend_guard</code>, or <code>rate_limit</code> when the concurrent rate-limit check also awaits I/O (row 19). Production bounds it at 7 to 14ms (PLA-2794).</span></td>
             <td class="ev"><code>packages/router/index.ts · #acquirePoolPendingCharge</code><code>packages/router/index.ts · cache.acquirePoolCharge</code><code>packages/router/index.ts · RequestTokenEstimator.estimate, validateEndpointMaxTokens</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2794">PLA-2794</a></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">19</td>
             <td class="step">Rate limit, spend guard<span class="sub">run concurrently</span></td>
             <td class="when">Every attempt; the reserve only while SpendGuard is active</td>
-            <td><span class="chip c-own">rate_limit</span><span class="chip c-own">spend_guard</span></td>
-            <td><span class="chip c-ok">correct</span> The SpendGuard reserve starts without an await, the rate-limit check runs from the same frozen stamp, and the reserve is awaited only after it. After a rate-limit rejection the reserve is never awaited: it stays in flight through the next attempt and can outlive that attempt's dispatch, where compute clips it. <code>rate_limit</code> and every other phase keep their time. <code>spend_guard</code> reports only the wait that no other own phase or excluded interval covers, so a stacked <code>by {phase}</code> breakdown counts each overlap once. <code>router_latency_v2</code> is the whole window and <code>unexplained</code> uses the union of spans, so neither ever counted it twice.</td>
+            <td class="counted"><span class="chip c-own">rate_limit</span><span class="chip c-own">spend_guard</span><span class="expl">The SpendGuard reserve starts without an await, the rate-limit check runs from the same frozen stamp, and the reserve is awaited only after it. After a rate-limit rejection the reserve is never awaited: it stays in flight through the next attempt and can outlive that attempt's dispatch, where compute clips it. <code>rate_limit</code> and every other phase keep their time. <code>spend_guard</code> reports only the wait that no other own phase or excluded interval covers, so a stacked <code>by {phase}</code> breakdown counts each overlap once. <code>router_latency_v2</code> is the whole window and <code>unexplained</code> uses the union of spans, so neither ever counted it twice.</span></td>
             <td class="ev"><code>packages/router/index.ts · const spendGuardStartMs = Date.now()</code><code>packages/router/index.ts · measureOwn('rate_limit'</code><code>packages/router/index.ts · recordOwn('spend_guard'</code><code>packages/router/index.ts · await spendGuardDispatch.outcomePromise</code><code>packages/router/index.ts · #pendingRateLimitWithdrawals</code><code>packages/instrumentation/router-latency-v2/compute.ts · NESTED_OWN_PHASES</code><code>packages/instrumentation/router-latency-v2/compute.ts · subtractNestedOwnPhaseSpans</code></td>
             <td class="tk"><span class="none">n/a</span></td>
           </tr>
@@ -969,9 +1024,8 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="num">20</td>
             <td class="step">Request build, BYOK decrypt, serialize</td>
             <td class="when">Every attempt</td>
-            <td><span class="chip c-own">request_build</span><span class="chip c-deflate">upstream</span></td>
-            <td>Own <code>request_build</code> for the awaited part. CPU after its last await, such as body serialization and the credential header check, runs before the dispatch stamp, but the frozen clock stamps it at the last I/O. So that CPU lands inside <code>upstream</code>, outside <code>router_latency_v2</code>, and is subtracted from <code>post_dispatch</code>. <span class="chip c-flag">inferred</span> Size not yet measured.</td>
-            <td class="ev"><code>packages/router/adapters/base/index.ts · recordOwn('request_build'</code><code>packages/router/adapters/base/index.ts · const dispatchAtMs = Date.now()</code><code>packages/router/adapters/base/index.ts · #assertCredentialHeaderValuesSafe</code></td>
+            <td class="counted"><span class="chip c-own">request_build</span><span class="chip c-own">prompt_cache</span><span class="chip c-deflate">upstream</span><span class="expl">Own <code>request_build</code> for the awaited part. On Gemini requests that use explicit prompt caching, the cache-mappings lookup and <code>cachedContents</code> create inside the build are own <code>prompt_cache</code>, which compute takes out of <code>request_build</code> so the phases stay additive. CPU after its last await, such as body serialization and the credential header check, runs before the dispatch stamp, but the frozen clock stamps it at the last I/O. So that CPU lands inside <code>upstream</code>, outside <code>router_latency_v2</code>, and is subtracted from <code>post_dispatch</code>. <span class="chip c-flag">inferred</span> Size not yet measured.</span><span class="gap"><b>Known gap:</b> that CPU tail is subtracted as provider time (<a href="https://linear.app/openrouter/issue/PLA-2975">PLA-2975</a>).</span></td>
+            <td class="ev"><code>packages/router/adapters/base/index.ts · recordOwn('request_build'</code><code>packages/router/adapters/base/index.ts · const dispatchAtMs = Date.now()</code><code>packages/router/adapters/base/index.ts · #assertCredentialHeaderValuesSafe</code><code>packages/router/adapters/internal-stream-google-gemini/index.ts · 'prompt_cache'</code><code>packages/router/adapters/internal-stream-google-interactions/index.ts · 'prompt_cache'</code><code>packages/instrumentation/router-latency-v2/compute.ts · NESTED_OWN_PHASES</code></td>
             <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2975">PLA-2975</a></td>
           </tr>
 
@@ -979,75 +1033,67 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
             <td class="num">21</td>
             <td class="step">Durable Object offload hop<span class="sub">worker to DO hop, body hydration and body upload to the provider</span></td>
             <td class="when">Large request bodies</td>
-            <td><span class="chip c-own">media_hydration</span><span class="chip c-unattr">unexplained</span><span class="chip c-deflate">upstream</span></td>
-            <td><span class="chip c-ok">correct</span> Own <code>media_hydration</code> up to where the DO reports its provider fetch began. Without that timing, the hop is own for a DO envelope from before its provider fetch. It is left unrecorded for a DO provider-fetch rejection and for a rejected worker-to-DO fetch, where the provider may have seen the request; that time reads as <code>unexplained</code> inside the window and counts toward <code>post_dispatch</code> after an earlier dispatch. A response with neither DO header, seen only while older DO instances run during a deploy, starts <code>upstream</code> at the worker's dispatch, so its hop is subtracted as provider time. That is deliberate: starting at the response would count the provider's time to headers as ours, a larger error. A hydration stream that fails mid-upload also ends as a DO provider-fetch rejection, so it stays unrecorded. A rejected worker-to-DO fetch stays unrecorded because a DO reset can come after the provider already holds the request. <span class="chip c-flag">inferred</span></td>
+            <td class="counted"><span class="chip c-own">media_hydration</span><span class="chip c-unattr">unexplained</span><span class="chip c-deflate">upstream</span><span class="expl">Own <code>media_hydration</code> up to where the DO reports its provider fetch began. Without that timing, the hop is own for a DO envelope from before its provider fetch. It is left unrecorded for a DO provider-fetch rejection and for a rejected worker-to-DO fetch, where the provider may have seen the request; that time reads as <code>unexplained</code> inside the window and counts toward <code>post_dispatch</code> after an earlier dispatch. A response with neither DO header, seen only while older DO instances run during a deploy, starts <code>upstream</code> at the worker's dispatch, so its hop is subtracted as provider time. That is deliberate: starting at the response would count the provider's time to headers as ours, a larger error. A hydration stream that fails mid-upload also ends as a DO provider-fetch rejection, so it stays unrecorded. A rejected worker-to-DO fetch stays unrecorded because a DO reset can come after the provider already holds the request. <span class="chip c-flag">inferred</span></span></td>
             <td class="ev"><code>packages/router/adapters/base/index.ts · recordOwn('media_hydration', dispatchAtMs, endMs)</code><code>packages/router/adapters/base/index.ts · #recordOffloadHop</code><code>packages/supersize-streaming/durable-object-upstream-fetch.ts · resolveOffloadedDispatch</code><code>packages/supersize-streaming/durable-object-upstream-fetch.ts · upstreamStartMs: args.dispatchAtMs</code><code>packages/supersize-streaming/durable-object-upstream-fetch.ts · bodySentAtMs</code><code>packages/supersize-streaming/do-generated-response.ts · x-or-do-generated-response</code><code>packages/supersize-streaming/fetch-offloaded-request.ts · a reset in between may leave the provider already</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-3056">PLA-3056</a></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
 
-          <tr class="group"><td colspan="7">post_dispatch window: first dispatch to the last byte to the client</td></tr>
+          <tr class="group"><td colspan="6">post_dispatch window: first dispatch to the last byte to the client</td></tr>
           <tr>
             <td class="num">22</td>
             <td class="step">Provider: first token to last token</td>
             <td class="when">Every dispatched attempt</td>
-            <td><span class="chip c-excl">upstream</span></td>
-            <td><span class="chip c-ok">correct</span> Also holds the pre-dispatch CPU tail from row 20 (PLA-2975).</td>
-            <td class="ev"><code>packages/router/adapters/base/index.ts · #routerLatencyV2UpstreamTracker.begin</code><code>packages/router/adapters/base/index.ts · onComplete, #routerLatencyV2UpstreamTracker.finish</code></td>
-            <td class="tk"><span class="none">n/a</span></td>
+            <td class="counted"><span class="chip c-excl">upstream</span><span class="chip c-excl">retried_providers</span><span class="expl">The first dispatched attempt's provider time is <code>upstream</code>. Every attempt after it, such as a fallback provider, is <code>retried_providers</code>. Both are subtracted from <code>post_dispatch</code>, and the gaps between them are <code>fallback_retry</code> (row 25).</span><span class="gap"><b>Known gap:</b> also holds the pre-dispatch CPU tail from row 20 (<a href="https://linear.app/openrouter/issue/PLA-2975">PLA-2975</a>).</span></td>
+            <td class="ev"><code>packages/router/adapters/base/index.ts · #routerLatencyV2UpstreamTracker.begin</code><code>packages/router/adapters/base/index.ts · onComplete, #routerLatencyV2UpstreamTracker.finish</code><code>packages/instrumentation/router-latency-v2/upstream-tracker.ts · ? 'retried_providers'</code><code>packages/instrumentation/router-latency-v2/compute.ts · PROVIDER_CAUSES</code></td>
+            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2975">PLA-2975</a></td>
           </tr>
           <tr>
             <td class="num">23</td>
             <td class="step">Our stream CPU<span class="sub">SSE parse, plugin chain, StreamBreaker, skin framing</span></td>
             <td class="when">Every streamed event</td>
-            <td><span class="chip c-excl">upstream</span></td>
-            <td><span class="chip c-ok">correct</span> Mostly overlaps the provider, so it stays out of router latency. The delay it adds on streamed requests is emitted as separate <code>stream_first_byte_delay</code>, <code>stream_last_byte_delay</code> and <code>stream_event_lag_p50</code>/<code>_max</code> values. Bytes held by read coalescing are stamped when released, so that hold is not counted. Pure CPU work between a provider read and its handoff reads about 0ms because <code>Date.now()</code> is frozen until I/O. Provider reads are buffered up to 8 chunks ahead; while the buffer is full, arrival stamps are late, so the values are lower estimates. <span class="chip c-flag">inferred</span></td>
+            <td class="counted"><span class="chip c-excl">upstream</span><span class="expl">Mostly overlaps the provider, so it stays out of router latency. The delay it adds on streamed requests is emitted as separate <code>stream_first_byte_delay</code>, <code>stream_last_byte_delay</code> and <code>stream_event_lag_p50</code>/<code>_max</code> values. Bytes held by read coalescing are stamped when released, so that hold is not counted. Pure CPU work between a provider read and its handoff reads about 0ms because <code>Date.now()</code> is frozen until I/O. Provider reads are buffered up to 8 chunks ahead; while the buffer is full, arrival stamps are late, so the values are lower estimates. <span class="chip c-flag">inferred</span></span></td>
             <td class="ev"><code>packages/router/adapters/base/index.ts · decodeEventStream</code><code>packages/router/plugins/base/apply-plugins.ts · reader.read()</code><code>packages/instrumentation/router-latency-v2/stream-delay.ts · stampProviderArrivals, StreamDelayRecorder, STREAM_DELAY_READ_AHEAD_CHUNKS</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2793">PLA-2793</a></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">24</td>
             <td class="step">Slow-client backpressure<span class="sub">pull-based streams stop upstream reads</span></td>
             <td class="when">Client reads slower than the provider writes <span class="chip c-flag">inferred</span></td>
-            <td><span class="chip c-excl">upstream</span></td>
-            <td><span class="chip c-ok">correct total</span> Client time, so excluding it is right, but it is labelled <code>upstream</code>. Client write waits after the provider's last byte are excluded from <code>stream_last_byte_delay</code>.</td>
+            <td class="counted"><span class="chip c-excl">upstream</span><span class="expl">Client time, so excluding it is right. Client write waits after the provider's last byte are excluded from <code>stream_last_byte_delay</code>.</span><span class="gap"><b>Known gap:</b> it is labelled <code>upstream</code>, not as client time (<a href="https://linear.app/openrouter/issue/PLA-3095">PLA-3095</a>).</span></td>
             <td class="ev"><code>packages/network/stream-breaker.ts · downstreamWriter.write</code><code>packages/network/stream-breaker.ts · onClientWait</code><code>packages/router/skins/openai-chat-completions/composed-sse-output-stage.ts · DEFAULT_READABLE_SLACK_CHUNKS</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2793">PLA-2793</a></td>
+            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-3095">PLA-3095</a></td>
           </tr>
           <tr>
             <td class="num">25</td>
             <td class="step">Gap before a fallback provider</td>
             <td class="when">Provider fails after dispatch</td>
-            <td><span class="chip c-unattr">fallback_retry</span></td>
-            <td>Correct total. No per-phase view of the retry.</td>
+            <td class="counted"><span class="chip c-unattr">fallback_retry</span><span class="expl">The total is right.</span><span class="gap"><b>Known gap:</b> no per-phase view of the retry (<a href="https://linear.app/openrouter/issue/PLA-3096">PLA-3096</a>).</span></td>
             <td class="ev"><code>packages/instrumentation/router-latency-v2/compute.ts · calculateFallbackRetryMs</code></td>
-            <td class="tk"><span class="none">not ticketed</span></td>
+            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-3096">PLA-3096</a></td>
           </tr>
           <tr>
             <td class="num">26</td>
             <td class="step">Final chunks, usage, skin flush</td>
             <td class="when">Every request</td>
-            <td><span class="chip c-unattr">post_dispatch</span></td>
-            <td><span class="chip c-ok">correct</span></td>
+            <td class="counted"><span class="chip c-unattr">post_dispatch</span></td>
             <td class="ev"><code>packages/router/skins/openai-chat-completions/from-internal-stream/non-stream-transform.ts · flush</code></td>
             <td class="tk"><span class="none">n/a</span></td>
           </tr>
 
-          <tr class="group"><td colspan="7">After the last byte to the client</td></tr>
+          <tr class="group"><td colspan="6">After the last byte to the client</td></tr>
           <tr>
             <td class="num">27</td>
             <td class="step">Post-response bookkeeping<span class="sub">app attribution, usage backstop up to 10s, initTx, shadow scoring, submit prep</span></td>
             <td class="when">Every request; the backstop only after a client abort</td>
-            <td><span class="chip c-out">outside</span></td>
-            <td><span class="chip c-ok">correct</span> The client is not waiting.</td>
-            <td class="ev"><code>packages/router/index.ts · resolveAppAttribution</code><code>packages/router/index.ts · computeShadowScoringFields, #submitGenerationDownstream</code><code>packages/router/helpers/log-tx-attempt.ts · compute(router.lastByteToClientAtMs)</code><code>packages/network/cloudflare.ts · lastByteAtMs</code></td>
-            <td class="tk"><a href="https://linear.app/openrouter/issue/PLA-2792">PLA-2792</a></td>
+            <td class="counted"><span class="chip c-out">outside</span><span class="expl">The client is not waiting.</span></td>
+            <td class="ev"><code>packages/router/index.ts · resolveAppAttribution</code><code>packages/router/index.ts · computeShadowScoringFields, #submitGenerationDownstream</code><code>packages/router/helpers/client-stream-last-byte.ts · computeRouterLatencyV2AfterClientStream</code><code>packages/network/cloudflare.ts · lastByteAtMs</code></td>
+            <td class="tk"><span class="none">n/a</span></td>
           </tr>
           <tr>
             <td class="num">28</td>
             <td class="step">waitUntil writes<span class="sub">ClickHouse, Stripe, usage records</span></td>
             <td class="when">Every request</td>
-            <td><span class="chip c-out">outside</span></td>
-            <td><span class="chip c-ok">correct</span> The client is not waiting.</td>
+            <td class="counted"><span class="chip c-out">outside</span><span class="expl">The client is not waiting.</span></td>
             <td class="ev"><code>packages/router/index.ts · 'clickhouse_generation_enqueue'</code></td>
             <td class="tk"><span class="none">n/a</span></td>
           </tr>
@@ -1064,7 +1110,7 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
     <dl class="emit">
       <div>
         <dt>openrouter.router.tx_attempt_latency</dt>
-        <dd>Distribution with <code>latency_type</code> of <code>router_v2</code>, <code>router_v2_excluded</code>, <code>router_v2_post_dispatch</code> and <code>router_v2_unexplained</code>. The post-dispatch value is skipped when null. <code>router_v2_excluded</code> is the time inside <code>router_v2</code> spent on tools, guardrails, parsing and routing models; it is part of <code>router_v2</code>, not subtracted from it. Every router latency metric also carries <code>server_tool_call</code>: <code>none</code> for direct traffic, or <code>agent_loop</code>, <code>tool_model</code>, <code>image_generation</code> or <code>fusion</code> for calls made by a server tool or fusion. The v2 tags also carry <code>region_lock</code> and <code>cookie_auth</code> (<code>true</code>, <code>false</code> or <code>unknown</code>): whether region-lock middleware looked the user up, and whether Clerk verified a session cookie, before the route handler created its recorder. <code>unknown</code> means the recorder was not built from the pre-handler spans, as for batch jobs, which run no pre-handler middleware, and for a video job whose Durable Object restored a snapshot saved before the snapshot carried the sources. The same values are in <code>router_latency_v2_tags</code> on Transaction attempt logs. Neither is the same as <code>region</code>, which is the Cloudflare colo's region. <code>relayed</code> is <code>true</code> when a verified relay delivered the request, and <code>relay_clock</code> is <code>ok</code> when the window starts at the origin receipt, <code>skewed</code> when the clocks disagreed and only the origin's own elapsed time was counted, <code>none</code> when not relayed, and <code>unknown</code> when the timing headers were unusable or the recorder was not helper-built. The <code>router_latency_v2_tags</code> log field keeps the raw result instead: <code>ok</code>, <code>behind</code>, <code>ahead</code>, <code>invalid</code> or <code>none</code>.<span class="src">packages/instrumentation/router-latency-v2/metrics.ts · emitRouterLatencyV2Metrics; packages/router/helpers/tx-attempt-metric-tags.ts · server_tool_call; packages/instrumentation/router-latency-v2/tags.ts · region_lock, cookie_auth, relay_clock; services/cfw-api/src/middlewares/pre-handler-auth-timing.ts · observePreHandlerAuth, observeRelay</span></dd>
+        <dd>Distribution with <code>latency_type</code> of <code>router_v2</code>, <code>router_v2_excluded</code>, <code>router_v2_post_dispatch</code> and <code>router_v2_unexplained</code>. The post-dispatch value is skipped when null. On router requests the metrics are emitted from the <code>transaction_attempt_router_latency</code> or <code>server_tools_root_router_latency</code> <code>waitUntil</code> task once the client response stream settles, or after 20s. <code>router_v2_excluded</code> is the time inside <code>router_v2</code> spent on tools, guardrails, parsing and routing models; it is part of <code>router_v2</code>, not subtracted from it. Every router latency metric also carries <code>server_tool_call</code>: <code>none</code> for direct traffic, or <code>agent_loop</code>, <code>tool_model</code>, <code>image_generation</code> or <code>fusion</code> for calls made by a server tool or fusion. The v2 tags also carry <code>region_lock</code> and <code>cookie_auth</code> (<code>true</code>, <code>false</code> or <code>unknown</code>): whether region-lock middleware looked the user up, and whether Clerk verified a session cookie, before the route handler created its recorder. <code>unknown</code> means the recorder was not built from the pre-handler spans, as for batch jobs, which run no pre-handler middleware, and for a video job whose Durable Object restored a snapshot saved before the snapshot carried the sources. The same values are in <code>router_latency_v2_tags</code> on Transaction attempt logs. Neither is the same as <code>region</code>, which is the Cloudflare colo's region. <code>relayed</code> is <code>true</code> when a verified relay delivered the request, and <code>relay_clock</code> is <code>ok</code> when the window starts at the origin receipt, <code>skewed</code> when the clocks disagreed and only the origin's own elapsed time was counted, <code>none</code> when not relayed, and <code>unknown</code> when the timing headers were unusable or the recorder was not helper-built. The <code>router_latency_v2_tags</code> log field keeps the raw result instead: <code>ok</code>, <code>behind</code>, <code>ahead</code>, <code>invalid</code> or <code>none</code>. Every <code>router_v2*</code> series and the breakdown also carry <code>response_cache_hit:false</code>: a result exists only after a provider dispatch, so the provider served the response, a response-cache lookup hit that fell through included. They also carry <code>guardrails</code>, derived from the compute result: <code>true</code> when a guardrail interval (moderation, Lakera, Model Armor or Presidio) spent time inside the window, <code>false</code> when none did, and <code>unknown</code> when none of the kept intervals did but the recorder dropped intervals past its cap. It is not the same as <code>moderation</code>, which is true only when the moderation plugin ran. The enterprise cohort p99 monitors split on it. The shared content-filtering guard that the image, video, TTS, embeddings, rerank and Decisions lifecycles run records no guardrail interval, so a request it checked is tagged <code>false</code>. The logs carry the same information as <code>router_latency_v2_excluded_by_cause.guardrails</code>, so there is no log field for it.<span class="src">packages/instrumentation/router-latency-v2/metrics.ts · emitRouterLatencyV2Metrics; packages/instrumentation/router-latency-v2/metrics.ts · emitRouterLatencyV2MetricsInWaitUntil; packages/instrumentation/router-latency-v2/metrics.ts · response_cache_hit:false; packages/instrumentation/router-latency-v2/metrics.ts · toGuardrailsTag; packages/instrumentation/router-latency-v2/compute.ts · droppedIntervals; packages/routing/lifecycle/content-filtering-guard.ts · createContentFilteringGuard; packages/router/helpers/tx-attempt-metric-tags.ts · server_tool_call; packages/instrumentation/router-latency-v2/tags.ts · region_lock, cookie_auth, relay_clock; services/cfw-api/src/middlewares/pre-handler-auth-timing.ts · observePreHandlerAuth, observeRelay</span></dd>
       </div>
       <div>
         <dt>openrouter.api.relay_hop.duration_ms</dt>
@@ -1075,8 +1121,12 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
         <dd>Emitted by the landing worker for every verified relay. <code>clock_check</code> is a counter tagged <code>result</code> (<code>ok</code>, <code>behind</code>, <code>ahead</code> or <code>invalid</code>). <code>implied_transit_ms</code> is a distribution of the signed implied transit, landing entry minus origin receipt minus origin elapsed, tagged the same way and skipped for <code>invalid</code>. Together with the round trip above, they show whether <code>MAX_RELAY_TRANSIT_MS</code> is set right.<span class="src">services/cfw-api/src/middlewares/relay-clock.ts · emitRelayClockCheck; services/cfw-api/src/middlewares/proxy.ts · emitRelayClockCheck</span></dd>
       </div>
       <div>
+        <dt>Response-cache hits on openrouter.router.tx_attempt_latency</dt>
+        <dd><code>latency_type:router_v2_cache_hit</code>, one sample per served hit on chat completions, responses, messages and cursor, tagged <code>response_cache_hit:true</code>. The value runs from the recorder start to the cached response's server-side completion, less the time the replay waited on the client; the request path table says where each path ends. Not part of <code>router_latency_v2</code> or <code>post_dispatch</code>, with no breakdown and no log field. Same tags as <code>router_v2</code> without <code>media_hydration</code> and <code>guardrails</code>. No endpoint or adapter ran, so <code>byok</code>, <code>prompt_cache_ran</code> and <code>has_free_model</code> are <code>unknown</code>, <code>modality</code> is <code>text</code> and <code>router</code> is <code>none</code>; <code>success</code> is <code>true</code>. Filter <code>response_cache_hit:true</code> for cache-served traffic and <code>response_cache_hit:false</code> for provider-dispatched traffic. Stream delay samples do not carry the tag.<span class="src">packages/instrumentation/router-latency-v2/metrics.ts · emitResponseCacheHitLatencyMetric; packages/router/helpers/response-cache-hit-router-latency.ts · buildEndpointlessRouterLatencyV2Tags; services/cfw-api/src/utils/cache-hit-sse.ts · clientWaitMs</span></dd>
+      </div>
+      <div>
         <dt>Stream delay on openrouter.router.tx_attempt_latency</dt>
-        <dd>Streamed requests only, same tags as <code>router_v2</code> without <code>media_hydration</code>. <code>latency_type</code> of <code>stream_first_byte_delay</code>, <code>stream_last_byte_delay</code>, <code>stream_event_lag_p50</code> and <code>stream_event_lag_max</code>, each skipped when null. Not part of <code>router_latency_v2</code> or <code>post_dispatch</code>, and the values must not be added together.<span class="src">packages/instrumentation/router-latency-v2/stream-delay.ts · emitStreamDelayMetrics</span></dd>
+        <dd>Streamed requests only, same tags as <code>router_v2</code> without <code>media_hydration</code> and <code>guardrails</code>. <code>latency_type</code> of <code>stream_first_byte_delay</code>, <code>stream_last_byte_delay</code>, <code>stream_event_lag_p50</code> and <code>stream_event_lag_max</code>, each skipped when null. Not part of <code>router_latency_v2</code> or <code>post_dispatch</code>, and the values must not be added together.<span class="src">packages/instrumentation/router-latency-v2/stream-delay.ts · emitStreamDelayMetrics</span></dd>
       </div>
       <div>
         <dt>openrouter.router.tx_attempt_latency_breakdown</dt>
@@ -1084,7 +1134,7 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
       </div>
       <div>
         <dt>router_latency_v2_* log fields</dt>
-        <dd>Every value plus <code>dropped_intervals</code>, which exists only here. <code>router_latency_v2_excluded</code> and <code>router_latency_v2_excluded_by_cause</code> mean the same as <code>router_v2_excluded</code>. Intervals past 512 per request are dropped. All fields are null when compute returns null.<span class="src">packages/instrumentation/router-latency-v2/log-fields.ts · buildRouterLatencyV2LogFields; packages/instrumentation/router-latency-v2/recorder.ts · MAX_INTERVALS</span></dd>
+        <dd>Every value plus <code>dropped_intervals</code>, which exists only here. <code>router_latency_v2_excluded</code> and <code>router_latency_v2_excluded_by_cause</code> mean the same as <code>router_v2_excluded</code>. Intervals past 512 per request are dropped. All fields are null when compute returns null. On the router's Transaction attempt line they are computed when the line is written, so <code>router_latency_v2_post_dispatch</code> is null when the client has not read the last byte by then, even where the metric has a value.<span class="src">packages/instrumentation/router-latency-v2/log-fields.ts · buildRouterLatencyV2LogFields; packages/instrumentation/router-latency-v2/recorder.ts · MAX_INTERVALS; packages/router/helpers/log-tx-attempt.ts · routerLatencyV2LogResult</span></dd>
       </div>
       <div>
         <dt>ClickHouse generations</dt>
@@ -1092,13 +1142,13 @@ footer .glyph { width: 18px; height: auto; color: var(--fg); opacity: 0.5; }
       </div>
       <div>
         <dt>When compute returns null</dt>
-        <dd>No statsd metric is sent. With no attempted endpoint, there is no log line either.<span class="src">packages/instrumentation/router-latency-v2/metrics.ts · emitRouterLatencyV2Metrics; packages/router/helpers/log-tx-attempt.ts · logTxAttempt</span></dd>
+        <dd>No <code>router_v2*</code> metric is sent; a served response-cache hit sends <code>router_v2_cache_hit</code> instead. With no attempted endpoint, there is no log line either.<span class="src">packages/instrumentation/router-latency-v2/metrics.ts · emitRouterLatencyV2Metrics; packages/router/helpers/log-tx-attempt.ts · logTxAttempt</span></dd>
       </div>
     </dl>
   </section>
 
   <footer>
-    <span>Verified against main at f6deb06 on 2026-09-29; the Durable Object offload rows against main at a714a1c plus PR #47942 on 2026-09-29. Claims are checked in code unless marked inferred or suspected. Production numbers come from the PLA-2794 sizing on 2026-09-28; nothing else was run. Update rules: packages/instrumentation/router-latency-v2/AGENTS.md.</span>
+    <span>Verified against main at a2982c1 on 2026-09-30. Claims are checked in code unless marked inferred or suspected. Production numbers come from the PLA-2794 sizing on 2026-09-28; nothing else was run. Update rules: packages/instrumentation/router-latency-v2/AGENTS.md.</span>
     <svg class="glyph" viewBox="0 0 599.50008 424.5955" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="currentColor" d="M465.95505,1c70.18551,0,127.07865,56.89523,127.07865,127.07865s-56.89314,127.07865-127.07865,127.07865l126.04929,126.05058c16.01193,16.01105,4.67227,43.38762-17.96889,43.38762H211.79775C94.82524,424.5955,0,329.77027,0,212.79775S94.82524,1,211.79775,1h254.1573ZM211.79775,85.7191c-70.18342,0-127.07865,56.89523-127.07865,127.07865s56.89523,127.07865,127.07865,127.07865,127.07865-56.89523,127.07865-127.07865-56.89523-127.07865-127.07865-127.07865Z"/></svg>
     <a href="https://linear.app/openrouter/project/router-latency-instrumentation-8abaa33a7542">Linear: Router Latency Instrumentation</a>
   </footer>

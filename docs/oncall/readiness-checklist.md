@@ -18,9 +18,10 @@ Set in [your Datadog profile](https://us5.datadoghq.com/personal-settings/profil
 - [ ] Add and verify your phone number in your Datadog profile. Guide: [Contact methods](https://docs.datadoghq.com/incident_response/on-call/notification_preferences/#contact-methods).
 - [ ] Enable push, SMS, and voice for high-urgency alerts. Configure two channels to notify you immediately and the third within five minutes. Guide: [Notification preferences](https://docs.datadoghq.com/incident_response/on-call/notification_preferences/#notification-preferences).
 - [ ] Enable push for low-urgency alerts.
+- [ ] Join `#alerts-p1-critical` and `#alerts-p2-high-impact` in Slack. Every monitor that pages posts there too, so the thread is where the alert context, the auto-triage, and teammates land. The reminder flags this as `not in #alerts-p1-critical` / `not in #alerts-p2-high-impact`.
 - [ ] With Do Not Disturb on, open [your Datadog On-Call profile](https://us5.datadoghq.com/personal-settings/profile?tab=on-call-notifications). Under **Contact methods**, hover over your phone number and use **Test Call** and **Test SMS**; hover over your mobile device for its test option. Confirm the call rings and the SMS and push notifications arrive. Guide: [Test contact methods](https://docs.datadoghq.com/incident_response/on-call/notification_preferences/#contact-methods).
 
-Done when: the reminder shows a green circle next to your name (it checks the Datadog side only) and the contact-method tests above reach your phone with Do Not Disturb on. These tests check contact methods, not notification-rule timing or escalation-route coverage.
+Done when: the reminder shows a green circle after both :datadog: and :slack: next to your name (it checks the Datadog side and the two alert channels only) and the contact-method tests above reach your phone with Do Not Disturb on. These tests check contact methods, not notification-rule timing or escalation-route coverage.
 
 Note: a live call dials your verified phone number directly and skips you if there is none.
 
