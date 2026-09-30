@@ -1,14 +1,13 @@
-# HeyGen — Video 1.0 (`heygen/heygen-video-1`)
+# HeyGen — Video 1 (`heygen/heygen-video-1`)
 
-HeyGen Video 1.0 is HeyGen's general-purpose generative video model: text-to-video, image-to-video from one first frame, and reference-to-video from up to twelve image, video, and audio references. It is a different product from the two HeyGen adapters already in the repo (`HeyGenAvatarIVAdapter` animates a talking head, `HeyGenVideoAgentAdapter` scripts an avatar video), but it shares HeyGen's `x-api-key` authentication and the `GET /v3/videos/{video_id}` rendered-video lookup, so `HeyGenVideo1Adapter` reuses the `heygen-shared` headers, video-details, and artifact helpers. Nothing in this note is staged, launched, or written to a database.
+HeyGen Video 1 is HeyGen's general-purpose generative video model: text-to-video, image-to-video from one first frame, and reference-to-video from up to twelve image, video, and audio references. It is a different product from the two HeyGen adapters already in the repo (`HeyGenAvatarIVAdapter` animates a talking head, `HeyGenVideoAgentAdapter` scripts an avatar video), but it shares HeyGen's `x-api-key` authentication and the `GET /v3/videos/{video_id}` rendered-video lookup, so `HeyGenVideo1Adapter` reuses the `heygen-shared` headers, video-details, and artifact helpers. Nothing in this note is staged, launched, or written to a database.
 
 ## Sources and authentication
 
 - Partner integration guide (source of record, NDA until launch): <https://developers.heygen.com/docs/heygen-video-partner-integration>, fetched 2026-09-25 UTC.
-- Launch coordination: Onee Yekeh (HeyGen) in Slack, 2026-09-25, launch date locked to 2026-09-30, pricing to follow before then.
 - API base URL: `https://api.heygen.com`.
 - Authentication header: `x-api-key: <HEYGEN_API_KEY>` (`heygenHeaders` in `packages/video-generation/adapters/heygen-shared/headers.ts`). The platform key is the existing `HEYGEN_API_KEY` in Infisical under `/_providers`; no key value appears in this note or in the repository.
-- Required key scopes: `videos:write`, `videos:read`, and `assets:write` when references are uploaded as assets. Trial keys are rejected on the Video 1.0 route.
+- Required key scopes: `videos:write`, `videos:read`, and `assets:write` when references are uploaded as assets. Trial keys are rejected on the Video 1 route.
 - BYOK: HeyGen already maps to `HEYGEN_API_KEY` in `packages/providers/configs/api-key.ts`, so BYOK works the same way as for the two existing HeyGen endpoints. No provider-config change is needed.
 
 ## Models, regions, and endpoint map
@@ -42,7 +41,7 @@ Mode selection: a `first_frame` image selects `image_to_video`, any `input_refer
 
 References are accepted as HTTPS URLs, and images additionally as inline base64 data URLs whose MIME type matches the reference modality (`toHeyGenFile` in `packages/video-generation/adapters/heygen-shared/reference-file.ts`); a `data:` string that is not base64-encoded or carries the wrong MIME family is a 400. Video and audio data URLs are rejected by the shared lifecycle gate (`validateVideoReferenceUrls`) before the adapter runs, because inline video and audio have not been verified against HeyGen; the adapter would forward them as `base64` files if that gate is opened later. HeyGen additionally accepts asset IDs from `POST /v1/asset`; the adapter does not implement asset upload, so asset-ID references are out of scope for this launch. HeyGen fetches URL references server-side with its own SSRF checks and does not follow redirects.
 
-Audio: Video 1.0 always renders a generated AAC track. `generate_audio: false` is a 400 (there is no way to honor it), `generate_audio: true` is accepted and omitted from the native body, and the endpoint advertises `generate_audio: false` in `supported_video_parameters` so the parameter is not offered as a toggle.
+Audio: Video 1 always renders a generated AAC track. `generate_audio: false` is a 400 (there is no way to honor it), `generate_audio: true` is accepted and omitted from the native body, and the endpoint advertises `generate_audio: false` in `supported_video_parameters` so the parameter is not offered as a toggle.
 
 Aspect ratio in `image_to_video`: the guide says the first frame determines output geometry and `aspect_ratio` is ignored. The adapter rejects an explicit `aspect_ratio` (or `size`) in that mode with a 400 rather than forwarding a value the provider ignores.
 
@@ -50,7 +49,7 @@ Unknown request fields are rejected by HeyGen with `Extra inputs are not permitt
 
 ## Submit/poll/status lifecycle
 
-1. `POST /v3/models/videos` returns `{ data: { status: "pending", video_id } }` (HTTP 200). `video_id` is the upstream job ID.
+1. `POST /v3/models/videos` returns `{ data: { status: "pending", video_id } }` (HTTP 202). `video_id` is the upstream job ID.
 2. `GET /v3/videos/{video_id}` returns `data.status` in `waiting`, `pending`, `processing`, `completed`, or `failed`. `waiting` and `pending` map to `AsyncJobStatus.Pending`, `processing` to `InProgress`, `failed` to `Failed` with `failure_message`, and anything outside the enum is a 502 upstream fault.
 3. On `completed`, `data.video_url` and `data.duration` are both required; a completed response missing either is a 502 upstream fault rather than a zero-second bill.
 
@@ -66,7 +65,13 @@ Validation errors are HTTP 400 with `{ error: { code, message, param, doc_url } 
 
 ## Billing and SKU reconciliation
 
-HeyGen has not confirmed Video 1.0 pricing as of 2026-09-25; they committed to sharing it before the 2026-09-30 launch. The adapter bills through the existing `HeyGenPricingStrategy`: one SKU, `heygen:duration_seconds`, priced per rendered second. The request-time estimate is `duration ?? 5` seconds; on `completed` the adapter appends the provider-reported `duration` under the same SKU, and `reduceSkuItems` keeps the last value, so the terminal charge is the rendered length. If the final rate card turns out to differ by resolution (480p vs 768p), the strategy needs a resolution-tiered SKU before the endpoint can be unhidden; the current schema cannot express that.
+HeyGen's rate card prices Video 1 per rendered second by mode and resolution: text-to-video and image-to-video at $0.02 (480p) / $0.03 (768p), reference-to-video output at $0.04 (480p) / $0.06 (768p). Image and audio references are free; HeyGen also lists a per-second charge on the *input* reference video at the reference-to-video rate. HeyGen labels the model 50% off through the end of October 2026, after which list rates apply.
+
+The adapter bills through `HeyGenPricingStrategy` with four tiered SKUs (`heygen:duration_seconds_480p`, `heygen:duration_seconds_768p`, `heygen:reference_duration_seconds_480p`, `heygen:reference_duration_seconds_768p`); the flat `heygen:duration_seconds` SKU stays in the same strategy for Avatar IV and Video Agent. `getHeyGenVideo1SKU` picks the tier at submit time from the request (any `input_references` selects the reference tier; `first_frame` alone is image-to-video and bills like text-to-video; an omitted `resolution` bills 768p because that is what HeyGen renders). `transformRequest` records the tier with the `duration ?? 5` estimate; on `completed` the adapter appends the provider-reported `duration` under the same SKU and `reduceSkuItems` keeps the last value. Because settlement (`computeUsage` in `packages/video-generation/helpers/init-tx.ts`) turns a pricing-strategy error into a $0 bill with a warning log, `transformRequest` refuses with a 503 any request whose tier has no rate in the endpoint's `pricing_json` (`hasHeyGenRate`), so an unpriced render never starts. A completed poll with no recorded tier (a job submitted by the pre-tier adapter, whose request-time SKU was either absent or the flat one) bills under the flat `heygen:duration_seconds` SKU. `getPublicPricing` renders every configured rate as its own rate-card row, so carry either the flat rate or the tiers on a public endpoint, never both; let jobs submitted before the tiered deploy settle (renders take under a minute) before swapping `pricing_json`.
+
+Not billed: the per-second charge on the input reference video. The adapter does not know the source clip's length and HeyGen's poll response carries only the rendered `duration`; if HeyGen exposes the input duration or a cost field on the completed job, add a SKU for it then.
+
+The 50% promotion is `discount_to_user: 0.5` on the endpoint row, not a promotional rate in `pricing_json`; remove it on 2026-11-01.
 
 ## Adapter/base-class choice
 
@@ -94,11 +99,14 @@ A **hidden** endpoint on a new `heygen/heygen-video-1` model row owned by the He
 }
 ```
 
-- `pricing_json`, in dollars per rendered second, to be filled from HeyGen's rate card when it arrives:
+- `pricing_json`, list rates in dollars per rendered second (the promotion is `discount_to_user`, see Billing):
 
 ```json
 {
-  "heygen:duration_seconds": "<per-second USD rate, TBD>"
+  "heygen:duration_seconds_480p": "0.02",
+  "heygen:duration_seconds_768p": "0.03",
+  "heygen:reference_duration_seconds_480p": "0.04",
+  "heygen:reference_duration_seconds_768p": "0.06"
 }
 ```
 
@@ -118,5 +126,5 @@ Each completed scenario has a `.submit.json` and a `.poll.json` (final `complete
 
 ## Ownership
 
-- Private access before launch: the endpoint stays hidden until HeyGen's pricing lands and the launch-calendar owner (Mindi Weik) unhides it on 2026-09-30.
+- Private access before launch: the endpoint stays hidden until the tiered pricing is applied and the launch-calendar owner (Mindi Weik) unhides it on 2026-09-30.
 - Production cleanup: the endpoint row and any test generations created while staging belong to the launch owner; the adapter has no other production footprint.

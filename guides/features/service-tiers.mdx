@@ -21,15 +21,19 @@ import { Template } from "/snippets/exports/Template.jsx";
 
 ## Service Tiers
 
-Many providers sell more than one grade of capacity for the same model:
+Some providers sell the same model at more than one grade of capacity. Every request uses the standard tier unless you ask for another one:
 
-- **`flex`**: a discounted tier that trades latency and availability for a lower price.
-- **`priority`**: a tier that costs more for faster, more reliable service.
-- **`ultrafast`**: a tier above priority, currently OpenAI's [Ultrafast mode](https://developers.openai.com/api/docs/guides/ultrafast-mode), for the lowest latency at the highest price (OpenAI [prices it](https://developers.openai.com/api/docs/pricing?latest-pricing=ultrafast) at several times the standard rate for the same model).
+| Tier | Also called | Tradeoff |
+| --- | --- | --- |
+| `default` | `standard` | The provider's regular capacity and pricing. |
+| `flex` | | Cheaper, in exchange for higher latency and lower availability. |
+| `priority` | `fast` | Faster and more reliable, at a higher price. |
 
-OpenRouter exposes each of these as its own endpoint, so you can reach them either by letting them compete for your traffic or by asking for one explicitly. The exception is `ultrafast`, which is never admitted by a variant and is only used when you ask for it by name.
+`priority` and `fast` are two names for the same tier: OpenAI brands its priority processing as [Fast mode](https://developers.openai.com/api/docs/guides/fast-mode), and Anthropic's [fast mode](https://platform.claude.com/docs/en/build-with-claude/fast-mode) is served on this tier. OpenRouter accepts either spelling. See [Fast mode](#fast-mode).
 
-Whichever way you route, the response reports the tier that actually served the request, and you are billed at that tier's rate.
+OpenRouter lists each tier as its own endpoint of the model, with its own pricing. You can let tier endpoints compete with standard endpoints for your traffic, or request a tier explicitly. Either way, the response reports the tier that actually served the request, and you're billed at that tier's rate.
+
+A few OpenAI models also offer an [`ultrafast`](#ultrafast) tier above priority.
 
 ### The `:nitro` and `:floor` Variants
 
@@ -45,8 +49,6 @@ Because a tier endpoint has to win that sort like any other endpoint, you pay a 
 
 Nothing else about the request changes, and fallbacks keep working: if the tier endpoint is unavailable, the next endpoint in the sorted pool serves the request at its own rate.
 
-Neither variant admits `ultrafast` endpoints. Ultrafast is opt-in only, through the `service_tier` parameter or the `<provider>/ultrafast` endpoint slug.
-
 This is the recommended starting point for most traffic. Reach for the `service_tier` parameter below when you need a specific tier regardless of how it compares to the alternatives.
 
 See [Nitro](/guides/routing/model-variants/nitro) and [Floor](/guides/routing/model-variants/floor) for the variants in full.
@@ -55,10 +57,10 @@ See [Nitro](/guides/routing/model-variants/nitro) and [Floor](/guides/routing/mo
 
 To pin a tier explicitly, pass `service_tier` as a top-level parameter in your request body. Supported values:
 
+- `default`: the standard tier.
 - `flex`: lower cost, higher latency.
-- `priority`: faster, higher cost.
-- `fast`: an alias for `priority` (see [Fast mode](#fast-mode) below).
-- `ultrafast`: fastest, highest cost. Falls back to `priority`, then to default endpoints (see [How Routing Works](#how-routing-works) below).
+- `priority`, or its alias `fast`: faster, higher cost.
+- `ultrafast`: see [Ultrafast](#ultrafast).
 
 The example below requests the `flex` tier from OpenAI's `gpt-5` for a 50% discount in exchange for higher latency and lower availability.
 
@@ -199,8 +201,6 @@ Three spellings request the priority tier. They are fully interchangeable on all
 - `service_tier: "fast"` (OpenAI's [Fast mode](https://developers.openai.com/api/docs/guides/fast-mode) rename of priority processing)
 - `speed: "fast"` (Anthropic's native parameter)
 
-`ultrafast` is not a spelling of priority. It is a separate, higher tier with its own endpoints and pricing, and `fast` never selects it.
-
 **Reported tier.** The response always reports the tier as `priority`, never `fast`. This matches OpenAI's own API, which returns `priority` even when the request spelled the tier `fast`.
 
 **Anthropic models.** The reported tier is derived from the `speed` Anthropic returns:
@@ -217,21 +217,42 @@ Three spellings request the priority tier. They are fully interchangeable on all
 Anthropic itself has deprecated its priority tier. Per [Anthropic's service tiers documentation](https://platform.claude.com/docs/en/api/service-tiers): "Priority Tier capacity commitments are no longer available for purchase. Organizations with an existing commitment can continue to use Priority Tier through their contract end date."
 </Note>
 
+### Ultrafast
+
+`ultrafast` is OpenAI's [Ultrafast mode](https://developers.openai.com/api/docs/guides/ultrafast-mode), a tier above priority for the lowest possible latency. It is available on select OpenAI models and costs several times the standard rate. See [OpenAI's pricing](https://developers.openai.com/api/docs/pricing?latest-pricing=ultrafast). On models that offer it, the model page lists an `openai/ultrafast` endpoint.
+
+Ultrafast is a separate tier, not another spelling of priority, and it is opt-in only. OpenRouter never routes to it unless you name it:
+
+```json lines
+{
+  "model": "openai/gpt-6-astra",
+  "service_tier": "ultrafast"
+}
+```
+
+You can also name the `openai/ultrafast` endpoint slug in `provider.order` or `provider.only` (see [How Routing Works](#how-routing-works)). Nothing else selects it: not `:nitro`, not `service_tier: "priority"` or `"fast"`, and not `provider.sort`.
+
+An `ultrafast` request tries ultrafast endpoints first, then priority endpoints, then standard endpoints. You're billed at the rate of the tier that served the request, and the response's `service_tier` field reports that tier. If the model has no ultrafast endpoint, the request behaves like `service_tier: "priority"`.
+
+<Tip>
+Before trying each endpoint, OpenRouter checks that your balance covers the request's maximum output at that endpoint's price. At ultrafast rates, the default output limit can fail that check, so the request falls back to priority. Set `max_tokens` (`max_output_tokens` in the Responses API) to what you actually need so the ultrafast endpoint stays eligible.
+</Tip>
+
 ### How Routing Works
 
 Non-default tier endpoints (`flex`, `priority`, `ultrafast`) are only considered when your request asks for them. There are three ways to do that.
 
 #### 1. The `:nitro` and `:floor` model variants
 
-- [`:nitro`](/guides/routing/model-variants/nitro) makes priority endpoints eligible. [`:floor`](/guides/routing/model-variants/floor) makes flex endpoints eligible. No variant makes ultrafast endpoints eligible.
+- [`:nitro`](/guides/routing/model-variants/nitro) makes priority endpoints eligible. [`:floor`](/guides/routing/model-variants/floor) makes flex endpoints eligible.
 - Unlike the `service_tier` parameter, tier endpoints get no special treatment. The whole pool is sorted by the variant's metric (throughput for `:nitro`, price for `:floor`), so a tier endpoint is used only when it wins that sort.
 - Setting `provider.order` replaces sorting with your explicit ordering, which disables the variant's tier admission. Name a tier endpoint slug in the order list to include it.
 - An explicit `service_tier: "default"` also disables the variant's tier admission, so you can use `:nitro`/`:floor` purely for their sorting while pinning the standard tier.
 
 #### 2. The `service_tier` parameter
 
-- **`priority`**: matching endpoints are tried first, with fallback to other endpoints if none succeed. Within each group, endpoints are sorted by throughput by default, and setting `provider.order` or `provider.sort` replaces that default with your ordering. Billing always follows the endpoint actually used, so a priority request that falls back off-tier is charged at that endpoint's standard rate, not the tier rate. Ultrafast endpoints are not eligible for a `priority` request.
-- **`ultrafast`**: ultrafast endpoints are tried first, then priority endpoints, then default endpoints. Within each group, endpoints are sorted by throughput by default, and setting `provider.order` or `provider.sort` replaces that default with your ordering. Billing follows the endpoint that actually served the request, so a request that falls back to priority is billed the priority rate and one that falls back to default is billed the default rate. If the model has no ultrafast endpoint, the request behaves like `service_tier: "priority"`.
+- **`priority`**: matching endpoints are tried first, with fallback to other endpoints if none succeed. Within each group, endpoints are sorted by throughput by default, and setting `provider.order` or `provider.sort` replaces that default with your ordering. Billing always follows the endpoint actually used, so a priority request that falls back off-tier is charged at that endpoint's standard rate, not the tier rate.
+- **`ultrafast`**: works like `priority` with one more group in front: ultrafast endpoints, then priority endpoints, then default endpoints. See [Ultrafast](#ultrafast).
 - **`flex`**: routing is restricted to flex endpoints (sorted by price). Flex never falls back to a default-tier endpoint, since that would cost more than the tier you requested, so a flex capacity error surfaces instead.
 - If the pool contains no flex endpoints at all (for example, the model has no flex-capable provider), the request routes normally at standard rates.
 - Combine with [`allow_fallbacks: false`](/guides/routing/provider-selection#disabling-fallbacks) to route only to the top endpoint of that tier.
@@ -240,7 +261,7 @@ Non-default tier endpoints (`flex`, `priority`, `ultrafast`) are only considered
 
 - Each tier has its own endpoint slug, formed by appending the tier to the provider slug, e.g. `openai/fast`, `openai/ultrafast`, or `google-vertex/flex`.
 - `"provider": { "only": ["openai/fast"] }` restricts routing to OpenAI's Fast tier. See [Provider Selection](/guides/routing/provider-selection) for `provider.order` and `provider.only` in full.
-- The `fast` and `priority` slug suffixes are interchangeable, so `openai/priority` matches the same endpoint. `openai/ultrafast` is a different endpoint and is not matched by either.
+- The `fast` and `priority` slug suffixes are interchangeable, so `openai/priority` matches the same endpoint as `openai/fast`.
 
 Requests that don't use any of these are never routed to a non-default service tier.
 
@@ -248,9 +269,9 @@ Requests that don't use any of these are never routed to a non-default service t
 
 | Option | Eligible pool | Ordering | Fallback |
 | --- | --- | --- | --- |
-| `:nitro` variant | Default + priority endpoints (never ultrafast) | Entire pool sorted by throughput, no tier preference | Next-fastest default or priority endpoint |
+| `:nitro` variant | Default + priority endpoints | Entire pool sorted by throughput, no tier preference | Next-fastest default or priority endpoint |
 | `:floor` variant | Default + flex endpoints | Entire pool sorted by price, no tier preference | Next-cheapest endpoint of any tier |
-| `service_tier: "priority"` (or `"fast"`) | Default + priority endpoints (never ultrafast) | Priority endpoints first, each group sorted by throughput unless `provider.order` or `provider.sort` is set | Falls back to default endpoints, ultrafast endpoints are not eligible |
+| `service_tier: "priority"` (or `"fast"`) | Default + priority endpoints | Priority endpoints first, each group sorted by throughput unless `provider.order` or `provider.sort` is set | Falls back to default endpoints |
 | `service_tier: "ultrafast"` | Default + priority + ultrafast endpoints | Ultrafast first, then priority, then default, each group sorted by throughput unless `provider.order` or `provider.sort` is set | Falls back to priority, then default endpoints |
 | `service_tier: "flex"` | Flex endpoints only (when any exist) | Sorted by price | No fallback to default endpoints, capacity errors surface |
 | `provider.only` with a tier slug | Only the endpoints the slugs name (tier slugs opt in that tier) | Default load-balanced ordering unless a sort is set | Within the named endpoints only |
@@ -269,7 +290,7 @@ Tier endpoints are listed in the [model endpoints API](/api/api-reference/endpoi
 
 The following providers support `flex` and `priority` service tiers for select models:
 
-- **OpenAI** (the priority tier is branded [Fast mode](https://developers.openai.com/api/docs/guides/fast-mode); `ultrafast` is OpenAI's [Ultrafast mode](https://developers.openai.com/api/docs/guides/ultrafast-mode), offered on select models only, with OpenAI-side rate limits and pricing separate from the standard tier)
+- **OpenAI** (priority is branded Fast mode; select models also offer [`ultrafast`](#ultrafast))
 - **Anthropic** (`priority` only, served via Anthropic's [fast mode](https://platform.claude.com/docs/en/build-with-claude/fast-mode) — requesting the `priority` or `fast` tier sends `speed: "fast"` upstream)
 - **Google Vertex**
 - **Google AI Studio**
@@ -287,7 +308,7 @@ OpenRouter normalizes provider-equivalent base tier labels, such as Google's `st
 
 Provider documentation:
 
-- **OpenAI**: [Flex](https://developers.openai.com/api/docs/guides/flex-processing), [Fast mode](https://developers.openai.com/api/docs/guides/fast-mode), and [Ultrafast mode](https://developers.openai.com/api/docs/guides/ultrafast-mode) ([pricing](https://developers.openai.com/api/docs/pricing?latest-pricing=ultrafast))
+- **OpenAI**: [Flex](https://developers.openai.com/api/docs/guides/flex-processing), [Fast mode](https://developers.openai.com/api/docs/guides/fast-mode), and [Ultrafast mode](https://developers.openai.com/api/docs/guides/ultrafast-mode)
 - **Anthropic**: [Fast mode](https://platform.claude.com/docs/en/build-with-claude/fast-mode)
 - **Google Vertex**: [Flex](https://cloud.google.com/vertex-ai/generative-ai/docs/flex-paygo) and [Priority](https://cloud.google.com/vertex-ai/generative-ai/docs/priority-paygo)
 - **Google AI Studio**: [Flex](https://ai.google.dev/gemini-api/docs/flex-inference) and [Priority](https://ai.google.dev/gemini-api/docs/priority-inference)
