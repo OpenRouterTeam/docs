@@ -100,6 +100,8 @@ Enable **Cost** under **Additional generation metadata** on each destination to 
 | `cache_creation` | The same TTL breakdown as `promptTokensDetails.cacheCreation`. |
 | `native_server_tool_use` | Available per-tool counts for provider-native server tools; see below. |
 | `usage_is_estimated` | `true` when accounting used a fallback prompt or completion quantity, or fallback pricing after a usage-calculation failure. `false` means those fallback paths were not used. |
+| `is_long_context` | `true` when the endpoint's long-context pricing tier was selected because the prompt exceeded `long_context_threshold`. Null when the endpoint has no long-context pricing tier, or when the charge did not come from token rates (for example, a provider-reported direct cost). Waived charges (refunds, free endpoints, promotions, unbilled refusals) still report the tier the prompt fell into; `cost` shows the waiver. |
+| `long_context_threshold` | The prompt-token threshold that decided `is_long_context`. For endpoints with several long-context tiers, the highest tier the prompt exceeded, or the lowest tier when none was exceeded. |
 | `usage` | The OpenRouter charge, matching the generation's total cost. |
 | `is_byok` | Whether the generation used your provider key. |
 | `byok_usage_inference` | Reference inference cost for BYOK, not an additional OpenRouter charge or your provider's invoice amount. |
