@@ -28,7 +28,7 @@ Server tools are currently in beta. The API and behavior may change.
 
 The shell tool is available on the global endpoint (`openrouter.ai`) only.
 Requests through the
-[in-region endpoints](/guides/features/in-region-routing)
+[in-region endpoints](/guides/privacy/provider-logging#enterprise-in-region-routing)
 (`eu.openrouter.ai`, `us.openrouter.ai`) are rejected.
 </Note>
 
@@ -217,34 +217,6 @@ The tool returns one entry per command, matching OpenAI's `shell_call_output.out
 ```
 
 Each command's `outcome` is either `{ "type": "exit", "exit_code": <int> }` or `{ "type": "timeout" }`. A non-zero exit code indicates the command failed; the error output is returned on `stderr` so the model can read and react to it.
-
-## Output files
-
-When a command runs in the OpenRouter sandbox and creates or changes files in the home directory (`/workspace/home`), the tool result lists them in a `files` array, next to the `container_id` the command ran in:
-
-```json lines
-{
-  "container_id": "sess_abc123",
-  "files": [
-    {
-      "type": "container_file_citation",
-      "container_id": "sess_abc123",
-      "file_id": "cfile_b3V0L3JlcG9ydC5jc3Y",
-      "filename": "out/report.csv",
-      "start_index": 0,
-      "end_index": 0
-    }
-  ]
-}
-```
-
-- Each tool result lists at most 10 files, most recently changed first. When a call changes more than 10 files, the older ones are left out of `files` but are still saved in the container.
-- `files` lists every file a command created or changed, including scratch and intermediate files. Deleted files are not listed.
-- The final assistant message does not carry these files as annotations. Read them from the tool results or from the container.
-
-To get every file in the container, call `GET /api/v1/containers/{container_id}/files` after the response completes. It lists all saved files, not just the last 10, sorted by path, and leaves out files that were deleted. The list is paginated (100 files per page by default, up to 1000 with `limit`): while `has_more` is `true`, pass the response's `last_id` as the `after` parameter to get the next page. Download a file with `GET /api/v1/containers/{container_id}/files/{file_id}/content`. Container files are deleted 30 days after the container was last used; to keep one longer, [promote it to your workspace](/guides/features/containers#save-a-container-file-to-your-workspace). See [Download container files](/guides/features/containers#download-container-files) for the full API.
-
-To separate the files you want to show users from scratch files, tell the model to write its final outputs to one directory, such as `~/outputs/`, and filter the file list on that `filename` prefix. Files written outside the home directory, such as `/tmp`, are not saved or listed.
 
 ## Pricing
 

@@ -177,7 +177,7 @@ curl https://openrouter.ai/api/v1/audio/speech \
 | `input` | string | Yes | The text to synthesize into speech |
 | `voice` | string | Provider-dependent | Voice identifier. Available voices vary by model, so check each model's page on the [Models page](/guides/overview/models) for supported voices. Omit this parameter only when the selected provider documents a default voice; otherwise an explicit voice is required. |
 | `response_format` | string | No | Audio output format: `mp3` or `pcm`. Defaults to `pcm` |
-| `speed` | number | No | Playback speed multiplier. Honored by models that support it (e.g., OpenAI TTS). Other providers either ignore it or return a 400 for a non-default value when the model has no speed control. Defaults to `1.0` |
+| `speed` | number | No | Playback speed multiplier. Only used by models that support it (e.g., OpenAI TTS). Ignored by other providers. Defaults to `1.0` |
 | `input_references` | array | No | Reference content for stateless voice cloning: one `input_audio` part carrying the voice sample, optionally accompanied by one `text` part with its transcript. See [Voice Cloning](#voice-cloning) below |
 | `provider` | object | No | Provider-specific passthrough configuration |
 
@@ -368,7 +368,7 @@ console.log('Audio saved to output.mp3');
 - **Choose the right format**: Use `mp3` for storage and general playback. Use `pcm` for real-time streaming pipelines where latency matters
 - **Voice selection**: Different providers offer different voices. Check the model's documentation or experiment with available voices to find the best fit for your use case
 - **Input length**: For very long texts, consider splitting the input into smaller segments and concatenating the audio output. This can improve reliability and reduce latency for the first audio chunk
-- **Speed parameter**: The `speed` parameter is only supported by certain providers (e.g., OpenAI). Providers that don't support it either ignore it or reject a non-default value with a 400 when the model has no speed control, so omit it unless the model documents speed
+- **Speed parameter**: The `speed` parameter is only supported by certain providers (e.g., OpenAI). It is silently ignored by providers that don't support it
 
 ## Troubleshooting
 

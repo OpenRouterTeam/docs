@@ -63,10 +63,6 @@ Server tools are specialized tools operated by OpenRouter that any model can cal
 | [**Search Models**](/guides/features/server-tools/search-models) | `openrouter:experimental__search_models` | Search and filter the OpenRouter model catalog |
 | [**Tool Search**](/guides/features/server-tools/tool-search) | `openrouter:tool_search` | Discover and load deferred tools on demand (Responses and Messages APIs) |
 
-### Tools API
-
-The tools catalog is available programmatically. [`GET /api/v1/tools`](/api/api-reference/tools/list-server-tools) lists every server tool. [`GET /api/v1/tools/{name}`](/api/api-reference/tools/get-a-server-tool) returns one tool, by canonical name or any accepted alias, with the list of models that run it natively.
-
 ## How Server Tools Work
 
 1. You include one or more server tools in the `tools` array of your API request.
