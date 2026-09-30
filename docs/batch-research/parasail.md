@@ -131,7 +131,7 @@ Each factual claim carries one of those provenance tags: `[capture]` means Obser
 
 - [docs] The batch file format only defines `body` as the interactive request body and documents chat and embeddings; the quickstart's batch image section describes converting local images to base64.
 - [capture] A public `image_url` request line and a public PDF `file_url` request line were accepted by file upload and batch creation, but their jobs remained `in_progress`; successful fetch or rejection was therefore not observed.
-- [unconfirmed] Native public image URL support, accepted schemes/content types, provider-side fetch failures, and native public file/PDF URL support remain unconfirmed. Until terminal captures exist, `batchAdapterSupportsImageUrls` and `batchAdapterSupportsFileUrls` should default to unsupported with a caller-facing reason; base64 image support is the documented helper path.
+- [unconfirmed] Native public image URL support, accepted schemes/content types, provider-side fetch failures, and native public file/PDF URL support remain unconfirmed. Until terminal captures exist, `imageUrls` and `fileUrls` should default to unsupported with a caller-facing reason; base64 image support is the documented helper path.
 
 ## 15. Native deletion
 

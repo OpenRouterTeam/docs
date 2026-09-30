@@ -250,7 +250,7 @@ Single bearer API key, same env var as sync (`MORPH_LLM_API_KEY`, `packages/prov
 
 ## 14. Native remote URL inputs
 
-Not mentioned anywhere in the batch docs. The listed batch models are text models. `batchAdapterSupportsImageUrls` and `batchAdapterSupportsFileUrls` should be `false` until the `img-public-url` and `file-public-url` captures show otherwise. `[unconfirmed]`.
+Not mentioned anywhere in the batch docs. The listed batch models are text models. `imageUrls` and `fileUrls` should be `false` until the `img-public-url` and `file-public-url` captures show otherwise. `[unconfirmed]`.
 
 ## Committed fixtures
 

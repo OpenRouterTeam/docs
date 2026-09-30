@@ -245,7 +245,7 @@ Native, batch context, `claude-haiku-4-5` `[capture]`:
 
 - Field names and schemes: `source.type: "url"` with an `https://` URL for both `image` (official docs: https://platform.claude.com/docs/en/build-with-claude/vision) and `document` (official docs: https://platform.claude.com/docs/en/build-with-claude/pdf-support) blocks; `source.type: "file"` + `file_id` for Files-API uploads (official docs: https://platform.claude.com/docs/en/build-with-claude/files).
 - Provider fetch behavior: fetch happens at execution time inside the batch; a failed fetch is a per-line `errored` row (not a batch failure, not a create-time 400), and the other lines in the same batch still succeed `[capture]`. The Wikimedia failure is most plausibly Wikimedia's bot/user-agent policy rejecting Anthropic's fetcher `[unconfirmed]` — the Anthropic-hosted PDF over the same mechanism succeeded.
-- **OpenRouter answer:** `batchAdapterSupportsImageUrls` is `true` (`packages/batch/adapters/image-url-support.ts`) and `batchAdapterSupportsFileUrls` returns `true` for `AnthropicBatchAdapter` (`packages/batch/adapters/file-url-support.ts`) `[code]`, and both are live-confirmed through OpenRouter on Opus 5 `[capture]`:
+- **OpenRouter answer:** `imageUrls` is `true` (`packages/batch/adapters/anthropic/url-support.ts`) and `fileUrls` returns `true` (same file) `[code]`, and both are live-confirmed through OpenRouter on Opus 5 `[capture]`:
 
   | OpenRouter line | Result |
   | --- | --- |

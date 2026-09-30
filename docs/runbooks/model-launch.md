@@ -10,6 +10,8 @@ Every `apply: true` on a catalog route also carries `X-Buddy-Actor-Email` set to
 
 ## TL;DR
 
+Devin runs this runbook through the [`launch-model`](../../.agents/skills/launch-model/SKILL.md) skill. It keeps a launch status block in the launch's Private Model Launch Calendar row, so any new session can pick up where the last one stopped, and ends every message with what is done, what is next, and what is blocked.
+
 In general you should be able to accomplish an entire model launch in a single Slack thread with Devin and Buddy. Steps marked "Buddy or Devin" are the `buddy` skill — either agent runs them; pick whichever is in the thread.
 
 | Step | Owner |
@@ -49,15 +51,15 @@ The real split is not open-weight vs. proprietary — it's **existing provider +
 
 **DB-only launch** (most launches on existing providers): go to step 2 — Buddy or Devin stages the model + endpoints, ideally by cloning a sibling's config.
 
-**Frontier family** (a Claude Fable 5, new GPT, etc.): needs a code PR in `openrouter-web` before launch. Ask Devin — the `onboard-frontier-model` skill covers it. Watch for:
-- **Embargo**: no marketing name or permaslug in PR titles (the permaslug leaks the name). Merging the registration PR is safe — visibility is DB-driven — but **docs/migration-guide PRs publish on merge**, so hold those until go-live. Ask Devin to run a leak check before merging anything.
+**Frontier family** (a Claude Fable 5, new GPT, etc.): needs a code PR in `openrouter-web` before launch. Ask Devin — the `model-code-registration` skill covers it. Watch for:
+- **Embargo**: no marketing name or permaslug in PR titles (the permaslug leaks the name). Merging the registration PR is safe — visibility is DB-driven — but **docs/migration-guide PRs go live with the next release** (Mintlify sync runs in `release.yaml`, not on merge), so hold them until go-live and plan a release after merging. The same applies to model-naming docs or copy riding along in a code PR (quickstart text and examples in `projects/web` / `packages/frontend` ship in the public bundle): split them into a separate held PR so the code can merge early. Ask Devin to run a leak check (grep the diff for slug, permaslug, and display name) before merging anything.
 - **Behavior changes vs. the predecessor** (dropped params that now 400, new reasoning modes/effort levels): most are handled by DB config levers, not code — have Devin analyze the lab's guide first and tell you what's config vs. code. If breaking, ask Devin for a **migration guide** docs PR.
 - **Opt-in policy lists** (provisioned throughput, refusal-fallback, new-account rate limits) are deliberate product calls, not registration — decide explicitly.
 - A follow-up PR often catches missed aliases/mapper families/tests.
 
 **New provider**: provider identity PR first, then adapter + monitor (Devin). Once that code is merged **and deployed**, Buddy can create the provider row itself (`POST /providers`, preview → approve like everything else): it validates the provider/adapter/pricing strategy against code enums, requires the code-defined permaslug, rejects duplicates (including hidden/deleted rows), and creates the provider unhidden (harmless with zero endpoints). `base_url` / `adapter_name` / `pricing_strategy` are create-only for Buddy (humans can still edit them in mission control afterwards); Buddy has no provider delete route (deleting — and reviving — a provider stays a human mission-control operation). The provider API key must be provisioned as a prod secret — an easy miss.
 
-**Seed / BytePlus model** (Seed LLMs, Seedream, Seedance): not a standard flow — BytePlus console activation, a hard-coded `ep-` endpoint mapping, and a vendor-controlled metadata API gate (video models never enter it). Devin's `seed-byteplus-model-launch` skill covers it end to end.
+**Seed / BytePlus model** (Seed LLMs, Seedream, Seedance): not a standard flow — BytePlus ModelArk console activation, a hard-coded `ep-` endpoint mapping, and a vendor-controlled metadata API gate (video models never enter it). Seed Audio (TTS) is different again: it runs on BytePlus Seed Speech ([console.byteplus.com/voice](https://console.byteplus.com/voice)) with its own key (`BYTEPLUS_SPEECH_API_KEY`), host, and a per-endpoint adapter override on the `Seed` provider. Devin's `seed-byteplus-model-launch` skill covers both end to end.
 
 **New modality** (TTS, STT, image, video, rerank, embeddings): Devin follows the per-modality onboarding skill family (`audio-provider-onboarding`, `image-provider-onboarding`, `video-provider-onboarding`, `rerank-provider-onboarding`, `embeddings-provider-onboarding`) — ask for a plan before code. Each family runs research → adapter → local staging → local e2e; the research phase takes capabilities dropped in the launch thread as its primary input, and the adapter PR must extend the serving capability enums to the provider's full advertised parameter surface in the same PR. Watch for:
 - **Pricing needs a real rate card** — never stage on an estimate. Verify against the provider's public international pricing page (not their China/regional rates), and confirm the billing unit (per character, per second, per image).

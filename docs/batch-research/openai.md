@@ -590,11 +590,11 @@ content part, and https://platform.openai.com/docs/api-reference/responses/creat
 
 Capability switches:
 
-- `batchAdapterSupportsImageUrls` (`adapters/image-url-support.ts:16`):
+- `imageUrls` (`adapters/openai/url-support.ts`):
   `{supported: true}` for OpenAI. Matches native behavior on both wires
   (live capture) and matches the OpenRouter admission of public image URLs
   (live capture `r3-image-ok`).
-- `batchAdapterSupportsFileUrls` (`adapters/file-url-support.ts:21`):
+- `fileUrls` (`adapters/openai/url-support.ts`):
   `lowersToResponsesWire(endpoint)`. Matches native behavior: file URLs
   work only on the Responses wire (live capture). Because `gpt-5-nano`
   lowers to the Responses wire even for `/v1/chat/completions` lines, a
@@ -740,8 +740,8 @@ Listed by seam. "None" means the adapter's assumption was verified.
 - Adapter seam mapping: `pollBatch` (status enum, counters, handles,
   `failure_reason`) verified for `completed` and `failed`, `parseResult`
   verified for chat and error rows, `parseUsage` verified by exact cost
-  reconciliation on 15 jobs, `batchAdapterSupportsImageUrls` and
-  `batchAdapterSupportsFileUrls` verified natively. Unverified in
+  reconciliation on 15 jobs, `imageUrls` and
+  `fileUrls` verified natively. Unverified in
   production: `cancelled` / `expired` row shapes, embeddings through
   OpenRouter, BYOK.
 

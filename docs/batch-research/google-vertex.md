@@ -234,8 +234,8 @@ BYOK (`[code]` `vertex-byok-adapter.ts`, `vertex-byok-gcs.ts`, `projects/docs/ba
 ## 14. Native remote image / file URL support
 
 - Native wire: `fileData.fileUri` with `gs://` URIs is the documented multimodal input for batch (video and image examples) `[docs: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/batch-prediction-from-cloud-storage]`. Public `https://` URIs in batch are `[unconfirmed]`; live native multimodal captures were blocked by permissions.
-- `batchAdapterSupportsImageUrls(google-vertex)` = `false`: "Vertex Gemini does not support image inputs in batch because its serializer has no image URL representation" `[code]` `image-url-support.ts`, observed as the submit rejection for request `mm1` `[capture 2026-09-02]`.
-- `batchAdapterSupportsFileUrls(google-vertex)` = `false`: `contains unsupported 'file' content` `[code]` `file-url-support.ts`, `assert-supported-batch-content.ts`, observed for `mm2` `[capture 2026-09-02]`.
+- `imageUrls` = `false`: "Vertex Gemini does not support image inputs in batch because its serializer has no image URL representation" `[code]` `vertex/url-support.ts`, observed as the submit rejection for request `mm1` `[capture 2026-09-02]`.
+- `fileUrls` = `false`: `contains unsupported 'file' content` `[code]` `vertex/url-support.ts`, `assert-supported-batch-content.ts`, observed for `mm2` `[capture 2026-09-02]`.
 
 Both are correct as *platform* limitations. The native wire could carry `gs://` media, so lifting them would need a GCS staging step and is a product decision, not a bug.
 
