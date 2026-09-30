@@ -38,6 +38,31 @@ Include a `user` parameter in chat-completions or image-generation requests with
 }
 ```
 
+## Register End Users with the Management API
+
+Organizations can explicitly register the same caller-supplied tracking identifiers through the Management API. Registration requires an organization [management key](/guides/overview/auth/management-api-keys) and does not create a login, organization member, credential, or generated OpenRouter end-user ID.
+
+```bash
+curl https://openrouter.ai/api/v1/end-users \
+  -H "Authorization: Bearer $OPENROUTER_MANAGEMENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "employee_123"
+  }'
+```
+
+The `user` value is the source of truth and must exactly match the value sent on inference requests. It is case-sensitive, immutable, and unique within the organization.
+
+Use the collection and resource routes to manage registrations:
+
+- `POST /api/v1/end-users` registers a tracking identifier. The request body accepts only `user`.
+- `GET /api/v1/end-users` lists active registrations; set `include_inactive=true` to include deactivated registrations.
+- `GET /api/v1/end-users/{user}` retrieves one registration, including a deactivated one; check `is_active` for its lifecycle state. URL-encode the exact `user` value.
+- `PATCH /api/v1/end-users/{user}` updates the registration with the required `is_active` boolean.
+- `DELETE /api/v1/end-users/{user}` soft-deactivates a registration. Repeating the request succeeds, and the identifier remains reserved.
+
+Registration alone does not attribute requests. Continue sending the same identifier as `user` on chat completions, image generation, and the Responses API; `safety_identifier` sets only the upstream abuse-isolation identity and does not attribute requests to a registered end user. Deactivation is a management lifecycle state and does not block inference.
+
 ## Implementation Example
 
 <LlmsOnly>
