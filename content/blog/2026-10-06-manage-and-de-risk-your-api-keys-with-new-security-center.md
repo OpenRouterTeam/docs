@@ -67,4 +67,6 @@ Here's what we do now, and what we'd suggest:
 - **Give every key a limit and an expiration.** A limit turns a leak into a fixed cost. An expiration means a forgotten key eventually stops working.
 - **Rotate keys that stay in use.** The [key rotation guide](https://openrouter.ai/docs/cookbook/administration/api-key-rotation) walks through the order.
 
-Open [Settings > Security](https://openrouter.ai/settings/security) to see where your keys stand.
+## Getting started
+
+The Security Center is available on all plan types. You can find it under [Settings > Security](https://openrouter.ai/settings/security). Check out the [docs](https://openrouter.ai/docs) to learn more.
