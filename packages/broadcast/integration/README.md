@@ -22,7 +22,7 @@ Then set `E2E_OTEL_COLLECTOR_ENDPOINT=http://localhost:4318/v1/traces` to enable
 
 ### In CI
 
-The `ci-broadcast.yaml` workflow runs automatically on changes to `packages/broadcast/` or the workflow file. Pull requests run deterministic local destinations; manual runs also fetch live-vendor secrets from Infisical (`/tests/e2e/broadcast`). The workflow:
+The `ci-broadcast.yaml` workflow runs automatically on changes to `packages/broadcast/` or the workflow file. Pull requests run deterministic local destinations. Pushes to `main` fetch live-vendor secrets from Infisical (`/tests/e2e/broadcast`) but run only the live Datadog destination, and a failed push run alerts #alerts-tests. Manual runs fetch the same secrets and run every configured vendor. S3 falls back to the local RustFS bucket when Infisical has no `E2E_S3_*` credentials or its `E2E_S3_ENDPOINT` points at a loopback host (`localhost`, `127.0.0.1`, or `[::1]`). The workflow:
 
 1. Starts ClickHouse, RustFS (S3-compatible), and OTEL Collector as Docker services
 2. Runs `bun run test:integration` in `packages/broadcast`

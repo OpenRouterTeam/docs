@@ -75,6 +75,7 @@ Generated tables last synced from live prod: 2026-07-26.
 | `XaiImageAdapter` | `x-ai/grok-imagine-image-quality` | sync | BYOK + managed | rejects `512` |
 | `RecraftImageAdapter` | `recraft/recraft-v4` | sync | managed-only | controls via `provider.options.recraft` |
 | `BlackForestLabsImageAdapter` | `black-forest-labs/flux.2-pro` | async (poll) | managed-only | rejects webp and `n>1`; returns fractional token counts |
+| `BlackForestLabsFlux3ImageAdapter` | `black-forest-labs/flux-3-image` | async (poll) | managed-only | resolution tiers 768/1K/1.5K/2K/4K (`512` → 400); up to 10 references; rejects `n>1`; no `seed` |
 | `SourcefulImageAdapter` (V1) | _none live_ | async (poll) | managed-only | no live prod model (`riverflow-v2-*-preview` deprecated); skipped, exempt in `coverage.ts` |
 | `SourcefulV2ImageAdapter` | `sourceful/riverflow-v2-pro` | async (poll) | managed-only | rejects `512` |
 | `SourcefulV25ImageAdapter` | `sourceful/riverflow-v2.5-pro` | async (poll) | managed-only | resolution gate pro=[1K,2K,4K] / fast=[1K,2K] |
@@ -162,7 +163,7 @@ out-of-range values when a capability schema is staged.
 | `output_format` | enum | `png`\|`jpeg`\|`webp` | each; expect 400 where unadvertised (BFL rejects webp; OpenAI advertises none; Sourceful V2.5 fast only jpeg, pro png/jpeg/webp) |
 | `output_compression` | int | 0–100 | `0`, `50`, `100` (jpeg/webp only) |
 | `aspect_ratio` | enum | per-adapter subset (see below) | every advertised value + one that isn't (expect 400) |
-| `resolution` | enum | `512`\|`1K`\|`2K`\|`4K` | each advertised tier + one gated (expect 400) |
+| `resolution` | enum | `512`\|`768`\|`1K`\|`1.5K`\|`2K`\|`4K` | each advertised tier + one gated (expect 400) |
 | `size` | string | free-form: `1024x1024`, `2K`, casing | pixels, tier, mixed casing |
 | `seed` | int | any | fixed seed twice → determinism check (BFL/Seedream) |
 | `stream` | boolean | OpenAI + Quiver (text-to-SVG) | `true` (SSE) + `false`; Quiver vectorization rejects `true` with 400; other adapters ignore |
@@ -188,6 +189,10 @@ here.
 - **BFL FLUX.2** (Pro / Flex / Max / Klein) — 1:1, 4:3, 3:4, 3:2, 2:3, 16:9,
   9:16, 21:9, auto. Bare ratio shapes to 1K-class pixels (e.g. 16:9 → 1824×1024,
   21:9 → 2400×1024); `auto` → 1024×1024.
+- **BFL FLUX.3** (`flux-3-image`) — 16-value set: 21:9, 2:1, 16:9, 3:2, 7:5, 4:3,
+  5:4, 1:1, 4:5, 3:4, 5:7, 2:3, 9:16, 1:2, 9:21, auto. Output shape comes from
+  the resolution tier (768 / 1K / 1.5K / 2K / 4K) plus the ratio, never a pixel
+  `size`; 4K takes ~7 minutes upstream.
 - **OpenAI GPT Image 2** (`openai/gpt-image-2`) — 1:1, 3:2, 2:3, 4:3, 3:4, 16:9,
   9:16, 21:9, auto. Exact shaped pixels on a 1536 long edge (e.g. 16:9 →
   1536×864, 21:9 → 1536×656); `auto` is provider-chosen.
@@ -264,6 +269,7 @@ cases themselves are in `cases.ts`; this is the planning view.
 | xAI | resolution(1K), aspect_ratio(16:9), 512→400, i2i | full aspect set, 2K, BYOK, output_format |
 | Recraft | aspect_ratio, n + boundary(7→400), `opt.recraft.controls/style/text_layout`, v3 variant, i2i | full aspect set, output_format, vector/utility variants |
 | BFL | size, seed, output_format(png), `opt.steps/guidance/safety`, determinism, ref-cap(9→400), i2i, full aspect set (all 4 FLUX.2 slugs × 9 ratios, 2026-07-26 prod ad-hoc) | flex(8)/klein(4) ref boundaries, size tiers, unknown opt key; promote ad-hoc aspect cases into `cases.ts` |
+| BFL FLUX.3 | resolution(1.5K)+aspect_ratio(9:21), 512→400, n=2→400 (asserts the capability gate's `must be exactly 1`, which needs the seeded `n` 1–1 range; the adapter-only path says `n must be 1`), i2i (2 refs) | ref-cap boundary (10 ok / 11→400), 4K (~7 min upstream), remaining 14 ratios, `provider.options` passthrough |
 | Sourceful V1 | — (no live model) | none — preview slugs deprecated |
 | Sourceful V2 | resolution, aspect_ratio, `opt.sourceful.font_inputs`, 512→400, fast ref-cap(5→400), i2i | pro ref-cap boundary; pro vs fast resolution |
 | Sourceful V2.5 | resolution, aspect_ratio, background, `opt.thinkingLevel`, `opt.sourceful.font_inputs`, 512→400, fast 4K→400, i2i | pro 4K ok, ref-cap boundary |
