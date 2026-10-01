@@ -37,6 +37,7 @@ components:
     ActivityItem:
       example:
         byok_usage_inference: 0.012
+        cached_tokens: 10
         completion_tokens: 125
         date: '2025-08-24'
         endpoint_id: '550e8400-e29b-41d4-a716-446655440000'
@@ -53,6 +54,10 @@ components:
           example: 0.012
           format: 'double'
           type: 'number'
+        cached_tokens:
+          description: 'Total prompt tokens read from the provider prompt cache (cache hits). Generally a subset of `prompt_tokens`; for replayed response-cache hits the provider may report the two counters over disjoint token sets, so `cached_tokens` can exceed `prompt_tokens`.'
+          example: 10
+          type: 'integer'
         completion_tokens:
           description: 'Total completion tokens generated'
           example: 125
@@ -110,11 +115,13 @@ components:
         - 'prompt_tokens'
         - 'completion_tokens'
         - 'reasoning_tokens'
+        - 'cached_tokens'
       type: 'object'
     ActivityResponse:
       example:
         data:
           - byok_usage_inference: 0.012
+            cached_tokens: 10
             completion_tokens: 125
             date: '2025-08-24'
             endpoint_id: '550e8400-e29b-41d4-a716-446655440000'
@@ -33032,6 +33039,7 @@ paths:
               example:
                 data:
                   - byok_usage_inference: 0.012
+                    cached_tokens: 10
                     completion_tokens: 125
                     date: '2025-08-24'
                     endpoint_id: '550e8400-e29b-41d4-a716-446655440000'
@@ -38653,7 +38661,8 @@ paths:
           schema:
             description: 'The generation ID'
             example: 'gen-1234567890'
-            minLength: 1
+            maxLength: 128
+            pattern: '^gen-[0-9A-Za-z-]+$'
             type: 'string'
       responses:
         '200':
@@ -38707,6 +38716,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/GenerationResponse'
           description: 'Returns the request metadata for this generation'
+        '400':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 400
+                  message: 'Invalid request parameters'
+              schema:
+                $ref: '#/components/schemas/BadRequestResponse'
+          description: 'Bad Request - Invalid request parameters or malformed input'
         '401':
           content:
             application/json:
@@ -38801,7 +38820,8 @@ paths:
           schema:
             description: 'The generation ID'
             example: 'gen-1234567890'
-            minLength: 1
+            maxLength: 128
+            pattern: '^gen-[0-9A-Za-z-]+$'
             type: 'string'
       responses:
         '200':
@@ -38820,6 +38840,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/GenerationContentResponse'
           description: 'Returns the stored prompt and completion content, plus the failure error when the generation failed'
+        '400':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 400
+                  message: 'Invalid request parameters'
+              schema:
+                $ref: '#/components/schemas/BadRequestResponse'
+          description: 'Bad Request - Invalid request parameters or malformed input'
         '401':
           content:
             application/json:
