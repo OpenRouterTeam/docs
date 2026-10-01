@@ -136,9 +136,6 @@
           "deployment_region": {
             "type": "string",
             "minLength": 1
-          },
-          "compliance": {
-            "$ref": "#/components/schemas/Compliance"
           }
         },
         "required": [
@@ -2289,20 +2286,6 @@
           "country_code"
         ],
         "additionalProperties": false
-      },
-      "Compliance": {
-        "type": "object",
-        "properties": {
-          "zdr": {
-            "type": "boolean"
-          },
-          "hipaa": {
-            "type": "boolean"
-          }
-        },
-        "additionalProperties": {
-          "type": "boolean"
-        }
       }
     }
   }
