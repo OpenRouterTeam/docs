@@ -17,6 +17,8 @@ icon: wallet
 
 Workspace budgets let you cap how much a workspace can spend on OpenRouter inference. Set a dollar limit on any combination of intervals — daily, weekly, monthly, or lifetime — and OpenRouter blocks requests automatically once a limit is reached.
 
+Workspace budgets pair with [guardrail budgets](/guides/features/guardrails#budget-enforcement) to provide both pooled team caps and per-member limits. For recommended approaches, see the [Spend Controls best practices guide](/guides/best-practices/spend-controls).
+
 <Note>
 Workspace budgets are available on the **Enterprise** plan. In the dashboard, only **Organization Administrators** can create, edit, or delete budgets — other workspace members can view budgets and current spend but cannot modify them. Programmatic budget management uses organization [management API keys](/guides/overview/auth/management-api-keys), which operate at the account level. Contact [sales](https://openrouter.ai/contact/sales) to get started.
 </Note>

@@ -91,6 +91,8 @@ Guardrail budgets are enforced per-user and per-key, not shared across all users
 
 By default, only OpenRouter credit spend counts toward a guardrail's budget. Set `include_byok_in_budgets` to `true` (or toggle **Include BYOK spend** in the dashboard) to also count [BYOK](/guides/overview/auth/byok) inference spend (the amount OpenRouter would have charged had the request not used your own provider key) toward the same limit.
 
+For guidance on structuring workspace budgets alongside guardrails, and how to set up tiered per-member budget policies, see the [Spend Controls best practices guide](/guides/best-practices/spend-controls).
+
 **Example 1: Member guardrail with \$50/day limit**
 
 You assign a guardrail with a \$50/day budget to three team members: Alice, Bob, and Carol. Each member gets their own \$50/day allowance. If Alice spends \$50, she is blocked, but Bob and Carol can still spend up to \$50 each.
