@@ -7,7 +7,7 @@ icon: lock
 The [Security settings page](https://openrouter.ai/settings/security) helps you find risky API keys and protect your account. It has three tabs: Overview, Key safety, and IP allowlist.
 
 <Note>
-  Personal accounts and organization administrators can edit the maximum key lifetime setting. On the Pro and Enterprise plans, they can also edit the IP allowlist. Organization administrators can see every key in the organization and copy a list of key owners. Organization members see only the keys they created.
+  Personal accounts and organization administrators can edit the maximum key lifetime setting. On the Enterprise plan, they can also edit the IP allowlist. Organization administrators can see every key in the organization and copy a list of key owners. Organization members see only the keys they created.
 </Note>
 
 ## Overview
@@ -61,7 +61,7 @@ Disabling a key is reversible. Archiving a key is permanent and asks you to type
 ## IP allowlist
 
 <Note>
-  The IP allowlist requires a Pro or Enterprise plan. Other accounts see an upgrade prompt on this tab.
+  The IP allowlist requires an Enterprise plan. Other accounts see an upgrade prompt on this tab.
 </Note>
 
 The IP allowlist restricts which IP addresses can send API requests with your account's keys. When the list is empty, requests from any IP address are accepted. After you add at least one entry, OpenRouter checks the client IP of every API request against the list and rejects requests from other addresses with a `403 Forbidden` error. The allowlist applies to every API key in the personal account or organization, including existing keys. Before you add the first entry, include the address of every server, office network, and CI runner that calls the API, or those requests start failing. To turn the restriction off, remove every entry.
