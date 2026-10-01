@@ -30,6 +30,13 @@ To use the key management API, you first need to create a Management API key:
 
 Management keys cannot be used to make API calls to OpenRouter's completion endpoints - they are exclusively for administrative operations.
 
+### Scope and Permissions
+
+Management API keys operate at the account level and, for organizations, can only be created by **Organization Admins**. They are unscoped: one key covers administrative actions across all of the account's workspaces.
+
+- **Programmatic Management:** Endpoints for managing workspace members (`POST /api/v1/workspaces/{id}/members/add`), keys, and budgets require a Management API key. Members added via the API automatically inherit their organization role (Org Admins become Workspace Admins; Org Members become Workspace Members).
+- **Dashboard UI:** Within the OpenRouter dashboard, **Workspace Admins** can add members on the workspace Members page without requiring a Management API key. Assigning workspace roles there additionally requires an Enterprise plan.
+
 ### Expiration
 
 We recommend setting an expiration date on every management key. A leaked management key could create, edit and delete the API keys in your account other than those provisioned by a Connect client, and one with no expiration stays valid until you delete it.
