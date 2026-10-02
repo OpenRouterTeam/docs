@@ -179,7 +179,7 @@ curl https://openrouter.ai/api/v1/audio/speech \
 | `response_format` | string | No | Audio output format: `mp3` or `pcm`. Defaults to `pcm` |
 | `speed` | number | No | Playback speed multiplier. Honored by models that support it (e.g., OpenAI TTS). Other providers either ignore it or return a 400 for a non-default value when the model has no speed control. Defaults to `1.0` |
 | `input_references` | array | No | Reference content for stateless voice cloning or voice design: one to three `input_audio` parts (each optionally paired with a `text` transcript), or exactly one `image_url` part. See [Voice Cloning](#voice-cloning) below |
-| `provider` | object | No | Provider-specific passthrough configuration |
+| `provider` | object | No | Data policy routing preferences (`zdr`, `data_collection`) and provider-specific passthrough options under `provider.options`. With `zdr: true`, the request only routes to [Zero Data Retention](/guides/features/zdr) endpoints. Other routing preferences (`order`, `only`, `ignore`) are not applied to speech requests |
 
 When `voice` is omitted, OpenRouter only forwards the request to providers whose adapter supports a provider-side default voice. For other providers, the request is rejected with a validation error.
 

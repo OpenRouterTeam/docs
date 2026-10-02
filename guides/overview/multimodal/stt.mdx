@@ -156,7 +156,7 @@ curl https://openrouter.ai/api/v1/audio/transcriptions \
 | `temperature` | number | No | Sampling temperature between 0 and 1. Lower values produce more deterministic results |
 | `response_format` | string | No | `json` (default) or `verbose_json`. See [Verbose Transcripts](#verbose-transcripts-timestamps-and-speakers) |
 | `timestamp_granularities` | string[] | No | `["segment"]` and/or `["word"]`. Only used with `verbose_json` |
-| `provider` | object | No | Provider-specific options under `provider.options`. Routing preferences (`order`, `only`, `ignore`) are not applied to transcription requests. See [Provider-Specific Options](#provider-specific-options) |
+| `provider` | object | No | Data policy routing preferences (`zdr`, `data_collection`) and provider-specific options under `provider.options`. With `zdr: true`, the request only routes to [Zero Data Retention](/guides/features/zdr) endpoints. Other routing preferences (`order`, `only`, `ignore`) are not applied to transcription requests. See [Provider-Specific Options](#provider-specific-options) |
 
 ### OpenAI-Compatible Multipart Requests
 
