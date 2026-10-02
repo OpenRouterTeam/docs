@@ -67,13 +67,14 @@ Some settings apply globally across all workspaces:
 
 - **Org admins** have admin permissions across all workspaces. Organization admins and account owners can create or delete workspaces. Workspace admins can add or remove member access within their workspace; assigning workspace roles requires an Enterprise plan.
 - **Org members** have member permissions in each workspace they've been added to. Members can belong to multiple workspaces, and their API keys in each workspace are governed by that workspace's settings.
+- **Workspace admins** who aren't org admins get management rights in their workspace, such as managing members, classifiers, and settings. They have the same read access as members: they can't view other people's prompt and response content or classification tags.
 - All org members automatically have member access to the **Default workspace**. Chat and Fusion requests run in the member's active workspace, which they can change via the [workspace switcher](/guides/features/workspaces/switching). The Default workspace is the initial active workspace.
 
 ## Frequently Asked Questions
 
 <AccordionGroup>
   <Accordion title='What can my workspace members see about a workspace?'>
-    Within a workspace, members can create and manage their own API keys, and view other members and their roles. Members can belong to multiple workspaces. All org members automatically have access to the Default workspace. At the account level, members can view Activity and Logs.
+    Within a workspace, members can create and manage their own API keys, and view other members and their roles. Members can belong to multiple workspaces. All org members automatically have access to the Default workspace. In Activity and Logs, members see request metadata, such as model, cost, tokens, status, and creator, for every request in the workspaces they belong to, including other members' requests. Members can view prompt and response content only for requests attributed to them, which includes requests made with API keys they created. Only org admins can view other people's prompt and response content, see classification tags, and export activity.
   </Accordion>
   <Accordion title='What can my organization admins see? What can they edit?'>
     Org admins have admin permissions across all workspaces: they can view and manage everything in every workspace, including API keys, guardrails, BYOK, routing, presets, plugins, observability, members, and settings. Organization admins and account owners can create or delete workspaces. Only org admins can control members' access to each workspace. At the account level, org admins manage billing and credits, organization membership and roles, management API keys, and account-level data policies and allowed providers/models.
