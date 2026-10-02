@@ -2,7 +2,7 @@
 
 **Status:** Layer 1 (contracts and compatibility) implemented; shadow runtime not yet built
 **Code:** `packages/db/classifiers/task-taxonomy/`
-**Registry version:** `2.0.0-draft.6`
+**Registry version:** `2.0.0-draft.8`
 
 ---
 
@@ -35,6 +35,8 @@ any consumer is allowed to depend on it.
 | `programming_language` | `input.programming_language`, `output.programming_language` | 0..1 input, 0..1 output |
 | `complexity`        | `complexity`               | 1                        |
 | `response_entropy`  | `response_entropy`         | 1                        |
+| `item_type`         | `input.item_types`         | 0..4                     |
+| `criterion`         | `criterion`                | 0..1                     |
 
 The three scalar facets were added in `2.0.0-draft.3`. They describe the request independently of what it asks for. `language` is bound twice: `input.language` is the natural language of the supplied text or audio and `output.language` is the natural language the response is expected in, `null` when the output is not language (an image, a number, code with no prose). Both draw from one vocabulary of stable lowercase registry ids inspired by BCP-47 conventions, with `_` for subtags (`en`, `zh_hans`, `zh_hant`, ...) and the legacy ISO 639-3 id `als`; they are not guaranteed to be valid BCP-47 locale tags. The set covers the 58 languages of the legacy spoken-language tagger, 14 languages the classifier emitted in production that the tagger did not cover (`ur`, `zu`, `rw`, `so`, `wo`, `lv`, `mr`, `mk`, `ta`, `uz`, `kk`, `si`, `te`, `sw`), plus `mixed` and `unknown`. Before validation the parser maps a `null` judged input language to `unknown`. `complexity` is the reasoning depth and constraint count the request demands (`trivial`, `simple`, `moderate`, `complex`, `expert`). `response_entropy` is how open the space of acceptable responses is (`low`, `medium`, `high`, `very_high`). Each is a registry dimension with the same status, alias, hash, and facet-signal treatment as the other facets, so a candidate value such as a new language surfaces through `learning.facet_signals` and is promoted by the same policy.
 
@@ -43,6 +45,10 @@ The three scalar facets were added in `2.0.0-draft.3`. They describe the request
 `2.0.0-draft.5` collapses the input values to four content modalities and adds the two output facets. `input.modalities` draws from `text`, `image`, `video`, and `audio`, sharing ids with the model catalog's `InputModality` (the draft.4 `natural_language`, `image_processing`, `document_processing`, and `audio_video_processing` ids are gone, with documents recorded by their content and audio/video split into atomic values). `text` covers everything the model reads as text, including source code, structured data, and document contents, since `input.programming_language` carries the code signal. Scans and rendered pages are `image`. `output.modalities` is the kind of artifact the response produces, drawing from `text`, `image`, `video`, `audio`, `speech`, and `transcription` (ids shared with `OutputModality`), and `output.visual_style` is the dominant look of a generated image or video (`photoreal`, `anime`, `cartoon`, `painterly`, `sketch`, `graphic`, `pixel_art`, `other`). Values name the look a viewer would describe, never the production technique: a 3D animated film is `cartoon`, photoreal CGI is `photoreal`. `output.visual_style` is a single nullable value and must be `null` unless `output.modalities` includes `image` or `video`.
 
 `2.0.0-draft.6` adds the two retrieval surfaces. `retrieval.embedding` (surfaces `inference`, `embeddings`) encodes supplied text or images into vectors and `retrieval.reranking` (surfaces `inference`, `rerank`) orders supplied documents by relevance to a query. Their artifacts are the new outputs `embedding` and `ranking`, and the `image` input applies to both surfaces because both accept image inputs; `audio` and `video` inputs additionally apply to `embeddings`, whose request schema accepts them. The same version adds the `decisions` surface, which reuses the existing task `data.classification_tagging` (surfaces widened to `inference`, `decisions`): a decision is a boolean, choice, or score assigned to supplied state against stated criteria, which that task already covers. Its artifact is the new output `decision`, one verdict per question, so Decisions traffic is distinguishable by output rather than by task. The `decisions` surface takes text input only, since structured state is serialized before classification. What the caller does with the vectors or ranking afterwards (retrieval-augmented generation, recommendation, clustering, deduplication) is not observable from the request and is not a label dimension; `domain` still records the subject matter of the supplied text.
+
+`2.0.0-draft.7` adds two output-scoped dimensions, judged only on the surfaces whose output calls for them and empty everywhere else. `item_type` (`input.item_types`, surfaces `embeddings`, `rerank`) is the content form of the supplied items independent of their role: a query and a candidate are roles, and either may be `code`, an `image`, or a `passage`, so a mixed collection lists every form present and a request with no legible items lists none. `criterion` (`criterion`, surfaces `rerank`, `decisions`) is the basis the request asks the output to be judged against, independent of the outcome: a safety check is `safety` whether it passes or fails, and the value is `null` when no basis is identifiable rather than a default. The seeds are the ids whose families recurred in the shadow run (`code`, `image`, `passage`; `relevance`, `correctness`, `safety`); the definitions within each dimension are disjoint, each naming what it excludes, so that a record or table is not a `passage` and picking a label or action is not `correctness`. A form or basis no listed id names is left out of the field and proposed through a `learning.facet_signals` candidate; anything else the model emits fails the active binding and is stored as an `invalid_value` row with the attempted label verbatim.
+
+`2.0.0-draft.8` adds the values the `v3` shadow QC proposed repeatedly, each defined against its neighbors so the dimension stays disjoint. The item type `record` (surfaces `embeddings`, `rerank`) is field-value data for one or more entities, such as a JSON object, CSV rows, or a table; a table is several records rather than its own id. The criteria `writing_quality` (how well the content itself is written), `instruction_following` (whether a response does what the request's own instructions ask), and `severity` (how urgent or impactful an item is on an ordinal scale) apply to `rerank` and `decisions`.
 
 Image, document, and audio/video understanding are **input** facets, not tasks. The draft.1 task leaves for them are deprecated and aliased with `kind: 'move'` to the corresponding input values. Speech synthesis, speech transcription, image generation, and video generation are tasks (`media.speech_synthesis`, `media.speech_transcription`, added in `2.0.0-draft.4`, and `media.video_generation`, added in `2.0.0-draft.5` beside the existing `media.image_generation_editing`) because the request asks for them; the surface they arrive on is recorded by the producer, not inferred by the model.
 
@@ -86,7 +92,7 @@ resolve `source` → `target`, moving the value to `target.dimension` for
 (`field_moves`, `removed_fields`) and the dimensions whose meaning changed
 enough to require **semantic backfill** (`backfill_dimensions`) rather than a
 mechanical rename. `2.0.0-draft.1 → 2.0.0-draft.2` requires semantic backfill
-for `task`, `domain`, and `input`. `2.0.0-draft.2 → 2.0.0-draft.3` moves or removes no fields and requires backfill of `language`, `complexity`, and `response_entropy`, which draft.2 labels do not carry. `2.0.0-draft.3 → 2.0.0-draft.4` moves or removes no fields and requires backfill of `task` for the two speech tasks, which draft.3 labels cannot carry. `2.0.0-draft.4 → 2.0.0-draft.5` moves or removes no fields and requires backfill of `task`, `input`, `output`, `visual_style`, and `programming_language`: draft.4 labels carry the retired input ids and no output or programming-language facets. `2.0.0-draft.5 → 2.0.0-draft.6` moves or removes no fields and requires backfill of `task` and `output` for the two retrieval tasks, the decision task, and their outputs, which draft.5 labels cannot carry. The `media.audio_video_understanding → input.audio` alias is a required single-target placeholder for a value that covered both media: backfill of `input` decides `audio`, `video`, or both from the request, and the alias must not be read as a claim that every historical occurrence was audio.
+for `task`, `domain`, and `input`. `2.0.0-draft.2 → 2.0.0-draft.3` moves or removes no fields and requires backfill of `language`, `complexity`, and `response_entropy`, which draft.2 labels do not carry. `2.0.0-draft.3 → 2.0.0-draft.4` moves or removes no fields and requires backfill of `task` for the two speech tasks, which draft.3 labels cannot carry. `2.0.0-draft.4 → 2.0.0-draft.5` moves or removes no fields and requires backfill of `task`, `input`, `output`, `visual_style`, and `programming_language`: draft.4 labels carry the retired input ids and no output or programming-language facets. `2.0.0-draft.5 → 2.0.0-draft.6` moves or removes no fields and requires backfill of `task` and `output` for the two retrieval tasks, the decision task, and their outputs, which draft.5 labels cannot carry. `2.0.0-draft.6 → 2.0.0-draft.7` moves or removes no fields and requires backfill of `item_type` and `criterion`, which draft.6 labels do not carry. `2.0.0-draft.7 → 2.0.0-draft.8` moves or removes no fields and requires backfill of `item_type` and `criterion`, because draft.7 labels could not select the new ids. The `media.audio_video_understanding → input.audio` alias is a required single-target placeholder for a value that covered both media: backfill of `input` decides `audio`, `video`, or both from the request, and the alias must not be read as a claim that every historical occurrence was audio.
 
 ## 4. Label validation
 
@@ -135,12 +141,36 @@ code path mutates the registry from a label.
 
 ### Promotion policy
 
-A candidate becomes a review item when it recurs across at least
-`minimum_examples` (5) labels, `minimum_dates` (3) UTC days, and
-`minimum_segments` (2) user segments. Promotion always requires human
-review, a `version` bump, a `migrations` entry, and an explicit backfill
-decision. `automatic_promotion` is `false` and nothing in this package can
-promote.
+A candidate becomes a review item only when it is a proposed task leaf
+(`task_fit = candidate_new_leaf`) that is not already a registry id, and it
+recurs across at least `minimum_examples` (1000) proposed labels,
+`minimum_dates` (3) UTC days, and `minimum_segments` (2) `api_type` segments.
+Days and segments count only where proposed labels occurred; emitted rows never
+satisfy any gate.
+Promotion always requires human review, a `version` bump, a `migrations`
+entry, and an explicit backfill decision. `automatic_promotion` is `false` and
+nothing in this package can promote.
+
+Review items are read from two sources and tagged with a `CandidateSource`:
+`proposed` is the explicit candidate object on an `ok` row and carries the
+model's `definition`, `not_captured_by`, and `recurring_signal`; `emitted`
+is an id the model wrote straight into a registry-bound label field on an
+`invalid_value` row (`input.programming_language = "hcl"`). Both sources
+pool into one cluster per `(dimension, normalized id)` so a reviewer sees the
+per-source split, but only `proposed` examples count toward the thresholds.
+Facet `candidate_new_value` clusters, emitted-only clusters, and clusters whose
+key matches an existing registry id (`existingStatus` set, a mislabel to
+merge rather than a gap) stay listed but are never eligible
+(`progress.reviewable = false`). An emitted id has no candidate evidence and none is fabricated for it;
+the cluster instead surfaces what the row does retain: the label paths the id
+appeared under, `task.summary` and `decision_notes` samples, the same-dimension
+`nearest_tasks` / `nearest_existing` ids, and the models that emitted it.
+Emitted ids are those the live registry could not have selected for the
+row's `surface`, the same binding the classifier validated against, so an
+active id written on a surface it does not apply to is emitted too (its
+cluster carries `existingStatus`, routing it to the merge path rather than
+promotion), and an id promoted or widened since a row was written drops out
+of the emitted stream.
 
 ### Evidence hygiene
 
@@ -198,8 +228,8 @@ Both of the following, from one validated result:
    label's single confidence on every row. Taggers are `task_taxonomy:task`,
    `task_taxonomy:task_secondary`, `task_taxonomy:execution_mode`,
    `task_taxonomy:execution_surface`, `task_taxonomy:domain`,
-   `task_taxonomy:domain_secondary`, `task_taxonomy:input`, `task_taxonomy:input_language`, `task_taxonomy:input_programming_language`, `task_taxonomy:output`, `task_taxonomy:output_language`, `task_taxonomy:output_programming_language`, `task_taxonomy:visual_style`, `task_taxonomy:complexity`, `task_taxonomy:response_entropy`. Primary task,
-   domain, execution mode, input language, complexity, and response entropy each produce exactly one row, and output language, both programming languages, and visual style each produce one row or none, so per-tagger
+   `task_taxonomy:domain_secondary`, `task_taxonomy:input`, `task_taxonomy:input_language`, `task_taxonomy:input_programming_language`, `task_taxonomy:input_item_type`, `task_taxonomy:output`, `task_taxonomy:output_language`, `task_taxonomy:output_programming_language`, `task_taxonomy:visual_style`, `task_taxonomy:complexity`, `task_taxonomy:response_entropy`, `task_taxonomy:criterion`. Primary task,
+   domain, execution mode, input language, complexity, and response entropy each produce exactly one row, and output language, both programming languages, visual style, and criterion each produce one row or none, so per-tagger
    request counts in `tags_activity_daily_v2` stay additive. Summary,
    decision notes, sufficiency, learning, version, and hash are not tags.
 2. **Raw results in `task_taxonomy_results`.** One row per
@@ -207,10 +237,20 @@ Both of the following, from one validated result:
    `task_primary`/`execution_mode`/`domain_primary`/`confidence`, the full
    validated label as compressed JSON, the classifier model's unparsed
    `raw_output` text, a `parse_status` (`ok`, `parse_error`,
-   `validation_error`) with `parse_error` so failed attempts are stored
-   with empty label columns rather than fabricated ones, and the same
+   `validation_error`, `invalid_value`) with `parse_error`, and the same
    non-identifying analytics keys `tags_transactions` carries. No prompt, completion,
-   request, generation, user, or API-key identifiers.
+   request, generation, user, or API-key identifiers. `parse_error` and
+   `validation_error` rows store empty label columns rather than fabricated
+   ones. An `invalid_value` row is output that has the label's shape and
+   passes every fixed list and surface fact but names at least one registry
+   value that is not active (`input.language = "zh"`, `domain.primary =
+   "sports"`); it keeps the label envelope and promoted columns as the model
+   wrote them so the rejected values can be counted from `label` without
+   reading `raw_output`, but it is not a validated result: it produces no
+   tags and every consumer reads `parse_status = 'ok'`. It is distinct from
+   the candidate path, where the model picks an active id and proposes the
+   missing value in `learning.facet_signals[].candidate` on an `ok` row;
+   candidate review reads it as the `emitted` source (see Promotion policy).
 
 Runtime writes to either table are Layer 2 work.
 

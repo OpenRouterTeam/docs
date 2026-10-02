@@ -43,7 +43,7 @@ References are accepted as HTTPS URLs, and images additionally as inline base64 
 
 Audio: Video 1 always renders a generated AAC track. `generate_audio: false` is a 400 (there is no way to honor it), `generate_audio: true` is accepted and omitted from the native body, and the endpoint advertises `generate_audio: false` in `supported_video_parameters` so the parameter is not offered as a toggle.
 
-Aspect ratio in `image_to_video`: the guide says the first frame determines output geometry and `aspect_ratio` is ignored. The adapter rejects an explicit `aspect_ratio` (or `size`) in that mode with a 400 rather than forwarding a value the provider ignores.
+Aspect ratio in `image_to_video`: the guide says the first frame determines output geometry and `aspect_ratio` is ignored. The adapter accepts `aspect_ratio` (or `size`) in that mode and drops the ratio from the native body while keeping the resolution half of `size`, because the playground always sends a `size` and a 400 here would make every playground image-to-video request fail. The value is still validated against the supported list before it is dropped.
 
 Unknown request fields are rejected by HeyGen with `Extra inputs are not permitted`, which is why the adapter validates the native body against `HeyGenVideo1RequestSchema` before dispatch and never forwards passthrough parameters.
 
