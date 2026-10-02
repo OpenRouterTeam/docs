@@ -46,6 +46,8 @@ Server tools are specialized tools operated by OpenRouter that any model can cal
 
 **User-defined tools** are standard function-calling tools where the model suggests a call and _your_ application executes it.
 
+The Web Search plugin (`plugins: [{ "id": "web" }]`) is deprecated. Use the `openrouter:web_search` server tool instead. See [Migrating from the Web Search Plugin](/guides/features/server-tools/web-search#migrating-from-the-web-search-plugin).
+
 ## Available Server Tools
 
 | Tool | Type | Description |
@@ -62,6 +64,7 @@ Server tools are specialized tools operated by OpenRouter that any model can cal
 | [**Subagent**](/guides/features/server-tools/subagent) | `openrouter:subagent` | Delegate self-contained tasks to a smaller, faster worker model |
 | [**Search Models**](/guides/features/server-tools/search-models) | `openrouter:experimental__search_models` | Search and filter the OpenRouter model catalog |
 | [**Tool Search**](/guides/features/server-tools/tool-search) | `openrouter:tool_search` | Discover and load deferred tools on demand (Responses and Messages APIs) |
+| [**Files**](/guides/features/server-tools/files) | `openrouter:files` | Read, write, edit, and list text files in your workspace through the Files API |
 
 ### Tools API
 
@@ -101,6 +104,54 @@ The fallback rules, and which parameters carry over to the provider's tool, diff
 - [Web Fetch](/guides/features/server-tools/web-fetch#engine-selection)
 - [Apply Patch](/guides/features/server-tools/apply-patch#engine-behavior)
 - [Bash](/guides/features/server-tools/bash#execution-engine)
+
+## Privacy and regional availability
+
+Each server tool has an execution path, an In-Region Routing (IRR) availability, and its own data handling. Model-provider [ZDR enforcement](/guides/features/zdr) and [IRR](/guides/features/in-region-routing) apply to the inference request. A tool backend is covered only where the table below states it.
+
+### Execution paths
+
+- **Provider**: the model's provider runs the tool natively. See [Native Execution](#native-execution).
+- **OpenRouter**: OpenRouter runs the tool in-process, in an OpenRouter-operated sandbox, in an inner model generation, or by calling a third-party service such as Exa, Parallel, Perplexity, or Firecrawl.
+- **Client**: OpenRouter returns the tool call to your application, which runs it.
+
+### Server tool matrix
+
+| Tool | Execution path | Global | US | EU | ZDR enforcement and backend policy |
+| --- | --- | --- | --- | --- | --- |
+| Web Search | Provider (`native`), or OpenRouter calling Exa, Parallel, Perplexity, or Firecrawl | All engines | Exa only | None | Firecrawl is rejected when ZDR is enforced. Exa, Parallel, Perplexity, and provider-native search apply their own retention policies. |
+| Web Fetch | Provider (`native`), or OpenRouter calling Exa, Parallel, or Firecrawl, or the OpenRouter fetcher | All engines | None | None | Firecrawl is rejected when ZDR is enforced. Exa, Parallel, and provider-native fetch apply their own retention policies. |
+| Apply Patch | Provider (`native`) or OpenRouter validator; your application applies the patch | Yes | Yes | Yes | No backend beyond the inference request. |
+| Bash, client-side (`auto`, `native`) | Client | Yes | Yes | Yes | Commands run in your application. |
+| Bash, sandboxed (`openrouter`) | OpenRouter sandbox | Yes | No | No | ZDR enforcement does not apply to sandbox contents. |
+| Shell | OpenRouter sandbox | Yes | No | No | ZDR enforcement does not apply to sandbox contents. |
+| Advisor | Provider (native passthrough) or OpenRouter inner generation | Yes | Yes | Yes | The inner generation receives the request's `provider` preferences, including `zdr` and `data_collection`. |
+| Subagent | OpenRouter inner generation | Yes | Yes | Yes | The inner generation receives the request's `provider` preferences, including `zdr` and `data_collection`. |
+| Fusion | OpenRouter inner panel and analyst generations | Yes | No | No | Inner generations run under your API key, so account and guardrail ZDR settings apply. Request-level `provider` preferences are not forwarded. |
+| Image Generation | OpenRouter inner image-model generation | Yes | No | No | Inner generations run under your API key, so account and guardrail ZDR settings apply. Request-level `provider` preferences are not forwarded. |
+| Datetime | OpenRouter in-process | Yes | Yes | Yes | No external backend. |
+| Tool Search | OpenRouter in-process | Yes | Yes | Yes | No external backend. |
+| Search Models | OpenRouter in-process | Yes | Yes | Yes | Queries the OpenRouter model catalog. |
+| Files | OpenRouter Files API storage | Yes | No | No | ZDR enforcement does not apply to stored files. |
+
+The [`GET /api/v1/tools`](/api/api-reference/tools/list-server-tools) response lists each tool's engines with `executed_by` and `data_regions`.
+
+### ZDR enforcement
+
+ZDR settings restrict which provider endpoints serve model inference. They do not disable server tools or plugins, and they do not change the retention policy of a third-party backend.
+
+OpenRouter enforces one tool-level ZDR rule: when ZDR is enforced in your [privacy settings](https://openrouter.ai/settings/privacy) or a [guardrail](/guides/features/guardrails), Web Search, Web Fetch, and the Web Search plugin reject the Firecrawl engine. No other tool backend is filtered by ZDR. Review each third-party service's retention policy before you enable a tool that calls it.
+
+### IRR availability
+
+A regional request passes two gates:
+
+1. **Request admission.** The regional hostname (`eu.openrouter.ai` or `us.openrouter.ai`) and any guardrail `allowed_data_regions` decide whether the request is accepted. See [In-Region Routing](/guides/features/in-region-routing).
+2. **Execution residency.** Each server tool and plugin engine is then checked against the request's region. With `engine: "auto"` or no engine, OpenRouter selects only engines resident in that region. A pinned engine that is not resident in the region is rejected.
+
+When no resident engine exists, the request fails. A server tool returns a `403` error, and the Web Search plugin returns a `400` error. OpenRouter does not fall back to global infrastructure. Remove the tool or send the request to `https://openrouter.ai`.
+
+On regional endpoints, client-side Bash is rejected when the same request includes another server tool without an in-region native path. Apply Patch and Advisor have in-region native paths; the other server tools do not.
 
 ## Tool Call Limits
 
