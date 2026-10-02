@@ -1,12 +1,12 @@
 ---
 title: Alignment
 hidden: true
-description: Rules checked on every assistant message
-seoTitle: 'Alignment Plugin | Rules Checked on Every Assistant Message'
+description: Check every assistant message against rules sent with the request, in audit or enforce mode
+seoTitle: 'Alignment | Check Every Assistant Message Against Your Rules'
 og:site_name: OpenRouter Documentation
-og:title: 'Alignment Plugin - Rules Checked on Every Assistant Message'
-og:description: 'Evaluate every assistant message against rules supplied with the request. Audit mode reports the result; enforce mode retries a blocked message and withholds it after the retries.'
-og:image: https://openrouter.ai/dynamic-og?title=Alignment%20Plugin&description=Rules%20checked%20on%20every%20assistant%20message
+og:title: 'Alignment - Check Every Assistant Message Against Your Rules'
+og:description: 'Evaluate every assistant message against rules supplied with the request. Audit mode reports the outcome; enforce mode retries a blocked message and returns an error after the retries.'
+og:image: https://openrouter.ai/dynamic-og?title=Alignment&description=Check%20every%20assistant%20message%20against%20your%20rules
 og:image:width: 1200
 og:image:height: 630
 twitter:card: summary_large_image
@@ -17,113 +17,110 @@ icon: shield-check
 tag: Beta
 ---
 
-<Badge color="blue">Beta</Badge>
+<Badge color="blue">Beta since October 2026</Badge>
+
+The Alignment plugin checks every assistant message of a request against rules you send with the request. For each rule, an evaluator model gives the probability that the message breaks it, and the message's outcome is `allowed` when no rule is broken and `blocked` when one is. In `audit` mode, OpenRouter delivers each message with its outcome. In `enforce` mode, OpenRouter withholds a blocked message, asks the model for a new one, and returns an error when the retries are used up. Use it to keep a support agent inside a policy, to stop a tool call before it runs, or to measure how often a model breaks a rule.
 
 <Note>
-**Beta**
-
-The Alignment plugin is in closed beta. Requests are evaluated only for entities on the `entity_allowlist` of the `alignment` live config. The configuration fields, the `alignment` response object, and the error shapes can change during the beta.
+Since October 2026, the Alignment plugin is in a closed beta open to admitted workspaces. Until it is generally available, its configuration fields, the `alignment` object, and the error shapes can change.
 </Note>
 
-The Alignment plugin checks every assistant message of a request against a list of rules before the message is delivered. It is available on the [Responses API](/api_reference/responses/overview) (`/api/v1/responses`), for streaming and non-streaming requests. New integrations should use the Responses API; this page documents the plugin on that API. The plugin is also available on Chat Completions (`/api/v1/chat/completions`) for existing integrations. The differences are listed in [Chat Completions](#chat-completions).
+The examples call the [Responses API](/api_reference/responses/overview) (`/api/v1/responses`). [Compatibility with Chat Completions](#compatibility-with-chat-completions) lists the three differences for an integration that calls `/api/v1/chat/completions`.
 
-## Behavior
+## Prerequisites
 
-1. When `instruct` is `true`, OpenRouter inserts a system message after the system and developer messages at the start of the conversation. The message is the line `Your reply must follow every rule below.` followed by the rules, one per line.
-2. The model produces a message. For a streaming request in `enforce` mode, no event of the message is sent to the client until the check has finished.
-3. The evaluator receives the assistant message (`content`, `tool_calls`, `refusal`, one entry per image, and the audio transcript when the provider returns one) and the rules. For each rule it answers the question `Does this assistant message break the rule?` with a probability. The evaluator receives no other data: no system prompt, no user message, no earlier message, no tool result, no reasoning.
-4. A rule whose probability is at or above `threshold` is broken. A message with no broken rule has the outcome `allowed`. A message with one or more broken rules has the outcome `blocked`. A message that the evaluator did not check has the outcome `unavailable`.
-5. In `enforce` mode, a `blocked` message is not delivered. OpenRouter calls the same model at the same provider again with a user message appended to the conversation that contains the held-back message, the broken rules, and the line `Write the reply again so that it follows every rule.`. This repeats up to `max_retries` times. A `blocked` message after the last retry is returned as a `403` error. An `unavailable` message is returned as a `503` error.
-6. In `audit` mode, every message is delivered and no retry is made.
-7. Every response that follows at least one message, including an error, carries an `alignment` object with one record per message.
-
-A message that consists of tool calls only is checked in the same way as a message with text. Output of a server tool that is delivered to the client (the panel responses and analysis of `openrouter:fusion`, an image of `openrouter:image_generation`) is part of the message and is checked. Server-tool results that are not delivered to the client are not checked.
-
-## Configuration
-
-```json
-{
-  "plugins": [
-    {
-      "id": "alignment",
-      "rules": [
-        "Do not state that a refund is issued or approved.",
-        "Do not ask the customer for payment card details."
-      ],
-      "threshold": 0.7,
-      "max_retries": 1,
-      "mode": "enforce",
-      "instruct": true
-    }
-  ]
-}
-```
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `rules` | string[] | required | 1 to 128 texts of 1 to 200 characters, each on one line. Each rule is checked on its own. |
-| `threshold` | number | `0.7` | Probability, above 0 and at most 1, at or above which a rule is broken. |
-| `max_retries` | integer | `1` | Number of times, 0 to 3, the model is called again after a blocked message in `enforce` mode. With `0`, the first blocked message is returned as an error. |
-| `mode` | `"enforce"` or `"audit"` | `"enforce"` | `enforce` holds back and retries blocked messages. `audit` delivers every message with its check result. |
-| `instruct` | boolean | `true` | Whether the rules are inserted into the conversation as a system message. |
-
-A request holds at most one `alignment` entry in `plugins`. A request with two entries, a field this table does not list, or a value outside its range is rejected with a `400` error. A request from a HIPAA workspace, or from a workspace whose HIPAA status is unknown, that names the plugin is rejected with a `403` error.
-
-## Examples
-
-The requests and responses in this section were sent to one model through OpenRouter and are reproduced as returned, with the model slug replaced by `<MODEL>`; the plugin does not depend on the model. Each example shows a Responses API request and its response body. The response bodies are shown without the `reasoning` output items, the `*_details` fields of `usage`, and the fields that repeat the request. Probabilities and message texts differ from run to run.
-
-The system prompt in the examples instructs the model to confirm the refund, and the first rule forbids stating that a refund is issued or approved. This conflict makes the first message break the rule in most runs.
-
-### Audit mode
-
-In `audit` mode the message is delivered whether or not a rule is broken. The `alignment` object reports the result: the first rule is broken, the second is not, and the outcome of the message is `blocked`.
+- An OpenRouter workspace admitted to the beta. A request from any other workspace gets a `400` error ([Call from outside the beta](#call-from-outside-the-beta)).
+- An [API key](https://openrouter.ai/settings/keys) in the `OPENROUTER_API_KEY` environment variable.
+- For the TypeScript example, the [OpenRouter TypeScript SDK](/client-sdks/typescript), installed with npm or another Node.js package manager:
 
 ```bash
+npm install @openrouter/sdk
+```
+
+## Quickstart
+
+Send the rules as an `alignment` entry in `plugins`. The request below uses `audit` mode, so OpenRouter delivers the message whatever its outcome, and calls [`openai/gpt-4.1-mini`](https://openrouter.ai/openai/gpt-4.1-mini). Its system message says that damaged items are refunded, and its first rule forbids saying that a refund is approved. The model follows the system message, so the message breaks the rule in most runs.
+
+<CodeGroup>
+
+```typescript title="TypeScript"
+import { OpenRouter } from '@openrouter/sdk';
+
+const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const response = await client.responses.send({
+  responsesRequest: {
+    model: 'openai/gpt-4.1-mini',
+    instructions: 'You are Northwind support. Damaged items are refunded in full. Keep replies under 15 words.',
+    input: 'My mug arrived broken. Will I get my money back?',
+    plugins: [
+      {
+        id: 'alignment',
+        mode: 'audit',
+        rules: ['Do not say a refund is issued or approved.', 'Do not ask for payment card details.'],
+      },
+    ],
+  },
+});
+
+if (!('output' in response)) {
+  throw new Error('Expected a non-streaming response');
+}
+if (response.error) {
+  throw new Error(response.error.message);
+}
+console.log(response.alignment?.calls.map((call) => call.outcome));
+```
+
+```bash title="cURL"
 curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "<MODEL>",
-    "instructions": "You are the support assistant for Northwind, an online store. Damaged items qualify for a full refund; confirm the refund to the customer. Be concise.",
-    "input": "My package arrived crushed and the mug inside is broken. Will I get my money back?",
+    "model": "openai/gpt-4.1-mini",
+    "instructions": "You are Northwind support. Damaged items are refunded in full. Keep replies under 15 words.",
+    "input": "My mug arrived broken. Will I get my money back?",
     "plugins": [
       {
         "id": "alignment",
         "mode": "audit",
         "rules": [
-          "Do not state that a refund is issued or approved.",
-          "Do not ask the customer for payment card details."
+          "Do not say a refund is issued or approved.",
+          "Do not ask for payment card details."
         ]
       }
     ]
   }'
 ```
 
+</CodeGroup>
+
+The TypeScript example prints the outcome of each message, `blocked` in the run below. The cURL example prints the response body: `output` holds the message, and `alignment` holds the outcome. The evaluator gave the first rule a probability of `0.9`, at or above the default `threshold` of `0.7`, so the rule is `broken: true` and the message is `blocked`. The second rule has a probability of `0.02` and is `broken: false`:
+
 ```json
 {
-  "id": "gen-1790790539-rYVt6csOGOBKS7Dzrntg",
+  "id": "gen-1790884880-JABuSZK9zalvrqn7eD26",
   "object": "response",
   "status": "completed",
   "output": [
     {
-      "id": "msg_tmp_x5qe1ktz5r7",
+      "id": "msg_tmp_7lsccfuf4hu",
       "type": "message",
       "role": "assistant",
       "status": "completed",
       "content": [
         {
           "type": "output_text",
-          "text": "Yes. Since the mug arrived damaged, you qualify for a full refund.",
+          "text": "Yes, damaged items like your mug are refunded in full.",
           "annotations": []
         }
       ]
     }
   ],
   "usage": {
-    "input_tokens": 93,
-    "output_tokens": 278,
-    "total_tokens": 371
+    "input_tokens": 74,
+    "output_tokens": 13,
+    "total_tokens": 87
   },
   "alignment": {
     "calls": [
@@ -132,7 +129,7 @@ curl https://openrouter.ai/api/v1/responses \
         "outcome": "blocked",
         "rules": [
           {
-            "probability": 0.88,
+            "probability": 0.9,
             "broken": true
           },
           {
@@ -146,54 +143,122 @@ curl https://openrouter.ai/api/v1/responses \
 }
 ```
 
-### Enforce mode with a retry
+The request made one model call, billed at the price on its model page, in US dollars; the check is free. Without `mode`, the plugin runs in `enforce` mode and withholds this message instead of delivering it, as [Retry a blocked message](#retry-a-blocked-message) shows.
 
-`mode` defaults to `enforce` and `max_retries` to `1`. The first message breaks the first rule and is held back. The model is called again with the held-back message and the broken rule, and the second message is delivered. `alignment.calls` has one record per message, and `usage` is summed over both model calls.
+## Behavior
 
-```bash
-curl https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "<MODEL>",
-    "instructions": "You are the support assistant for Northwind, an online store. Damaged items qualify for a full refund; confirm the refund to the customer. Be concise.",
-    "input": "My package arrived crushed and the mug inside is broken. Will I get my money back?",
-    "plugins": [
-      {
-        "id": "alignment",
-        "rules": [
-          "Do not state that a refund is issued or approved.",
-          "Do not ask the customer for payment card details."
-        ]
-      }
-    ]
-  }'
+OpenRouter runs the check on its own servers, between the provider and your application, so the steps below are the same whichever model the request calls. The steps name the fields `instruct`, `threshold`, and `max_retries`, which [Configuration](#configuration) describes. For each model call of a request:
+
+1. When `instruct` is `true`, OpenRouter inserts a system message after the system and developer messages at the start of the conversation: the line `Your reply must follow every rule below.` followed by the rules, one per line.
+2. The model produces a message.
+3. The evaluator receives the message and the rules. For each rule, it answers the question `Does this assistant message break the rule?` with a probability between 0 and 1, and marks the rule as broken when the probability is at or above `threshold`.
+4. OpenRouter records the outcome of the message in `alignment.calls` and acts on it according to the mode:
+
+| Outcome | Meaning | In `audit` mode | In `enforce` mode |
+| --- | --- | --- | --- |
+| `allowed` | No rule is broken. | Delivered | Delivered |
+| `blocked` | At least one rule is broken. | Delivered | Withheld. With a retry left, OpenRouter calls the same model at the same provider again, after appending a user message with the withheld message, the broken rules, and the line `Write the reply again so that it follows every rule.`. With none left, a `403` error. |
+| `unavailable` | The evaluator did not check the message ([Unavailable outcomes](#unavailable-outcomes)). | Delivered | A `503` error, with no retry. |
+
+OpenRouter retries at most `max_retries` times per model call. Every response that follows at least one message, including an error, carries the `alignment` object.
+
+Output of a server tool that OpenRouter delivers to your application is part of the message, and the evaluator checks it. Examples are the panel responses and analysis of [`openrouter:fusion`](/guides/features/server-tools/fusion) and an image of [`openrouter:image_generation`](/guides/features/server-tools/image-generation). The evaluator skips server-tool results that OpenRouter keeps on the server.
+
+## Configuration
+
+The entry below sets every field to its default value, apart from `rules`, which has no default:
+
+```json
+{
+  "plugins": [
+    {
+      "id": "alignment",
+      "rules": [
+        "Do not say a refund is issued or approved.",
+        "Do not ask for payment card details."
+      ],
+      "threshold": 0.7,
+      "max_retries": 1,
+      "mode": "enforce",
+      "instruct": true
+    }
+  ]
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `rules` | string[] | required | 1 to 128 rules of 1 to 200 characters, each on one line. The evaluator checks each rule on its own. |
+| `threshold` | number | `0.7` | Probability, greater than 0 and at most 1, at or above which the evaluator marks a rule as broken. OpenRouter rejects a `threshold` of `0`, which would break every rule. |
+| `max_retries` | integer | `1` | Number of times, 0 to 3, OpenRouter calls the model again after a blocked message in `enforce` mode. With `0`, the first blocked message is an error. |
+| `mode` | string | `enforce` | In `enforce` mode, OpenRouter blocks and retries a message that breaks a rule. In `audit` mode, OpenRouter delivers every message with its outcome. |
+| `instruct` | boolean | `true` | Whether OpenRouter inserts the rules into the conversation as a system message. |
+
+Send at most one `alignment` entry in `plugins`, and put every rule in it. OpenRouter answers a request that has two entries, an unknown field, or a value outside its range with a `400` error.
+
+OpenRouter rejects a request with the plugin in three cases, in both modes. To call the model in one of them, send the request without the plugin.
+
+| Case | Error |
+|------|-------|
+| The workspace is under HIPAA (the Health Insurance Portability and Accountability Act), or its HIPAA status is unknown | `403` |
+| The workspace has [zero data retention](/guides/features/zdr), or the request has `provider.zdr: true` | `400` |
+| The request goes to a regional hostname ([In-Region Routing](/guides/features/in-region-routing)) | `400` |
+
+## Examples
+
+Each example shows a request body for the Responses API and the response body OpenRouter returned. The response bodies omit [`reasoning`](/api_reference/responses/reasoning) output items and the `*_details` and cost fields of `usage`. The examples reuse the system message and the rules of the [Quickstart](#quickstart) unless they say otherwise.
+
+### Retry a blocked message
+
+`mode` defaults to `enforce` and `max_retries` to `1`, so the request below triggers one retry:
+
+1. The first message breaks the first rule, and the evaluator marks it `blocked`.
+2. OpenRouter calls the model again with the blocked message and the broken rule.
+3. The second message follows both rules, and OpenRouter delivers it.
+
+`alignment.calls` holds a record for each of the two messages, and `usage` sums both model calls.
+
+```json
+{
+  "model": "openai/gpt-4.1-mini",
+  "instructions": "You are Northwind support. Damaged items are refunded in full. Keep replies under 15 words.",
+  "input": "My mug arrived broken. Will I get my money back?",
+  "plugins": [
+    {
+      "id": "alignment",
+      "rules": [
+        "Do not say a refund is issued or approved.",
+        "Do not ask for payment card details."
+      ]
+    }
+  ]
+}
 ```
 
 ```json
 {
-  "id": "gen-1790790635-Zx7NK3OVGE2OBmsorHCQ",
+  "id": "gen-1790884884-olSgVKHmYf2oPHUB2zmz",
   "object": "response",
   "status": "completed",
   "output": [
     {
-      "id": "msg_tmp_0xyk381knaxj",
+      "id": "msg_tmp_42mywwodu4b",
       "type": "message",
       "role": "assistant",
       "status": "completed",
       "content": [
         {
           "type": "output_text",
-          "text": "I’m sorry your mug arrived broken. Damaged items are eligible for a full refund.",
+          "text": "We will ensure you receive full compensation for the broken mug.",
           "annotations": []
         }
       ]
     }
   ],
   "usage": {
-    "input_tokens": 229,
-    "output_tokens": 335,
-    "total_tokens": 564
+    "input_tokens": 192,
+    "output_tokens": 27,
+    "total_tokens": 219
   },
   "alignment": {
     "calls": [
@@ -202,7 +267,7 @@ curl https://openrouter.ai/api/v1/responses \
         "outcome": "blocked",
         "rules": [
           {
-            "probability": 0.97,
+            "probability": 0.92,
             "broken": true
           },
           {
@@ -230,38 +295,40 @@ curl https://openrouter.ai/api/v1/responses \
 }
 ```
 
-### Enforce mode, blocked after the last retry
+### Return an error instead of retrying
 
-With `max_retries: 0` the first blocked message is returned as an error. The body has `error.code: 403`, the `alignment` object under `error.metadata`, the held-back message as `rejected`, and `usage`. `rejected` is the list of output items of the held-back message. The items carry ids assigned by the plugin, because the client did not receive them.
+Set `max_retries: 0` to turn the first blocked message into an error. The body has four parts:
 
-The HTTP status is `403` when the error is known before OpenRouter has sent the first byte of the response. OpenRouter sends whitespace while a non-streaming model call is in progress, so the status of a response that started before the check finished is `200` and the error is in the body. The status in the runs below was `200`.
+- `error.code: 403`.
+- `error.metadata.alignment`, the `alignment` object.
+- `error.metadata.alignment.rejected`, the output items of the blocked message. The plugin assigns their ids, because your application never received the items.
+- `usage`.
 
-```bash
-curl https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "<MODEL>",
-    "instructions": "You are the support assistant for Northwind, an online store. Damaged items qualify for a full refund; confirm the refund to the customer. Be concise.",
-    "input": "My package arrived crushed and the mug inside is broken. Will I get my money back?",
-    "plugins": [
-      {
-        "id": "alignment",
-        "rules": [
-          "Do not state that a refund is issued or approved.",
-          "Do not ask the customer for payment card details."
-        ],
-        "max_retries": 0
-      }
-    ]
-  }'
+The HTTP status is `403` when OpenRouter knows the error before it sends the first byte of the response. OpenRouter sends whitespace while a non-streaming model call is in progress, so a response that started before the check finished has status `200` and the error in the body. The run below had status `200`.
+
+```json
+{
+  "model": "openai/gpt-4.1-mini",
+  "instructions": "You are Northwind support. Damaged items are refunded in full. Keep replies under 15 words.",
+  "input": "My mug arrived broken. Will I get my money back?",
+  "plugins": [
+    {
+      "id": "alignment",
+      "rules": [
+        "Do not say a refund is issued or approved.",
+        "Do not ask for payment card details."
+      ],
+      "max_retries": 0
+    }
+  ]
+}
 ```
 
 ```json
 {
-  "id": "gen-1790790563-eRMQOM8QeBsULzkUgEW0",
+  "id": "gen-1790884886-HLX00EKhBqbldEplq8ra",
   "error": {
-    "message": "Alignment plugin: the reply broke these rules: 0: \"Do not state that a refund is issued or approved.\"",
+    "message": "Alignment plugin: the reply broke these rules: 0: \"Do not say a refund is issued or approved.\"",
     "code": 403,
     "metadata": {
       "error_type": "permission_denied",
@@ -272,7 +339,7 @@ curl https://openrouter.ai/api/v1/responses \
             "outcome": "blocked",
             "rules": [
               {
-                "probability": 0.95,
+                "probability": 0.96,
                 "broken": true
               },
               {
@@ -284,14 +351,14 @@ curl https://openrouter.ai/api/v1/responses \
         ],
         "rejected": [
           {
-            "id": "msg_5d0cbc70-c61b-468c-974a-f74bd6828290",
+            "id": "msg_9ab2a7fc-db55-414d-b103-3033fc70da90",
             "type": "message",
             "role": "assistant",
             "status": "completed",
             "content": [
               {
                 "type": "output_text",
-                "text": "Yes—the broken mug qualifies for a full refund. Please contact Northwind support to arrange it.",
+                "text": "Yes, you will receive full money back for the damaged mug.",
                 "annotations": []
               }
             ]
@@ -301,62 +368,65 @@ curl https://openrouter.ai/api/v1/responses \
     }
   },
   "usage": {
-    "input_tokens": 93,
-    "output_tokens": 233,
-    "total_tokens": 326
+    "input_tokens": 74,
+    "output_tokens": 14,
+    "total_tokens": 88
   }
 }
 ```
 
-### Follow-up request with the rejected message
+### Rewrite a withheld message
 
-The held-back message and the broken rule can be passed to a second request. The request below puts the text of `rejected` and the rule from the previous response into `input` and applies the same rules to the rewrite.
+The `rejected` items of an error hold the withheld message, so your application can ask for a rewrite instead of showing the user an error. Starting from the `403` error of [Return an error instead of retrying](#return-an-error-instead-of-retrying):
 
-```bash
-curl https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "<MODEL>",
-    "instructions": "You rewrite customer support replies so that they follow the stated policy. Keep the tone. Replace every statement that breaks the policy with a statement that the request has been received and will be reviewed. Do not add new commitments.",
-    "input": "Policy: \"Do not state that a refund is issued or approved.\"\nDraft: Yes—the broken mug qualifies for a full refund. Please contact Northwind support to arrange it.\nRewrite the draft so that it follows the policy.",
-    "plugins": [
-      {
-        "id": "alignment",
-        "rules": [
-          "Do not state that a refund is issued or approved.",
-          "Do not ask the customer for payment card details."
-        ],
-        "max_retries": 0
-      }
-    ]
-  }'
+1. Read the withheld text from `error.metadata.alignment.rejected[0].content[0].text`: `Yes, you will receive full money back for the damaged mug.`.
+2. Send a new request with that text as `input`, the rewrite task in `instructions`, and the same `plugins` entry, so that the rewrite is checked against the same rules.
+3. Read the rewrite from `output`; its `alignment.calls[0].outcome` is `allowed`.
+
+The request and response of step 2:
+
+```json
+{
+  "model": "openai/gpt-4.1-mini",
+  "instructions": "Rewrite the draft: do not say a refund is approved; say the claim is under review. Be brief.",
+  "input": "Draft: Yes, you will receive full money back for the damaged mug.",
+  "plugins": [
+    {
+      "id": "alignment",
+      "rules": [
+        "Do not say a refund is issued or approved.",
+        "Do not ask for payment card details."
+      ],
+      "max_retries": 0
+    }
+  ]
+}
 ```
 
 ```json
 {
-  "id": "gen-1790790567-ubC0ppcSDRTLmBjvVVma",
+  "id": "gen-1790884887-OcxNnqRtjwIO78iNfsYM",
   "object": "response",
   "status": "completed",
   "output": [
     {
-      "id": "msg_tmp_30okwxlxfh7",
+      "id": "msg_tmp_ugoq1lufx9",
       "type": "message",
       "role": "assistant",
       "status": "completed",
       "content": [
         {
           "type": "output_text",
-          "text": "We’ve received your request regarding the broken mug, and it will be reviewed.",
+          "text": "Your claim for the damaged mug is currently under review.",
           "annotations": []
         }
       ]
     }
   ],
   "usage": {
-    "input_tokens": 132,
-    "output_tokens": 64,
-    "total_tokens": 196
+    "input_tokens": 78,
+    "output_tokens": 12,
+    "total_tokens": 90
   },
   "alignment": {
     "calls": [
@@ -379,74 +449,71 @@ curl https://openrouter.ai/api/v1/responses \
 }
 ```
 
-### Rule about a tool call
+### Block a tool call
 
-A rule about a tool call is decided from the `name` and `arguments` of the call, before the tool runs. The request passes `issue_refund` as a tool and the rule limits its `amount_usd` argument. With `instruct: false` the model does not receive the rule; the customer asks for $42, the model calls `issue_refund` with `amount_usd: 42`, and the call is held back. `rejected` holds the `function_call` item.
+The evaluator reads the `name` and `arguments` of a tool call before your application runs the tool. This request passes `issue_refund` as a [tool](/api_reference/responses/tool-calling), and its rule caps the `amount_usd` argument at 25 US dollars. `instruct: false` keeps the rule out of the conversation. The system message tells the model to refund with `issue_refund`, and the customer asks for 42 US dollars. The model calls `issue_refund` with `amount_usd: 42`, the evaluator marks the message `blocked`, and `rejected` holds the `function_call` item.
 
-```bash expandable
-curl https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "<MODEL>",
-    "instructions": "You are the support assistant for Northwind, an online store. A customer who reports a damaged item gets a full refund. When the order id and amount are known, call issue_refund(order_id, amount_usd) in your first response. Be concise.",
-    "input": "Order ord_8841: the mug arrived broken. Please refund the $42.",
-    "plugins": [
-      {
-        "id": "alignment",
-        "rules": [
-          "Do not call issue_refund with amount_usd above 25."
-        ],
-        "instruct": false,
-        "max_retries": 0
-      }
-    ],
-    "tools": [
-      {
-        "type": "function",
-        "name": "issue_refund",
-        "description": "Issue a refund for an order",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "order_id": {
-              "type": "string"
-            },
-            "amount_usd": {
-              "type": "number"
-            }
+```json expandable
+{
+  "model": "openai/gpt-4.1-mini",
+  "instructions": "You are Northwind support. Refund damaged items in full with issue_refund. Be brief.",
+  "input": "Order ord_8841: the mug arrived broken. Please refund the $42.",
+  "plugins": [
+    {
+      "id": "alignment",
+      "rules": [
+        "Never call issue_refund with amount_usd over 25."
+      ],
+      "instruct": false,
+      "max_retries": 0
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "name": "issue_refund",
+      "description": "Issue a refund for an order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
           },
-          "required": [
-            "order_id",
-            "amount_usd"
-          ]
-        }
-      },
-      {
-        "type": "function",
-        "name": "escalate_to_human",
-        "description": "Hand the conversation to a human agent",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "reason": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "reason"
-          ]
-        }
+          "amount_usd": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "order_id",
+          "amount_usd"
+        ]
       }
-    ]
-  }'
+    },
+    {
+      "type": "function",
+      "name": "escalate_to_human",
+      "description": "Hand the conversation to a human agent",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      }
+    }
+  ]
+}
 ```
 
 ```json
 {
-  "id": "gen-1790790570-YFqdMqMuc9KiP7YqOagR",
+  "id": "gen-1790884907-jPvRw2jlBnEkhcI03aUP",
   "error": {
-    "message": "Alignment plugin: the reply broke these rules: 0: \"Do not call issue_refund with amount_usd above 25.\"",
+    "message": "Alignment plugin: the reply broke these rules: 0: \"Never call issue_refund with amount_usd over 25.\"",
     "code": 403,
     "metadata": {
       "error_type": "permission_denied",
@@ -457,7 +524,7 @@ curl https://openrouter.ai/api/v1/responses \
             "outcome": "blocked",
             "rules": [
               {
-                "probability": 0.98,
+                "probability": 0.97,
                 "broken": true
               }
             ]
@@ -466,8 +533,8 @@ curl https://openrouter.ai/api/v1/responses \
         "rejected": [
           {
             "type": "function_call",
-            "id": "fc_call_kZua5HZzupev11JUXrMHc9lo",
-            "call_id": "call_kZua5HZzupev11JUXrMHc9lo",
+            "id": "fc_call_7jiWjeC4wg5gi5X9wWUV3dIV",
+            "call_id": "call_7jiWjeC4wg5gi5X9wWUV3dIV",
             "name": "issue_refund",
             "arguments": "{\"order_id\":\"ord_8841\",\"amount_usd\":42}",
             "status": "completed"
@@ -477,95 +544,92 @@ curl https://openrouter.ai/api/v1/responses \
     }
   },
   "usage": {
-    "input_tokens": 149,
-    "output_tokens": 29,
-    "total_tokens": 178
+    "input_tokens": 110,
+    "output_tokens": 26,
+    "total_tokens": 136
   }
 }
 ```
 
-### Message that consists of a tool call
+### Allow a message with only a tool call
 
-A message with `tool_calls` and no text is checked like any other message. The `lookup_order` call below breaks neither the rule about the text nor the rule about `issue_refund`, and is delivered.
+The evaluator checks a message that consists of a tool call in the same way as a message with text. The `lookup_order` call below follows the rule about the text and the rule about `issue_refund`, so OpenRouter delivers it.
 
-```bash expandable
-curl https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "<MODEL>",
-    "instructions": "You are the support assistant for Northwind, an online store. Damaged items qualify for a full refund; confirm the refund to the customer. Be concise.",
-    "input": "Where is my order ord_8841?",
-    "plugins": [
-      {
-        "id": "alignment",
-        "rules": [
-          "Do not state that a refund is issued or approved.",
-          "Do not call issue_refund with amount_usd above 25."
-        ],
-        "max_retries": 0
+```json expandable
+{
+  "model": "openai/gpt-4.1-mini",
+  "instructions": "You are Northwind support. Damaged items are refunded in full. Keep replies under 15 words.",
+  "input": "Where is my order ord_8841?",
+  "plugins": [
+    {
+      "id": "alignment",
+      "rules": [
+        "Do not say a refund is issued or approved.",
+        "Never call issue_refund with amount_usd over 25."
+      ],
+      "max_retries": 0
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "name": "lookup_order",
+      "description": "Look up an order by id",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ]
       }
-    ],
-    "tools": [
-      {
-        "type": "function",
-        "name": "lookup_order",
-        "description": "Look up an order by id",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "order_id": {
-              "type": "string"
-            }
+    },
+    {
+      "type": "function",
+      "name": "issue_refund",
+      "description": "Issue a refund for an order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
           },
-          "required": [
-            "order_id"
-          ]
-        }
-      },
-      {
-        "type": "function",
-        "name": "issue_refund",
-        "description": "Issue a refund for an order",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "order_id": {
-              "type": "string"
-            },
-            "amount_usd": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "order_id",
-            "amount_usd"
-          ]
-        }
+          "amount_usd": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "order_id",
+          "amount_usd"
+        ]
       }
-    ]
-  }'
+    }
+  ]
+}
 ```
 
 ```json
 {
-  "id": "gen-1790790571-1HIXVtP13ShIogj2VsUe",
+  "id": "gen-1790884908-k5AItByFIQabagVBLbVz",
   "object": "response",
   "status": "completed",
   "output": [
     {
-      "id": "fc_tmp_7cbf0pwmy7r",
+      "id": "fc_tmp_9tkiacw7kr",
       "type": "function_call",
       "status": "completed",
-      "call_id": "call_DH6HDWghSZwPSoE1jp6uk9aa",
+      "call_id": "call_DpJwg4hzCPJt1Kdk0wOslwXs",
       "name": "lookup_order",
       "arguments": "{\"order_id\":\"ord_8841\"}"
     }
   ],
   "usage": {
-    "input_tokens": 155,
-    "output_tokens": 22,
-    "total_tokens": 177
+    "input_tokens": 137,
+    "output_tokens": 19,
+    "total_tokens": 156
   },
   "alignment": {
     "calls": [
@@ -578,7 +642,7 @@ curl https://openrouter.ai/api/v1/responses \
             "broken": false
           },
           {
-            "probability": 0.02,
+            "probability": 0.03,
             "broken": false
           }
         ]
@@ -588,43 +652,40 @@ curl https://openrouter.ai/api/v1/responses \
 }
 ```
 
-### Streaming
+### Stream a checked message
 
-With `stream: true` in `enforce` mode, no event of the message is sent until the check has finished. The HTTP status is `200`. A held-back message ends the stream with a `response.failed` event whose `response.error` carries the alignment error, followed by `[DONE]`. The stream below consisted of `response.created`, `response.in_progress`, `response.failed`, and `[DONE]`. A delivered message streams as usual, and `alignment` is on the response object inside `response.completed`.
+In `enforce` mode with `stream: true`, OpenRouter holds the events of a message until the check has finished. The HTTP status is `200`. A blocked message ends the stream with a `response.failed` event, whose `response.error` carries the alignment error, and `[DONE]`. An allowed message streams as usual, and `alignment` is on the response object inside `response.completed`. The stream below consisted of `response.created`, `response.in_progress`, `response.failed`, and `[DONE]`. The `response.failed` event:
 
-```bash
-curl https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "<MODEL>",
-    "instructions": "You are the support assistant for Northwind, an online store. Damaged items qualify for a full refund; confirm the refund to the customer. Be concise.",
-    "input": "My package arrived crushed and the mug inside is broken. Will I get my money back?",
-    "plugins": [
-      {
-        "id": "alignment",
-        "rules": [
-          "Do not state that a refund is issued or approved.",
-          "Do not ask the customer for payment card details."
-        ],
-        "max_retries": 0
-      }
-    ],
-    "stream": true
-  }'
+```json
+{
+  "model": "openai/gpt-4.1-mini",
+  "instructions": "You are Northwind support. Damaged items are refunded in full. Keep replies under 15 words.",
+  "input": "My mug arrived broken. Will I get my money back?",
+  "plugins": [
+    {
+      "id": "alignment",
+      "rules": [
+        "Do not say a refund is issued or approved.",
+        "Do not ask for payment card details."
+      ],
+      "max_retries": 0
+    }
+  ],
+  "stream": true
+}
 ```
 
 ```text
 data: {
   "type": "response.failed",
   "response": {
-    "id": "gen-1790790572-3ZgY5QDXcUUE6e1l2xhm",
+    "id": "gen-1790884909-qHyWxlN7vEvT45coQUqh",
     "object": "response",
     "status": "failed",
     "output": [],
     "error": {
       "code": "server_error",
-      "message": "Alignment plugin: the reply broke these rules: 0: \"Do not state that a refund is issued or approved.\"",
+      "message": "Alignment plugin: the reply broke these rules: 0: \"Do not say a refund is issued or approved.\"",
       "metadata": {
         "alignment": {
           "calls": [
@@ -633,7 +694,7 @@ data: {
               "outcome": "blocked",
               "rules": [
                 {
-                  "probability": 0.96,
+                  "probability": 0.93,
                   "broken": true
                 },
                 {
@@ -645,14 +706,14 @@ data: {
           ],
           "rejected": [
             {
-              "id": "msg_58d82886-c8ff-4bd2-bda5-5422de7e4bed",
+              "id": "msg_65c98831-f5cb-42fd-8c7b-3ed8f80f1c50",
               "type": "message",
               "role": "assistant",
               "status": "completed",
               "content": [
                 {
                   "type": "output_text",
-                  "text": "Yes, your damaged mug qualifies for a full refund.",
+                  "text": "Yes, you will be fully reimbursed for the damaged mug.",
                   "annotations": []
                 }
               ]
@@ -662,9 +723,9 @@ data: {
       }
     },
     "usage": {
-      "input_tokens": 93,
-      "output_tokens": 129,
-      "total_tokens": 222
+      "input_tokens": 74,
+      "output_tokens": 14,
+      "total_tokens": 88
     },
     "error_type": "permission_denied"
   },
@@ -672,29 +733,9 @@ data: {
 }
 ```
 
-### Request from an entity that is not admitted
+### Call from outside the beta
 
-During the beta, a request that names the plugin from an entity that is not on the allowlist is rejected. The model is not called.
-
-```bash
-curl https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "<MODEL>",
-    "instructions": "You are the support assistant for Northwind, an online store. Damaged items qualify for a full refund; confirm the refund to the customer. Be concise.",
-    "input": "My package arrived crushed and the mug inside is broken. Will I get my money back?",
-    "plugins": [
-      {
-        "id": "alignment",
-        "rules": [
-          "Do not state that a refund is issued or approved.",
-          "Do not ask the customer for payment card details."
-        ]
-      }
-    ]
-  }'
-```
+The [Quickstart](#quickstart) request, sent from a workspace that is not in the beta, gets this body. OpenRouter answers before it calls the model, so the body has no `id` and no `usage`:
 
 ```json
 {
@@ -708,79 +749,90 @@ curl https://openrouter.ai/api/v1/responses \
 }
 ```
 
-## The alignment object
+## The `alignment` object
 
-Every response that follows at least one message carries `alignment`. It is a field of the response object; for a stream, of the response object inside `response.completed`. In an error it is `error.metadata.alignment`.
+Every response that follows at least one message carries `alignment`. In a non-streaming response, it is a top-level field. In a stream, it is on the response object inside `response.completed`. In an error, it is `error.metadata.alignment`. [Retry a blocked message](#retry-a-blocked-message) shows an object with two records.
 
-The object below is from the [Enforce mode with a retry](#enforce-mode-with-a-retry) example.
-
-```json
-{
-  "alignment": {
-    "calls": [
-      {
-        "call": 1,
-        "outcome": "blocked",
-        "rules": [
-          {
-            "probability": 0.97,
-            "broken": true
-          },
-          {
-            "probability": 0.02,
-            "broken": false
-          }
-        ]
-      },
-      {
-        "call": 2,
-        "outcome": "allowed",
-        "rules": [
-          {
-            "probability": 0.45,
-            "broken": false
-          },
-          {
-            "probability": 0.02,
-            "broken": false
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-`calls` has one record per message, numbered from 1, in the order the messages were produced. A model call that failed before producing a message has no record. `rules` has one record per rule, in the order of the request's `rules`. A record whose `outcome` is `unavailable` has a `reason` (`cut`, `evaluator_error`, `malformed_answer`, or `time_limit`) instead of `rules`.
+| Field | Type | Value |
+|-------|------|-------|
+| `calls` | object[] | One record per message, in the order the model produced the messages. A model call that failed before it produced a message has no record. |
+| `calls[].call` | integer | Position of the message, counted from 1. |
+| `calls[].outcome` | string | `allowed`, `blocked`, or `unavailable`. |
+| `calls[].rules` | object[] | One record per rule, in the order of the request's `rules`, with the `probability` the evaluator gave and whether the evaluator marked the rule as `broken`. Present when the outcome is `allowed` or `blocked`. |
+| `calls[].reason` | string | Why the evaluator did not check the message: `cut`, `evaluator_error`, `malformed_answer`, or `time_limit`. Present when the outcome is `unavailable`. [Unavailable outcomes](#unavailable-outcomes) explains each reason. |
+| `rejected` | object[] | The output items of the blocked message, as [Errors](#errors) describes. Present in `error.metadata.alignment` of the error for a blocked message only. |
 
 ## Errors
 
-A `blocked` message after the last retry in `enforce` mode is returned as an error with `code: 403`, `error.metadata.alignment`, and `usage`. The [Enforce mode, blocked after the last retry](#enforce-mode-blocked-after-the-last-retry) and [Rule about a tool call](#rule-about-a-tool-call) examples show the body.
+In `enforce` mode, OpenRouter returns an error for a `blocked` message with no retry left and for an `unavailable` message:
 
-`rejected` is the held-back message as a list of output items. It does not contain the model's reasoning. A follow-up request can pass `rejected` and the broken rules to the model. The client did not receive the items in `rejected`; their `id` values are assigned by the plugin (`msg_<turn id>`, `fc_<call_id>`, `ctc_<call_id>`, `ig_<turn id>_<index>`, or the provider item id of a native tool call) and differ from the ids the Responses API assigns to delivered items.
+| Outcome of the last message | HTTP status and `error.code` | `error.metadata.error_type` | `error.message` |
+|-----|-----|-----|-----|
+| `blocked` | `403` | `permission_denied` | `Alignment plugin: the reply broke these rules: <index>: "<rule>"`, with each broken rule separated by `; ` |
+| `unavailable` | `503` | `provider_overloaded` | `Alignment plugin: the reply could not be evaluated: <reason>` |
 
-An `unavailable` message in `enforce` mode is returned as an error with `code: 503`. The body has this shape:
+The body of a non-streaming error has `error`, `usage` summed over every model call of the request, and `error.metadata.alignment`. [Return an error instead of retrying](#return-an-error-instead-of-retrying) and [Block a tool call](#block-a-tool-call) show the body for a blocked message. The body for an unavailable message has this shape:
 
 ```json
 {
-  "usage": { "input_tokens": 71, "output_tokens": 16, "total_tokens": 87 },
+  "usage": {
+    "input_tokens": 71,
+    "output_tokens": 16,
+    "total_tokens": 87
+  },
   "error": {
     "code": 503,
     "message": "Alignment plugin: the reply could not be evaluated: evaluator_error",
     "metadata": {
       "alignment": {
-        "calls": [{ "call": 1, "outcome": "unavailable", "reason": "evaluator_error" }]
+        "calls": [
+          {
+            "call": 1,
+            "outcome": "unavailable",
+            "reason": "evaluator_error"
+          }
+        ]
       }
     }
   }
 }
 ```
 
-A non-streaming error body carries `usage` summed over every model call. Its `error.code` is the HTTP status as a number, `403` or `503`, and `error.metadata.error_type` is `permission_denied` for a blocked message and `provider_overloaded` for an unavailable one. For a streaming request, the HTTP status is `200` when the error occurs, and the error is the `error` field of the response object inside `response.failed`, followed by `[DONE]`. The `code` of that `error` is a string from the [Responses API error codes](/api_reference/responses/error-handling), `server_error` for both errors, and `error_type` is a field of the response object next to `error`. `error.metadata.alignment` has the same content in both shapes. The [Streaming](#streaming) example shows the streaming shape.
+For a blocked message, `error.metadata.alignment.rejected` holds the blocked message as a list of output items, without the model's reasoning. The plugin assigns the `id` of each item, so the ids differ from the ids of delivered items:
+
+- Message item: `msg_<turn id>`.
+- Function call: `fc_<call_id>`.
+- Custom tool call: `ctc_<call_id>`.
+- Image: `ig_<turn id>_<index>`.
+- Native tool call: the provider's item id.
+
+For a streaming request, the HTTP status is `200`. OpenRouter sends the error as the `error` field of the response object inside `response.failed` and then `[DONE]`. The `code` of that `error` is a string from the [Responses API error codes](/api_reference/responses/error-handling), `server_error` for both errors. `error_type` sits next to `error` on the response object. `error.metadata.alignment` has the same content in both shapes. [Stream a checked message](#stream-a-checked-message) shows the streaming shape.
+
+## Unavailable outcomes
+
+The evaluator marks a message `unavailable`, with a `reason` in its `alignment.calls` record, when it cannot check the message. In `audit` mode, OpenRouter delivers the message with that record. In `enforce` mode, OpenRouter returns a `503` error with the reason in `error.message` and makes no retry.
+
+| `reason` | When |
+|----------|------|
+| `cut` | The message exceeds a size limit in the table below. |
+| `evaluator_error` | The evaluator call failed. |
+| `malformed_answer` | The evaluator returned an answer OpenRouter cannot parse. |
+| `time_limit` | The evaluator did not answer within 4 seconds. OpenRouter sets this limit; it is not a request field. |
+
+The size limits apply to each part of a message. Lengths are in UTF-16 code units, the unit of `string.length` in JavaScript.
+
+| Part of the message | Limit |
+|------|------|
+| Text | 10,000 code units |
+| Tool calls | 16 calls, and 4,000 code units for all calls serialized as JSON |
+| Refusal | 1,000 code units |
+| Audio transcripts | 1,000 code units for all transcripts |
+
+A message cut short at `max_tokens` is within the limits, and the evaluator checks it as it is.
 
 ## Writing rules
 
-### What the evaluator receives
+### Input of the evaluator
 
 For each rule, the evaluator receives the rule and the assistant message in this form:
 
@@ -788,128 +840,129 @@ For each rule, the evaluator receives the rule and the assistant message in this
 {
   "role": "assistant",
   "content": "Let me check that order.",
-  "tool_calls": [{ "name": "lookup_order", "arguments": "{\"order_id\":\"ord_1\"}" }]
+  "tool_calls": [
+    {
+      "name": "lookup_order",
+      "arguments": "{\"order_id\":\"ord_8841\"}"
+    }
+  ]
 }
 ```
 
-| Field | Value |
-|-------|-------|
-| `content` | The text of the message. `null` when the message has no text. |
-| `tool_calls` | The tool calls of the message: `name`, `arguments`, and, for a member of a Responses `namespace` tool, `namespace`. Absent when the message has no tool call. |
-| `refusal` | The refusal text of the message. Absent when the message has no refusal. |
-| `images` | One entry per image of the message. Absent when the message has no image. |
-| `audio` | `{ "transcript": ... }`, the audio transcript of the message. Absent when the message has no transcript. |
+| Field | Type | Value |
+|-------|------|-------|
+| `content` | string or null | The text of the message. `null` for a message without text. |
+| `tool_calls` | object[] | The tool calls of the message: `name`, `arguments`, and, for a member of a Responses `namespace` tool, `namespace`. |
+| `refusal` | string | The refusal text of the message. |
+| `images` | object[] | One entry per image of the message. |
+| `audio` | object | `{ "transcript": ... }`, the audio transcript of the message. |
 
-The evaluator receives nothing else: no system prompt, no user message, no earlier message, no tool result, no reasoning, no facts about the world. The question it answers is `Does this assistant message break the rule?`. The answer is a probability.
+`content` is always present. The other fields are present when the message has that part. The evaluator sees the rule and this message, and answers `Does this assistant message break the rule?` with a probability.
 
-### How rules are read
+### Reading of a rule
 
-- A rule is decided from the message fields above and nothing else.
-- A message with `tool_calls` and `content: null` is one message. A rule about tool calls is decided from `tool_calls`. A rule about text is decided from `content: null`. The evaluator has no information about whether the message is a step of an agent loop or the last message of a conversation.
-- A rule that requires a property of the text, such as `End every reply with "Best regards, Support".`, is broken by a message with `content: null`.
-- A rule with a condition on a field, such as `If the content is not null, the content ends with "Best regards, Support".`, is followed by a message on which the condition is not met.
-- JSON in `content` is text. `Do not delete a file outside the dist directory.` is broken by `content` of `{"action":"delete_file","path":"config.yaml"}`.
-- A rule about a tool call, such as `Do not call charge_card with amount_cents above 5000.`, is decided from the `name` and `arguments` in `tool_calls`, before the tool runs.
-- A rule that requires data outside the message, such as the user's message or a price list, is decided without that data.
-- A rule that names two properties, such as `Do not offer a discount and always be polite.`, produces one probability for both.
-- A rule that names no property of the message, such as `Be helpful.`, is decided without a property to check.
-- When `instruct` is `true`, the rule text is also the instruction the model reads.
+- A rule applies to the fields above: a rule about text to `content`, a rule about tool calls to `tool_calls`. On a message that consists of tool calls, `content` is `null`. The evaluator treats a step of an agent loop and the last message of a conversation alike.
+- A rule that requires a property of the text, such as `End every reply with "Best regards, Support".`, fails on a message with `content: null`.
+- A rule with a condition, such as `If the content is not null, the content ends with "Best regards, Support".`, holds on a message that fails the condition.
+- A rule about text applies to JSON in `content` as text: `{"action":"delete_file","path":"config.yaml"}` in `content` breaks `Do not delete a file outside the dist directory.`.
+- A rule about a tool call, such as `Do not call charge_card with amount_cents above 5000.`, applies to the `name` and `arguments` in `tool_calls` before the tool runs.
+- A rule that depends on data outside the message, such as the user's message or a price list, gets a probability without that data.
+- A rule that names two properties, such as `Do not offer a discount and always be polite.`, yields one probability for both.
+- A rule that names no property of the message, such as `Be helpful.`, gives the evaluator nothing to check.
+- A rule is also an instruction to the model when `instruct` is `true`.
 
-### Rules that state the intended property
+### Rules with a checkable property
 
-| Rule | Reading | Rule that states the intended property |
-|------|---------|----------------------------------------|
-| `Answer in the language of the user.` | Requires the user's message, which the evaluator does not receive. | `The content is written in French.` |
-| `Only answer questions about billing.` | Requires the user's message. | `Do not discuss anything but billing.` |
-| `The final answer must cite a source.` | The evaluator does not know which message is the final answer. In the evaluation set, this rule is broken by a message that only calls `web_search`. | `If the content states a fact, the content cites a source.` |
-| `End every reply with "Best regards, Support".` | Broken by a message with `content: null`. | `If the content is not null, the content ends with "Best regards, Support".` |
-| `Never state a wrong price.` | Requires the price list, which the evaluator does not receive. | No rule. A price list is system-prompt content. |
+| Rule | Reading | Rule that states the property |
+|------|---------|-------------------------------|
+| `Answer in the language of the user.` | Depends on the user's message, which is outside the input of the evaluator. | `The content is written in French.` |
+| `Only answer questions about billing.` | Depends on the user's message. | `Do not discuss anything but billing.` |
+| `The final answer must cite a source.` | Depends on which message is the final answer, which is outside the input of the evaluator. In the evaluation set, a message that only calls `web_search` breaks this rule. | `If the content states a fact, the content cites a source.` |
+| `End every reply with "Best regards, Support".` | Fails on a message with `content: null`. | `If the content is not null, the content ends with "Best regards, Support".` |
+| `Never state a wrong price.` | Depends on the price list, which is outside the input of the evaluator. | Put the price list in the system message and drop the rule. |
 | `Be helpful.` | Names no property of the message. | A rule that names a property of `content` or `tool_calls`. |
-| `Do not offer a discount and always be polite.` | One probability for two properties. | `Never offer a discount.` and `Be polite.` as two rules. |
+| `Do not offer a discount and always be polite.` | Yields one probability for two properties. | `Never offer a discount.` and `Be polite.` as two rules. |
 
-In `audit` mode, the `alignment` object carries the probability of every rule on every delivered message.
+In `audit` mode, the `alignment` object carries the probability of every rule on every delivered message, so you can test a rule on your traffic before you enforce it.
 
-### Example: a rule about text on a tool-call message
+### Check of a text rule on a tool-call message
 
-The two requests below are identical except for the rule. The model answers `Where is my order ord_8841?` with a `lookup_order` call and no text. The rule `End every reply with "Best regards, Support".` is broken by that message; the rule `If the content is not null, the content ends with "Best regards, Support".` is followed. Both requests use `audit` mode so that the message is delivered with its probability.
+A rule about text fails on a message with `content: null`, and a conditional rule holds. The two requests below differ only in the rule. They call [`anthropic/claude-sonnet-4`](https://openrouter.ai/anthropic/claude-sonnet-4) in `audit` mode rather than the model of the other examples because it answers `Where is my order ord_8841?` with a `lookup_order` call and no text in most runs. The first rule, `End every reply with "Best regards, Support".`, fails on that message. The second rule, `If the content is not null, the content ends with "Best regards, Support".`, holds.
 
-```bash expandable
-curl https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "<MODEL>",
-    "instructions": "You are the support assistant for Northwind, an online store. Damaged items qualify for a full refund; confirm the refund to the customer. Be concise.",
-    "input": "Where is my order ord_8841?",
-    "plugins": [
-      {
-        "id": "alignment",
-        "mode": "audit",
-        "rules": [
-          "End every reply with \"Best regards, Support\"."
+```json expandable
+{
+  "model": "anthropic/claude-sonnet-4",
+  "instructions": "You are Northwind support. Damaged items are refunded in full. Keep replies under 15 words.",
+  "input": "Where is my order ord_8841?",
+  "plugins": [
+    {
+      "id": "alignment",
+      "mode": "audit",
+      "rules": [
+        "End every reply with \"Best regards, Support\"."
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "name": "lookup_order",
+      "description": "Look up an order by id",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
         ]
       }
-    ],
-    "tools": [
-      {
-        "type": "function",
-        "name": "lookup_order",
-        "description": "Look up an order by id",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "order_id": {
-              "type": "string"
-            }
+    },
+    {
+      "type": "function",
+      "name": "issue_refund",
+      "description": "Issue a refund for an order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
           },
-          "required": [
-            "order_id"
-          ]
-        }
-      },
-      {
-        "type": "function",
-        "name": "issue_refund",
-        "description": "Issue a refund for an order",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "order_id": {
-              "type": "string"
-            },
-            "amount_usd": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "order_id",
-            "amount_usd"
-          ]
-        }
+          "amount_usd": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "order_id",
+          "amount_usd"
+        ]
       }
-    ]
-  }'
+    }
+  ]
+}
 ```
 
 ```json
 {
-  "id": "gen-1790790575-f8Sr3AajbmZeT9lQRL2h",
+  "id": "gen-1790886037-vmuHOjqmZtZ4ghSGnwsi",
   "object": "response",
   "status": "completed",
   "output": [
     {
-      "id": "fc_tmp_dy2ri294uvd",
+      "id": "fc_tmp_cawpoqzocd",
       "type": "function_call",
       "status": "completed",
-      "call_id": "call_pwuFNCdOlawUvqCthVM5uiva",
+      "call_id": "toolu_bdrk_01XKFdFuUDfRLf6fBX4Ay6CX",
       "name": "lookup_order",
-      "arguments": "{\"order_id\":\"ord_8841\"}"
+      "arguments": "{\"order_id\": \"ord_8841\"}"
     }
   ],
   "usage": {
-    "input_tokens": 140,
-    "output_tokens": 22,
-    "total_tokens": 162
+    "input_tokens": 510,
+    "output_tokens": 58,
+    "total_tokens": 568
   },
   "alignment": {
     "calls": [
@@ -930,83 +983,80 @@ curl https://openrouter.ai/api/v1/responses \
 
 The same request with the conditional rule:
 
-```bash expandable
-curl https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "<MODEL>",
-    "instructions": "You are the support assistant for Northwind, an online store. Damaged items qualify for a full refund; confirm the refund to the customer. Be concise.",
-    "input": "Where is my order ord_8841?",
-    "plugins": [
-      {
-        "id": "alignment",
-        "mode": "audit",
-        "rules": [
-          "If the content is not null, the content ends with \"Best regards, Support\"."
+```json expandable
+{
+  "model": "anthropic/claude-sonnet-4",
+  "instructions": "You are Northwind support. Damaged items are refunded in full. Keep replies under 15 words.",
+  "input": "Where is my order ord_8841?",
+  "plugins": [
+    {
+      "id": "alignment",
+      "mode": "audit",
+      "rules": [
+        "If the content is not null, the content ends with \"Best regards, Support\"."
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "name": "lookup_order",
+      "description": "Look up an order by id",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
         ]
       }
-    ],
-    "tools": [
-      {
-        "type": "function",
-        "name": "lookup_order",
-        "description": "Look up an order by id",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "order_id": {
-              "type": "string"
-            }
+    },
+    {
+      "type": "function",
+      "name": "issue_refund",
+      "description": "Issue a refund for an order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
           },
-          "required": [
-            "order_id"
-          ]
-        }
-      },
-      {
-        "type": "function",
-        "name": "issue_refund",
-        "description": "Issue a refund for an order",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "order_id": {
-              "type": "string"
-            },
-            "amount_usd": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "order_id",
-            "amount_usd"
-          ]
-        }
+          "amount_usd": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "order_id",
+          "amount_usd"
+        ]
       }
-    ]
-  }'
+    }
+  ]
+}
 ```
 
 ```json
 {
-  "id": "gen-1790790576-pu1F0lwxFp7qI9mpunAP",
+  "id": "gen-1790886038-8q4hNlPnbrDQY2aE3Egw",
   "object": "response",
   "status": "completed",
   "output": [
     {
-      "id": "fc_tmp_7qhocy4fnkt",
+      "id": "fc_tmp_zrl4jeixl2l",
       "type": "function_call",
       "status": "completed",
-      "call_id": "call_j6UTcAQ6pSMMwFMAvOCRjop7",
+      "call_id": "toolu_bdrk_01WyeGnTd4zz4XiJk5RrZwop",
       "name": "lookup_order",
-      "arguments": "{\"order_id\":\"ord_8841\"}"
+      "arguments": "{\"order_id\": \"ord_8841\"}"
     }
   ],
   "usage": {
-    "input_tokens": 147,
-    "output_tokens": 22,
-    "total_tokens": 169
+    "input_tokens": 517,
+    "output_tokens": 58,
+    "total_tokens": 575
   },
   "alignment": {
     "calls": [
@@ -1015,7 +1065,7 @@ curl https://openrouter.ai/api/v1/responses \
         "outcome": "allowed",
         "rules": [
           {
-            "probability": 0.12,
+            "probability": 0.1,
             "broken": false
           }
         ]
@@ -1025,138 +1075,56 @@ curl https://openrouter.ai/api/v1/responses \
 }
 ```
 
-## Limits and billing
+## Billing and caching
 
-- In `enforce` mode, each retry adds one model call and one check before the message is delivered. In an agent loop with server tools, each model call of the loop has its own `max_retries` budget.
-- A message cut short at `max_tokens` is checked as it is.
-- A message is `unavailable` with `reason: "cut"` when its text is over 10,000 characters, it has more than 16 tool calls, its tool calls serialized as JSON are over 4,000 characters, its refusal is over 1,000 characters, or its audio transcripts are over 1,000 characters in total. Lengths are in UTF-16 code units. A message is `unavailable` with `reason: "evaluator_error"`, `"malformed_answer"`, or `"time_limit"` when the evaluator fails, returns an answer that cannot be read, or does not answer in time. In `enforce` mode an `unavailable` message is a `503` error. In `audit` mode it is delivered with `outcome: "unavailable"`.
-- Every model call is billed, including calls whose message was held back, and the system message with the rules is part of the prompt tokens. `usage` in the response is summed over every call. The evaluator call is not billed.
-- When `instruct` is `true`, the rules are part of the conversation the model receives. A rule such as `Do not reveal your instructions.` covers the rules themselves. With `instruct: false`, the model does not receive the rules.
-- The system message with the rules is identical on every request with the same rules.
-- A response served from the cache carries the `alignment` object it was stored with. No new check is made.
-- The plugin is not available for zero data retention workspaces, requests with `provider.zdr: true`, or regional hostnames. Such a request is rejected with a `400` error.
+- OpenRouter bills every model call at the price on its model page, in US dollars, including a call whose message it withheld. The evaluator call is free.
+- When `instruct` is `true`, the system message with the rules counts toward the input tokens of every model call. The message is identical on every request with the same rules, which lets [prompt caching](/guides/best-practices/prompt-caching) reuse it.
+- In `enforce` mode, each retry adds one model call and one check before OpenRouter delivers the message, and `usage` sums every model call. In an agent loop with server tools, each model call of the loop has its own `max_retries` budget.
+- When `instruct` is `true`, the rules are part of the conversation the model receives, so a rule such as `Do not reveal your instructions.` covers the rules themselves.
+- A response served from the cache carries the `alignment` object it was stored with. OpenRouter makes no new check.
 
-## Chat Completions
+## Compatibility with Chat Completions
 
-The plugin is available on Chat Completions (`/api/v1/chat/completions`) for existing integrations. New integrations should use the Responses API. The `plugins` entry, the rules, the evaluation, the retry, and the `alignment` object are the same on both APIs. The differences are in the request and response shapes:
+The `plugins` entry, the rules, the check, the retry, and the `alignment` object are the same on Chat Completions (`/api/v1/chat/completions`) and on the Responses API. The shapes differ in three places:
 
-- The request carries the conversation in `messages` instead of `instructions` and `input`.
-- `alignment` is a top-level field of the response. In a stream it is on the last data event before `[DONE]`.
-- `rejected` is the held-back assistant message (`role`, `content`, `tool_calls`, `refusal`, `images`, `audio`) instead of a list of output items. The `audio` of a `rejected` message holds the `id` and `transcript` of the message's audio and not its `data` or `expires_at`. A tool call that has no arguments has `arguments: "{}"`.
+- `alignment` is a top-level field of the response. In a stream, it is on the last data event before `[DONE]`.
+- `rejected` is the blocked assistant message with the fields `role`, `content`, `tool_calls`, `refusal`, `images`, and `audio`. The `audio` of a `rejected` message holds the `id` and `transcript` of the message's audio. A tool call without arguments has `arguments: "{}"`.
 - In a stream, the error is a data event with `error`, followed by the `usage` event and `[DONE]`.
 
-The [Enforce mode, blocked after the last retry](#enforce-mode-blocked-after-the-last-retry) request on Chat Completions, sent in the same run as the examples above:
+On Chat Completions, read `alignment` from the raw response body: `@openrouter/sdk` 1.4.15 types the field on the Responses result only. Below, the [Return an error instead of retrying](#return-an-error-instead-of-retrying) request on Chat Completions and its response body.
 
-```bash
-curl https://openrouter.ai/api/v1/chat/completions \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "<MODEL>",
-    "messages": [
-      {
-        "role": "system",
-        "content": "You are the support assistant for Northwind, an online store. Damaged items qualify for a full refund; confirm the refund to the customer. Be concise."
-      },
-      {
-        "role": "user",
-        "content": "My package arrived crushed and the mug inside is broken. Will I get my money back?"
-      }
-    ],
-    "plugins": [
-      {
-        "id": "alignment",
-        "rules": [
-          "Do not state that a refund is issued or approved.",
-          "Do not ask the customer for payment card details."
-        ],
-        "max_retries": 0
-      }
-    ]
-  }'
+```json
+{
+  "model": "openai/gpt-4.1-mini",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are Northwind support. Damaged items are refunded in full. Keep replies under 15 words."
+    },
+    {
+      "role": "user",
+      "content": "My mug arrived broken. Will I get my money back?"
+    }
+  ],
+  "plugins": [
+    {
+      "id": "alignment",
+      "rules": [
+        "Do not say a refund is issued or approved.",
+        "Do not ask for payment card details."
+      ],
+      "max_retries": 0
+    }
+  ]
+}
 ```
 
 ```json
 {
-  "id": "gen-1790790582-a1K6wJxdBQv9MTPzrTiN",
+  "id": "gen-1790884912-vYKml04LUCV8gMmJIFEk",
   "error": {
-    "message": "Alignment plugin: the reply broke these rules: 0: \"Do not state that a refund is issued or approved.\"",
+    "message": "Alignment plugin: the reply broke these rules: 0: \"Do not say a refund is issued or approved.\"",
     "code": 403,
-    "metadata": {
-      "error_type": "permission_denied",
-      "alignment": {
-        "calls": [
-          {
-            "call": 1,
-            "outcome": "blocked",
-            "rules": [
-              {
-                "probability": 0.84,
-                "broken": true
-              },
-              {
-                "probability": 0.02,
-                "broken": false
-              }
-            ]
-          }
-        ],
-        "rejected": {
-          "role": "assistant",
-          "content": "Yes. Since the mug arrived broken, you qualify for a full refund.",
-          "refusal": null
-        }
-      }
-    }
-  },
-  "usage": {
-    "prompt_tokens": 93,
-    "completion_tokens": 160,
-    "total_tokens": 253
-  }
-}
-```
-
-The [Streaming](#streaming) request on Chat Completions. The stream carried no content; it consisted of the error event, a chunk with an empty delta that carries `usage`, and `[DONE]`:
-
-```bash
-curl https://openrouter.ai/api/v1/chat/completions \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "<MODEL>",
-    "messages": [
-      {
-        "role": "system",
-        "content": "You are the support assistant for Northwind, an online store. Damaged items qualify for a full refund; confirm the refund to the customer. Be concise."
-      },
-      {
-        "role": "user",
-        "content": "My package arrived crushed and the mug inside is broken. Will I get my money back?"
-      }
-    ],
-    "plugins": [
-      {
-        "id": "alignment",
-        "rules": [
-          "Do not state that a refund is issued or approved.",
-          "Do not ask the customer for payment card details."
-        ],
-        "max_retries": 0
-      }
-    ],
-    "stream": true
-  }'
-```
-
-```text
-data: {
-  "id": "gen-1790790666-CajjTADehjqi0YfyzDO5",
-  "object": "chat.completion.chunk",
-  "choices": [],
-  "error": {
-    "code": 403,
-    "message": "Alignment plugin: the reply broke these rules: 0: \"Do not state that a refund is issued or approved.\"",
     "metadata": {
       "error_type": "permission_denied",
       "alignment": {
@@ -1170,6 +1138,51 @@ data: {
                 "broken": true
               },
               {
+                "probability": 0.03,
+                "broken": false
+              }
+            ]
+          }
+        ],
+        "rejected": {
+          "role": "assistant",
+          "content": "Yes, damaged items are refunded in full. Please provide order details.",
+          "refusal": null
+        }
+      }
+    }
+  },
+  "usage": {
+    "prompt_tokens": 74,
+    "completion_tokens": 15,
+    "total_tokens": 89
+  }
+}
+```
+
+With `stream: true`, the same request yields three events: the error event, a chunk with an empty delta and `usage`, and `[DONE]`:
+
+```text
+data: {
+  "id": "gen-1790884916-d0qFpUtt9VekhqYFOsCP",
+  "object": "chat.completion.chunk",
+  "choices": [],
+  "error": {
+    "code": 403,
+    "message": "Alignment plugin: the reply broke these rules: 0: \"Do not say a refund is issued or approved.\"",
+    "metadata": {
+      "error_type": "permission_denied",
+      "alignment": {
+        "calls": [
+          {
+            "call": 1,
+            "outcome": "blocked",
+            "rules": [
+              {
+                "probability": 0.97,
+                "broken": true
+              },
+              {
                 "probability": 0.02,
                 "broken": false
               }
@@ -1178,7 +1191,7 @@ data: {
         ],
         "rejected": {
           "role": "assistant",
-          "content": "Yes—a full refund is available for damaged items like your broken mug.",
+          "content": "Yes, you will receive a full refund for the damaged mug.",
           "refusal": null
         }
       }
@@ -1187,7 +1200,7 @@ data: {
 }
 
 data: {
-  "id": "gen-1790790666-CajjTADehjqi0YfyzDO5",
+  "id": "gen-1790884916-d0qFpUtt9VekhqYFOsCP",
   "object": "chat.completion.chunk",
   "choices": [
     {
@@ -1201,11 +1214,22 @@ data: {
     }
   ],
   "usage": {
-    "prompt_tokens": 93,
-    "completion_tokens": 157,
-    "total_tokens": 250
+    "prompt_tokens": 74,
+    "completion_tokens": 14,
+    "total_tokens": 88
   }
 }
 
 data: [DONE]
 ```
+
+## Next steps
+
+Start in `audit` mode on your own traffic: the `alignment` object carries the probability of every rule on every message, so you can rewrite a rule that reads the wrong way ([Writing rules](#writing-rules)) before you switch to `enforce` mode. Leave out a rule that depends on data outside the message, such as a price list or the user's question: the evaluator cannot see that data, so put it in the system message instead.
+
+To build on the examples:
+
+- For the request and response shapes the examples use, read the [Responses API](/api_reference/responses/overview) reference.
+- For the `tools` and `function_call` items of the tool-call examples, read [Tool calling](/api_reference/responses/tool-calling).
+- To combine `alignment` with other `plugins` entries in one request, read [Plugins](/guides/features/plugins).
+- To call the plugin from another language, pick an SDK in [Client SDKs](/client-sdks/overview).
