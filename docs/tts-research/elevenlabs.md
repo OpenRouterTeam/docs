@@ -31,7 +31,7 @@ Headline findings:
 - **`request-id` response header** [live] is the first entry in `UPSTREAM_REQUEST_ID_HEADERS` (`packages/helpers/upstream-request-id.ts`), so upstream id capture works with no adapter override.
 - **PCM is 16-bit signed little-endian mono** [measured]. Byte counts match `rate * 2 * seconds`, and little-endian decoding gives plausible speech statistics where big-endian gives full-scale noise.
 - **Upstream ignores unknown body fields** [live]. An unknown key returned 200, so passthrough typos will not be caught by ElevenLabs; the adapter's blocklist is the only guard.
-- **Documented per-model text limits are not enforced upstream** [live]. A 5,100-character `eleven_v3` request (documented cap 5,000) returned 200 and billed 5,100.
+- **Documented per-model text limits are enforced upstream with a 10% allowance** [live]. A 5,100-character `eleven_v3` request (documented cap 5,000) returned 200 and billed 5,100; the 2026-09-30 boundary probe found the cut at exactly 1.1x the documented value on every model tested (5,500 / 5,501, 11,000 / 11,001, 33,000 / 33,001, 44,000 / 44,001).
 
 ## Request surface
 
@@ -57,7 +57,7 @@ Headline findings:
 
 | Field | Type / values | First-pass decision | Tag |
 | --- | --- | --- | --- |
-| `text` | string, required. Whitespace-only text returns 200 and bills 1 character; text that is empty after stripping speaker tags and emojis returns 400 `input_text_empty`. | Canonical `input`. | [doc][live] |
+| `text` | string, required. Whitespace-only or empty text returns 200 and bills 1 character on Multilingual v2 and the Flash/Turbo models; v3, v3 Conversational, v4 and v4 Turbo return 400 `input_text_empty` for it and for text that is empty after stripping speaker tags and emojis. | Canonical `input`. | [doc][live] |
 | `model_id` | string, default `eleven_multilingual_v2` | Canonical `model` via `endpoint.provider_model_id`. Unknown id returns 400 `model_not_found`. | [doc][live] |
 | `voice_settings.speed` | number 0.7..1.2, default 1.0. 0.69 and 2.0 return 400 `invalid_voice_settings`. | Canonical `speed`, nested by the adapter. Adapter validates the range and returns 400 before the upstream call. | [doc][live] |
 | `voice_settings.stability` | number 0..1 (v3 accepts only 0.0 / 0.5 / 1.0 per docs) | Passthrough, merged with canonical speed. | [doc] |
@@ -85,12 +85,18 @@ Headline findings:
 | Model | `GET /v1/models` `maximum_text_length_per_request` | Observed enforcement |
 | --- | --- | --- |
 | `eleven_v4` | 10,000 | not probed |
-| `eleven_v4_turbo` | 10,000 | not probed |
-| `eleven_v3` | 5,000 | 5,100 chars returned 200, `character-cost: 5100` |
+| `eleven_v4_turbo` | 10,000 | 11,000 returned 200 (`character-cost: 5500`), 11,001 returned 400 `max_character_limit_exceeded` |
+| `eleven_v3` | 5,000 | 5,001 and 5,100 returned 200 (`character-cost: 5001` / `5100`), 5,501 returned 400 `max_character_limit_exceeded` (fixture `error-400-text-too-long`) |
+| `eleven_v3_conversational` | 5,000 | 5,500 returned 200 (`character-cost: 2750`), 5,501 returned 400 |
 | `eleven_multilingual_v2` | 10,000 | not probed |
-| `eleven_flash_v2_5` | 40,000 | not probed |
+| `eleven_flash_v2_5` | 40,000 | 44,000 returned 200 (`character-cost: 22000`), 44,001 returned 400 |
+| `eleven_turbo_v2_5` | 40,000 | not probed |
+| `eleven_turbo_v2` | 30,000 | 33,000 returned 200 (`character-cost: 16500`), 33,001 returned 400 |
+| `eleven_flash_v2` | 30,000 | not probed |
 
-Decision: the adapter enforces the documented per-model limit itself (400 before upstream) so behavior does not depend on upstream leniency that may change. Measured in Unicode code points, matching the billable unit.
+The rejection body is `code: text_too_long`, `status: max_character_limit_exceeded`, with a message that quotes the documented value ("Request text length (5501) exceeds the maximum text length of 5000 characters") even though the enforced cut is 10% higher. Probe log: 2026-09-30 prod parity run, `limit_probe.log`.
+
+Decision: the adapter enforces `floor(documented × 1.1)` per model locally (400 before upstream, message in the upstream wording) so callers see the same accept/reject boundary as a direct request, and maps `max_character_limit_exceeded` to the same 400 for models whose limit is not in the local table. Measured in Unicode code points, matching the billable unit.
 
 ### Speed [doc][live]
 
@@ -222,7 +228,7 @@ Conclusions:
 
 - The unit is **Unicode code points** of the submitted `text` (every astral character counts once). `input.length` over-counts by one per surrogate pair; UTF-8 bytes over-count heavily on CJK.
 - Flash v2.5 reports **half** the code-point count (`ceil(n / 2)`: 55 → 28, 30 → 15, 22 → 11, 12 → 6). This is ElevenLabs expressing its 0.5-credit-per-character Flash pricing in the header. In dollar terms it is identical to billing full code points at $0.05 / 1K, so the adapter should **not** halve the count; the per-model endpoint rate carries the difference.
-- Whitespace-only input billed 1, not 0 [live]. Treated as a floor of 1 character per successful request; negligible at these rates and not modelled as a separate SKU.
+- Whitespace-only and empty input bill 1 on `eleven_multilingual_v2` and 0 on the half-credit models (`eleven_flash_v2_5`, `eleven_turbo_v2_5`, `eleven_turbo_v2`, `eleven_flash_v2`), which is the same one-character floor after round-half-even halving [live, 2026-09-30 probe across all nine models]. `eleven_v3`, `eleven_v3_conversational`, `eleven_v4` and `eleven_v4_turbo` reject it with 400 `input_text_empty` instead. The adapter bills a floor of 1 character on every successful request; the resulting $0.00004 on a half-credit model is the same half-credit rounding gap as any odd-length request and is not modelled separately.
 
 ### Request-level pricing modifiers [doc][live]
 
@@ -235,7 +241,7 @@ Conclusions:
 | `/with-timestamps` | none observed (11 for `Hello world`) | out of scope |
 | Model | per-model rate (v3 / v2 / v4 = 2× Flash / Turbo / v4 Turbo) | separate endpoint rows |
 
-No minimums beyond the 1-character floor, no voice premiums on premade voices, and no per-request surcharges were observed.
+No minimums beyond the 1-character floor (which the half-credit models report as `character-cost: 0`), no voice premiums on premade voices, and no per-request surcharges were observed.
 
 ### Generic vs custom SKU decision
 
@@ -258,7 +264,7 @@ All captures were made with `/home/ubuntu/el-research/capture.sh` (local scratch
 | 9 | pcm_44100 (Pro+) | v3 | 200 | 55 | 319,488 B = 3.622 s |
 | 10 | `/with-timestamps` | v3 | 200 | 11 | `fixtures/with-timestamps.response.json` (audio redacted) |
 | 11 | `output_format=mp3_99999_1` | v3 | 403 | – | `fixtures/error-403-output-format.response.json`, lists 29 valid values |
-| 12 | 5,100 chars | v3 | 200 | 5,100 | documented limit not enforced |
+| 12 | 5,100 chars | v3 | 200 | 5,100 | within the 10% allowance over the documented limit |
 | 13 | `enable_logging=false` | v3 | 200 | 55 | `history-item-id: not_stored` |
 | 14 | `apply_text_normalization=on` | Flash v2.5 | 200 | 15 | Enterprise-only per docs; succeeded |
 | 15 | `optimize_streaming_latency=3` (deprecated) | Multilingual v2 | 200 | 55 | still accepted |
@@ -354,7 +360,7 @@ Also expected per docs but not captured: 429 with `too_many_concurrent_requests`
 
 1. **Contract rate.** List price is $0.10 / 1K (v3, v2) and $0.05 / 1K (Flash). The negotiated Enterprise rate is an ops input on the endpoint row; nothing in this note depends on it.
 2. **ZDR key mapping.** `enable_logging=false` succeeded on our key and returned `history-item-id: not_stored`. Whether the managed endpoint always sends `false`, or only on a ZDR endpoint row, is a policy decision pending ElevenLabs confirmation (Jarrel is confirming). The adapter derives it from the endpoint, never from the caller.
-3. **Local text limits.** Upstream accepted 5,100 characters on v3. We enforce the documented limits locally (5,000 / 10,000 / 40,000 code points) so caller behavior is stable; confirm this is preferred over forwarding and letting ElevenLabs decide.
+3. **Local text limits.** Upstream enforces the documented limits with a 10% allowance (5,500 accepted, 5,501 rejected on a 5,000 model). We enforce `floor(documented × 1.1)` locally so the accept/reject boundary matches a direct request; confirm this is preferred over forwarding and letting ElevenLabs decide.
 4. **Format list drift.** Docs list 28 output formats; the live error lists 29. Only the `mp3_*` / `pcm_*` families matter for this pass, and those agree.
 5. **Tier of the OpenRouter key.** Not verifiable via API (`user_read` missing). Every tier-gated feature tried (`mp3_44100_192`, `pcm_44100`, `enable_logging=false`, Flash normalization `on`) succeeded, consistent with Enterprise. Managed-key policy still restricts `mp3_44100_192` / `pcm_44100` overrides to BYOK per the first-pass decision.
 6. **Speed on `eleven_v3`.** Capture #44 shows `speed: 0.7` produces the same 3.97 s clip as the default on v3 (`seed: 42`), i.e. v3 ignores it the way v4 does, while the first pass only checked for a 200. The v4 models now reject a non-default speed; v3 still forwards it. Decide whether v3 should join `ELEVENLABS_SPEED_UNSUPPORTED_MODELS`.
