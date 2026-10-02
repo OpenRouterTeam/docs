@@ -1,0 +1,115 @@
+---
+title: Claude Desktop with OpenRouter Sign-In
+description: Sign in to OpenRouter from Claude Desktop with OIDC
+seoTitle: 'Claude Desktop OIDC Sign-In | OpenRouter'
+og:site_name: OpenRouter Documentation
+og:title: 'Claude Desktop OIDC Sign-In - OpenRouter'
+og:description: 'Connect Claude Desktop to OpenRouter with interactive sign-in instead of a static API key.'
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: true
+nofollow: false
+icon: desktop
+tag: Beta
+---
+
+<Badge color="blue">Beta</Badge>
+
+Claude Desktop can authenticate to OpenRouter with interactive sign-in through OpenID Connect (OIDC). Each user signs in to OpenRouter in the browser and approves access, and Claude Desktop sends requests to OpenRouter with the resulting access token. Nobody copies an API key into Claude Desktop, and usage is attributed to the user who signed in.
+
+For Anthropic's documentation of this setup, see [Single sign-on with your identity provider](https://claude.com/docs/third-party/claude-desktop/gateway#single-sign-on-with-your-identity-provider) in the Claude Desktop LLM gateway guide. To connect Claude Desktop with a static API key instead, see [Claude Desktop](/cookbook/coding-agents/claude-desktop-integration).
+
+<Warning>
+Claude Desktop with OpenRouter is only guaranteed to work with the Anthropic first-party provider. For maximum compatibility, we recommend setting [Anthropic 1P as top priority provider](/guides/routing/provider-selection) when using Claude Desktop.
+</Warning>
+
+## Prerequisites
+
+- **Claude Desktop installed:** Download the latest version from [Anthropic](https://claude.ai/download).
+- **An OpenRouter account:** Sign in at [openrouter.ai](https://openrouter.ai).
+
+## Step 1: Enable Developer Mode
+
+Launch Claude Desktop — you do not need to sign in. Open **Help > Troubleshooting** and click **Enable Developer Mode**. This adds a **Developer** menu to your menu bar.
+
+<Frame>
+![Claude Desktop Help menu showing Troubleshooting submenu with Enable Developer Mode highlighted](/assets/cookbook/coding-agents/claude-desktop-integration/claude-desktop-enable-developer-mode.png)
+</Frame>
+
+## Step 2: Open the Third-Party Inference panel
+
+Click **Developer > Configure Third-Party Inference…** in the menu bar.
+
+<Frame>
+![Claude Desktop Developer menu with Configure Third-Party Inference highlighted](/assets/cookbook/coding-agents/claude-desktop-integration/claude-desktop-configure-third-party.png)
+</Frame>
+
+## Step 3: Configure the gateway for OpenRouter sign-in
+
+On the **Connection** tab, set the connection to **Gateway**, then enter the following values:
+
+| Field | Value |
+|---|---|
+| **Credential kind** | `Identity provider sign-in (OIDC)` |
+| **Gateway base URL** | `https://openrouter.ai/api` |
+
+Under **Identity provider (OIDC)**, enter the OpenRouter sign-in settings:
+
+| Field | Value |
+|---|---|
+| **Client ID** | `nYyZpszr6mE59HMY` |
+| **Issuer URL** | `https://clerk.openrouter.ai` |
+| **Bearer token** | `Access token` |
+| **Scopes** | `inference` |
+| **Append offline_access** | On |
+
+With **Credential kind** set to **Identity provider sign-in (OIDC)**, Claude Desktop uses only the token from your OpenRouter sign-in and does not fall back to another credential source. **Append offline_access** lets Claude Desktop refresh your session without asking you to sign in again each time the access token expires.
+
+<Frame>
+![Claude Desktop Configure third-party inference panel with Gateway selected, Credential kind set to Identity provider sign-in (OIDC), and the OpenRouter Client ID, Issuer URL, Bearer token, Scopes, and Append offline_access fields highlighted](/assets/cookbook/coding-agents/claude-desktop-integration/claude-desktop-oidc-config.png)
+</Frame>
+
+## Step 4: Apply changes and sign in
+
+Click **Apply Changes**. Claude Desktop restarts and shows **Sign in with your organization**.
+
+<Frame>
+![Claude Desktop welcome screen with the Sign in with your organization button](/assets/cookbook/coding-agents/claude-desktop-integration/claude-desktop-oidc-sign-in.png)
+</Frame>
+
+Click **Sign in with your organization** to open the OpenRouter sign-in page in your browser, and sign in to your OpenRouter account.
+
+## Step 5: Approve access for Claude
+
+After you sign in, OpenRouter asks you to approve access for Claude Desktop. Choose where usage is billed and which key Claude Desktop uses:
+
+- **Org** and **Workspace:** The organization and workspace that pay for Claude Desktop usage.
+- **Key source:** Select **New key** to create a key for Claude Desktop, or **Existing key** to reuse a key you already have, for example to share a credit limit with other tools.
+- **Key label**, **Expiration**, and **Credit limit** (optional): Settings for a new key.
+
+Confirm that the callback URL is a local address on your computer (`http://127.0.0.1:...`), then click **Allow**. If the callback URL points anywhere else, don't click **Allow**. Close the page and start the sign-in again from Claude Desktop.
+
+<Frame>
+![OpenRouter consent page asking to allow Claude to access OpenRouter, with Org, Workspace, and Key source options](/assets/cookbook/coding-agents/claude-desktop-integration/claude-desktop-oidc-consent.png)
+</Frame>
+
+The browser returns you to Claude Desktop, which is now signed in to OpenRouter.
+
+## Step 6: Select your model
+
+The model picker displays the models available through your OpenRouter connection.
+
+## Deploy with MDM
+
+If you manage Claude Desktop with a mobile device management (MDM) profile, set these values in the managed configuration instead of the Third-Party Inference panel. When a managed profile is present, Claude Desktop reads its inference settings from that profile and users cannot edit the panel.
+
+In the managed configuration, set the credential kind to identity provider sign-in (`inferenceCredentialKind`) and set the gateway OIDC settings (`inferenceGatewayOidc`) to the values from [Step 3](#step-3-configure-the-gateway-for-openrouter-sign-in). Each user then signs in with their own OpenRouter account, so you do not need to distribute API keys to their devices. For the exact key format, see [Single sign-on configuration keys](https://claude.com/docs/third-party/claude-desktop/gateway#single-sign-on-configuration-keys) and the [Claude Desktop configuration reference](https://claude.com/docs/third-party/claude-desktop/configuration).
+
+## Troubleshooting
+
+- **"Sign in with your organization" not showing:** Make sure **Credential kind** is set to **Identity provider sign-in (OIDC)** and you clicked **Apply Changes**. If Claude Desktop doesn't restart on its own, fully quit and reopen it.
+- **Sign-in fails or returns to the start screen:** Confirm that **Client ID**, **Issuer URL**, and **Scopes** match [Step 3](#step-3-configure-the-gateway-for-openrouter-sign-in) and that **Bearer token** is set to **Access token**, then sign in again. Make sure you clicked **Allow** on the OpenRouter approval page.
+- **Connection errors:** Check that **Gateway base URL** is exactly `https://openrouter.ai/api`.
+- **No models appearing:** Make sure the account or workspace you approved has credits. Check your balance at [openrouter.ai/credits](https://openrouter.ai/credits).
+
+For sandbox, egress, and other issues that apply to every Claude Desktop setup, see [Claude Desktop troubleshooting](/cookbook/coding-agents/claude-desktop-integration#troubleshooting).
