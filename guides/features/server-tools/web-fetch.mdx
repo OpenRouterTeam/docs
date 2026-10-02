@@ -174,6 +174,13 @@ To check whether an endpoint runs web fetch natively, read `native_tools` on
 the endpoint object. See
 [Native Execution](/guides/features/server-tools#native-execution).
 
+### Privacy and regional availability
+
+- **ZDR enforcement:** `firecrawl` is rejected when ZDR is enforced in your account privacy settings or a guardrail. Other engines apply their own backend retention policies.
+- **IRR availability:** no engine is available on `eu.openrouter.ai` or `us.openrouter.ai`. Regional requests that include `openrouter:web_fetch` are rejected with a `403` error.
+
+See [Privacy and regional availability](/guides/features/server-tools#privacy-and-regional-availability) for every server tool.
+
 ### Engine Capabilities
 
 | Feature | Exa | Parallel | Firecrawl | OpenRouter | Native |

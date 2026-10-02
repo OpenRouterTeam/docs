@@ -37,7 +37,7 @@ OpenRouter provides several features that enable sovereign AI deployments today,
 
 ### In-Region Routing
 
-For Business and Enterprise customers, OpenRouter supports [in-region routing](/guides/features/in-region-routing) in the EU and the US. When you send a request to a regional base URL, it is guaranteed to be decrypted only within the designated region and routed only to providers operating in that region. This means prompts and completions are processed entirely within that region. They never leave it at any point in the request lifecycle.
+For Business and Enterprise customers, OpenRouter supports [in-region routing](/guides/features/in-region-routing) in the EU and the US. When you send a request to a regional base URL, the request is decrypted within the designated region and routed only to provider endpoints in that region. Server tools and plugin engines run on a regional domain only when they have a backend resident in that region; a request that uses any other tool or engine fails instead of falling back to global infrastructure. See [Privacy and regional availability](/guides/features/server-tools#privacy-and-regional-availability) for each tool's regional availability.
 
 Choosing a regional base URL per request is the first step. To guarantee that every request in a workspace stays in-region regardless of how a client is configured, restrict the allowed data regions in a [guardrail](/guides/features/guardrails). The guardrail's `allowed_data_regions` setting (`global`, `europe`, `us`) lists the OpenRouter domains that governed requests must arrive through; requests through any other domain are rejected with a 403 before processing. Setting it on the workspace default guardrail enforces the policy for all keys and members in that workspace, and per-member or per-key guardrails can narrow it further. See [Enforcing In-Region Routing with Guardrails](/guides/features/in-region-routing#enforcing-in-region-routing-with-guardrails).
 
@@ -121,7 +121,7 @@ For full details on how requests are routed, which features are available on reg
 
 ### Zero Data Retention (ZDR)
 
-[Zero Data Retention](/guides/features/zdr) ensures that providers do not store your prompts or responses. This is a key component of sovereign AI, as it guarantees that no data persists outside your control after a request completes.
+When [Zero Data Retention](/guides/features/zdr) is enforced, OpenRouter routes model inference only to provider endpoints that have a Zero Data Retention policy. ZDR enforcement does not apply to plugins, server tools, or their backends, which follow their own retention policies. See [Privacy and regional availability](/guides/features/server-tools#privacy-and-regional-availability) for each server tool's execution path and backend policy.
 
 ZDR can be enforced per model group (Anthropic, OpenAI, Google, SpaceXAI, and all other models) in your [privacy settings](https://openrouter.ai/settings/privacy), via [guardrails](/guides/features/guardrails), or per-request:
 
@@ -153,8 +153,8 @@ When set to `"deny"`, your requests are only routed to providers that do not col
 
 Combining these features, you can build a fully sovereign AI deployment:
 
-1. **Send requests to a regional base URL** (`eu.openrouter.ai` or `us.openrouter.ai`) to keep all data within the EU or the US
-2. **Enforce ZDR** to prevent any data retention by providers
+1. **Send requests to a regional base URL** (`eu.openrouter.ai` or `us.openrouter.ai`) to keep model inference and supported tools within the EU or the US
+2. **Enforce ZDR** to route inference only to provider endpoints with a Zero Data Retention policy
 3. **Deny data collection** to prevent training on your data
 
 This gives you a single API with unified billing while maintaining full control over data residency, privacy, and compliance, without the complexity of managing relationships with individual providers in each region.

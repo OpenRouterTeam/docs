@@ -230,6 +230,13 @@ The web search server tool supports multiple search engines:
 - **`parallel`**: Uses [Parallel](https://parallel.ai)'s search API
 - **`perplexity`**: Uses the [Perplexity](https://docs.perplexity.ai/api-reference/search-post) Search API for ranked web results with domain filtering, context size control, and `max_characters` support
 
+### Privacy and regional availability
+
+- **ZDR enforcement:** `firecrawl` is rejected when ZDR is enforced in your account privacy settings or a guardrail. Other engines apply their own backend retention policies.
+- **IRR availability:** on `us.openrouter.ai`, `exa`, `auto`, and an omitted engine run on Exa. Every other engine, including `native`, is rejected. No engine is available on `eu.openrouter.ai`.
+
+See [Privacy and regional availability](/guides/features/server-tools#privacy-and-regional-availability) for every server tool.
+
 ### Engine Capabilities
 
 | Feature | Exa | Firecrawl | Parallel | Perplexity | Native |
