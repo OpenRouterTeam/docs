@@ -1,7 +1,7 @@
 ---
 title: "Image Generation Models Compared: Cost, Edit, Quality"
 date: "2026-09-18T00:00:00.000Z"
-updated: "2026-09-24T18:00:31.000Z"
+updated: "2026-09-29T00:00:00.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "Image Generation Models Compared: Cost, Edit, Quality"
@@ -21,10 +21,10 @@ faq:
   - question: "Which image models can reply with both text and an image?"
     answer: "The models whose output modalities include text. On 11 September 2026 that was nine of the 52 image models on our catalog, all Gemini image models and OpenAI gpt-5-image models. Call them through POST /api/v1/chat/completions. In our test, google/gemini-3-pro-image returned text in 3 of 3 calls, openai/gpt-5-image in 2 of 3, google/gemini-3.1-flash-image in 1 of 4, and google/gemini-3.1-flash-lite-image in 0 of 2."
   - question: "What image format does the Image API return?"
-    answer: "It depends on the model. In our run, FLUX.2, Grok, and Seedream returned JPEG, OpenAI, Qwen, Microsoft, and Krea returned PNG, Sourceful and Recraft returned WebP, and recraft/recraft-v4.1-vector returned SVG. Twelve of the 52 catalog models accept an output_format parameter. Read the media_type field on each response rather than assuming a file extension."
+    answer: "It depends on the model. In our run, FLUX.2, Grok, and Seedream returned JPEG, OpenAI, Qwen, Microsoft, and Krea returned PNG, Sourceful and Recraft returned WebP, and recraft/recraft-v4.1-vector returned SVG. More than a dozen catalog models accept an output_format parameter. Read the media_type field on each response rather than assuming a file extension."
 ---
 
-We route 52 image generation models through [one API](https://openrouter.ai/models?output_modalities=image). We ran the same prompt through 20 of them and recorded what each call billed, what it returned, and what it accepts.
+We route more than 50 image generation models through [one API](https://openrouter.ai/models?output_modalities=image). We ran the same prompt through 20 of them and recorded what each call billed, what it returned, and what it accepts.
 
 Cost is the hard part, because these models are not sold in the same unit. FLUX.2 is priced per megapixel. Gemini, OpenAI, and Microsoft MAI are priced per token. Grok, Recraft, Riverflow, Qwen, and Seedream are priced per image, at a rate that changes with the quality and resolution you ask for. Each model page is correct in its own unit, so you cannot compare two of them by reading their prices side by side.
 
@@ -77,7 +77,7 @@ _Figure 1. The same prices, sorted. The three billing units are mixed all the wa
 Three things to know before you budget from this table.
 
 1. Both Seedream models returned 2048x2048 instead of 1024x1024 when we left `resolution` unset. Seedream 5.0 Lite lists `2K` as the lowest resolution it accepts. Seedream 5.0 Pro accepts `1K`, but its default call returned 2K and billed its $0.09 high-resolution rate rather than its $0.045 base rate. Seedream 5.0 Lite gives you four megapixels for $0.035, so per pixel it is cheaper than the table makes it look.
-2. FLUX.2, Grok, and Seedream returned JPEG. OpenAI, Qwen, Microsoft, and Krea returned PNG. Sourceful and Recraft returned WebP, and Recraft's vector model returned SVG. The three Gemini models we tested do not accept `output_format`, and they did not all return the same format, so do not hard-code a file extension. Set `output_format` on the twelve catalog models that accept it. On the ones that do not, read the `media_type` field that comes back with every response.
+2. FLUX.2, Grok, and Seedream returned JPEG. OpenAI, Qwen, Microsoft, and Krea returned PNG. Sourceful and Recraft returned WebP, and Recraft's vector model returned SVG. The three Gemini models we tested do not accept `output_format`, and they did not all return the same format, so do not hard-code a file extension. Set `output_format` on the catalog models that accept it. On the ones that do not, read the `media_type` field that comes back with every response.
 3. Two calls to `sourceful/riverflow-v2.5-fast` with the same request body billed $0.017623 and $0.017639. Budget from an average of several calls rather than from one.
 
 ### The quality setting moves the price 35x
@@ -222,7 +222,7 @@ If your brand kit runs past eight images, FLUX.2 cannot take it. The Gemini 3.x 
 
 ### A reply with both a picture and text
 
-Sometimes the user is in a conversation and the answer should include an image and a written explanation. Nine of the 52 models on our catalog list text among their output modalities, and they are the ones that can do this. They are the Gemini image models and OpenAI's gpt-5-image models.
+Sometimes the user is in a conversation and the answer should include an image and a written explanation. Nine of the image models on our catalog list text among their output modalities, and they are the ones that can do this. They are the Gemini image models and OpenAI's gpt-5-image models.
 
 Being able to return text and doing it are different things. We took four of the nine, sent each the same request through the chat completions endpoint with `modalities: ["image", "text"]`, asked for an image plus a two-sentence explanation, and counted how often we got both. These costs are higher than the same models' figures in the cost table because the reply carries text, and on a per-token model you pay for both.
 
@@ -352,4 +352,4 @@ The models whose output modalities include text. On 11 September 2026 that was n
 
 ### What image format does the Image API return?
 
-It depends on the model. In our run, FLUX.2, Grok, and Seedream returned JPEG, OpenAI, Qwen, Microsoft, and Krea returned PNG, Sourceful and Recraft returned WebP, and `recraft/recraft-v4.1-vector` returned SVG. Twelve of the 52 catalog models accept an `output_format` parameter. Read the `media_type` field on each response rather than assuming a file extension.
+It depends on the model. In our run, FLUX.2, Grok, and Seedream returned JPEG, OpenAI, Qwen, Microsoft, and Krea returned PNG, Sourceful and Recraft returned WebP, and `recraft/recraft-v4.1-vector` returned SVG. More than a dozen catalog models accept an `output_format` parameter. Read the `media_type` field on each response rather than assuming a file extension.

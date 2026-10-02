@@ -1,7 +1,7 @@
 ---
 title: "Does DeepSeek V4 Have Vision?"
 date: "2026-09-16T00:00:00.000Z"
-updated: "2026-09-22T13:47:37.000Z"
+updated: "2026-09-29T00:00:00.000Z"
 author: "OpenRouter"
 category: "insights"
 metaTitle: "Does DeepSeek V4 Have Vision? Image Input by Model"
@@ -17,9 +17,9 @@ faq:
   - question: "Does DeepSeek V4 Pro have vision?"
     answer: "No. deepseek/deepseek-v4-pro-0813 and the older deepseek/deepseek-v4-pro list text as their only input modality. To use Pro on an image, run a vision model first and pass its text description into Pro."
   - question: "Which DeepSeek V4 model should I use for images?"
-    answer: "Use deepseek/deepseek-v4.1-flash. It reads images natively, it is not marked experimental, and it listed at $0.15 per million input tokens and $0.60 per million output tokens on 11 September 2026. deepseek/deepseek-v4-flash-vision-exp is the experimental alternative."
+    answer: "Use deepseek/deepseek-v4.1-flash. It reads images natively, it is not marked experimental, and it listed at $0.30 per million input tokens and $1.20 per million output tokens on 29 September 2026. deepseek/deepseek-v4-flash-vision-exp is the experimental alternative."
   - question: "How much does DeepSeek V4 image input cost?"
-    answer: "Image input is billed through the model's token prices. On 11 September 2026, V4.1 Flash listed at $0.15 in and $0.60 out per million tokens, and V4 Flash Vision Exp listed at $0.22 in and $0.66 out. Check the model page before you size a budget, because listed prices change."
+    answer: "Image input is billed through the model's token prices. On 29 September 2026, V4.1 Flash listed at $0.30 in and $1.20 out per million tokens, and V4 Flash Vision Exp listed at $0.216 in and $0.647 out. Check the model page before you size a budget, because listed prices change."
   - question: "Can DeepSeek V4 handle video?"
     answer: "No V4 model on our catalog lists video as an input modality. For video, use a model that does, such as qwen/qwen3.8-27b or moonshotai/kimi-k3, then pass its text output into a V4 model."
 ---
@@ -38,16 +38,16 @@ Every other V4 slug on our catalog is text in, text out. That includes [V4 Pro 0
 
 ## Which V4 models exist and what they accept
 
-The table lists each V4 model on our catalog with the modality column that answers the question. Prices are the listed catalog rates per million tokens on 11 September 2026, rounded to three decimal places where a listed rate has more digits.
+The table lists each V4 model on our catalog with the modality column that answers the question. Prices are the listed catalog rates per million tokens on 29 September 2026, rounded to three decimal places where a listed rate has more digits.
 
 | Model | Slug | Input | Price in / out | Context | Image input |
 | --- | --- | --- | --- | --- | --- |
-| V4.1 Flash | `deepseek/deepseek-v4.1-flash` | text, image | $0.15 / $0.60 | 1,048,576 | Yes |
-| V4 Flash Vision Exp | `deepseek/deepseek-v4-flash-vision-exp` | text, image | $0.22 / $0.66 | 1,048,576 | Yes, experimental |
-| V4 Pro 0813 | `deepseek/deepseek-v4-pro-0813` | text | $0.579 / $1.738 | 1,048,576 | No |
-| V4 Flash 0731 | `deepseek/deepseek-v4-flash-0731` | text | $0.065 / $0.18 | 1,310,720 | No |
-| V4 Pro 0423 | `deepseek/deepseek-v4-pro` | text | $0.860 / $1.720 | 1,048,576 | No |
-| V4 Flash 0423 | `deepseek/deepseek-v4-flash` | text | $0.085 / $0.171 | 1,048,576 | No |
+| V4.1 Flash | `deepseek/deepseek-v4.1-flash` | text, image | $0.30 / $1.20 | 1,048,576 | Yes |
+| V4 Flash Vision Exp | `deepseek/deepseek-v4-flash-vision-exp` | text, image | $0.216 / $0.647 | 1,048,576 | Yes, experimental |
+| V4 Pro 0813 | `deepseek/deepseek-v4-pro-0813` | text | $0.395 / $3.490 | 1,048,576 | No |
+| V4 Flash 0731 | `deepseek/deepseek-v4-flash-0731` | text | $0.018 / $0.320 | 1,310,720 | No |
+| V4 Pro 0423 | `deepseek/deepseek-v4-pro` | text | $0.928 / $1.856 | 1,048,576 | No |
+| V4 Flash 0423 | `deepseek/deepseek-v4-flash` | text | $0.076 / $0.153 | 1,048,576 | No |
 
 The two 0423 slugs have no date suffix. `deepseek/deepseek-v4-pro` and `deepseek/deepseek-v4-flash` are the original April 2026 V4 releases, and only the later checkpoints carry a date in the slug.
 
@@ -170,7 +170,7 @@ console.log(reasoned.choices[0]?.message.content);
 
 Swap `qwen/qwen3.8-27b` for `moonshotai/kimi-k3` to put Kimi K3 on the image, or swap `deepseek/deepseek-v4-pro-0813` for `deepseek/deepseek-v4-flash-0731` on the text turn.
 
-Two calls cost more than one. On 11 September 2026, Qwen3.8 27B listed at $0.42 per million input tokens and $3.00 per million output tokens, and Kimi K3 listed at $2.10 and $10.53. You pay the V4 model on top of that. Use this pattern when you need a text-only V4 model or video input, not as the default way to read an image with V4.
+Two calls cost more than one. On 29 September 2026, Qwen3.8 27B listed at $0.025 per million input tokens and $4.40 per million output tokens, and Kimi K3 listed at $3.00 and $15.00. You pay the V4 model on top of that. Use this pattern when you need a text-only V4 model or video input, not as the default way to read an image with V4.
 
 ## Which route to use
 
@@ -207,11 +207,11 @@ No. `deepseek/deepseek-v4-pro-0813` and the older `deepseek/deepseek-v4-pro` lis
 
 ### Which DeepSeek V4 model should I use for images?
 
-Use `deepseek/deepseek-v4.1-flash`. It reads images natively, it is not marked experimental, and it listed at $0.15 per million input tokens and $0.60 per million output tokens on 11 September 2026. `deepseek/deepseek-v4-flash-vision-exp` is the experimental alternative.
+Use `deepseek/deepseek-v4.1-flash`. It reads images natively, it is not marked experimental, and it listed at $0.30 per million input tokens and $1.20 per million output tokens on 29 September 2026. `deepseek/deepseek-v4-flash-vision-exp` is the experimental alternative.
 
 ### How much does DeepSeek V4 image input cost?
 
-Image input is billed through the model's token prices. On 11 September 2026, V4.1 Flash listed at $0.15 in and $0.60 out per million tokens, and V4 Flash Vision Exp listed at $0.22 in and $0.66 out. Check the model page before you size a budget, because listed prices change.
+Image input is billed through the model's token prices. On 29 September 2026, V4.1 Flash listed at $0.30 in and $1.20 out per million tokens, and V4 Flash Vision Exp listed at $0.216 in and $0.647 out. Check the model page before you size a budget, because listed prices change.
 
 ### Can DeepSeek V4 handle video?
 

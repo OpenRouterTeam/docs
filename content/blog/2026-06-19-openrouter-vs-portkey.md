@@ -17,7 +17,7 @@ faq:
   - question: "Did Palo Alto Networks acquire Portkey?"
     answer: "Yes. Palo Alto Networks completed its acquisition of Portkey in 2026, folding it into the company's AI security portfolio. Portkey continues to operate its gateway, including the open-source version."
   - question: "How do OpenRouter and Portkey compare on compliance?"
-    answer: "Both hold SOC 2 Type 2 and support GDPR. OpenRouter adds Zero Data Retention and EU in-region routing for enterprise accounts. Portkey offers HIPAA and custom BAAs on its Enterprise plan. For specific certification requirements, check each platform's trust center."
+    answer: "Both hold SOC 2 Type 2 and support GDPR. OpenRouter adds Zero Data Retention and EU in-region routing on Business and Enterprise plans. Portkey offers HIPAA and custom BAAs on its Enterprise plan. For specific certification requirements, check each platform's trust center."
   - question: "Which one is cheaper?"
     answer: "It depends on volume. OpenRouter charges a 5.5% platform fee on credit purchases (5% with Bring Your Own Key after a plan-dependent free allowance) and 0% markup on provider prices. See the pricing page for current allowance details. Portkey is free to self-host or on its Developer tier, then $49/month for Production. High-volume teams that already hold provider keys often run Portkey's open-source gateway; teams that want managed routing without operating anything pick OpenRouter."
   - question: "Can I use OpenRouter and Portkey together?"
@@ -52,7 +52,7 @@ Portkey centers on governance. It ships in-product logs, traces, and dashboards 
 
 OpenRouter takes a lighter approach to observability. Rather than store your logs long-term, [Broadcast](https://openrouter.ai/docs/guides/features/broadcast) streams traces to the platforms you already run, including Datadog, Langfuse, LangSmith, Braintrust, OpenTelemetry, and S3. Workspaces add per-team organization and budgets for teams that want structure across many internal apps.
 
-On compliance, both hold SOC 2 Type 2 and support GDPR. OpenRouter adds [Zero Data Retention](https://openrouter.ai/docs/guides/features/zdr) and [EU in-region routing](https://openrouter.ai/docs/guides/features/sovereign-ai) for enterprise accounts, with its report at [trust.openrouter.ai](https://trust.openrouter.ai). Portkey adds HIPAA and custom BAAs on Enterprise, along with VPC hosting and data isolation. Teams that want data residency without running infrastructure point to OpenRouter.
+On compliance, both hold SOC 2 Type 2 and support GDPR. OpenRouter adds [Zero Data Retention](https://openrouter.ai/docs/guides/features/zdr) and [EU in-region routing](https://openrouter.ai/docs/guides/features/in-region-routing) on Business and Enterprise plans, with its report at [trust.openrouter.ai](https://trust.openrouter.ai). Portkey adds HIPAA and custom BAAs on Enterprise, along with VPC hosting and data isolation. Teams that want data residency without running infrastructure point to OpenRouter.
 
 ## Pick a pricing model that matches your volume
 
@@ -80,7 +80,7 @@ Yes. Palo Alto Networks completed its acquisition of Portkey in 2026, folding it
 
 ### How do OpenRouter and Portkey compare on compliance?
 
-Both hold SOC 2 Type 2 and support GDPR. OpenRouter adds Zero Data Retention and EU in-region routing for enterprise accounts. Portkey offers HIPAA and custom BAAs on its Enterprise plan. For specific certification requirements, check each platform's trust center.
+Both hold SOC 2 Type 2 and support GDPR. OpenRouter adds Zero Data Retention and EU in-region routing on Business and Enterprise plans. Portkey offers HIPAA and custom BAAs on its Enterprise plan. For specific certification requirements, check each platform's trust center.
 
 ### Which one is cheaper?
 

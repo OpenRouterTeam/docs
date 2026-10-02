@@ -19,7 +19,7 @@ faq:
   - question: "What happens if no compliant provider is available?"
     answer: "With allow_fallbacks set to false, OpenRouter returns an error instead of routing to a provider outside your list. Your application decides the failure mode: queue and retry, fall back to a non-regulated path for non-sensitive content, or surface the error."
   - question: "Can OpenRouter guarantee requests stay in the EU?"
-    answer: "For enterprise accounts, EU in-region routing decrypts and processes requests entirely within the European Union through eu.openrouter.ai. For other accounts, you can still restrict routing to EU-headquartered providers and deny data collection, though independent verification of a provider's data center location should come from that provider."
+    answer: "On Business and Enterprise plans, EU in-region routing decrypts and processes requests entirely within the European Union through eu.openrouter.ai. For other accounts, you can still restrict routing to EU-headquartered providers and deny data collection, though independent verification of a provider's data center location should come from that provider."
   - question: "Does OpenRouter store my prompts?"
     answer: "You control it. Setting zdr to true restricts routing to Zero Data Retention endpoints, and data_collection set to deny blocks providers that store or train on inputs. Review the provider logging docs and your privacy settings before running regulated workloads."
 howTo:
@@ -78,7 +78,7 @@ Each field maps to a different compliance layer. `order` and `only` control wher
 
 For EU requirements, you can restrict routing to EU-headquartered providers and deny data collection. Mistral, headquartered in France, is a useful EU-jurisdiction anchor, and you can express the rest through `only` and the data-policy filters. Independent confirmation of a provider's data center location should still come from that provider directly.
 
-When requests must never leave the EU, enterprise accounts can use [EU in-region routing](https://openrouter.ai/docs/guides/features/sovereign-ai). Requests are decrypted and processed entirely within the European Union through `eu.openrouter.ai`, and only EU-eligible providers serve them.
+When requests must never leave the EU, Business and Enterprise accounts can send them to `eu.openrouter.ai` for [EU in-region routing](https://openrouter.ai/docs/guides/features/sovereign-ai). Requests are decrypted and processed entirely within the European Union through `eu.openrouter.ai`, and only EU-eligible providers serve them.
 
 ## Handle the no-compliant-provider case
 
@@ -104,7 +104,7 @@ With `allow_fallbacks` set to `false`, OpenRouter returns an error instead of ro
 
 ### Can OpenRouter guarantee requests stay in the EU?
 
-For enterprise accounts, EU in-region routing decrypts and processes requests entirely within the European Union through `eu.openrouter.ai`. For other accounts, you can still restrict routing to EU-headquartered providers and deny data collection, though independent verification of a provider's data center location should come from that provider.
+On Business and Enterprise plans, EU in-region routing decrypts and processes requests entirely within the European Union through `eu.openrouter.ai`. For other accounts, you can still restrict routing to EU-headquartered providers and deny data collection, though independent verification of a provider's data center location should come from that provider.
 
 ### Does OpenRouter store my prompts?
 
