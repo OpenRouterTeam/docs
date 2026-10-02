@@ -84,7 +84,7 @@ Set the connection to **Gateway** and enter your OpenRouter credentials:
 **Credential kind** pins which credential source the gateway uses. Set it to **Static API key** so Claude Desktop always authenticates with the OpenRouter API key you entered above and does not fall back to another source.
 
 <Warning>
-Newer builds of Claude Desktop add optional **Sign-in session lifetime** and **Gateway SSO IdP (OIDC)** fields (Client ID, Issuer URL, Authorization URL) to this panel. OpenRouter authenticates the gateway with a static API key, not an OIDC sign-in flow, so **leave the OIDC IdP fields blank** and authenticate with your OpenRouter API key as shown above. The OIDC option is only for gateways that act as (or sit behind) their own OAuth authorization server.
+Newer builds of Claude Desktop add optional **Sign-in session lifetime** and **Gateway SSO IdP (OIDC)** fields (Client ID, Issuer URL, Authorization URL) to this panel. When you authenticate with a static API key as shown above, **leave the OIDC IdP fields blank**. The OIDC option is only for gateways that act as (or sit behind) their own OAuth authorization server.
 </Warning>
 
 Click **Apply Changes** (labelled **Apply locally** in older builds) to save your settings.
