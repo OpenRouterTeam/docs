@@ -114,20 +114,11 @@ Some field names appear at both the top level of the trace and inside each `obse
   </Accordion>
   <Accordion title="Derived latency metrics">
 
-These two keys are computed by OpenRouter from the `timeline` milestones rather than
-being fields of the trace, so they are not listed in the tables above. Destinations
-that receive a metadata bag get them as `openrouter_provider_time_to_first_token_ms`
-and `openrouter_inter_token_latency_ms`; OTLP destinations get the same names dotted
-(`openrouter.inter_token_latency_ms`).
+These two keys are computed by OpenRouter from the `timeline` milestones rather than being fields of the trace, so they are not listed in the tables above. Destinations that receive a metadata bag get them as `openrouter_provider_time_to_first_token_ms` and `openrouter_inter_token_latency_ms`; OTLP destinations get the same names dotted (`openrouter.inter_token_latency_ms`).
 
-Both are sent on the root generation only, and both are **omitted rather than zeroed**
-when they cannot be measured: time to first token needs `providerRequestMs` and
-`firstTokenMs`, and inter-token latency needs `firstTokenMs`, `providerBodyEndMs` and
-at least two output tokens. A non-streamed response or a `max_tokens: 1` request
-therefore carries the milestones but no inter-token latency.
+Both are sent on the root generation only, and both are **omitted rather than zeroed** when they cannot be measured: time to first token needs `providerRequestMs` and `firstTokenMs`, and inter-token latency needs `firstTokenMs`, `providerBodyEndMs` and at least two output tokens. A non-streamed response or a `max_tokens: 1` request therefore carries the milestones but no inter-token latency.
 
-Inter-token latency is the mean gap between output tokens, matching vLLM's
-`request_time_per_output_token`: `(providerBodyEndMs - firstTokenMs) / (output_tokens - 1)`.
+Inter-token latency is the mean gap between output tokens, matching vLLM's `request_time_per_output_token`: `(providerBodyEndMs - firstTokenMs) / (output_tokens - 1)`.
 
 | Destination | `provider_time_to_first_token_ms` | `inter_token_latency_ms` |
 |---|---|---|

@@ -22,11 +22,9 @@ import {
 
 ## Bring your own API Keys
 
-OpenRouter supports both OpenRouter credits and the
-option to bring your own provider keys (BYOK).
+OpenRouter supports both OpenRouter credits and the option to bring your own provider keys (BYOK).
 
-When you use OpenRouter credits, your rate limits for
-each provider are managed by OpenRouter.
+When you use OpenRouter credits, your rate limits for each provider are managed by OpenRouter.
 
 Using provider keys enables direct control over rate limits and costs via your provider account.
 
@@ -34,70 +32,26 @@ Your provider keys are securely encrypted and used for all requests routed throu
 
 Manage keys in your [workspace BYOK settings](https://openrouter.ai/integrations).
 
-The cost of using custom provider keys on OpenRouter is
-**{BYOK_FEE_PERCENTAGE}% of what the same model/provider would cost
-normally on OpenRouter** and will be deducted from your OpenRouter
-credits. The free allowance is plan-dependent and measured by list-price
-inference cost, not request count: Pay-as-you-go includes
-{BYOK_PAYG_MONTHLY_LIST_PRICE_THRESHOLD_USD} per month, while Enterprise
-allowances are custom. See the
-[pricing page](https://openrouter.ai/pricing) for details.
+The cost of using custom provider keys on OpenRouter is **{BYOK_FEE_PERCENTAGE}% of what the same model/provider would cost normally on OpenRouter** and will be deducted from your OpenRouter credits. The free allowance is plan-dependent and measured by list-price inference cost, not request count: Pay-as-you-go includes {BYOK_PAYG_MONTHLY_LIST_PRICE_THRESHOLD_USD} per month, while Enterprise allowances are custom. See the [pricing page](https://openrouter.ai/pricing) for details.
 
 ### Key Priority and Fallback
 
 Each BYOK key belongs to one of two sections:
 
-- **Prioritized**, attempted in order, before falling
-  back to OpenRouter endpoints. Use this section for your
-  primary provider keys.
-- **Fallback**, tried only after OpenRouter endpoints
-  have been attempted, in order. Use this section for
-  backup keys you only want used as a last resort.
+- **Prioritized**, attempted in order, before falling back to OpenRouter endpoints. Use this section for your primary provider keys.
+- **Fallback**, tried only after OpenRouter endpoints have been attempted, in order. Use this section for backup keys you only want used as a last resort.
 
-You can drag keys between sections on the provider
-detail page (e.g.
-[/settings/integrations/openai](https://openrouter.ai/settings/integrations/openai)).
+You can drag keys between sections on the provider detail page (e.g. [/settings/integrations/openai](https://openrouter.ai/settings/integrations/openai)).
 
-By default, if all keys in both sections encounter a
-rate limit or failure, OpenRouter will fall back to
-using shared OpenRouter endpoints.
+By default, if all keys in both sections encounter a rate limit or failure, OpenRouter will fall back to using shared OpenRouter endpoints.
 
-Each prioritized key has a **Shared capacity fallback**
-setting that controls what happens when your key can't
-serve a request on that provider, either because the key
-failed or because the requested model is outside the
-key's **Models** selection (under **This key applies
-to**). Shared capacity spends
-OpenRouter credits. The three levels, from weakest to
-strongest:
+Each prioritized key has a **Shared capacity fallback** setting that controls what happens when your key can't serve a request on that provider, either because the key failed or because the requested model is outside the key's **Models** selection (under **This key applies to**). Shared capacity spends OpenRouter credits. The three levels, from weakest to strongest:
 
-- **Use shared capacity** (default): OpenRouter tries
-  your key first, then falls back to OpenRouter
-  endpoints on failures.
-- **Never use shared capacity for models this key applies
-  to**: models selected in the key's Models filter
-  (which defaults to All) never fall back to OpenRouter
-  endpoints on this provider, which may result in rate
-  limit errors if your keys are exhausted, but ensures
-  those requests go through your account. Models outside
-  the filter can still fall back to OpenRouter endpoints
-  on this provider.
-- **Never use shared capacity for any model on this
-  provider**: never spend OpenRouter credits on this
-  provider, even for
-  models outside the key's Models filter. Requests to
-  that provider only run through your keys: if no key
-  allows the requested model, or all matching keys fail,
-  that provider is skipped instead of falling back to
-  OpenRouter endpoints. Other providers can still serve
-  the request unless you restrict them (e.g. with
-  `provider.only`).
+- **Use shared capacity** (default): OpenRouter tries your key first, then falls back to OpenRouter endpoints on failures.
+- **Never use shared capacity for models this key applies to**: models selected in the key's Models filter (which defaults to All) never fall back to OpenRouter endpoints on this provider, which may result in rate limit errors if your keys are exhausted, but ensures those requests go through your account. Models outside the filter can still fall back to OpenRouter endpoints on this provider.
+- **Never use shared capacity for any model on this provider**: never spend OpenRouter credits on this provider, even for models outside the key's Models filter. Requests to that provider only run through your keys: if no key allows the requested model, or all matching keys fail, that provider is skipped instead of falling back to OpenRouter endpoints. Other providers can still serve the request unless you restrict them (e.g. with `provider.only`).
 
-When you have multiple keys for the same provider,
-OpenRouter tries them in priority order (see
-[Multiple BYOK Keys](#multiple-byok-keys-for-the-same-provider)).
-If the first key fails, it falls through to the next
-matching key before falling back to shared capacity.
+When you have multiple keys for the same provider, OpenRouter tries them in priority order (see [Multiple BYOK Keys](#multiple-byok-keys-for-the-same-provider)). If the first key fails, it falls through to the next matching key before falling back to shared capacity.
 
 ### BYOK with Provider Ordering
 
@@ -146,11 +100,7 @@ The routing order will be:
 
 Note that even though Amazon Bedrock is listed first in the `order` array, the Google Vertex AI BYOK endpoint takes priority.
 
-If you want to prevent fallback to OpenRouter endpoints
-entirely, set **Shared capacity fallback** to **"Never
-use shared capacity for any model on this provider"** on your
-BYOK keys in your
-[workspace BYOK settings](https://openrouter.ai/integrations).
+If you want to prevent fallback to OpenRouter endpoints entirely, set **Shared capacity fallback** to **"Never use shared capacity for any model on this provider"** on your BYOK keys in your [workspace BYOK settings](https://openrouter.ai/integrations).
 
 ### BYOK and Regional Endpoints
 
@@ -260,22 +210,14 @@ You can configure multiple BYOK keys for the same provider. All matching keys ar
 
 #### Priority Order
 
-Keys are tried in the order you define, within their
-section. Prioritized keys are tried first, then
-OpenRouter endpoints, then Fallback keys. You can
-reorder keys via drag-and-drop on the provider detail
-page (e.g.
-[/settings/integrations/openai](https://openrouter.ai/settings/integrations/openai)).
-When a key fails (e.g. rate limit or error), OpenRouter
-falls through to the next matching key.
+Keys are tried in the order you define, within their section. Prioritized keys are tried first, then OpenRouter endpoints, then Fallback keys. You can reorder keys via drag-and-drop on the provider detail page (e.g. [/settings/integrations/openai](https://openrouter.ai/settings/integrations/openai)). When a key fails (e.g. rate limit or error), OpenRouter falls through to the next matching key.
 
 For example, if you have three OpenAI keys:
 
 - **Prioritized section**: First key, Second key
 - **Fallback section**: Backup key
 
-OpenRouter will try: First key, then Second key,
-then OpenRouter endpoints, then Backup key.
+OpenRouter will try: First key, then Second key, then OpenRouter endpoints, then Backup key.
 
 #### Key Filters
 

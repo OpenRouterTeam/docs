@@ -45,9 +45,7 @@ We recommend setting an expiration date on every management key. A leaked manage
 - Once a key's expiration passes, every request that uses it fails with `401 Unauthorized` and the message `API key expired`. Expired keys still appear on the [Management API Keys page](https://openrouter.ai/settings/management-keys) until you delete them.
 
 <Warning>
-  Automations that call the key management API with an expiring management key must be given a new
-  key before the old one expires, or they will start receiving `401 API key expired` responses.
-  Schedule rotation ahead of the expiration date shown next to the key.
+  Automations that call the key management API with an expiring management key must be given a new key before the old one expires, or they will start receiving `401 API key expired` responses. Schedule rotation ahead of the expiration date shown next to the key.
 </Warning>
 
 ## Use Cases

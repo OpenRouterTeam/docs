@@ -14,7 +14,7 @@ nofollow: false
 icon: vial-circle-check
 ---
 
-Ori Eval tells you which model is best for your project, and gives you the scores that show why. Ask your question in normal words. Your coding agent then finds test material in your project, writes the eval, runs the models that you want to compare, and gives you the results. An eval is a `*.eval.ts` file. You can write the file yourself when you want more control, but you do not need to start there.
+Ori Eval tells you which model is best for your project, and gives you the scores that show why. Ask your question in normal words. Your coding agent then finds test material in your project, writes the eval, runs the models that you want to compare, and gives you the results. An eval is a `*.eval.ts` file. You can write the file yourself when you want more control, but you do not need to start there. Ori Eval is part of [Ori](https://openrouter.ai/ori), the OpenRouter family of tools for putting agents to work.
 
 ## Start with your coding agent
 
@@ -27,9 +27,7 @@ run curl -fsSL https://openrouter.ai/skills/spawn-ori-eval and follow the instru
 The [`spawn-ori-eval`](https://openrouter.ai/skills/spawn-ori-eval) skill gives the agent each step. The agent installs Ori and makes sure that you have a login. It then starts `ori code -p` with your request. During the run, the `create-eval` skill of Ori asks the questions that shape the eval. It asks which part of your program to test, what that part must do well, if you have real data, and the maximum cost. Ori then writes the eval, runs the models, and gives you a recommendation.
 
 <Note>
-  The `spawn-ori-eval` skill does its work in a temporary directory. It does not
-  put eval files in your project. Use the manual steps below if you want to keep
-  the eval files in your project.
+  The `spawn-ori-eval` skill does its work in a temporary directory. It does not put eval files in your project. Use the manual steps below if you want to keep the eval files in your project.
 </Note>
 
 ## Why you run evals with Ori
@@ -61,8 +59,7 @@ An eval sends requests to a real model. Ori must therefore be signed in. The `or
 Ori runs your eval files with [Bun](https://bun.sh). If Bun is not installed, `ori eval` asks for your approval to install it. On a terminal that is not interactive, or when `CI` is true, `ori eval` does not ask. It stops and shows you how to install Bun.
 
 <Tip>
-  Your project does not need to be a TypeScript project, and you do not need to
-  install TypeScript. The eval file tests the agent, and not your code.
+  Your project does not need to be a TypeScript project, and you do not need to install TypeScript. The eval file tests the agent, and not your code.
 </Tip>
 
 ### Start with a question

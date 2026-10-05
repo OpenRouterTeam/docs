@@ -137,8 +137,7 @@ You don't need to worry about a model dodging detection with rearranged JSON key
 The detector's memory lives inside the conversation state, so streaks survive when you save and resume a conversation, as long as your resuming call also passes `doomLoop`. You can clear a `stop` verdict by sending a fresh user message, but the streaks stay, so you'll still catch a model that goes right back to repeating.
 
 <Note>
-  The SDK treats built-in `task`-tool calls as internal: they're exempt from
-  doom-loop detection. See [Async Tools](/agent-sdk/call-model/async-tools).
+  The SDK treats built-in `task`-tool calls as internal: they're exempt from doom-loop detection. See [Async Tools](/agent-sdk/call-model/async-tools).
 </Note>
 
 ## What this doesn't catch

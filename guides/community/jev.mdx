@@ -106,24 +106,17 @@ TypeSafe maintains the concept, prompting, and SDK documentation for Jev. These 
 
 ### Frequently asked questions
 
-**Is Jev an LLM?**
-No. Jev is a System One decision model. It returns typed answers, with probabilities associated with them. Jev doesn't return text, reasoning, or explanations. When you need prose, use a chat model. When you need a decision that your code can act on, use Jev.
+**Is Jev an LLM?** No. Jev is a System One decision model. It returns typed answers, with probabilities associated with them. Jev doesn't return text, reasoning, or explanations. When you need prose, use a chat model. When you need a decision that your code can act on, use Jev.
 
-**Who makes Jev?**
-TypeSafe. OpenRouter routes your request to TypeSafe, then bills it to your OpenRouter account.
+**Who makes Jev?** TypeSafe. OpenRouter routes your request to TypeSafe, then bills it to your OpenRouter account.
 
-**How much does Jev cost?**
-Jev charges for input tokens, and output tokens are free. To find the current input token price, see the [Jev model page](https://openrouter.ai/typesafe/jev-1.13). Every Jev response includes a `usage.cost` field that tells you the cost of the response in USD.
+**How much does Jev cost?** Jev charges for input tokens, and output tokens are free. To find the current input token price, see the [Jev model page](https://openrouter.ai/typesafe/jev-1.13). Every Jev response includes a `usage.cost` field that tells you the cost of the response in USD.
 
-**What is Jev's context window?**
-32,000 tokens. That's the `state` you send plus the questions.
+**What is Jev's context window?** 32,000 tokens. That's the `state` you send plus the questions.
 
-**Do I need a TypeSafe account or API key?**
-No, an OpenRouter API key authenticates both the Decisions API and the TypeSafe SDK pointed at OpenRouter.
+**Do I need a TypeSafe account or API key?** No, an OpenRouter API key authenticates both the Decisions API and the TypeSafe SDK pointed at OpenRouter.
 
-**Can Jev explain its answers?**
-No, Jev doesn't return the reasoning it goes through to make its decision. It returns probabilities. If you need a written justification for the decision, you can use Jev to make the decision, then use a chat model to explain it, or if the confidence is low, you can route that case to a human.
+**Can Jev explain its answers?** No, Jev doesn't return the reasoning it goes through to make its decision. It returns probabilities. If you need a written justification for the decision, you can use Jev to make the decision, then use a chat model to explain it, or if the confidence is low, you can route that case to a human.
 
-**Where are the Jev docs?**
-It's all here on OpenRouter. Once you're in, use the [TypeSafe documentation](https://docs.typesafe.ai) to dig deeper into the concepts and for the SDK reference.
+**Where are the Jev docs?** It's all here on OpenRouter. Once you're in, use the [TypeSafe documentation](https://docs.typesafe.ai) to dig deeper into the concepts and for the SDK reference.
 {/* </llms-ignore> */}

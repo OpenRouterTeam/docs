@@ -237,30 +237,19 @@ fetch('https://openrouter.ai/api/v1/chat/completions', {
 <Info>
 **Model routing**
 
-  If the `model` parameter is omitted, the user or payer's default is used.
-  Otherwise, remember to select a value for `model` from the [supported
-  models](/guides/overview/models) or [API](/api/api-reference/models/list-all-models-and-their-properties), and include the organization
-  prefix. OpenRouter will select the least expensive and best GPUs available to
-  serve the request, and fall back to other providers or GPUs if it receives a
-  5xx response code or if you are rate-limited.
+  If the `model` parameter is omitted, the user or payer's default is used. Otherwise, remember to select a value for `model` from the [supported models](/guides/overview/models) or [API](/api/api-reference/models/list-all-models-and-their-properties), and include the organization prefix. OpenRouter will select the least expensive and best GPUs available to serve the request, and fall back to other providers or GPUs if it receives a 5xx response code or if you are rate-limited.
 </Info>
 
 <Info>
 **Streaming**
 
-  [Server-Sent Events
-  (SSE)](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format)
-  are supported as well, to enable streaming _for all models_. Simply send
-  `stream: true` in your request body. The SSE stream will occasionally contain
-  a "comment" payload, which you should ignore (noted below).
+  [Server-Sent Events (SSE)](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format) are supported as well, to enable streaming _for all models_. Simply send `stream: true` in your request body. The SSE stream will occasionally contain a "comment" payload, which you should ignore (noted below).
 </Info>
 
 <Info>
 **Non-standard parameters**
 
-  If the chosen model doesn't support a request parameter (such as `logit_bias`
-  in non-OpenAI models, or `top_k` for OpenAI), then the parameter is ignored.
-  The rest are forwarded to the underlying model API.
+  If the chosen model doesn't support a request parameter (such as `logit_bias` in non-OpenAI models, or `top_k` for OpenAI), then the parameter is ignored. The rest are forwarded to the underlying model API.
 </Info>
 
 ### Assistant prefill

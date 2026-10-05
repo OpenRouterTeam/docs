@@ -94,7 +94,81 @@ Classification tags appear in two places:
 
 For organization accounts, only org admins can see classification tags on log rows and in the generation detail panel. Workspace admins who aren't org admins can create and manage classifiers but don't see the resulting tags.
 
-Filter and analyze your classified generations in the [Activity](https://openrouter.ai/activity) and [Logs](https://openrouter.ai/logs) views.
+Filter and analyze your classified generations in the [Activity](https://openrouter.ai/activity) and [Logs](https://openrouter.ai/logs) views, or with the [API](#query-classifications-with-the-api).
+
+## Query classifications with the API
+
+To read classification tags programmatically, use the [Analytics query endpoint](/api/api-reference/analytics/query-analytics-data) (`POST /api/v1/analytics/query`). It's the same query that powers the [Activity Explore](https://openrouter.ai/activity/explore) view, and it requires a [management API key](/guides/overview/auth/management-api-keys).
+
+Two request fields work with classifiers:
+
+| Field | What it does |
+|-------|-------------|
+| `classifier_dimensions` | Groups results by classifier tags. Set `classifier_id`, and optionally `dimension_names` (up to two) to return each dimension as its own column. Set `include_nulls: true` to also include generations that have no tag from this classifier. |
+| `classifier_filters` | Limits results to generations with specific tag values. Set `classifier_id` and a list of `filters`, each with a `field` (dimension name), an `operator` (`eq`, `neq`, `in`, or `not_in`), and a `value`. When you use it together with `classifier_dimensions`, both must use the same `classifier_id`. |
+
+You can combine both fields with the standard `metrics`, `dimensions`, `filters`, and `granularity` fields. For the full request and response schema, see the [Analytics query endpoint reference](/api/api-reference/analytics/query-analytics-data).
+
+### Find your classifier ID
+
+The API identifies a classifier by its UUID. To find it, open your workspace's [Classifiers](https://openrouter.ai/workspaces/default/classifiers) page and click one of the classifier's dimension badges. The Activity Explore page opens with a `dimension` query parameter in the URL in the form `clf::<classifier_id>::<dimension_name>`. The UUID between `clf::` and the next `::` is your classifier ID.
+
+### Get the tags for each generation
+
+To list the tags for individual generations, group by the `generation_id` dimension and the classifier dimensions you want:
+
+```bash
+curl https://openrouter.ai/api/v1/analytics/query \
+  -H "Authorization: Bearer $OPENROUTER_MANAGEMENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "metrics": ["total_usage"],
+    "dimensions": ["generation_id"],
+    "classifier_dimensions": {
+      "classifier_id": "<classifier_id>",
+      "dimension_names": ["department"]
+    },
+    "time_range": {
+      "start": "2026-10-01T00:00:00Z",
+      "end": "2026-10-02T00:00:00Z"
+    },
+    "limit": 1000
+  }'
+```
+
+Each row in `data.data` has a `generation_id`, a `department` key with that generation's tag, and the requested metrics. Use the `generation_id` with [`GET /api/v1/generation`](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation) to fetch the rest of the generation's metadata.
+
+### Break down usage by tag
+
+To see spend and request volume per tag value, drop `generation_id` and group by the classifier dimension instead. This example also limits the results to two departments:
+
+```bash
+curl https://openrouter.ai/api/v1/analytics/query \
+  -H "Authorization: Bearer $OPENROUTER_MANAGEMENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "metrics": ["request_count", "total_usage"],
+    "classifier_dimensions": {
+      "classifier_id": "<classifier_id>",
+      "dimension_names": ["department"]
+    },
+    "classifier_filters": {
+      "classifier_id": "<classifier_id>",
+      "filters": [
+        { "field": "department", "operator": "in", "value": ["Engineering", "Sales"] }
+      ]
+    },
+    "granularity": "day",
+    "time_range": {
+      "start": "2026-10-01T00:00:00Z",
+      "end": "2026-10-08T00:00:00Z"
+    }
+  }'
+```
+
+<Note>
+Classification runs asynchronously after each generation completes, so the most recent generations might not have tags yet. Generations that the classifier skipped because of its sampling rate never get tags from it.
+</Note>
 
 ## Workspace Scoping
 

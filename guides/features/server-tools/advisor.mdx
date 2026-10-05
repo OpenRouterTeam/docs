@@ -104,8 +104,7 @@ print(response.json()["choices"][0]["message"]["content"])
 The advisor model is resolved with the following precedence:
 
 1. `parameters.model` on the tool definition, if set.
-2. The `model` argument the executor passes in the tool **call**, if the
-   definition does not fix one.
+2. The `model` argument the executor passes in the tool **call**, if the definition does not fix one.
 3. The model from the outer API request, as a fallback.
 
 This lets you either pin the advisor model up front (`parameters.model`) or let the executing model pick it per call.

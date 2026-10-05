@@ -61,10 +61,7 @@ args = ["-NoProfile", "-Command", "Write-Output $env:OPENROUTER_API_KEY"]
 ```
 
 <Note>
-A plain `env_key = "OPENROUTER_API_KEY"` also works for authentication, but Codex
-won't fetch the OpenRouter model catalog in that mode. Non-OpenAI models will
-show the "Unknown model" fallback-metadata warning. Prefer the command-based
-`auth` block above.
+A plain `env_key = "OPENROUTER_API_KEY"` also works for authentication, but Codex won't fetch the OpenRouter model catalog in that mode. Non-OpenAI models will show the "Unknown model" fallback-metadata warning. Prefer the command-based `auth` block above.
 </Note>
 
 ### Step 4: Set Your API Key
@@ -76,9 +73,7 @@ Export your OpenRouter API key in your shell profile:
 export OPENROUTER_API_KEY="sk-or-..."
 ```
 
-On Windows, set it as a user-level environment variable and restart Codex
-(including the desktop app, which won't see variables set only in a terminal
-session):
+On Windows, set it as a user-level environment variable and restart Codex (including the desktop app, which won't see variables set only in a terminal session):
 
 ```powershell lines
 setx OPENROUTER_API_KEY "sk-or-..."
@@ -127,10 +122,7 @@ args = ["-c", "echo $OPENROUTER_API_KEY"]
 - **`auth.command` / `auth.args`**: Command Codex runs to obtain your API key. Here it echoes `$OPENROUTER_API_KEY`. Command-based auth is what triggers Codex's model-catalog refresh, so non-OpenAI models get correct metadata instead of the fallback-metadata warning. On Windows use `command = "powershell"` with `args = ["-NoProfile", "-Command", "Write-Output $env:OPENROUTER_API_KEY"]`, since `sh` does not exist there.
 
 <Note>
-A plain `env_key = "OPENROUTER_API_KEY"` also works for authentication, but Codex
-won't fetch the OpenRouter model catalog in that mode. Non-OpenAI models will
-show the "Unknown model" fallback-metadata warning. Prefer the command-based
-`auth` block above.
+A plain `env_key = "OPENROUTER_API_KEY"` also works for authentication, but Codex won't fetch the OpenRouter model catalog in that mode. Non-OpenAI models will show the "Unknown model" fallback-metadata warning. Prefer the command-based `auth` block above.
 </Note>
 
 ### Project Trust Levels

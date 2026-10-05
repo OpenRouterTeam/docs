@@ -177,18 +177,9 @@ Preset tools keep their relative order; request-only tools are appended after th
 
 ## Creating Presets from API Requests
 
-In addition to the dashboard, you can create (or update) a preset
-directly from any inference request body you already use. This is
-useful when you want to capture a known-good request as a reusable
-configuration without re-typing it in the UI.
+In addition to the dashboard, you can create (or update) a preset directly from any inference request body you already use. This is useful when you want to capture a known-good request as a reusable configuration without re-typing it in the UI.
 
-Each inference skin has its own endpoint. Send the same JSON body
-you would send to the matching inference route. OpenRouter
-persists only the fields that overlap with the preset config
-(e.g. `model`, `temperature`, `provider`, `top_p`, `system`,
-`tools`).
-Transient fields like `messages`, `input`, `prompt`, and `stream`
-are silently ignored.
+Each inference skin has its own endpoint. Send the same JSON body you would send to the matching inference route. OpenRouter persists only the fields that overlap with the preset config (e.g. `model`, `temperature`, `provider`, `top_p`, `system`, `tools`). Transient fields like `messages`, `input`, `prompt`, and `stream` are silently ignored.
 
 The endpoints are:
 
@@ -196,10 +187,7 @@ The endpoints are:
 - `POST /api/v1/presets/{slug}/messages`, Anthropic Messages skin
 - `POST /api/v1/presets/{slug}/responses`, Responses skin
 
-The `{slug}` path parameter is a URL-safe identifier for the
-preset. If a preset with that slug already exists in your
-workspace, a new version is created and designated as the active
-version. If it does not exist, a new preset is created.
+The `{slug}` path parameter is a URL-safe identifier for the preset. If a preset with that slug already exists in your workspace, a new version is created and designated as the active version. If it does not exist, a new preset is created.
 
 ### From a Chat Completions request
 
@@ -220,9 +208,7 @@ curl https://openrouter.ai/api/v1/presets/email-copywriter/chat/completions \
   }'
 ```
 
-The `messages` array is ignored for preset storage; only the
-configuration fields (`model`, `temperature`, `provider`) and the
-extracted system prompt are persisted.
+The `messages` array is ignored for preset storage; only the configuration fields (`model`, `temperature`, `provider`) and the extracted system prompt are persisted.
 
 ### From an Anthropic Messages request
 
@@ -259,8 +245,7 @@ The `instructions` field becomes the preset's system prompt.
 
 ### Response shape
 
-All three endpoints return the resulting preset with its
-designated version:
+All three endpoints return the resulting preset with its designated version:
 
 ```json expandable lines
 {
@@ -288,23 +273,15 @@ designated version:
 }
 ```
 
-Once created, the preset can be used in subsequent inference
-requests via any of the three referencing styles shown in
-[Using Presets](#using-presets).
+Once created, the preset can be used in subsequent inference requests via any of the three referencing styles shown in [Using Presets](#using-presets).
 
 ### Suggested workflow
 
-1. Build and test a request against `/chat/completions` (or
-   `/messages` / `/responses`) until it produces the output you
-   want.
-2. `POST` the same body to the matching
-   `/api/v1/presets/{slug}/...` endpoint to capture the config.
-3. In production code, swap the inference call to reference
-   `@preset/{slug}` instead of repeating the configuration.
+1. Build and test a request against `/chat/completions` (or `/messages` / `/responses`) until it produces the output you want.
+2. `POST` the same body to the matching `/api/v1/presets/{slug}/...` endpoint to capture the config.
+3. In production code, swap the inference call to reference `@preset/{slug}` instead of repeating the configuration.
 
-This lets you iterate on prompts and parameters in code, then
-promote the working configuration to a preset without manual
-transcription.
+This lets you iterate on prompts and parameters in code, then promote the working configuration to a preset without manual transcription.
 
 ## Other Notes
 

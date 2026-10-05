@@ -53,10 +53,7 @@ For each model in your request, OpenRouter's default behavior is to load balance
 If you are more sensitive to throughput than price, you can use the `sort` field to explicitly prioritize throughput.
 
 <Tip>
-  When you send a request with `tools` or `tool_choice`, OpenRouter makes a
-  best effort to route to providers known to support tool use. Similarly, if
-  you set a `max_tokens`, then OpenRouter will only route to providers that
-  support a response of that length.
+  When you send a request with `tools` or `tool_choice`, OpenRouter makes a best effort to route to providers known to support tool use. Similarly, if you set a `max_tokens`, then OpenRouter will only route to providers that support a response of that length.
 </Tip>
 
 Here is OpenRouter's default load balancing strategy:
@@ -868,8 +865,7 @@ You can set the providers that OpenRouter will prioritize for your request using
 The router will prioritize providers in this list, and in this order, for the model you're using. If you don't set this field, the router will [load balance](#price-based-load-balancing-default-strategy) across the top providers to maximize uptime.
 
 <Tip>
-  You can use the copy button next to provider names on model pages to get the exact provider slug,
-  including any variants like "/turbo". See [Targeting Specific Provider Endpoints](#targeting-specific-provider-endpoints) for details.
+  You can use the copy button next to provider names on model pages to get the exact provider slug, including any variants like "/turbo". See [Targeting Specific Provider Endpoints](#targeting-specific-provider-endpoints) for details.
 </Tip>
 
 OpenRouter will try them one at a time and proceed to other providers if none are operational. If you don't want to allow any other providers, you should [disable fallbacks](#disabling-fallbacks) as well.
@@ -1197,9 +1193,7 @@ Some model providers may log prompts, so we display them with a **Data Policy** 
 <Tip>
 **Account-Wide Data Policy Filtering**
 
-  This is also available as an account-wide setting in [your privacy
-  settings](https://openrouter.ai/settings/privacy). You can disable third party
-  model providers that store inputs for training.
+  This is also available as an account-wide setting in [your privacy settings](https://openrouter.ai/settings/privacy). You can disable third party model providers that store inputs for training.
 </Tip>
 
 ### Example: Excluding providers that don't comply with data policies
@@ -1279,8 +1273,7 @@ When `zdr` is set to `true`, the request will only be routed to endpoints that h
 <Tip>
 **Per-Model-Group and Account-Wide ZDR**
 
-  ZDR can also be enforced per model group (Anthropic, OpenAI, Google, SpaceXAI, and all other models) in your [privacy settings](https://openrouter.ai/settings/privacy) or via [guardrails](/guides/features/guardrails). The per-request `zdr` parameter
-  operates as an "OR" with your account-wide and guardrail ZDR settings — if any of them is enabled, ZDR enforcement is applied. The request-level parameter can only ensure ZDR is enabled, not override account-wide or guardrail enforcement. See [Zero Data Retention](/guides/features/zdr#per-model-group-zdr-enforcement) for details.
+  ZDR can also be enforced per model group (Anthropic, OpenAI, Google, SpaceXAI, and all other models) in your [privacy settings](https://openrouter.ai/settings/privacy) or via [guardrails](/guides/features/guardrails). The per-request `zdr` parameter operates as an "OR" with your account-wide and guardrail ZDR settings — if any of them is enabled, ZDR enforcement is applied. The request-level parameter can only ensure ZDR is enabled, not override account-wide or guardrail enforcement. See [Zero Data Retention](/guides/features/zdr#per-model-group-zdr-enforcement) for details.
 </Tip>
 
 ### Example: Enforcing ZDR for a specific request
@@ -1500,8 +1493,7 @@ You can allow only specific providers for a request by setting the `only` field 
 | `only` | string[] | - | List of provider slugs to allow for this request. |
 
 <Warning>
-    Only allowing some providers may significantly reduce fallback options and
-    limit request recovery.
+    Only allowing some providers may significantly reduce fallback options and limit request recovery.
 </Warning>
 
 <Tip>
@@ -1588,8 +1580,7 @@ You can ignore providers for a request by setting the `ignore` field in the `pro
 | `ignore` | string[] | - | List of provider slugs to skip for this request. |
 
 <Warning>
-  Ignoring multiple providers may significantly reduce fallback options and
-  limit request recovery.
+  Ignoring multiple providers may significantly reduce fallback options and limit request recovery.
 </Warning>
 
 <Tip>
@@ -1675,8 +1666,7 @@ Quantization reduces model size and computational requirements while aiming to p
 | `quantizations` | string[] | - | List of quantization levels to filter by (e.g. `["int4", "int8"]`). [Learn more](#quantization) |
 
 <Warning>
-  Quantized models may exhibit degraded performance for certain prompts,
-  depending on the method used.
+  Quantized models may exhibit degraded performance for certain prompts, depending on the method used.
 </Warning>
 
 Providers can support various quantization levels for open-weight models.

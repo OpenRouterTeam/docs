@@ -14,7 +14,7 @@ nofollow: false
 icon: plug
 ---
 
-Ori Harness runs the agent CLI you already use on OpenRouter. You run one command, and your agent starts with OpenRouter credentials, models, and settings in place. You don't change how you work.
+Ori Harness runs the agent CLI you already use on OpenRouter. You run one command, and your agent starts with OpenRouter credentials, models, and settings in place. You don't change how you work. Ori Harness is part of [Ori](https://openrouter.ai/ori), the OpenRouter family of tools for putting agents to work.
 
 Every `ori` command launches your agent with OpenRouter credentials and organization settings applied to that session, so keep launching through Ori. If you'd rather work inside Claude Desktop, it also connects to OpenRouter natively via gateway mode with an API key — see the [Claude Desktop integration guide](/cookbook/coding-agents/claude-desktop-integration).
 
@@ -89,6 +89,58 @@ ori dsh
 
 This points your global DeepSeek Harness config at OpenRouter. After that, run `dsh` the way you always do.
 
+## Use Ori with desktop apps
+
+Ori routes Codex Desktop through OpenRouter. The Codex CLI and Codex Desktop share one Codex config, so one setup puts both on OpenRouter, and one reset puts both back.
+
+<Note>
+  Quit Codex Desktop before you run setup or reset.
+</Note>
+
+### Set up Codex Desktop
+
+1. Install Codex Desktop, then [install Ori](#install-ori).
+2. Sign in to OpenRouter:
+
+   ```sh
+   ori login
+   ```
+
+3. Route Codex through OpenRouter:
+
+   ```sh
+   ori harness setup codex
+   ```
+
+4. Open Codex Desktop and pick a model from the model picker. The picker lists models from the OpenRouter catalog.
+
+The setup stays in place until you reset it, so your plain `codex` command also runs on OpenRouter. You don't need to launch Codex Desktop through Ori.
+
+### Go back to your own Codex setup
+
+To put Codex back on your own setup, run:
+
+```sh
+ori harness reset codex
+```
+
+Reset removes the OpenRouter provider from your Codex config and restores the settings that setup replaced.
+
+### What works in Codex Desktop
+
+- Setup with `ori harness setup codex`.
+- Chat turns on OpenRouter.
+- The model picker with the OpenRouter catalog.
+- Reset with `ori harness reset codex`.
+
+Verified on Ori 0.15.6 with Codex Desktop 26.930 on macOS. Codex Desktop on Windows and Linux isn't verified.
+
+### Not available yet
+
+- Plugin search in Codex Desktop.
+- Image generation in Codex Desktop.
+- Claude Desktop and Claude Code setup through `ori harness setup claude`. To use Claude Desktop with OpenRouter today, see the [Claude Desktop integration guide](/cookbook/coding-agents/claude-desktop-integration).
+
 ## Sign in instead of managing keys
 
 Run an agent and Ori opens a browser so you can sign in with your OpenRouter account. It uses OAuth PKCE, so there's no new account and no key to create or paste.
@@ -100,8 +152,7 @@ ori login
 ```
 
 <Note>
-  Your models, credits, and organization settings come with your OpenRouter
-  login. You don't need a separate provider key for each agent.
+  Your models, credits, and organization settings come with your OpenRouter login. You don't need a separate provider key for each agent.
 </Note>
 
 ## Any agent, any model
@@ -134,8 +185,7 @@ ori codex --model google/gemini-3.8-flash --full-auto
 You keep your usual agent flags, and you can pick a model from any provider in the OpenRouter catalog.
 
 <Tip>
-  Put your agent's normal flags after Ori's flags. Ori passes them to the agent
-  unchanged.
+  Put your agent's normal flags after Ori's flags. Ori passes them to the agent unchanged.
 </Tip>
 
 ## Live model catalog and routing toggles
