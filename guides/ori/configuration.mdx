@@ -9,36 +9,22 @@ nofollow: false
 icon: sliders
 ---
 
-Ori has one set of settings and several ways to supply them. A setting is
-named the same everywhere, so the same name works in your shell, in a config
-file, and in an MDM profile. Pick the mechanism that matches who owns the
-decision, then use the [reference](#settings-reference) at the bottom of this
-page for the settings themselves.
+Ori has one set of settings and several ways to supply them. A setting is named the same everywhere, so the same name works in your shell, in a config file, and in an MDM profile. Pick the mechanism that matches who owns the decision, then use the [reference](#settings-reference) at the bottom of this page for the settings themselves.
 
 ## Ways to configure Ori
 
-- **Your shell.** Export a variable for the current session, or put it in your
-  shell profile or process manager. Good for one person on one machine.
-- **`~/.ori/config.json`.** Your own defaults, applied to every project you
-  work on.
-- **`.ori/config.json` in a project.** Settings that belong to a repository and
-  should apply to everyone working in it.
-- **Command-line flags.** Six update settings also have flags, listed
-  [below](#command-line-flags).
-- **A machine policy file.** `/etc/ori/config.json`, or
-  `C:\ProgramData\ori\config.json` on Windows. Owned by whoever administers the
-  machine, and it beats a flag.
-- **macOS managed preferences.** An MDM payload for the
-  `com.openrouter.ori` preference domain. Beats everything, including the
-  machine file.
+- **Your shell.** Export a variable for the current session, or put it in your shell profile or process manager. Good for one person on one machine.
+- **`~/.ori/config.json`.** Your own defaults, applied to every project you work on.
+- **`.ori/config.json` in a project.** Settings that belong to a repository and should apply to everyone working in it.
+- **Command-line flags.** Six update settings also have flags, listed [below](#command-line-flags).
+- **A machine policy file.** `/etc/ori/config.json`, or `C:\ProgramData\ori\config.json` on Windows. Owned by whoever administers the machine, and it beats a flag.
+- **macOS managed preferences.** An MDM payload for the `com.openrouter.ori` preference domain. Beats everything, including the machine file.
 
-If you administer a fleet, read [Configuring managed
-machines](#configuring-managed-machines).
+If you administer a fleet, read [Configuring managed machines](#configuring-managed-machines).
 
 ## Which source wins
 
-Every setting resolves through the same list, and the first source that
-carries a valid value for it wins:
+Every setting resolves through the same list, and the first source that carries a valid value for it wins:
 
 1. macOS managed preferences (`com.openrouter.ori`)
 2. The machine policy file, `/etc/ori/config.json`
@@ -48,30 +34,20 @@ carries a valid value for it wins:
 6. `~/.ori/config.json` in your home directory
 7. Ori's own default
 
-A project file beats your home file, matching how most tools treat local
-configuration. The two administrator sources sit above flags, so a policy set
-on the machine cannot be turned off from a shell, a project, or a flag. The one
-exception is `ORI_NO_UPDATE_CHECK`, which only suppresses the update check when
-no `--auto-update` flag is passed; `ORI_DISABLE_AUTOUPDATER` and
-`ORI_DISABLE_UPDATES` are the settings to use when a policy has to hold.
+A project file beats your home file, matching how most tools treat local configuration. The two administrator sources sit above flags, so a policy set on the machine cannot be turned off from a shell, a project, or a flag. The one exception is `ORI_NO_UPDATE_CHECK`, which only suppresses the update check when no `--auto-update` flag is passed; `ORI_DISABLE_AUTOUPDATER` and `ORI_DISABLE_UPDATES` are the settings to use when a policy has to hold.
 
 Two groups of settings don't follow this list everywhere:
 
 - **Administrator-only settings.** `ORI_REQUIRED_ORGANIZATION_ID`, `ORI_REQUIRED_WORKSPACE_ID`, `ORI_REQUIRED_REGION`, and `ORI_CREDENTIAL_STORAGE` are read only from macOS managed preferences and the machine policy file. Ori ignores them in your shell, a flag, or either `config.json`, and `ori doctor` names each copy it ignored. See [Configuring managed machines](#configuring-managed-machines).
 - **Settings that choose where a credential goes.** `ORI_OPENROUTER_BASE_URL`, `ORI_OPENROUTER_ENDPOINT`, `ORI_RELEASE_BASE_URL`, `ORI_OPENROUTER_OIDC_ISSUER`, and `ORI_OPENROUTER_OIDC_CLIENT_ID` are ignored in a project's `.ori/config.json`, so a cloned repository can't send your key or your sign-in somewhere else. Set them in your shell, `~/.ori/config.json`, or an administrator source.
 
-A missing file is fine, and a malformed one contributes nothing. A value Ori
-cannot make sense of is skipped per setting, so one bad entry does not discard
-the rest of a file, and the next source down answers instead.
+A missing file is fine, and a malformed one contributes nothing. A value Ori cannot make sense of is skipped per setting, so one bad entry does not discard the rest of a file, and the next source down answers instead.
 
-Where a setting below is described as a switch, Ori reads an empty value, `0`,
-and `false` as off, and any other value as on. `1` is the conventional way to
-turn one on.
+Where a setting below is described as a switch, Ori reads an empty value, `0`, and `false` as off, and any other value as on. `1` is the conventional way to turn one on.
 
 ### Config file shape
 
-A config file can carry an `env` object of plain strings, named fields, or
-both. The two spellings feed the same setting:
+A config file can carry an `env` object of plain strings, named fields, or both. The two spellings feed the same setting:
 
 ```json
 {
@@ -85,23 +61,15 @@ both. The two spellings feed the same setting:
 
 ### Command-line flags
 
-Only `--auto-update`, `--auto-update-restart`, `--update-interval`,
-`--drain-timeout`, `--alpha`, and `--stable` name a setting that also has a
-variable, so those are the only flags that take part in the list above. Every
-other flag is an argument to its command.
+Only `--auto-update`, `--auto-update-restart`, `--update-interval`, `--drain-timeout`, `--alpha`, and `--stable` name a setting that also has a variable, so those are the only flags that take part in the list above. Every other flag is an argument to its command.
 
 ## Configuring managed machines
 
-Two mechanisms are meant for administrators, and both outrank anything a user
-can set. Every setting in the [reference](#settings-reference) works in either
-one.
+Two mechanisms are meant for administrators, and both outrank anything a user can set. Every setting in the [reference](#settings-reference) works in either one.
 
 ### macOS: managed preferences
 
-Deliver a custom-settings payload for the preference domain
-`com.openrouter.ori` from Jamf, Kandji, Intune, or any MDM that writes
-managed preferences. Use the setting name as the key. Booleans, numbers, and
-strings all work; Ori converts them:
+Deliver a custom-settings payload for the preference domain `com.openrouter.ori` from Jamf, Kandji, Intune, or any MDM that writes managed preferences. Use the setting name as the key. Booleans, numbers, and strings all work; Ori converts them:
 
 ```xml
 <dict>
@@ -114,17 +82,13 @@ strings all work; Ori converts them:
 </dict>
 ```
 
-Ori reads the per-user profile at
-`/Library/Managed Preferences/<username>/com.openrouter.ori.plist` and the
-device-wide one at `/Library/Managed Preferences/com.openrouter.ori.plist`.
-Nothing else on the machine can override what lands there.
+Ori reads the per-user profile at `/Library/Managed Preferences/<username>/com.openrouter.ori.plist` and the device-wide one at `/Library/Managed Preferences/com.openrouter.ori.plist`. Nothing else on the machine can override what lands there.
 
 For ordinary settings, the per-user profile wins as a whole when it exists, and Ori doesn't merge it with the device-wide one. The administrator-only settings in the next sections are different: Ori reads them from the per-user profile, the device-wide profile, and the machine policy file separately and combines them, so a device-wide restriction still applies when a per-user profile leaves it out. Ori takes the username from the operating system, not from `USER` or `LOGNAME`. Deliver the payload as forced settings; Ori doesn't implement set-once preferences.
 
 ### Any platform: the machine policy file
 
-Write JSON to `/etc/ori/config.json` (or `C:\ProgramData\ori\config.json` on
-Windows) with your settings in the `env` object:
+Write JSON to `/etc/ori/config.json` (or `C:\ProgramData\ori\config.json` on Windows) with your settings in the `env` object:
 
 ```json
 {
@@ -137,10 +101,7 @@ Windows) with your settings in the `env` object:
 }
 ```
 
-Ship the file with the rest of your machine configuration, the same way you
-ship any other policy file. A user cannot remove it without administrator
-rights, and no flag other than `--auto-update` against
-`ORI_NO_UPDATE_CHECK` can argue with it.
+Ship the file with the rest of your machine configuration, the same way you ship any other policy file. A user cannot remove it without administrator rights, and no flag other than `--auto-update` against `ORI_NO_UPDATE_CHECK` can argue with it.
 
 On Windows, the path is fixed at `C:\ProgramData\ori\config.json`. Ori doesn't use the `ProgramData` or `SystemDrive` environment variables to find it, because any user can change them. If you staged the file under a redirected `ProgramData` or on a drive other than `C:`, move it to `C:\ProgramData\ori\config.json`; until you do, Ori treats the machine as having no policy file.
 
@@ -206,20 +167,9 @@ Keep API keys and management credentials out of every profile and policy file.
 
 ### Two recipes
 
-**Ship Ori through your own tooling.** Set `ORI_DISABLE_UPDATES` to `1`. Ori
-stops checking for releases, never prints an update notice, and answers
-`ori update` with a message saying the installation is managed by your
-organization. Use `ORI_DISABLE_AUTOUPDATER` instead to keep the background
-updater quiet while users can still update by hand, and add
-`"channel": "stable"` to hold the fleet on one channel even against an
-`--alpha` flag.
+**Ship Ori through your own tooling.** Set `ORI_DISABLE_UPDATES` to `1`. Ori stops checking for releases, never prints an update notice, and answers `ori update` with a message saying the installation is managed by your organization. Use `ORI_DISABLE_AUTOUPDATER` instead to keep the background updater quiet while users can still update by hand, and add `"channel": "stable"` to hold the fleet on one channel even against an `--alpha` flag.
 
-**Force browser sign-in.** Set `ORI_DISABLE_API_KEY_LOGIN` and
-`ORI_DISABLE_ENV_KEY_LOGIN` to `1` so the only way in is browser sign-in, and
-`ORI_REQUIRE_LOGIN` to `1` so an `OPENROUTER_API_KEY` a developer happens to
-have exported is refused rather than spent. These settings decide how a
-credential may be obtained, not which OpenRouter account or organization it
-belongs to, and a key saved before you turned a method off still works. To control which account Ori can use, add `ORI_REQUIRED_ORGANIZATION_ID`, as the next recipe shows.
+**Force browser sign-in.** Set `ORI_DISABLE_API_KEY_LOGIN` and `ORI_DISABLE_ENV_KEY_LOGIN` to `1` so the only way in is browser sign-in, and `ORI_REQUIRE_LOGIN` to `1` so an `OPENROUTER_API_KEY` a developer happens to have exported is refused rather than spent. These settings decide how a credential may be obtained, not which OpenRouter account or organization it belongs to, and a key saved before you turned a method off still works. To control which account Ori can use, add `ORI_REQUIRED_ORGANIZATION_ID`, as the next recipe shows.
 
 **Keep the fleet on your organization.** Combine the sign-in switches with an account restriction and, if you need it, a region lock. In a `com.openrouter.ori` payload:
 
@@ -259,16 +209,10 @@ Leave out `ORI_REQUIRED_WORKSPACE_ID` to allow any workspace in the organization
 
 ## Settings reference
 
-Every name below works as an environment variable, as an `env` entry in any
-config file, as a managed-preferences key, and in the machine policy file. The exceptions are the [administrator-only settings](#configuring-managed-machines), which work only in managed preferences and the machine policy file, and the settings that choose where a credential goes, which Ori ignores in a project's `.ori/config.json`.
+Every name below works as an environment variable, as an `env` entry in any config file, as a managed-preferences key, and in the machine policy file. The exceptions are the [administrator-only settings](#configuring-managed-machines), which work only in managed preferences and the machine policy file, and the settings that choose where a credential goes, which Ori ignores in a project's `.ori/config.json`.
 
 <Note>
-  Ori 0.14 and earlier read less than that. Config files and the machine
-  policy file carry the update and installation settings plus the sign-in
-  method Ori remembers, every other name comes from the environment only, and
-  macOS managed preferences are not read at all, so a profile you deploy to
-  those versions has no effect. Export the setting in the environment until
-  the fleet is on a newer build.
+  Ori 0.14 and earlier read less than that. Config files and the machine policy file carry the update and installation settings plus the sign-in method Ori remembers, every other name comes from the environment only, and macOS managed preferences are not read at all, so a profile you deploy to those versions has no effect. Export the setting in the environment until the fleet is on a newer build.
 </Note>
 
 ### Updates and installation

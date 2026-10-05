@@ -15,27 +15,13 @@ nofollow: false
 icon: arrow-right-arrow-left
 ---
 
-**Goal:** Migrate an existing app's LLM calls to OpenRouter without rewriting how
-the app works.
+**Goal:** Migrate an existing app's LLM calls to OpenRouter without rewriting how the app works.
 
-**Outcome:** Your model calls route through OpenRouter with the same streaming,
-tool calling, and response shapes, using your existing framework wherever a clean
-OpenRouter path exists. If your app has server-side agent or tool loops, the prompt
-can optionally move that execution onto OpenRouter's
-[Agent SDK](/agent-sdk/overview) (`@openrouter/agent`). That's a bigger change
-than a provider swap, so the prompt recommends it only when it fits and asks before
-doing it — you can decline and keep the minimal migration.
+**Outcome:** Your model calls route through OpenRouter with the same streaming, tool calling, and response shapes, using your existing framework wherever a clean OpenRouter path exists. If your app has server-side agent or tool loops, the prompt can optionally move that execution onto OpenRouter's [Agent SDK](/agent-sdk/overview) (`@openrouter/agent`). That's a bigger change than a provider swap, so the prompt recommends it only when it fits and asks before doing it — you can decline and keep the minimal migration.
 
-OpenRouter is OpenAI-compatible, so most migrations come down to three changes:
-the base URL, the API key, and the model ID. The prompt below does that work for
-you across whatever stack your app uses. Paste it into a coding agent at the root
-of the project you want to migrate.
+OpenRouter is OpenAI-compatible, so most migrations come down to three changes: the base URL, the API key, and the model ID. The prompt below does that work for you across whatever stack your app uses. Paste it into a coding agent at the root of the project you want to migrate.
 
-The prompt comes in two versions. Use the **With /goal** tab if your coding
-agent supports a `/goal` command — it leads with an explicit goal and
-done-criteria so the agent runs the migration to completion instead of stopping
-at advice. Use the **Without /goal** tab to paste the migration prompt on its
-own.
+The prompt comes in two versions. Use the **With /goal** tab if your coding agent supports a `/goal` command — it leads with an explicit goal and done-criteria so the agent runs the migration to completion instead of stopping at advice. Use the **Without /goal** tab to paste the migration prompt on its own.
 
 <CodeGroup>
 ```text title="With /goal" expandable lines
@@ -391,81 +377,48 @@ Do the migration now. Do not stop after giving advice. Make the code changes, up
 
 ## Prerequisites
 
-- A coding agent with file access to your project (Claude Code, Cursor, Codex
-  CLI, OpenClaw, or similar)
-- An **OpenRouter API key** — create one at
-  [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys), and add
-  credits if your models aren't free
+- A coding agent with file access to your project (Claude Code, Cursor, Codex CLI, OpenClaw, or similar)
+- An **OpenRouter API key** — create one at [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys), and add credits if your models aren't free
 - A clean git working tree so you can review the diff before committing
 
 <Warning>
-  This prompt edits your codebase. It changes provider imports, model IDs,
-  environment variables, dependencies, and docs, then runs your
-  lint/typecheck/test/build commands. Run it on a branch and review the diff
-  before merging. If you let it run a live smoke test, that request spends
-  OpenRouter credits.
+  This prompt edits your codebase. It changes provider imports, model IDs, environment variables, dependencies, and docs, then runs your lint/typecheck/test/build commands. Run it on a branch and review the diff before merging. If you let it run a live smoke test, that request spends OpenRouter credits.
 </Warning>
 
 ## How to use it
 
 1. Open your coding agent at the root of the project you want to migrate.
-2. Make sure `OPENROUTER_API_KEY` is set in your environment. The prompt checks
-   for it without printing the value.
+2. Make sure `OPENROUTER_API_KEY` is set in your environment. The prompt checks for it without printing the value.
 3. Paste the prompt and let the agent inventory your AI integration code first.
-4. If your project runs server-side agent or tool loops, the agent may ask whether
-   to include an Agent SDK migration. Say yes to move that execution to
-   `@openrouter/agent`, or no to keep the minimal provider swap.
-5. Review the migration plan and the diff. The agent preserves your framework
-   and retargets only the model-call boundary.
+4. If your project runs server-side agent or tool loops, the agent may ask whether to include an Agent SDK migration. Say yes to move that execution to `@openrouter/agent`, or no to keep the minimal provider swap.
+5. Review the migration plan and the diff. The agent preserves your framework and retargets only the model-call boundary.
 6. Run your tests and hit a real route to confirm behavior is unchanged.
 
 ## What the prompt handles
 
 The prompt picks a different path per stack so the migration stays minimal:
 
-- **OpenAI SDK** (TypeScript or Python) — retarget `baseURL` / `base_url` to
-  `https://openrouter.ai/api/v1` and swap model IDs. See
-  [OpenAI SDK](/guides/community/openai-sdk).
-- **Vercel AI SDK** — swap the provider for
-  [`@openrouter/ai-sdk-provider`](/guides/community/vercel-ai-sdk) while
-  keeping `generateText`, `streamText`, tools, and UI stream protocols intact.
-- **Vercel AI Gateway** — replace `gateway(...)` and `AI_GATEWAY_API_KEY` with
-  the OpenRouter provider and `OPENROUTER_API_KEY`, including the user-facing
-  setup text.
-- **Mastra** — keep Mastra and switch model strings to
-  `openrouter/provider/model`. See [Mastra](/guides/community/mastra).
-- **Anthropic SDK** — translate Claude message content to OpenRouter chat
-  completions or the native OpenRouter SDK.
-- **Anthropic Agent SDK** — keep the agent loop and point it at OpenRouter with
-  `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN`. See
-  [Anthropic Agent SDK](/guides/community/anthropic-agent-sdk).
-- **Raw HTTP and unlisted stacks** — retarget OpenAI-compatible calls and
-  preserve route shapes, streaming, and tool semantics.
+- **OpenAI SDK** (TypeScript or Python) — retarget `baseURL` / `base_url` to `https://openrouter.ai/api/v1` and swap model IDs. See [OpenAI SDK](/guides/community/openai-sdk).
+- **Vercel AI SDK** — swap the provider for [`@openrouter/ai-sdk-provider`](/guides/community/vercel-ai-sdk) while keeping `generateText`, `streamText`, tools, and UI stream protocols intact.
+- **Vercel AI Gateway** — replace `gateway(...)` and `AI_GATEWAY_API_KEY` with the OpenRouter provider and `OPENROUTER_API_KEY`, including the user-facing setup text.
+- **Mastra** — keep Mastra and switch model strings to `openrouter/provider/model`. See [Mastra](/guides/community/mastra).
+- **Anthropic SDK** — translate Claude message content to OpenRouter chat completions or the native OpenRouter SDK.
+- **Anthropic Agent SDK** — keep the agent loop and point it at OpenRouter with `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN`. See [Anthropic Agent SDK](/guides/community/anthropic-agent-sdk).
+- **Raw HTTP and unlisted stacks** — retarget OpenAI-compatible calls and preserve route shapes, streaming, and tool semantics.
 
-**OpenRouter Agent SDK (optional)** — when your project has server-side tool
-execution, multi-turn agent loops, or custom orchestration, the prompt can move
-that boundary to [`@openrouter/agent`](/agent-sdk/overview). It recommends
-this only when the evidence is there and asks before making the change; otherwise
-it stays on the least-disruptive provider path above.
+**OpenRouter Agent SDK (optional)** — when your project has server-side tool execution, multi-turn agent loops, or custom orchestration, the prompt can move that boundary to [`@openrouter/agent`](/agent-sdk/overview). It recommends this only when the evidence is there and asks before making the change; otherwise it stays on the least-disruptive provider path above.
 
-For other new OpenRouter code, the prompt prefers `@openrouter/sdk` for platform
-APIs and the `openrouter` package for Python.
+For other new OpenRouter code, the prompt prefers `@openrouter/sdk` for platform APIs and the `openrouter` package for Python.
 
 ## Check your work
 
 - Your lint, typecheck, test, and build commands pass on the migrated code.
-- Model calls hit `https://openrouter.ai/api/v1` using `OPENROUTER_API_KEY`,
-  with OpenRouter `provider/model` slugs.
+- Model calls hit `https://openrouter.ai/api/v1` using `OPENROUTER_API_KEY`, with OpenRouter `provider/model` slugs.
 - Streaming, tool calls, and structured outputs behave the same as before.
-- No stale provider keys, base URLs, or model IDs remain, except boundaries the
-  agent deliberately left in place and documented (such as embeddings or image
-  generation).
+- No stale provider keys, base URLs, or model IDs remain, except boundaries the agent deliberately left in place and documented (such as embeddings or image generation).
 
 ## Next steps
 
-- New to OpenRouter? Start with the
-  [Quickstart: Build a Chat App](/cookbook/get-started/quickstart).
-- Building agents or tool loops? See the
-  [Agent SDK](/agent-sdk/overview) (`@openrouter/agent`).
-- Browse every available model at
-  [openrouter.ai/models](https://openrouter.ai/models).
+- New to OpenRouter? Start with the [Quickstart: Build a Chat App](/cookbook/get-started/quickstart).
+- Building agents or tool loops? See the [Agent SDK](/agent-sdk/overview) (`@openrouter/agent`).
+- Browse every available model at [openrouter.ai/models](https://openrouter.ai/models).

@@ -267,20 +267,15 @@ You can also call the Decisions API through the OpenRouter [TypeScript](/client-
 
 ### Frequently asked questions
 
-**How do I get access to Jev?**
-Simply create an OpenRouter API key and send a request to the Decisions API with `model` set to `typesafe/jev-1.13`. You don't need a separate signup, a waitlist, or a TypeSafe account.
+**How do I get access to Jev?** Simply create an OpenRouter API key and send a request to the Decisions API with `model` set to `typesafe/jev-1.13`. You don't need a separate signup, a waitlist, or a TypeSafe account.
 
-**What does Jev cost?**
-Jev is billed based on the number of input tokens, and output tokens are free. On the [Jev model page](https://openrouter.ai/typesafe/jev-1.13), you can find the current price and the context length. Finally, each response has a `usage.cost` field that reports what that call cost you in USD.
+**What does Jev cost?** Jev is billed based on the number of input tokens, and output tokens are free. On the [Jev model page](https://openrouter.ai/typesafe/jev-1.13), you can find the current price and the context length. Finally, each response has a `usage.cost` field that reports what that call cost you in USD.
 
-**Is Jev an LLM?**
-No, Jev is a System One decision model which returns answers that are typed with probabilities rather than generated text, and does not return any reasoning trace or explanation for the answer.
+**Is Jev an LLM?** No, Jev is a System One decision model which returns answers that are typed with probabilities rather than generated text, and does not return any reasoning trace or explanation for the answer.
 
-**Can I ask more than one question per request?**
-Yes, put every independent question about the same state in one request. All questions in the request are answered in parallel and cannot see each other's answers.
+**Can I ask more than one question per request?** Yes, put every independent question about the same state in one request. All questions in the request are answered in parallel and cannot see each other's answers.
 
-**Can I use `~typesafe/jev-latest`?**
-Yes. The current Jev release is tracked under the `~typesafe/jev-latest` alias. Pin `typesafe/jev-1.13` when you need thresholds tuned against one specific version to stay stable.
+**Can I use `~typesafe/jev-latest`?** Yes. The current Jev release is tracked under the `~typesafe/jev-latest` alias. Pin `typesafe/jev-1.13` when you need thresholds tuned against one specific version to stay stable.
 
 ### Next steps
 

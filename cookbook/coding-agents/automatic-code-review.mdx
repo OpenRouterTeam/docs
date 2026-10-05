@@ -28,9 +28,7 @@ icon: magnifying-glass-chart
 ---
 
 <Info>
-  A reference implementation is available at
-  [**redline**](https://github.com/alexanderatallah/redline).
-  Key features:
+  A reference implementation is available at [**redline**](https://github.com/alexanderatallah/redline). Key features:
 
   - Claude (or you) decides when a review is necessary
   - Claude Code is in full control of the reviewer agent — it runs as an async background process
@@ -41,12 +39,7 @@ icon: magnifying-glass-chart
 
 ## What This Achieves
 
-Every time Claude Code finishes a response and there
-are uncommitted changes, a hook automatically triggers
-a background Codex code review — without blocking your
-workflow. You keep working while the review runs. When
-it finishes, Claude reads the output and presents the
-findings.
+Every time Claude Code finishes a response and there are uncommitted changes, a hook automatically triggers a background Codex code review — without blocking your workflow. You keep working while the review runs. When it finishes, Claude reads the output and presents the findings.
 
 ```text lines
 Claude Code Stop event
@@ -66,29 +59,22 @@ Claude Code Stop event
       exit 0 silently → Claude proceeds normally
 ```
 
-No background processes, no daemons, no filesystem
-protocols. The hook is the trigger, and Claude Code's
-own background task system handles async execution.
+No background processes, no daemons, no filesystem protocols. The hook is the trigger, and Claude Code's own background task system handles async execution.
 
 ## Prerequisites
 
 - An [OpenRouter API key](https://openrouter.ai/settings/keys)
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview)
-  installed (`claude` on PATH)
-- [Codex CLI](https://github.com/openai/codex)
-  installed (`codex` on PATH)
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) installed (`claude` on PATH)
+- [Codex CLI](https://github.com/openai/codex) installed (`codex` on PATH)
 - [Bun](https://bun.sh/) or Node.js runtime
 
 ## Configuring OpenRouter
 
-Both agents route inference through OpenRouter, but
-they use different API skins with different base URLs.
+Both agents route inference through OpenRouter, but they use different API skins with different base URLs.
 
 ### Claude Code
 
-Set these environment variables in your shell profile
-(`~/.zshrc`, `~/.bashrc`). **Do not** use a `.env`
-file — Claude Code doesn't read them.
+Set these environment variables in your shell profile (`~/.zshrc`, `~/.bashrc`). **Do not** use a `.env` file — Claude Code doesn't read them.
 
 ```bash lines
 export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
@@ -97,19 +83,10 @@ export ANTHROPIC_API_KEY=""
 ```
 
 <Warning>
-  The base URL is `https://openrouter.ai/api` — **no
-  `/v1` suffix**. This is OpenRouter's Anthropic Skin,
-  which speaks the native Anthropic protocol. Using
-  `/v1` causes model-not-found errors.
-  `ANTHROPIC_API_KEY` must be explicitly empty to
-  prevent Claude Code from authenticating directly
-  with Anthropic.
+  The base URL is `https://openrouter.ai/api` — **no `/v1` suffix**. This is OpenRouter's Anthropic Skin, which speaks the native Anthropic protocol. Using `/v1` causes model-not-found errors. `ANTHROPIC_API_KEY` must be explicitly empty to prevent Claude Code from authenticating directly with Anthropic.
 </Warning>
 
-Verify by running `/status` in a Claude Code session.
-See the full
-[Claude Code integration guide](/cookbook/coding-agents/claude-code-integration)
-for details.
+Verify by running `/status` in a Claude Code session. See the full [Claude Code integration guide](/cookbook/coding-agents/claude-code-integration) for details.
 
 ### Codex CLI
 
@@ -128,69 +105,43 @@ Then set the API key:
 export OPENROUTER_API_KEY="sk-or-..."
 ```
 
-At runtime, pass
-`-c 'model_provider="openrouter"'` to select the
-OpenRouter provider.
+At runtime, pass `-c 'model_provider="openrouter"'` to select the OpenRouter provider.
 
 <Warning>
   Common pitfalls:
 
-  - Codex CLI does **not** have a `--provider` flag —
-    use `-c` for all runtime config overrides
-  - The TOML section is `[model_providers.openrouter]`,
-    **not** `[provider.openrouter]`
-  - Codex uses `https://openrouter.ai/api/v1` (with
-    `/v1`), while Claude uses
-    `https://openrouter.ai/api` (without `/v1`) —
-    they use different protocol skins
+  - Codex CLI does **not** have a `--provider` flag — use `-c` for all runtime config overrides
+  - The TOML section is `[model_providers.openrouter]`, **not** `[provider.openrouter]`
+  - Codex uses `https://openrouter.ai/api/v1` (with `/v1`), while Claude uses `https://openrouter.ai/api` (without `/v1`) — they use different protocol skins
 </Warning>
 
-See the full
-[Codex CLI integration guide](/cookbook/coding-agents/codex-cli)
-for details.
+See the full [Codex CLI integration guide](/cookbook/coding-agents/codex-cli) for details.
 
 ## Understanding the Stop Hook
 
-Claude Code has a hook system configured in
-`settings.json`. The key hook for this use case is
-**Stop**, which fires every time Claude finishes a
-response cycle.
+Claude Code has a hook system configured in `settings.json`. The key hook for this use case is **Stop**, which fires every time Claude finishes a response cycle.
 
 ### How `decision: "block"` works
 
 1. The hook command runs and outputs JSON to stdout
-1. If the JSON contains `"decision": "block"` with a
-   `"reason"` string, Claude Code:
+1. If the JSON contains `"decision": "block"` with a `"reason"` string, Claude Code:
    - Does **not** stop — it continues the conversation
-   - The `reason` text is injected into Claude's
-     context as new information
-   - Claude processes it and acts on it (e.g.,
-     spawning a background task as instructed)
-1. If the command exits 0 with no JSON output, Claude
-   proceeds normally (no blocking)
-1. If the command exits non-zero, it's treated as a
-   non-blocking error
+   - The `reason` text is injected into Claude's context as new information
+   - Claude processes it and acts on it (e.g., spawning a background task as instructed)
+1. If the command exits 0 with no JSON output, Claude proceeds normally (no blocking)
+1. If the command exits non-zero, it's treated as a non-blocking error
 
-This is the key mechanism: the check command uses
-`decision: "block"` to inject a diff stat summary
-and review instructions into Claude's context. Claude
-sees the summary, decides whether the changes warrant
-a review, and if so spawns the review command via its
-Bash tool. The background task appears in Claude's
-task list — visible, monitorable, and killable.
+This is the key mechanism: the check command uses `decision: "block"` to inject a diff stat summary and review instructions into Claude's context. Claude sees the summary, decides whether the changes warrant a review, and if so spawns the review command via its Bash tool. The background task appears in Claude's task list — visible, monitorable, and killable.
 
 ### Settings file locations
 
 In order of precedence:
 
 - `~/.claude/settings.json` — global (all projects)
-- `.claude/settings.json` — project (shareable,
-  committed)
-- `.claude/settings.local.json` — project (local,
-  gitignored)
+- `.claude/settings.json` — project (shareable, committed)
+- `.claude/settings.local.json` — project (local, gitignored)
 
-Use `.claude/settings.local.json` for the review
-hook so it doesn't affect other collaborators.
+Use `.claude/settings.local.json` for the review hook so it doesn't affect other collaborators.
 
 ### Hook configuration
 
@@ -212,44 +163,25 @@ hook so it doesn't affect other collaborators.
 }
 ```
 
-The timeout is 10 seconds — the check is fast. This
-is much lower than the 300s you'd need for a
-synchronous review.
+The timeout is 10 seconds — the check is fast. This is much lower than the 300s you'd need for a synchronous review.
 
 ## Why Async Matters
 
-A simpler synchronous approach — running the full
-review inside the Stop hook — has three problems:
+A simpler synchronous approach — running the full review inside the Stop hook — has three problems:
 
-1. **Blocking.** `codex exec review` can take minutes.
-   A synchronous Stop hook blocks Claude Code the
-   entire time — no progress visibility, no way to
-   cancel.
-1. **No filtering.** The hook fires after every
-   response, even when Claude just answered a question
-   and made no code changes.
-1. **Duplicate reviews.** Nothing prevents the hook
-   from triggering a second review while one is
-   already running.
+1. **Blocking.** `codex exec review` can take minutes. A synchronous Stop hook blocks Claude Code the entire time — no progress visibility, no way to cancel.
+1. **No filtering.** The hook fires after every response, even when Claude just answered a question and made no code changes.
+1. **Duplicate reviews.** Nothing prevents the hook from triggering a second review while one is already running.
 
-The async approach solves all three: the check is
-fast (&lt;1s), only fires when changes exist, hashes
-the diff stat to skip when nothing has changed since
-the last check, and the reason text tells Claude to
-skip if a review is already running. The actual
-review runs as a Claude Code background task that the
-user can monitor and kill.
+The async approach solves all three: the check is fast (&lt;1s), only fires when changes exist, hashes the diff stat to skip when nothing has changed since the last check, and the reason text tells Claude to skip if a review is already running. The actual review runs as a Claude Code background task that the user can monitor and kill.
 
 ## The Two-Command Architecture
 
-The tool splits into two commands: **check** (the
-fast gate, called by the hook) and **review** (the
-actual work, spawned by Claude as a background task).
+The tool splits into two commands: **check** (the fast gate, called by the hook) and **review** (the actual work, spawned by Claude as a background task).
 
 ### Building the check command
 
-The check command runs on every Stop event and must
-complete in under a second.
+The check command runs on every Stop event and must complete in under a second.
 
 ```typescript expandable lines
 import { execSync } from "child_process";
@@ -337,22 +269,11 @@ function check(model?: string): void {
 }
 ```
 
-The check uses `git diff --stat HEAD` for a concise
-summary of what changed, falling back to
-`git status --porcelain` for untracked files. It
-hashes the diff stat and stores it in
-`.git/redline-last-diff` — if the diff hasn't changed
-since the last check, the hook exits silently. This
-prevents the same diff from repeatedly firing the
-hook. The diff stat is included in the reason text so
-Claude can decide whether the changes warrant a
-review.
+The check uses `git diff --stat HEAD` for a concise summary of what changed, falling back to `git status --porcelain` for untracked files. It hashes the diff stat and stores it in `.git/redline-last-diff` — if the diff hasn't changed since the last check, the hook exits silently. This prevents the same diff from repeatedly firing the hook. The diff stat is included in the reason text so Claude can decide whether the changes warrant a review.
 
 ### Building the review command
 
-The review command is spawned by Claude as a
-background task. It streams Codex output in real-time
-for progress visibility, then prints a final summary.
+The review command is spawned by Claude as a background task. It streams Codex output in real-time for progress visibility, then prints a final summary.
 
 ```typescript expandable lines
 import { spawn } from "child_process";
@@ -416,23 +337,16 @@ async function review(model?: string): Promise<void> {
 
 Key details:
 
-- `codex exec review --uncommitted` — reviews all
-  staged, unstaged, and untracked changes
-- `stdio: "inherit"` — streams Codex output in
-  real-time so the background task shows progress
-- `-o <file>` — writes the last agent message to a
-  file for reliable output capture
-- `-c 'model_provider="openrouter"'` — routes
-  through OpenRouter
-- Optional: `-c 'model="openai/gpt-5.4-pro"'` for
-  model override
-- Exit code is checked — if Codex fails and produced
-  no output, the tool exits with an error
+- `codex exec review --uncommitted` — reviews all staged, unstaged, and untracked changes
+- `stdio: "inherit"` — streams Codex output in real-time so the background task shows progress
+- `-o <file>` — writes the last agent message to a file for reliable output capture
+- `-c 'model_provider="openrouter"'` — routes through OpenRouter
+- Optional: `-c 'model="openai/gpt-5.4-pro"'` for model override
+- Exit code is checked — if Codex fails and produced no output, the tool exits with an error
 
 ### The reason text that instructs Claude
 
-The check command's `reason` field includes the diff
-stat and lets Claude decide whether to review:
+The check command's `reason` field includes the diff stat and lets Claude decide whether to review:
 
 ```text lines
 Redline: Here is a summary of uncommitted changes
@@ -454,17 +368,11 @@ running, skip it. When a review completes, assess
 the findings and inform the user of any issues.
 ```
 
-Claude sees the summary, judges whether the changes
-are substantive, and either spawns the review as a
-background task or skips it. When the review
-completes, Claude reads the streamed output and
-presents the findings.
+Claude sees the summary, judges whether the changes are substantive, and either spawns the review as a background task or skips it. When the review completes, Claude reads the streamed output and presents the findings.
 
 ## Installing and Removing the Hook
 
-The tool should provide commands to programmatically
-install and remove the hook from
-`.claude/settings.local.json`.
+The tool should provide commands to programmatically install and remove the hook from `.claude/settings.local.json`.
 
 ### Install
 
@@ -472,13 +380,7 @@ install and remove the hook from
 redline install
 ```
 
-Read `.claude/settings.local.json`, deep-merge the
-Stop hook entry, and write back. Create the `.claude/`
-directory if needed. Be idempotent — if the hook
-already exists with the same config, skip. If it
-exists with a different model, update it. Identify
-your hooks by command prefix (commands starting with
-`"redline"`).
+Read `.claude/settings.local.json`, deep-merge the Stop hook entry, and write back. Create the `.claude/` directory if needed. Be idempotent — if the hook already exists with the same config, skip. If it exists with a different model, update it. Identify your hooks by command prefix (commands starting with `"redline"`).
 
 The resulting file:
 
@@ -506,10 +408,7 @@ The resulting file:
 redline off
 ```
 
-Filter out hook entries whose `command` starts with
-`"redline"`. Clean up empty arrays and objects
-(remove `Stop: []` if empty, remove `hooks: {}` if
-empty).
+Filter out hook entries whose `command` starts with `"redline"`. Clean up empty arrays and objects (remove `Stop: []` if empty, remove `hooks: {}` if empty).
 
 ### Implementation
 
@@ -692,8 +591,7 @@ redline install
 cat .claude/settings.local.json
 ```
 
-You should see the Stop hook entry with the
-`redline check` command and a 10-second timeout.
+You should see the Stop hook entry with the `redline check` command and a 10-second timeout.
 
 ### Test check with no changes
 
@@ -703,8 +601,7 @@ Ensure your working tree is clean, then:
 redline check
 ```
 
-No output — the check exits silently when there are
-no uncommitted changes.
+No output — the check exits silently when there are no uncommitted changes.
 
 ### Test check with changes
 
@@ -714,9 +611,7 @@ Make a small change to any file, then:
 redline check
 ```
 
-You should see JSON with `"decision": "block"` and a
-`"reason"` containing the diff stat summary and
-review instructions.
+You should see JSON with `"decision": "block"` and a `"reason"` containing the diff stat summary and review instructions.
 
 ### Test review
 
@@ -724,47 +619,26 @@ review instructions.
 redline review
 ```
 
-You should see streamed Codex output followed by a
-review summary.
+You should see streamed Codex output followed by a review summary.
 
 ### Full integration test
 
 1. Install the hook: `redline install`
 1. Start Claude Code: `claude`
 1. Ask Claude to make a small code change
-1. When Claude finishes, the Stop hook fires the
-   check — if there are uncommitted changes, Claude
-   spawns the review as a background task
+1. When Claude finishes, the Stop hook fires the check — if there are uncommitted changes, Claude spawns the review as a background task
 1. You can keep working while the review runs
-1. When the review completes, Claude reads the output
-   and presents any findings
+1. When the review completes, Claude reads the output and presents any findings
 
 ## Limitations and Future Work
 
 ### Claude Code only
 
-This pattern relies on Claude Code's
-`decision: "block"` hook output, which injects
-instructions directly into the agent's conversation.
-Codex CLI's hook system (as of early 2026) is more
-limited — its `Stop` hook is fire-and-forget and
-cannot feed structured output back into the model's
-context. Native hooks (`[[hooks]]` in config.toml)
-support several events, but only `SessionStart` can
-feed stdout into the model. There is no equivalent of
-`decision: "block"` + `reason` for injecting
-mid-session instructions. When Codex adds full
-structured hook output support, this pattern can be
-extended.
+This pattern relies on Claude Code's `decision: "block"` hook output, which injects instructions directly into the agent's conversation. Codex CLI's hook system (as of early 2026) is more limited — its `Stop` hook is fire-and-forget and cannot feed structured output back into the model's context. Native hooks (`[[hooks]]` in config.toml) support several events, but only `SessionStart` can feed stdout into the model. There is no equivalent of `decision: "block"` + `reason` for injecting mid-session instructions. When Codex adds full structured hook output support, this pattern can be extended.
 
 ### Review granularity
 
-The review covers everything uncommitted — all
-staged, unstaged, and untracked changes. It does not
-distinguish between changes Claude just made and
-pre-existing uncommitted work. Future versions could
-use smarter change detection (e.g., diffing against a
-baseline snapshot taken before Claude's response).
+The review covers everything uncommitted — all staged, unstaged, and untracked changes. It does not distinguish between changes Claude just made and pre-existing uncommitted work. Future versions could use smarter change detection (e.g., diffing against a baseline snapshot taken before Claude's response).
 
 ## Resources
 

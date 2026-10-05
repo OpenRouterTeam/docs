@@ -20,9 +20,7 @@ sidebarTitle: For Providers
 If you'd like to be a model provider and sell inference on OpenRouter, [fill out our form](https://openrouter.ai/how-to-list) to get started.
 
 <Note>
-  Integrated before the current model document format? The
-  [legacy flat format](/guides/community/for-providers-legacy) remains supported for existing
-  integrations.
+  Integrated before the current model document format? The [legacy flat format](/guides/community/for-providers-legacy) remains supported for existing integrations.
 </Note>
 
 To be eligible to provide inference on OpenRouter you must have the following:
@@ -144,10 +142,7 @@ The `id` field should be the exact model identifier that OpenRouter will use whe
 All `cost_usd` fields are in string format to avoid floating point precision issues, and must be in USD.
 
 <Note>
-  The [previous flat model document format](/guides/community/for-providers-legacy) (a flat
-  `pricing` object with `pricing.overrides`, `supported_sampling_parameters`,
-  `supported_features`, and `capacity_tpm`) remains supported for existing integrations, but use
-  the format above for all new integrations.
+  The [previous flat model document format](/guides/community/for-providers-legacy) (a flat `pricing` object with `pricing.overrides`, `supported_sampling_parameters`, `supported_features`, and `capacity_tpm`) remains supported for existing integrations, but use the format above for all new integrations.
 </Note>
 
 Valid quantization values are: `int4`, `int8`, `fp4`, `mxfp4`, `nvfp4`, `fp6`, `fp8`, `mxfp8`, `fp16`, `bf16`, `fp32`. Use `null` (or omit the field) when the precision is undeclared.
@@ -508,8 +503,7 @@ The `when` predicate is either a parameter-to-condition map or a composition usi
 Override entries are evaluated in order. Among matching predicates, the later entry wins. This makes a resolution-by-steps price matrix expressible without OR nesting. Predicates may reference parameters declared by the owning modality or request-derived quantities such as prompt token count.
 
 <Note>
-  Override predicates are parameter-based. Time-dependent pricing is not an override, because time
-  is not a request parameter. See [Time-of-Day Pricing](#time-of-day-pricing).
+  Override predicates are parameter-based. Time-dependent pricing is not an override, because time is not a request parameter. See [Time-of-Day Pricing](#time-of-day-pricing).
 </Note>
 
 #### Cache pricing

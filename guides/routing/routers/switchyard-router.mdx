@@ -1,6 +1,6 @@
 ---
 title: Switchyard Router
-description: Route each request to the cheapest model in your shortlist that can handle it
+description: Switch between multiple models of your choice to optimize the cost of the request
 seoTitle: 'Switchyard Router | Cost-Aware Model Selection with OpenRouter'
 og:site_name: OpenRouter Documentation
 og:title: 'Switchyard Router - nvidia/switchyard'
@@ -16,9 +16,15 @@ icon: train-track
 import { API_KEY_REF } from '/snippets/exports/constants.mdx';
 import { Template } from "/snippets/exports/Template.jsx";
 
-The [Switchyard Router](https://openrouter.ai/nvidia/switchyard) (`nvidia/switchyard`) picks one model per request from a shortlist, using the routing algorithms from [NVIDIA Switchyard](https://github.com/NVIDIA-NeMo/Switchyard). You name up to three candidate models in `models`, or omit `models` to get a default pair drawn from the most-used models of the previous seven days; the router decides which one handles the request and in what order the others serve as fallbacks.
+The [Switchyard Router](https://openrouter.ai/nvidia/switchyard) (`nvidia/switchyard`) is an open-source model router that switches between multiple models to optimize the cost of requests. It uses the routing algorithms from [NVIDIA Switchyard](https://github.com/NVIDIA-NeMo/Switchyard). By default, it uses OpenRouter market data to select the most popular low-cost and high-cost models. You can also name up to three candidate models in `models`; the router picks the one that handles each request, and the others serve as fallbacks.
 
-The default algorithm, `stage`, scores the tool results already in the conversation and routes to the cheapest or the most capable candidate when that score is decisive. When it is not, including on a fresh request with no tool results, it sends a short prompt to a small judge model and asks whether the cheapest candidate can solve the task. Other algorithms ask the judge on every human turn, hold a choice across a multi-turn task, or skip the judge entirely.
+Choose an algorithm for how the router picks between the low-cost (efficient) and high-cost (capable) models:
+
+- **`stage` (default):** Scores the tool results already in the conversation, such as errors, repeated failures, and edits that landed. This scoring doesn't call a classifier or decision model, so a decisive score routes the request quickly, with no extra model call before the main model starts. When the score isn't decisive, including on a fresh request with no tool results, `stage` falls back to the judge, a small, fast model that rates the task.
+- **`capability`:** Asks the judge on every human turn whether the efficient model can solve the task, and reuses that choice for the turn's tool calls.
+- **`composite`:** Runs `stage` on human turns, remembers the chosen tier for the conversation, and holds it through long agent tasks unless the tool results point elsewhere.
+
+Other algorithms skip the judge entirely, pick at random as an A/B baseline, or serve your `models` order unchanged. See [Algorithms](#algorithms).
 
 ## How it works
 
@@ -35,7 +41,7 @@ The algorithms do not know your models by name. They choose between two roles, *
 
 1. For each candidate, take its lowest-priced endpoint among the endpoints your request is allowed to use.
 2. Price that endpoint as prompt price plus completion price, per token.
-3. The candidate with the lowest price is the efficient tier. The candidate with the highest price is the capable tier.
+3. The lowest-priced candidate becomes the efficient tier, and the highest-priced candidate becomes the capable tier.
 
 For example, with `models: ["deepseek/deepseek-v3.2", "anthropic/claude-sonnet-4.5"]` and the prices listed at the time of writing:
 
@@ -186,7 +192,7 @@ Choose an algorithm per request with the `switchyard-router` plugin. Omit the pl
 | `random` | Picks one candidate at random on each human turn and keeps it for tool turns (see [Session pins](#session-pins)). Useful as an A/B baseline. | Never |
 | `passthrough` | Serves the eligible candidates in the order you listed them. No routing decision. | Never |
 
-An `algorithm` value outside this list returns `400` before the request runs.
+An `algorithm` value outside this list returns `400`.
 
 Every algorithm that uses the judge decides **before** the request runs: the judge reads the prompt and predicts which tier is needed (NVIDIA Switchyard calls this the LLM classifier in `capability` mode). No algorithm runs the efficient model first and then re-runs the request on the capable model if the answer looks poor; NVIDIA Switchyard's `escalation` mode, which works that way, is not available on OpenRouter.
 
@@ -231,11 +237,11 @@ Use `stage` for coding and tool-using agents that send the whole conversation ba
 }
 ```
 
-The failing assertion is a signal toward the capable tier. One signal on its own does not cross the router's confidence threshold, so a turn like this one goes to the judge. Repeating the same error does not add up: the router scores the strongest error in the last few tool results, so the same failure on the next turn also goes to the judge. A turn skips the judge when the signals corroborate each other, for example an error while the agent is deep in a task with no edits landing goes to `anthropic/claude-sonnet-4.5`, and tests passing right after an edit with no recent errors goes to `deepseek/deepseek-v3.2`. A critical error such as out of memory goes to `anthropic/claude-sonnet-4.5` on its own. The first turn of a conversation has no tool results, so it goes to the judge. `strategy` is `stage`; `judge_ms` is present only on turns the judge decided.
+The failing assertion is a signal toward the capable tier. One signal on its own does not cross the router's confidence threshold, so the judge decides a turn like this one. Repeating the same error does not add up: the router scores the strongest error in the last few tool results, so the same failure on the next turn is also sent to the judge. A turn skips the judge when the signals corroborate each other, for example an error while the agent is deep in a task with no edits landing goes to `anthropic/claude-sonnet-4.5`, and tests passing right after an edit with no recent errors goes to `deepseek/deepseek-v3.2`. A critical error such as out of memory goes to `anthropic/claude-sonnet-4.5` on its own. The first turn of a conversation has no tool results, so it goes to the judge. `strategy` is `stage`; `judge_ms` is present only on turns the judge decided.
 
 ### `auto`
 
-Use `auto` when you want `stage` routing with no judge calls and no judge cost. Turns the tool signals do not decide take the efficient tier.
+Use `auto` when you want `stage` routing without paying for judge calls. Turns the tool signals do not decide take the efficient tier.
 
 ```json
 {
@@ -249,7 +255,7 @@ Use `auto` when you want `stage` routing with no judge calls and no judge cost. 
 }
 ```
 
-This first turn has no tool results and no judge, so it goes to `deepseek/deepseek-v3.2`. The same turn under `stage` would go to the judge. `strategy` is `auto`; `judge_ms` is never present.
+`auto` never calls the judge, so this first turn, which has no tool results, goes to `deepseek/deepseek-v3.2`. The same turn under `stage` would go to the judge. `strategy` is `auto`; `judge_ms` is never present.
 
 ### `composite`
 

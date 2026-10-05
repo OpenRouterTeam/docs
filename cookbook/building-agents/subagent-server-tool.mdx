@@ -64,11 +64,7 @@ Return the changed files, the delegation boundary, the request body shape, the r
 </Tip>
 
 <Warning>
-  Subagent is a beta server tool. Each delegated task runs a separate model
-  call, so it adds cost and latency per delegation. This recipe keeps the worker
-  model cheap and caps output tokens. Use returned `usage.cost` when present, or
-  estimate spend from the worker model's current pricing before widening the
-  delegation scope.
+  Subagent is a beta server tool. Each delegated task runs a separate model call, so it adds cost and latency per delegation. This recipe keeps the worker model cheap and caps output tokens. Use returned `usage.cost` when present, or estimate spend from the worker model's current pricing before widening the delegation scope.
 </Warning>
 
 ## Before you start
@@ -377,12 +373,7 @@ const tools = [
 The full parameter reference is at [Subagent server tool](/guides/features/server-tools/subagent).
 
 <Info>
-  Subagent works with both non-streaming and streaming requests. With streaming
-  (`stream: true`), the server sends `: OPENROUTER PROCESSING` SSE comments as
-  heartbeats while workers execute. Content chunks resume once the orchestrator
-  continues generating. The final chunk includes the aggregated `usage` object.
-  See [Server tools overview](/guides/features/server-tools) for how server
-  tool usage appears in the response.
+  Subagent works with both non-streaming and streaming requests. With streaming (`stream: true`), the server sends `: OPENROUTER PROCESSING` SSE comments as heartbeats while workers execute. Content chunks resume once the orchestrator continues generating. The final chunk includes the aggregated `usage` object. See [Server tools overview](/guides/features/server-tools) for how server tool usage appears in the response.
 </Info>
 
 With `stream: true`, expect this pattern in the SSE stream:

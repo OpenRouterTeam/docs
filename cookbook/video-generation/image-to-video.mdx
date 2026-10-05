@@ -17,11 +17,9 @@ icon: image
 
 import OpenRouterVideoSkill from "/snippets/openrouter-video-skill.mdx";
 
-Use this guide when you need to add image-to-video generation where an image
-becomes the first or last frame of a generated video.
+Use this guide when you need to add image-to-video generation where an image becomes the first or last frame of a generated video.
 
-By the end, your implementation should submit an image-to-video job with
-`frame_images` and download the finished clip.
+By the end, your implementation should submit an image-to-video job with `frame_images` and download the finished clip.
 
 <Tip>
   <OpenRouterVideoSkill/>
@@ -37,10 +35,7 @@ You need:
 - A model that supports `frame_images`, confirmed with `GET /api/v1/videos/models`
 
 <Tip>
-  If you haven't chosen a model yet, read
-  [Choose a Video Generation Model](/cookbook/video-generation/choose-video-model)
-  first. It helps you pick one based on clip duration, output shape, input
-  type, audio, provider controls, and cost.
+  If you haven't chosen a model yet, read [Choose a Video Generation Model](/cookbook/video-generation/choose-video-model) first. It helps you pick one based on clip duration, output shape, input type, audio, provider controls, and cost.
 </Tip>
 
 Use the API reference pages as the source of truth for exact fields:
@@ -50,16 +45,14 @@ Use the API reference pages as the source of truth for exact fields:
 - [TypeScript SDK video generation reference](/client-sdks/typescript/sdks/videogeneration/README)
 
 <Warning>
-Submitting `POST /api/v1/videos` starts a real video generation job and may
-spend OpenRouter credits.
+Submitting `POST /api/v1/videos` starts a real video generation job and may spend OpenRouter credits.
 </Warning>
 
 `frame_images` is for exact frame control. If you provide both `frame_images` and `input_references`, OpenRouter treats the request as image-to-video.
 
 Use a stable, directly downloadable image URL. Some providers cannot fetch image URLs that require cookies, redirects through HTML pages, bot checks, or unusual headers.
 
-Before submitting, check that your image URL returns `200` with an image
-content type:
+Before submitting, check that your image URL returns `200` with an image content type:
 
 ```bash lines
 curl -I "$FIRST_FRAME_URL"
@@ -74,8 +67,7 @@ content-type: image/jpeg
 
 ## Step 1: Choose a model with frame-image support
 
-Fetch the model list and choose a model whose `supported_frame_images` includes
-the frame type you want:
+Fetch the model list and choose a model whose `supported_frame_images` includes the frame type you want:
 
 ```bash lines
 curl https://openrouter.ai/api/v1/videos/models
@@ -93,18 +85,11 @@ Example model output excerpt:
 }
 ```
 
-For first-frame and last-frame control, look for `supported_frame_images`
-containing `first_frame` and `last_frame`.
+For first-frame and last-frame control, look for `supported_frame_images` containing `first_frame` and `last_frame`.
 
 ## Step 2: Submit the image-to-video job
 
-Build the video request with `frame_images` when the image should anchor an
-exact frame. This example uses a first frame. Put the same request shape in
-whatever server route, queue, or worker owns video generation in your app.
-Validate `duration`, `resolution`, and `aspect_ratio` against the selected
-model's supported fields from the
-[video models API](/api/api-reference/video-generation/list-all-video-generation-models)
-before submitting. Unsupported values return a 400 with the supported values.
+Build the video request with `frame_images` when the image should anchor an exact frame. This example uses a first frame. Put the same request shape in whatever server route, queue, or worker owns video generation in your app. Validate `duration`, `resolution`, and `aspect_ratio` against the selected model's supported fields from the [video models API](/api/api-reference/video-generation/list-all-video-generation-models) before submitting. Unsupported values return a 400 with the supported values.
 
 ```js expandable lines
 const apiKey = process.env.OPENROUTER_API_KEY;
@@ -152,8 +137,7 @@ const job = await response.json();
 console.log(job);
 ```
 
-The submit call returns the job fields immediately. In the QA run, the submitted
-job later completed and downloaded with this final summary:
+The submit call returns the job fields immediately. In the QA run, the submitted job later completed and downloaded with this final summary:
 
 ```json lines
 {
@@ -166,8 +150,7 @@ job later completed and downloaded with this final summary:
 
 ## Step 3: Use a last frame when you need a transition
 
-If the selected model supports `last_frame`, add both frames so the model can
-move from a known starting composition to a known ending composition:
+If the selected model supports `last_frame`, add both frames so the model can move from a known starting composition to a known ending composition:
 
 ```js lines
 const lastFrameUrl = process.env.LAST_FRAME_URL;
@@ -215,9 +198,7 @@ This is useful when you want the video to move from a known starting composition
 
 ## Step 4: Poll and download
 
-After submission, poll from a server route, worker, or job runner instead of
-the browser. Poll with a limit, stop on terminal failure, then download the
-completed video.
+After submission, poll from a server route, worker, or job runner instead of the browser. Poll with a limit, stop on terminal failure, then download the completed video.
 
 Example polling and download helper:
 
@@ -295,7 +276,4 @@ Saved image-video.mp4
 
 ## Check your work
 
-The first frame of the resulting video should closely match the image you
-provided as `first_frame`. If you also supplied `last_frame`, the clip should
-resolve toward that image. The implementation should produce a playable MP4
-from the completed job.
+The first frame of the resulting video should closely match the image you provided as `first_frame`. If you also supplied `last_frame`, the clip should resolve toward that image. The implementation should produce a playable MP4 from the completed job.

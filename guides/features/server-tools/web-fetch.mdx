@@ -27,22 +27,15 @@ import { Template } from "/snippets/exports/Template.jsx";
 Server tools are currently in beta. The API and behavior may change.
 </Note>
 
-The `openrouter:web_fetch` server tool gives any model the ability to fetch
-content from a specific URL. When the model needs to read a web page or PDF
-document, it calls the tool with the URL. OpenRouter fetches and extracts the
-content, returning text that the model can use in its response.
+The `openrouter:web_fetch` server tool gives any model the ability to fetch content from a specific URL. When the model needs to read a web page or PDF document, it calls the tool with the URL. OpenRouter fetches and extracts the content, returning text that the model can use in its response.
 
 ## How It Works
 
 1. You include `{ "type": "openrouter:web_fetch" }` in your `tools` array.
-2. Based on the user's prompt, the model decides whether it needs to fetch a
-   URL and generates the request.
-3. OpenRouter fetches the URL using the configured engine (defaults to `auto`,
-   which uses native provider fetch when available or falls back to
-   [Exa](https://exa.ai)).
+2. Based on the user's prompt, the model decides whether it needs to fetch a URL and generates the request.
+3. OpenRouter fetches the URL using the configured engine (defaults to `auto`, which uses native provider fetch when available or falls back to [Exa](https://exa.ai)).
 4. The page content (text, title, and URL) is returned to the model.
-5. The model incorporates the fetched content into its response. It may fetch
-   multiple URLs in a single request if needed.
+5. The model incorporates the fetched content into its response. It may fetch multiple URLs in a single request if needed.
 
 ## Quick Start
 
@@ -154,25 +147,14 @@ The web fetch tool accepts optional `parameters` to customize behavior:
 
 The web fetch server tool supports multiple fetch engines:
 
-- **`auto`** (default): Uses native fetch if the provider supports it,
-  otherwise falls back to Exa
-- **`native`**: Prefers the provider's built-in web fetch; falls back to the
-  `openrouter` engine if the model doesn't support native fetch. When a
-  workspace admin has set an engine list on the Server Tools page, the
-  fallback is the first non-native engine in that list instead; a
-  list of only `native` rejects the request with a 403 on models without
-  native fetch
-- **`exa`**: Uses [Exa](https://exa.ai)'s Contents API to extract page content
-  (supports BYOK)
+- **`auto`** (default): Uses native fetch if the provider supports it, otherwise falls back to Exa
+- **`native`**: Prefers the provider's built-in web fetch; falls back to the `openrouter` engine if the model doesn't support native fetch. When a workspace admin has set an engine list on the Server Tools page, the fallback is the first non-native engine in that list instead; a list of only `native` rejects the request with a 403 on models without native fetch
+- **`exa`**: Uses [Exa](https://exa.ai)'s Contents API to extract page content (supports BYOK)
 - **`openrouter`**: Uses direct HTTP fetch with content extraction
-- **`firecrawl`**: Uses [Firecrawl](https://firecrawl.dev)'s scrape API
-  (BYOK, bring your own key)
-- **`parallel`**: Uses [Parallel](https://parallel.ai)'s extract API for
-  high-quality content extraction
+- **`firecrawl`**: Uses [Firecrawl](https://firecrawl.dev)'s scrape API (BYOK, bring your own key)
+- **`parallel`**: Uses [Parallel](https://parallel.ai)'s extract API for high-quality content extraction
 
-To check whether an endpoint runs web fetch natively, read `native_tools` on
-the endpoint object. See
-[Native Execution](/guides/features/server-tools#native-execution).
+To check whether an endpoint runs web fetch natively, read `native_tools` on the endpoint object. See [Native Execution](/guides/features/server-tools#native-execution).
 
 ### Privacy and regional availability
 
@@ -194,8 +176,7 @@ See [Privacy and regional availability](/guides/features/server-tools#privacy-an
 
 Firecrawl uses your own API key. To set it up:
 
-1. Go to your [OpenRouter plugin settings](https://openrouter.ai/settings/plugins)
-   and configure your Firecrawl API key
+1. Go to your [OpenRouter plugin settings](https://openrouter.ai/settings/plugins) and configure your Firecrawl API key
 2. Your Firecrawl account is billed separately from OpenRouter
 
 ### Hard Limits
@@ -209,8 +190,7 @@ To prevent runaway costs:
 
 ## Domain Filtering
 
-Restrict which domains can be fetched using `allowed_domains` and
-`blocked_domains`:
+Restrict which domains can be fetched using `allowed_domains` and `blocked_domains`:
 
 ```json lines
 {
@@ -222,8 +202,7 @@ Restrict which domains can be fetched using `allowed_domains` and
 }
 ```
 
-When `allowed_domains` is set, only URLs from those domains will be fetched.
-When `blocked_domains` is set, URLs from those domains will be rejected.
+When `allowed_domains` is set, only URLs from those domains will be fetched. When `blocked_domains` is set, URLs from those domains will be rejected.
 
 ## Content Truncation
 
@@ -238,8 +217,7 @@ Use `max_content_tokens` to limit the amount of content returned:
 }
 ```
 
-Content exceeding this limit is truncated. This is useful for controlling
-context window usage when fetching large pages.
+Content exceeding this limit is truncated. This is useful for controlling context window usage when fetching large pages.
 
 ## Works with the Responses API
 
@@ -339,16 +317,11 @@ In both modes a request with no `engine` (or `engine: "auto"`) runs the workspac
 | **OpenRouter** | Free |
 | **Native** | Passed through from the provider |
 
-All pricing is in addition to standard LLM token costs for processing the
-fetched content.
+All pricing is in addition to standard LLM token costs for processing the fetched content.
 
 ## Next Steps
 
-- [Server Tools Overview](/guides/features/server-tools). Learn about
-  server tools
-- [Web Search](/guides/features/server-tools/web-search). Search the web
-  for real-time information
-- [Datetime](/guides/features/server-tools/datetime). Get the current
-  date and time
-- [Tool Calling](/guides/features/tool-calling). Learn about user-defined
-  tool calling
+- [Server Tools Overview](/guides/features/server-tools). Learn about server tools
+- [Web Search](/guides/features/server-tools/web-search). Search the web for real-time information
+- [Datetime](/guides/features/server-tools/datetime). Get the current date and time
+- [Tool Calling](/guides/features/tool-calling). Learn about user-defined tool calling

@@ -155,16 +155,9 @@ The `openrouter_metadata` object follows the same shape as on successful respons
 
 ## Provider errors
 
-OpenRouter normalizes every upstream provider error into the stable, typed
-`error_type` vocabulary documented under [Typed Error Codes](#typed-error-codes).
-The same `error_type` values describe what went wrong whether the provider
-error arrives in a non-streaming response body or as a mid-stream SSE event.
-Native protocol codes (the Anthropic `error.type`, the Responses `error.code`)
-are best-effort and can differ between formats — `error_type` is the field to
-rely on across all of them.
+OpenRouter normalizes every upstream provider error into the stable, typed `error_type` vocabulary documented under [Typed Error Codes](#typed-error-codes). The same `error_type` values describe what went wrong whether the provider error arrives in a non-streaming response body or as a mid-stream SSE event. Native protocol codes (the Anthropic `error.type`, the Responses `error.code`) are best-effort and can differ between formats — `error_type` is the field to rely on across all of them.
 
-For Chat Completions, a provider error that interrupts generation carries
-`error_type` inside `error.metadata`:
+For Chat Completions, a provider error that interrupts generation carries `error_type` inside `error.metadata`:
 
 ```json lines
 {
@@ -179,23 +172,13 @@ For Chat Completions, a provider error that interrupts generation carries
 }
 ```
 
-The same value is carried on mid-stream errors and on the Anthropic and
-Responses skins — see [Skin-Specific Error Formats](#skin-specific-error-formats)
-for the exact wire location in each format.
+The same value is carried on mid-stream errors and on the Anthropic and Responses skins — see [Skin-Specific Error Formats](#skin-specific-error-formats) for the exact wire location in each format.
 
 ### Masking and raw provider details
 
-When a request fails with a `500`, the `message` is replaced with a generic
-string and `provider_code` and `openrouter_metadata` are omitted, but
-`error_type` is still present (`server`).
+When a request fails with a `500`, the `message` is replaced with a generic string and `provider_code` and `openrouter_metadata` are omitted, but `error_type` is still present (`server`).
 
-For non-500 errors, the upstream provider's own error code is surfaced in
-`error.metadata.provider_code` when available. Opt-in routing context (which
-provider was selected, fallback attempts, etc.) is carried in the
-`openrouter_metadata` object when the request sets `X-OpenRouter-Metadata`
-— it follows the same shape as on successful responses (routing-summary
-fields only; see
-[Pipeline Stages](/guides/features/router-metadata#pipeline-stages)).
+For non-500 errors, the upstream provider's own error code is surfaced in `error.metadata.provider_code` when available. Opt-in routing context (which provider was selected, fallback attempts, etc.) is carried in the `openrouter_metadata` object when the request sets `X-OpenRouter-Metadata` — it follows the same shape as on successful responses (routing-summary fields only; see [Pipeline Stages](/guides/features/router-metadata#pipeline-stages)).
 
 ## When no content is generated
 
@@ -288,21 +271,13 @@ Non-streaming requests send the status at the same point. If the provider return
 
 ## Typed error codes
 
-When a provider error reaches your application, OpenRouter tags it with a
-canonical `error_type` string — both on the non-streaming response body and
-on mid-stream SSE events. Use this value, not the HTTP status code alone, to
-programmatically distinguish error categories. It is stable across all three
-API skins even when the native protocol code is lossy.
+When a provider error reaches your application, OpenRouter tags it with a canonical `error_type` string — both on the non-streaming response body and on mid-stream SSE events. Use this value, not the HTTP status code alone, to programmatically distinguish error categories. It is stable across all three API skins even when the native protocol code is lossy.
 
 Where `error_type` appears depends on the skin and path:
 
-- **Chat Completions**: `error.metadata.error_type` — on the mid-stream error
-  chunk (see [Mid-Stream Errors](#mid-stream-errors)) and on the non-streaming
-  response when a provider error interrupts generation.
-- **Anthropic Messages**: `error.error_type` on the SSE `error` event and the
-  non-streaming error envelope.
-- **Responses**: top-level `error_type` on the failed response, for both the
-  streaming `response.failed` event and the non-streaming JSON body.
+- **Chat Completions**: `error.metadata.error_type` — on the mid-stream error chunk (see [Mid-Stream Errors](#mid-stream-errors)) and on the non-streaming response when a provider error interrupts generation.
+- **Anthropic Messages**: `error.error_type` on the SSE `error` event and the non-streaming error envelope.
+- **Responses**: top-level `error_type` on the failed response, for both the streaming `response.failed` event and the non-streaming JSON body.
 
 The HTTP status each `error_type` maps to is listed in the tables below.
 

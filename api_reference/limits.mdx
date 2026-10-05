@@ -29,10 +29,7 @@ import {
 } from '/snippets/exports/constants.mdx';
 
 <Tip>
-  Making additional accounts or API keys will not affect your rate limits, as we
-  govern capacity globally. We do however have different rate limits for
-  different models, so you can share the load that way if you do run into
-  issues.
+  Making additional accounts or API keys will not affect your rate limits, as we govern capacity globally. We do however have different rate limits for different models, so you can share the load that way if you do run into issues.
 </Tip>
 
 OpenRouter enforces two kinds of limits:
@@ -204,14 +201,7 @@ A <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> error can come from tw
 2. **The upstream provider**, when the provider serving your request is rate limiting or at capacity. In this case `error.metadata.provider_code` carries the provider's original error code when available, and [fallback routing](/guides/routing/provider-selection) retries other providers for the same model automatically before the error reaches you. You can also specify [fallback models](/guides/routing/model-fallbacks) to try a different model when all providers for the first are exhausted.
 
 <Note>
-  Successful inference responses do not include `X-RateLimit-*` headers. When
-  OpenRouter itself returns a <StatusCode code={HTTPStatus.S429_Too_Many_Requests} />
-  error for a platform limit, the error response
-  carries `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`
-  headers describing the limit that was hit. When every attempted provider
-  returned a retry hint, the error response also carries a `Retry-After`
-  header. To monitor your remaining quota before hitting a limit, call
-  `GET /api/v1/key` as shown above.
+  Successful inference responses do not include `X-RateLimit-*` headers. When OpenRouter itself returns a <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> error for a platform limit, the error response carries `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers describing the limit that was hit. When every attempted provider returned a retry hint, the error response also carries a `Retry-After` header. To monitor your remaining quota before hitting a limit, call `GET /api/v1/key` as shown above.
 </Note>
 
 To resolve <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> errors:

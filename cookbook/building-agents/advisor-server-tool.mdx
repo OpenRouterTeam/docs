@@ -58,11 +58,7 @@ Return the changed files, the budget gate, the request body shape, the represent
 </Tip>
 
 <Warning>
-  Advisor is a beta server tool. It runs an inner model call, so it can add
-  cost and latency. This recipe keeps that call behind a budget gate and sends a
-  compact review prompt instead of forwarding the full transcript. Use returned
-  `usage.cost` when present, or estimate spend from the selected advisor model's
-  current pricing before widening the gate.
+  Advisor is a beta server tool. It runs an inner model call, so it can add cost and latency. This recipe keeps that call behind a budget gate and sends a compact review prompt instead of forwarding the full transcript. Use returned `usage.cost` when present, or estimate spend from the selected advisor model's current pricing before widening the gate.
 </Warning>
 
 ## Before you start

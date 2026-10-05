@@ -260,6 +260,7 @@
                   "guides/features/broadcast/clickhouse",
                   "guides/features/broadcast/opik",
                   "guides/features/broadcast/datadog",
+                  "guides/features/broadcast/elastic",
                   "guides/features/broadcast/bigquery",
                   "guides/features/broadcast/grafana",
                   "guides/features/broadcast/langfuse",
@@ -633,6 +634,950 @@
     ]
   },
   "redirects": [
+    {
+      "source": "/projects/docs/agent-sdk/agent-migration",
+      "destination": "/agent-sdk/agent-migration"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/api-reference",
+      "destination": "/agent-sdk/call-model/api-reference"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/async-tools",
+      "destination": "/agent-sdk/call-model/async-tools"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/doom-loop-detection",
+      "destination": "/agent-sdk/call-model/doom-loop-detection"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/dynamic-parameters",
+      "destination": "/agent-sdk/call-model/dynamic-parameters"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/examples/skills-loader",
+      "destination": "/agent-sdk/call-model/examples/skills-loader"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/examples/weather-tool",
+      "destination": "/agent-sdk/call-model/examples/weather-tool"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/items",
+      "destination": "/agent-sdk/call-model/items"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/lifecycle-hooks",
+      "destination": "/agent-sdk/call-model/lifecycle-hooks"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/mcp-tools",
+      "destination": "/agent-sdk/call-model/mcp-tools"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/message-formats",
+      "destination": "/agent-sdk/call-model/message-formats"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/next-turn-params",
+      "destination": "/agent-sdk/call-model/next-turn-params"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/overview",
+      "destination": "/agent-sdk/call-model/overview"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/stop-conditions",
+      "destination": "/agent-sdk/call-model/stop-conditions"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/streaming",
+      "destination": "/agent-sdk/call-model/streaming"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/text-generation",
+      "destination": "/agent-sdk/call-model/text-generation"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/tool-approval-state",
+      "destination": "/agent-sdk/call-model/tool-approval-state"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/call-model/tools",
+      "destination": "/agent-sdk/call-model/tools"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/dev-tools/devtools",
+      "destination": "/agent-sdk/dev-tools/devtools"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/overview",
+      "destination": "/agent-sdk/overview"
+    },
+    {
+      "source": "/projects/docs/agent-sdk/usage-for-agents",
+      "destination": "/agent-sdk/usage-for-agents"
+    },
+    {
+      "source": "/projects/docs/api_reference/authentication",
+      "destination": "/api_reference/authentication"
+    },
+    {
+      "source": "/projects/docs/api_reference/embeddings",
+      "destination": "/api_reference/embeddings"
+    },
+    {
+      "source": "/projects/docs/api_reference/errors-and-debugging",
+      "destination": "/api_reference/errors-and-debugging"
+    },
+    {
+      "source": "/projects/docs/api_reference/limits",
+      "destination": "/api_reference/limits"
+    },
+    {
+      "source": "/projects/docs/api_reference/overview",
+      "destination": "/api_reference/overview"
+    },
+    {
+      "source": "/projects/docs/api_reference/parameters",
+      "destination": "/api_reference/parameters"
+    },
+    {
+      "source": "/projects/docs/api_reference/responses/basic-usage",
+      "destination": "/api_reference/responses/basic-usage"
+    },
+    {
+      "source": "/projects/docs/api_reference/responses/error-handling",
+      "destination": "/api_reference/responses/error-handling"
+    },
+    {
+      "source": "/projects/docs/api_reference/responses/overview",
+      "destination": "/api_reference/responses/overview"
+    },
+    {
+      "source": "/projects/docs/api_reference/responses/reasoning",
+      "destination": "/api_reference/responses/reasoning"
+    },
+    {
+      "source": "/projects/docs/api_reference/responses/tool-calling",
+      "destination": "/api_reference/responses/tool-calling"
+    },
+    {
+      "source": "/projects/docs/api_reference/responses/web-search",
+      "destination": "/api_reference/responses/web-search"
+    },
+    {
+      "source": "/projects/docs/api_reference/streaming",
+      "destination": "/api_reference/streaming"
+    },
+    {
+      "source": "/projects/docs/api_reference/versioning",
+      "destination": "/api_reference/versioning"
+    },
+    {
+      "source": "/projects/docs/app-attribution",
+      "destination": "/app-attribution"
+    },
+    {
+      "source": "/projects/docs/batch-quickstart",
+      "destination": "/batch-quickstart"
+    },
+    {
+      "source": "/projects/docs/changelog",
+      "destination": "/changelog"
+    },
+    {
+      "source": "/projects/docs/client-sdks/agent-migration",
+      "destination": "/client-sdks/agent-migration"
+    },
+    {
+      "source": "/projects/docs/client-sdks/dev-tools/devtools",
+      "destination": "/client-sdks/dev-tools/devtools"
+    },
+    {
+      "source": "/projects/docs/client-sdks/overview",
+      "destination": "/client-sdks/overview"
+    },
+    {
+      "source": "/projects/docs/client-sdks/usage-for-agents",
+      "destination": "/client-sdks/usage-for-agents"
+    },
+    {
+      "source": "/projects/docs/cookbook/administration/activity-export",
+      "destination": "/cookbook/administration/activity-export"
+    },
+    {
+      "source": "/projects/docs/cookbook/administration/analytics-cost-control",
+      "destination": "/cookbook/administration/analytics-cost-control"
+    },
+    {
+      "source": "/projects/docs/cookbook/administration/api-key-rotation",
+      "destination": "/cookbook/administration/api-key-rotation"
+    },
+    {
+      "source": "/projects/docs/cookbook/administration/crypto-api",
+      "destination": "/cookbook/administration/crypto-api"
+    },
+    {
+      "source": "/projects/docs/cookbook/administration/data-api",
+      "destination": "/cookbook/administration/data-api"
+    },
+    {
+      "source": "/projects/docs/cookbook/administration/organization-management",
+      "destination": "/cookbook/administration/organization-management"
+    },
+    {
+      "source": "/projects/docs/cookbook/administration/tax-id",
+      "destination": "/cookbook/administration/tax-id"
+    },
+    {
+      "source": "/projects/docs/cookbook/administration/usage-accounting",
+      "destination": "/cookbook/administration/usage-accounting"
+    },
+    {
+      "source": "/projects/docs/cookbook/administration/user-tracking",
+      "destination": "/cookbook/administration/user-tracking"
+    },
+    {
+      "source": "/projects/docs/cookbook/building-agents/advisor-server-tool",
+      "destination": "/cookbook/building-agents/advisor-server-tool"
+    },
+    {
+      "source": "/projects/docs/cookbook/building-agents/create-agent-harness-tui",
+      "destination": "/cookbook/building-agents/create-agent-harness-tui"
+    },
+    {
+      "source": "/projects/docs/cookbook/building-agents/create-headless-agent",
+      "destination": "/cookbook/building-agents/create-headless-agent"
+    },
+    {
+      "source": "/projects/docs/cookbook/building-agents/gate-tool-calls-with-jev",
+      "destination": "/cookbook/building-agents/gate-tool-calls-with-jev"
+    },
+    {
+      "source": "/projects/docs/cookbook/building-agents/hitl-tools",
+      "destination": "/cookbook/building-agents/hitl-tools"
+    },
+    {
+      "source": "/projects/docs/cookbook/building-agents/long-horizon-agents",
+      "destination": "/cookbook/building-agents/long-horizon-agents"
+    },
+    {
+      "source": "/projects/docs/cookbook/building-agents/subagent-server-tool",
+      "destination": "/cookbook/building-agents/subagent-server-tool"
+    },
+    {
+      "source": "/projects/docs/cookbook/coding-agents/auto-approve-permission-prompts-with-jev",
+      "destination": "/cookbook/coding-agents/auto-approve-permission-prompts-with-jev"
+    },
+    {
+      "source": "/projects/docs/cookbook/coding-agents/automatic-code-review",
+      "destination": "/cookbook/coding-agents/automatic-code-review"
+    },
+    {
+      "source": "/projects/docs/cookbook/coding-agents/claude-code-integration",
+      "destination": "/cookbook/coding-agents/claude-code-integration"
+    },
+    {
+      "source": "/projects/docs/cookbook/coding-agents/claude-desktop-integration",
+      "destination": "/cookbook/coding-agents/claude-desktop-integration"
+    },
+    {
+      "source": "/projects/docs/cookbook/coding-agents/codex-cli",
+      "destination": "/cookbook/coding-agents/codex-cli"
+    },
+    {
+      "source": "/projects/docs/cookbook/coding-agents/codex-desktop",
+      "destination": "/cookbook/coding-agents/codex-desktop"
+    },
+    {
+      "source": "/projects/docs/cookbook/coding-agents/cursor-integration",
+      "destination": "/cookbook/coding-agents/cursor-integration"
+    },
+    {
+      "source": "/projects/docs/cookbook/coding-agents/hermes-integration",
+      "destination": "/cookbook/coding-agents/hermes-integration"
+    },
+    {
+      "source": "/projects/docs/cookbook/coding-agents/junie",
+      "destination": "/cookbook/coding-agents/junie"
+    },
+    {
+      "source": "/projects/docs/cookbook/coding-agents/mcp-servers",
+      "destination": "/cookbook/coding-agents/mcp-servers"
+    },
+    {
+      "source": "/projects/docs/cookbook/coding-agents/openclaw-integration",
+      "destination": "/cookbook/coding-agents/openclaw-integration"
+    },
+    {
+      "source": "/projects/docs/cookbook/coding-agents/opencode-integration",
+      "destination": "/cookbook/coding-agents/opencode-integration"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/classify-reddit-comments-with-jev",
+      "destination": "/cookbook/evaluate-and-optimize/classify-reddit-comments-with-jev"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/distillation",
+      "destination": "/cookbook/evaluate-and-optimize/distillation"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/jev-classification",
+      "destination": "/cookbook/evaluate-and-optimize/jev-classification"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/jev-verified-cascade",
+      "destination": "/cookbook/evaluate-and-optimize/jev-verified-cascade"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/model-migrations/claude-4-6",
+      "destination": "/cookbook/evaluate-and-optimize/model-migrations/claude-4-6"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/model-migrations/claude-4-7",
+      "destination": "/cookbook/evaluate-and-optimize/model-migrations/claude-4-7"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/model-migrations/fable-5-1",
+      "destination": "/cookbook/evaluate-and-optimize/model-migrations/fable-5-1"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/model-migrations/gpt-5-4",
+      "destination": "/cookbook/evaluate-and-optimize/model-migrations/gpt-5-4"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/model-migrations/gpt-5-6",
+      "destination": "/cookbook/evaluate-and-optimize/model-migrations/gpt-5-6"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/model-migrations/gpt-6",
+      "destination": "/cookbook/evaluate-and-optimize/model-migrations/gpt-6"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/model-migrations/opus-5",
+      "destination": "/cookbook/evaluate-and-optimize/model-migrations/opus-5"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/model-migrations/opus-5-5",
+      "destination": "/cookbook/evaluate-and-optimize/model-migrations/opus-5-5"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/model-migrations/sonnet-5",
+      "destination": "/cookbook/evaluate-and-optimize/model-migrations/sonnet-5"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/rag",
+      "destination": "/cookbook/evaluate-and-optimize/rag"
+    },
+    {
+      "source": "/projects/docs/cookbook/evaluate-and-optimize/red-teaming",
+      "destination": "/cookbook/evaluate-and-optimize/red-teaming"
+    },
+    {
+      "source": "/projects/docs/cookbook/get-started/enterprise-onboarding-journey",
+      "destination": "/cookbook/get-started/enterprise-onboarding-journey"
+    },
+    {
+      "source": "/projects/docs/cookbook/get-started/enterprise-quickstart",
+      "destination": "/cookbook/get-started/enterprise-quickstart"
+    },
+    {
+      "source": "/projects/docs/cookbook/get-started/free-models-router-playground",
+      "destination": "/cookbook/get-started/free-models-router-playground"
+    },
+    {
+      "source": "/projects/docs/cookbook/get-started/migrate-to-openrouter",
+      "destination": "/cookbook/get-started/migrate-to-openrouter"
+    },
+    {
+      "source": "/projects/docs/cookbook/get-started/quickstart",
+      "destination": "/cookbook/get-started/quickstart"
+    },
+    {
+      "source": "/projects/docs/cookbook/image-generation/preset-enhanced-images",
+      "destination": "/cookbook/image-generation/preset-enhanced-images"
+    },
+    {
+      "source": "/projects/docs/cookbook/video-generation/choose-video-model",
+      "destination": "/cookbook/video-generation/choose-video-model"
+    },
+    {
+      "source": "/projects/docs/cookbook/video-generation/image-to-video",
+      "destination": "/cookbook/video-generation/image-to-video"
+    },
+    {
+      "source": "/projects/docs/cookbook/video-generation/provider-specific-video-options",
+      "destination": "/cookbook/video-generation/provider-specific-video-options"
+    },
+    {
+      "source": "/projects/docs/cookbook/video-generation/reference-to-video",
+      "destination": "/cookbook/video-generation/reference-to-video"
+    },
+    {
+      "source": "/projects/docs/cookbook/video-generation/text-to-video",
+      "destination": "/cookbook/video-generation/text-to-video"
+    },
+    {
+      "source": "/projects/docs/cookbook/video-generation/video-generation-webhooks",
+      "destination": "/cookbook/video-generation/video-generation-webhooks"
+    },
+    {
+      "source": "/projects/docs/faq",
+      "destination": "/faq"
+    },
+    {
+      "source": "/projects/docs/guides/best-practices/latency-and-performance",
+      "destination": "/guides/best-practices/latency-and-performance"
+    },
+    {
+      "source": "/projects/docs/guides/best-practices/prompt-caching",
+      "destination": "/guides/best-practices/prompt-caching"
+    },
+    {
+      "source": "/projects/docs/guides/best-practices/reasoning-tokens",
+      "destination": "/guides/best-practices/reasoning-tokens"
+    },
+    {
+      "source": "/projects/docs/guides/best-practices/uptime-optimization",
+      "destination": "/guides/best-practices/uptime-optimization"
+    },
+    {
+      "source": "/projects/docs/guides/community/anthropic-agent-sdk",
+      "destination": "/guides/community/anthropic-agent-sdk"
+    },
+    {
+      "source": "/projects/docs/guides/community/arize",
+      "destination": "/guides/community/arize"
+    },
+    {
+      "source": "/projects/docs/guides/community/awesome-openrouter",
+      "destination": "/guides/community/awesome-openrouter"
+    },
+    {
+      "source": "/projects/docs/guides/community/effect-ai-sdk",
+      "destination": "/guides/community/effect-ai-sdk"
+    },
+    {
+      "source": "/projects/docs/guides/community/for-providers",
+      "destination": "/guides/community/for-providers"
+    },
+    {
+      "source": "/projects/docs/guides/community/frameworks-and-integrations-overview",
+      "destination": "/guides/community/frameworks-and-integrations-overview"
+    },
+    {
+      "source": "/projects/docs/guides/community/infisical",
+      "destination": "/guides/community/infisical"
+    },
+    {
+      "source": "/projects/docs/guides/community/jev",
+      "destination": "/guides/community/jev"
+    },
+    {
+      "source": "/projects/docs/guides/community/jev-tutorial",
+      "destination": "/guides/community/jev-tutorial"
+    },
+    {
+      "source": "/projects/docs/guides/community/langchain",
+      "destination": "/guides/community/langchain"
+    },
+    {
+      "source": "/projects/docs/guides/community/langfuse",
+      "destination": "/guides/community/langfuse"
+    },
+    {
+      "source": "/projects/docs/guides/community/livekit",
+      "destination": "/guides/community/livekit"
+    },
+    {
+      "source": "/projects/docs/guides/community/mastra",
+      "destination": "/guides/community/mastra"
+    },
+    {
+      "source": "/projects/docs/guides/community/openai-sdk",
+      "destination": "/guides/community/openai-sdk"
+    },
+    {
+      "source": "/projects/docs/guides/community/pydantic-ai",
+      "destination": "/guides/community/pydantic-ai"
+    },
+    {
+      "source": "/projects/docs/guides/community/render",
+      "destination": "/guides/community/render"
+    },
+    {
+      "source": "/projects/docs/guides/community/replit",
+      "destination": "/guides/community/replit"
+    },
+    {
+      "source": "/projects/docs/guides/community/tanstack-ai",
+      "destination": "/guides/community/tanstack-ai"
+    },
+    {
+      "source": "/projects/docs/guides/community/typesafe-sdk",
+      "destination": "/guides/community/typesafe-sdk"
+    },
+    {
+      "source": "/projects/docs/guides/community/vercel-ai-sdk",
+      "destination": "/guides/community/vercel-ai-sdk"
+    },
+    {
+      "source": "/projects/docs/guides/community/xcode",
+      "destination": "/guides/community/xcode"
+    },
+    {
+      "source": "/projects/docs/guides/community/zapier",
+      "destination": "/guides/community/zapier"
+    },
+    {
+      "source": "/projects/docs/guides/features/activity",
+      "destination": "/guides/features/activity"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast",
+      "destination": "/guides/features/broadcast"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/arize",
+      "destination": "/guides/features/broadcast/arize"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/bigquery",
+      "destination": "/guides/features/broadcast/bigquery"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/braintrust",
+      "destination": "/guides/features/broadcast/braintrust"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/clickhouse",
+      "destination": "/guides/features/broadcast/clickhouse"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/datadog",
+      "destination": "/guides/features/broadcast/datadog"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/grafana",
+      "destination": "/guides/features/broadcast/grafana"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/langfuse",
+      "destination": "/guides/features/broadcast/langfuse"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/langsmith",
+      "destination": "/guides/features/broadcast/langsmith"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/newrelic",
+      "destination": "/guides/features/broadcast/newrelic"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/opik",
+      "destination": "/guides/features/broadcast/opik"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/otel-collector",
+      "destination": "/guides/features/broadcast/otel-collector"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/posthog",
+      "destination": "/guides/features/broadcast/posthog"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/raindrop",
+      "destination": "/guides/features/broadcast/raindrop"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/ramp",
+      "destination": "/guides/features/broadcast/ramp"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/s3",
+      "destination": "/guides/features/broadcast/s3"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/sentry",
+      "destination": "/guides/features/broadcast/sentry"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/snowflake",
+      "destination": "/guides/features/broadcast/snowflake"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/weave",
+      "destination": "/guides/features/broadcast/weave"
+    },
+    {
+      "source": "/projects/docs/guides/features/broadcast/webhook",
+      "destination": "/guides/features/broadcast/webhook"
+    },
+    {
+      "source": "/projects/docs/guides/features/classifiers",
+      "destination": "/guides/features/classifiers"
+    },
+    {
+      "source": "/projects/docs/guides/features/containers",
+      "destination": "/guides/features/containers"
+    },
+    {
+      "source": "/projects/docs/guides/features/files-api",
+      "destination": "/guides/features/files-api"
+    },
+    {
+      "source": "/projects/docs/guides/features/guardrails",
+      "destination": "/guides/features/guardrails"
+    },
+    {
+      "source": "/projects/docs/guides/features/guardrails/prompt-injection",
+      "destination": "/guides/features/guardrails/prompt-injection"
+    },
+    {
+      "source": "/projects/docs/guides/features/guardrails/prompt-injection/allowlist",
+      "destination": "/guides/features/guardrails/prompt-injection/allowlist"
+    },
+    {
+      "source": "/projects/docs/guides/features/guardrails/secret-formats",
+      "destination": "/guides/features/guardrails/secret-formats"
+    },
+    {
+      "source": "/projects/docs/guides/features/guardrails/sensitive-info",
+      "destination": "/guides/features/guardrails/sensitive-info"
+    },
+    {
+      "source": "/projects/docs/guides/features/in-region-routing",
+      "destination": "/guides/features/in-region-routing"
+    },
+    {
+      "source": "/projects/docs/guides/features/input-output-logging",
+      "destination": "/guides/features/input-output-logging"
+    },
+    {
+      "source": "/projects/docs/guides/features/logs",
+      "destination": "/guides/features/logs"
+    },
+    {
+      "source": "/projects/docs/guides/features/message-transforms",
+      "destination": "/guides/features/message-transforms"
+    },
+    {
+      "source": "/projects/docs/guides/features/notifications",
+      "destination": "/guides/features/notifications"
+    },
+    {
+      "source": "/projects/docs/guides/features/plugins",
+      "destination": "/guides/features/plugins"
+    },
+    {
+      "source": "/projects/docs/guides/features/plugins/response-healing",
+      "destination": "/guides/features/plugins/response-healing"
+    },
+    {
+      "source": "/projects/docs/guides/features/plugins/web-search",
+      "destination": "/guides/features/plugins/web-search"
+    },
+    {
+      "source": "/projects/docs/guides/features/presets",
+      "destination": "/guides/features/presets"
+    },
+    {
+      "source": "/projects/docs/guides/features/response-caching",
+      "destination": "/guides/features/response-caching"
+    },
+    {
+      "source": "/projects/docs/guides/features/router-metadata",
+      "destination": "/guides/features/router-metadata"
+    },
+    {
+      "source": "/projects/docs/guides/features/scim-mappings",
+      "destination": "/guides/features/scim-mappings"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools",
+      "destination": "/guides/features/server-tools"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools/advisor",
+      "destination": "/guides/features/server-tools/advisor"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools/apply-patch",
+      "destination": "/guides/features/server-tools/apply-patch"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools/bash",
+      "destination": "/guides/features/server-tools/bash"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools/datetime",
+      "destination": "/guides/features/server-tools/datetime"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools/fusion",
+      "destination": "/guides/features/server-tools/fusion"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools/image-generation",
+      "destination": "/guides/features/server-tools/image-generation"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools/search-models",
+      "destination": "/guides/features/server-tools/search-models"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools/shell",
+      "destination": "/guides/features/server-tools/shell"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools/subagent",
+      "destination": "/guides/features/server-tools/subagent"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools/tool-search",
+      "destination": "/guides/features/server-tools/tool-search"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools/web-fetch",
+      "destination": "/guides/features/server-tools/web-fetch"
+    },
+    {
+      "source": "/projects/docs/guides/features/server-tools/web-search",
+      "destination": "/guides/features/server-tools/web-search"
+    },
+    {
+      "source": "/projects/docs/guides/features/service-tiers",
+      "destination": "/guides/features/service-tiers"
+    },
+    {
+      "source": "/projects/docs/guides/features/sovereign-ai",
+      "destination": "/guides/features/sovereign-ai"
+    },
+    {
+      "source": "/projects/docs/guides/features/sso",
+      "destination": "/guides/features/sso"
+    },
+    {
+      "source": "/projects/docs/guides/features/structured-outputs",
+      "destination": "/guides/features/structured-outputs"
+    },
+    {
+      "source": "/projects/docs/guides/features/tool-calling",
+      "destination": "/guides/features/tool-calling"
+    },
+    {
+      "source": "/projects/docs/guides/features/workspaces",
+      "destination": "/guides/features/workspaces"
+    },
+    {
+      "source": "/projects/docs/guides/features/workspaces/switching",
+      "destination": "/guides/features/workspaces/switching"
+    },
+    {
+      "source": "/projects/docs/guides/features/workspaces/workspace-budgets",
+      "destination": "/guides/features/workspaces/workspace-budgets"
+    },
+    {
+      "source": "/projects/docs/guides/features/zdr",
+      "destination": "/guides/features/zdr"
+    },
+    {
+      "source": "/projects/docs/guides/features/zero-completion-insurance",
+      "destination": "/guides/features/zero-completion-insurance"
+    },
+    {
+      "source": "/projects/docs/guides/ori/changelog",
+      "destination": "/guides/ori/changelog"
+    },
+    {
+      "source": "/projects/docs/guides/ori/configuration",
+      "destination": "/guides/ori/configuration"
+    },
+    {
+      "source": "/projects/docs/guides/ori/eval",
+      "destination": "/guides/ori/eval"
+    },
+    {
+      "source": "/projects/docs/guides/ori/files",
+      "destination": "/guides/ori/files"
+    },
+    {
+      "source": "/projects/docs/guides/ori/harness",
+      "destination": "/guides/ori/harness"
+    },
+    {
+      "source": "/projects/docs/guides/ori/intern-chat",
+      "destination": "/guides/ori/intern-chat"
+    },
+    {
+      "source": "/projects/docs/guides/ori/vault",
+      "destination": "/guides/ori/vault"
+    },
+    {
+      "source": "/projects/docs/guides/overview/auth/byok",
+      "destination": "/guides/overview/auth/byok"
+    },
+    {
+      "source": "/projects/docs/guides/overview/auth/management-api-keys",
+      "destination": "/guides/overview/auth/management-api-keys"
+    },
+    {
+      "source": "/projects/docs/guides/overview/auth/oauth",
+      "destination": "/guides/overview/auth/oauth"
+    },
+    {
+      "source": "/projects/docs/guides/overview/auth/workload-identity-federation",
+      "destination": "/guides/overview/auth/workload-identity-federation"
+    },
+    {
+      "source": "/projects/docs/guides/overview/mcp-server",
+      "destination": "/guides/overview/mcp-server"
+    },
+    {
+      "source": "/projects/docs/guides/overview/models",
+      "destination": "/guides/overview/models"
+    },
+    {
+      "source": "/projects/docs/guides/overview/multimodal/audio",
+      "destination": "/guides/overview/multimodal/audio"
+    },
+    {
+      "source": "/projects/docs/guides/overview/multimodal/image-generation",
+      "destination": "/guides/overview/multimodal/image-generation"
+    },
+    {
+      "source": "/projects/docs/guides/overview/multimodal/image-understanding",
+      "destination": "/guides/overview/multimodal/image-understanding"
+    },
+    {
+      "source": "/projects/docs/guides/overview/multimodal/overview",
+      "destination": "/guides/overview/multimodal/overview"
+    },
+    {
+      "source": "/projects/docs/guides/overview/multimodal/pdfs",
+      "destination": "/guides/overview/multimodal/pdfs"
+    },
+    {
+      "source": "/projects/docs/guides/overview/multimodal/stt",
+      "destination": "/guides/overview/multimodal/stt"
+    },
+    {
+      "source": "/projects/docs/guides/overview/multimodal/tts",
+      "destination": "/guides/overview/multimodal/tts"
+    },
+    {
+      "source": "/projects/docs/guides/overview/multimodal/video-generation",
+      "destination": "/guides/overview/multimodal/video-generation"
+    },
+    {
+      "source": "/projects/docs/guides/overview/multimodal/videos",
+      "destination": "/guides/overview/multimodal/videos"
+    },
+    {
+      "source": "/projects/docs/guides/overview/principles",
+      "destination": "/guides/overview/principles"
+    },
+    {
+      "source": "/projects/docs/guides/overview/report-feedback",
+      "destination": "/guides/overview/report-feedback"
+    },
+    {
+      "source": "/projects/docs/guides/overview/stripe-projects",
+      "destination": "/guides/overview/stripe-projects"
+    },
+    {
+      "source": "/projects/docs/guides/overview/terraform",
+      "destination": "/guides/overview/terraform"
+    },
+    {
+      "source": "/projects/docs/guides/privacy/data-collection",
+      "destination": "/guides/privacy/data-collection"
+    },
+    {
+      "source": "/projects/docs/guides/privacy/provider-logging",
+      "destination": "/guides/privacy/provider-logging"
+    },
+    {
+      "source": "/projects/docs/guides/routing/auto-exacto",
+      "destination": "/guides/routing/auto-exacto"
+    },
+    {
+      "source": "/projects/docs/guides/routing/model-fallbacks",
+      "destination": "/guides/routing/model-fallbacks"
+    },
+    {
+      "source": "/projects/docs/guides/routing/model-variants/exacto",
+      "destination": "/guides/routing/model-variants/exacto"
+    },
+    {
+      "source": "/projects/docs/guides/routing/model-variants/extended",
+      "destination": "/guides/routing/model-variants/extended"
+    },
+    {
+      "source": "/projects/docs/guides/routing/model-variants/floor",
+      "destination": "/guides/routing/model-variants/floor"
+    },
+    {
+      "source": "/projects/docs/guides/routing/model-variants/free",
+      "destination": "/guides/routing/model-variants/free"
+    },
+    {
+      "source": "/projects/docs/guides/routing/model-variants/nitro",
+      "destination": "/guides/routing/model-variants/nitro"
+    },
+    {
+      "source": "/projects/docs/guides/routing/model-variants/online",
+      "destination": "/guides/routing/model-variants/online"
+    },
+    {
+      "source": "/projects/docs/guides/routing/model-variants/overview",
+      "destination": "/guides/routing/model-variants/overview"
+    },
+    {
+      "source": "/projects/docs/guides/routing/model-variants/thinking",
+      "destination": "/guides/routing/model-variants/thinking"
+    },
+    {
+      "source": "/projects/docs/guides/routing/private-models",
+      "destination": "/guides/routing/private-models"
+    },
+    {
+      "source": "/projects/docs/guides/routing/provider-selection",
+      "destination": "/guides/routing/provider-selection"
+    },
+    {
+      "source": "/projects/docs/guides/routing/routers/auto-router",
+      "destination": "/guides/routing/routers/auto-router"
+    },
+    {
+      "source": "/projects/docs/guides/routing/routers/body-builder",
+      "destination": "/guides/routing/routers/body-builder"
+    },
+    {
+      "source": "/projects/docs/guides/routing/routers/free-router",
+      "destination": "/guides/routing/routers/free-router"
+    },
+    {
+      "source": "/projects/docs/guides/routing/routers/fusion-router",
+      "destination": "/guides/routing/routers/fusion-router"
+    },
+    {
+      "source": "/projects/docs/guides/routing/routers/latest-resolution",
+      "destination": "/guides/routing/routers/latest-resolution"
+    },
+    {
+      "source": "/projects/docs/guides/routing/routers/pareto-router",
+      "destination": "/guides/routing/routers/pareto-router"
+    },
+    {
+      "source": "/projects/docs/install",
+      "destination": "/install"
+    },
+    {
+      "source": "/projects/docs/quickstart",
+      "destination": "/quickstart"
+    },
     {
       "source": "/api/api-reference/alphadecisions/submit-a-decisions-questions-and-answers-request",
       "destination": "/api/api-reference/alphadecisions/submit-a-decisions-request"

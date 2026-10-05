@@ -84,6 +84,10 @@ setx OPENROUTER_API_KEY "sk-or-..."
 
 Quit the app completely (not just the window), reopen it, choose **Codex**, and start a new chat. Requests now go through OpenRouter and appear in your [Activity Dashboard](https://openrouter.ai/activity).
 
+<Warning>
+The ChatGPT and Codex apps can leave background processes running after you quit. These processes keep the old environment, so the app keeps using the previous configuration and API key even after you reopen it. If your changes don't take effect, see [Background processes keep the old configuration](#background-processes-keep-the-old-configuration).
+</Warning>
+
 ## Configuration Reference
 
 | Setting | Description | Example |
@@ -110,9 +114,25 @@ With `env_key` authentication Codex does not fetch the OpenRouter model catalog,
 ## Troubleshooting
 
 - **Auth errors or "Missing Authentication header":** The app could not read `OPENROUTER_API_KEY`. Set it with `launchctl setenv` on macOS or `setx` on Windows, then quit and reopen the app. An `export` in your shell profile alone is not visible to the desktop app.
-- **Changes to `config.toml` not taking effect:** Make sure you edited the user-level `~/.codex/config.toml`, not a project-scoped `.codex/config.toml`, and restart the app.
+- **Changes to `config.toml` not taking effect:** Make sure you edited the user-level `~/.codex/config.toml`, not a project-scoped `.codex/config.toml`, and restart the app. If the changes still don't apply, see [Background processes keep the old configuration](#background-processes-keep-the-old-configuration).
 - **Model not found:** Verify the model ID on [openrouter.ai/models](https://openrouter.ai/models) and use the exact slug.
 - **Privacy:** OpenRouter does not log your source code prompts unless you opt in to prompt logging. See our [Privacy Policy](https://openrouter.ai/privacy) for details.
+
+### Background processes keep the old configuration
+
+The ChatGPT and Codex apps can leave background processes running after you quit the app. When you reopen the app, it reuses those processes, which still hold the environment and configuration from before your changes. As a result, a new `OPENROUTER_API_KEY` or `config.toml` edit can appear to be ignored, and you might keep seeing auth errors.
+
+To force the app to read the new configuration and API key:
+
+1. Quit the ChatGPT app.
+2. End any leftover processes:
+   - **macOS:** Open **Activity Monitor**, search for `gpt` and then `codex`, select each matching process, and click **Stop** (the **X** button), then **Quit**.
+   - **Windows:** Open **Task Manager**, go to the **Processes** or **Details** tab, find each process with `gpt` or `codex` in its name, and click **End task**.
+
+   Only end processes that belong to the ChatGPT or Codex app. Other apps and tools can also have `gpt` or `codex` in their process names, so check the process's parent app or publisher (OpenAI) before you end it.
+3. Reopen the app.
+
+Alternatively, log out of your computer and log back in, which ends all of these processes. On macOS, a logout also clears the `launchctl setenv` variable, so run `launchctl setenv OPENROUTER_API_KEY "sk-or-..."` again before you open the app. On Windows, the `setx` variable persists across sign-outs, so you don't need to set it again.
 
 ## Resources
 

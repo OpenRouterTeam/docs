@@ -27,15 +27,12 @@ import {
 
 OpenRouter supports PDF processing through the `/api/v1/chat/completions` API. PDFs can be sent as **direct URLs** or **base64-encoded data URLs** in the messages array, via the file content type. This feature works on **any** model on OpenRouter.
 
-**URL support**: Send publicly accessible PDFs directly without downloading or encoding
-**Base64 support**: Required for local files or private documents that aren't publicly accessible
+**URL support**: Send publicly accessible PDFs directly without downloading or encoding **Base64 support**: Required for local files or private documents that aren't publicly accessible
 
 PDFs also work in the chat room for interactive testing.
 
 <Info>
-  When a model supports file input natively, the PDF is passed directly to the
-  model. When the model does not support file input natively, OpenRouter will
-  parse the file and pass the parsed results to the requested model.
+  When a model supports file input natively, the PDF is passed directly to the model. When the model does not support file input natively, OpenRouter will parse the file and pass the parsed results to the requested model.
 </Info>
 
 <Tip>You can send both PDFs and other file types in the same request.</Tip>
@@ -61,25 +58,16 @@ To configure PDF processing, use the `plugins` parameter in your request. OpenRo
 
 OpenRouter provides several PDF processing engines:
 
-1. <code>"{PDFParserEngine.MistralOCR}"</code>: Best for scanned documents or
-   PDFs with images (\${MISTRAL_OCR_COST} per 1,000 pages).
-   Requests pinned to the US data region use Mistral's US regional endpoint and
-   the US rate (\${MISTRAL_OCR_US_COST} per 1,000 pages), which includes Mistral's
-   10% regional upcharge.
-2. <code>"{PDFParserEngine.CloudflareAI}"</code>: Converts PDFs to markdown
-   using Cloudflare Workers AI (Free).
-3. <code>"{PDFParserEngine.Native}"</code>: Only available for models that
-   support file input natively (charged as input tokens).
+1. <code>"{PDFParserEngine.MistralOCR}"</code>: Best for scanned documents or PDFs with images (\${MISTRAL_OCR_COST} per 1,000 pages). Requests pinned to the US data region use Mistral's US regional endpoint and the US rate (\${MISTRAL_OCR_US_COST} per 1,000 pages), which includes Mistral's 10% regional upcharge.
+2. <code>"{PDFParserEngine.CloudflareAI}"</code>: Converts PDFs to markdown using Cloudflare Workers AI (Free).
+3. <code>"{PDFParserEngine.Native}"</code>: Only available for models that support file input natively (charged as input tokens).
 
 <Info>
-  The `"pdf-text"` engine is deprecated and automatically redirected to
-  `"cloudflare-ai"`. Existing requests using `"pdf-text"` will continue to work.
+  The `"pdf-text"` engine is deprecated and automatically redirected to `"cloudflare-ai"`. Existing requests using `"pdf-text"` will continue to work.
 </Info>
 
 <Warning>
-  OCR costs apply to all requests, including BYOK. OpenRouter uses its own Mistral
-  key for OCR (not your BYOK key), so the per-page fee is always billed to your
-  OpenRouter account.
+  OCR costs apply to all requests, including BYOK. OpenRouter uses its own Mistral key for OCR (not your BYOK key), so the per-page fee is always billed to your OpenRouter account.
 </Warning>
 
 If you don't explicitly specify an engine, OpenRouter will default first to the model's native file processing capabilities, and if that's not available, we will use the <code>"{DEFAULT_PDF_ENGINE}"</code> engine.
@@ -595,11 +583,7 @@ processDocument();
 </Template>
 
 <Info>
-  When you include the file annotations from a previous response in your
-  subsequent requests, OpenRouter will use this pre-parsed information instead
-  of re-parsing the PDF, which saves processing time and costs. This is
-  especially beneficial for large documents or when using the `mistral-ocr`
-  engine which incurs additional costs.
+  When you include the file annotations from a previous response in your subsequent requests, OpenRouter will use this pre-parsed information instead of re-parsing the PDF, which saves processing time and costs. This is especially beneficial for large documents or when using the `mistral-ocr` engine which incurs additional costs.
 </Info>
 
 ## File Annotations Schema

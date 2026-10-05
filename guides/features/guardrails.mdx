@@ -107,21 +107,16 @@ Bob has a member guardrail with a \$100/day limit. His API key has a separate gu
 
 ## Custom Content Filters
 
-Each guardrail can carry a list of **custom content filter patterns**.
-Every pattern is a regular expression with an associated action:
+Each guardrail can carry a list of **custom content filter patterns**. Every pattern is a regular expression with an associated action:
 
-- **Redact** - Matched spans are replaced with a placeholder before the
-  request is forwarded to the model.
-- **Block** - The request is rejected with a `403` before it reaches the
-  model.
+- **Redact** - Matched spans are replaced with a placeholder before the request is forwarded to the model.
+- **Block** - The request is rejected with a `403` before it reaches the model.
 
-Patterns are evaluated locally against every user message, so they add
-negligible latency to requests.
+Patterns are evaluated locally against every user message, so they add negligible latency to requests.
 
 ### Supported regex features
 
-Patterns are JavaScript-flavoured regular expressions. The following common
-constructs are all supported:
+Patterns are JavaScript-flavoured regular expressions. The following common constructs are all supported:
 
 - Character classes (`[a-z]`, `\d`, `\w`, `\s`, …)
 - Quantifiers (`*`, `+`, `?`, `{n,m}`)
@@ -133,17 +128,14 @@ constructs are all supported:
 
 ### Unsupported regex features
 
-To keep evaluation fast and predictable across all requests, the following
-features are **not allowed** in new or edited patterns:
+To keep evaluation fast and predictable across all requests, the following features are **not allowed** in new or edited patterns:
 
 - **Lookaheads** - `(?=…)` and `(?!…)`
 - **Lookbehinds** - `(?<=…)` and `(?<!…)`
 - **Backreferences** - numeric (`\1`, `\2`, …) and named (`\k<name>`)
-- **Excessive backtracking** - patterns with nested quantifiers like
-  `(a+)+`
+- **Excessive backtracking** - patterns with nested quantifiers like `(a+)+`
 
-The API rejects offending patterns with an `invalid_regex_pattern` error
-on create and on update.
+The API rejects offending patterns with an `invalid_regex_pattern` error on create and on update.
 
 ### Limits
 

@@ -17,11 +17,9 @@ icon: link
 
 import OpenRouterVideoSkill from "/snippets/openrouter-video-skill.mdx";
 
-Use this guide when you need to add webhook-based video completion handling
-instead of polling from a client or worker.
+Use this guide when you need to add webhook-based video completion handling instead of polling from a client or worker.
 
-By the end, your implementation should submit a video job with `callback_url`
-and verify the webhook signature.
+By the end, your implementation should submit a video job with `callback_url` and verify the webhook signature.
 
 <Tip>
   <OpenRouterVideoSkill/>
@@ -38,10 +36,7 @@ You need:
 - A video model slug for the job you submit with `callback_url`
 
 <Tip>
-  If you haven't chosen a model yet, read
-  [Choose a Video Generation Model](/cookbook/video-generation/choose-video-model)
-  first. It helps you pick one based on clip duration, output shape, input
-  type, audio, provider controls, and cost.
+  If you haven't chosen a model yet, read [Choose a Video Generation Model](/cookbook/video-generation/choose-video-model) first. It helps you pick one based on clip duration, output shape, input type, audio, provider controls, and cost.
 </Tip>
 
 Use the API reference pages as the source of truth for exact fields:
@@ -50,8 +45,7 @@ Use the API reference pages as the source of truth for exact fields:
 - [List video generation models](/api/api-reference/video-generation/list-all-video-generation-models)
 - [TypeScript SDK video generation reference](/client-sdks/typescript/sdks/videogeneration/README)
 
-If you adapt the Express examples below in a local test project, use these
-dependencies:
+If you adapt the Express examples below in a local test project, use these dependencies:
 
 ```bash lines
 npm install express
@@ -59,15 +53,12 @@ npm install --save-dev @types/express tsx
 ```
 
 <Warning>
-Submitting `POST /api/v1/videos` starts a real video generation job and may
-spend OpenRouter credits.
+Submitting `POST /api/v1/videos` starts a real video generation job and may spend OpenRouter credits.
 </Warning>
 
 ## Step 1: Implement a webhook receiver
 
-Add a webhook receiver that preserves the raw request body before parsing JSON.
-Signature verification must use the exact bytes OpenRouter sent, not a
-re-serialized payload.
+Add a webhook receiver that preserves the raw request body before parsing JSON. Signature verification must use the exact bytes OpenRouter sent, not a re-serialized payload.
 
 Example Express receiver:
 
@@ -170,8 +161,7 @@ app.listen(3000, () => {
 
 ## Step 2: Validate signature handling before using real jobs
 
-Before connecting a real `callback_url`, exercise the receiver with the same
-signing secret your test sender uses:
+Before connecting a real `callback_url`, exercise the receiver with the same signing secret your test sender uses:
 
 ```bash lines
 OPENROUTER_WEBHOOK_SECRET=dev_secret npx tsx server.ts
@@ -183,15 +173,11 @@ Actual local receiver startup output:
 Listening on http://localhost:3000
 ```
 
-Expose the receiver with a public HTTPS URL before using it as a real
-`callback_url`. A local tunnel or deployed preview URL works as long as
-OpenRouter can reach it over HTTPS.
+Expose the receiver with a public HTTPS URL before using it as a real `callback_url`. A local tunnel or deployed preview URL works as long as OpenRouter can reach it over HTTPS.
 
 ## Step 3: Send a signed test event
 
-Before spending credits on a real video job, test the receiver with a locally
-signed event. This verifies that raw-body handling, timestamp parsing, HMAC
-comparison, and idempotency headers are wired correctly.
+Before spending credits on a real video job, test the receiver with a locally signed event. This verifies that raw-body handling, timestamp parsing, HMAC comparison, and idempotency headers are wired correctly.
 
 Example local sender:
 
@@ -238,8 +224,7 @@ Exercise the local sender while the receiver is listening:
 OPENROUTER_WEBHOOK_SECRET=dev_secret node send-test-webhook.mjs
 ```
 
-A valid signed event should return `204`. Change the secret or signature to
-confirm the receiver returns `401` for invalid requests.
+A valid signed event should return `204`. Change the secret or signature to confirm the receiver returns `401` for invalid requests.
 
 Actual local signature-test output:
 
@@ -247,10 +232,7 @@ Actual local signature-test output:
 204
 ```
 
-You can also use a temporary Webhook.site URL as `CALLBACK_URL` to confirm
-OpenRouter delivers the webhook and includes the expected headers and envelope.
-Webhook.site doesn't run your signature verifier; use your own public receiver
-with the workspace signing secret for end-to-end signature verification.
+You can also use a temporary Webhook.site URL as `CALLBACK_URL` to confirm OpenRouter delivers the webhook and includes the expected headers and envelope. Webhook.site doesn't run your signature verifier; use your own public receiver with the workspace signing secret for end-to-end signature verification.
 
 Example Webhook.site delivery:
 
@@ -303,9 +285,7 @@ Example Webhook.site delivery:
 
 ## Step 4: Submit a video job with `callback_url`
 
-Once the receiver is reachable over public HTTPS, submit the video job with
-`callback_url`. You can set the callback URL per request, which is useful for
-preview environments or tenant-specific receivers.
+Once the receiver is reachable over public HTTPS, submit the video job with `callback_url`. You can set the callback URL per request, which is useful for preview environments or tenant-specific receivers.
 
 Example submit logic:
 
@@ -345,8 +325,7 @@ if (!response.ok) {
 console.log(await response.json());
 ```
 
-The submit call returns the initial job fields. In a completed run, that job
-later completed and delivered a webhook with this final summary:
+The submit call returns the initial job fields. In a completed run, that job later completed and delivered a webhook with this final summary:
 
 ```json lines
 {
@@ -357,8 +336,7 @@ later completed and delivered a webhook with this final summary:
 }
 ```
 
-After the receiver is deployed or exposed through a tunnel, run the submit logic
-with `CALLBACK_URL` set to that public endpoint:
+After the receiver is deployed or exposed through a tunnel, run the submit logic with `CALLBACK_URL` set to that public endpoint:
 
 ```bash lines
 CALLBACK_URL=https://your-app.example.com/openrouter/video-webhook npx tsx submit-video-job.mts
@@ -368,16 +346,9 @@ The per-request `callback_url` takes priority over a workspace-level default cal
 
 ## Step 5: Handle the completed job
 
-Handle webhook delivery as a terminal job update. The payload is an event
-envelope with the job fields inside `data`. Depending on the terminal state,
-`data` includes fields such as `id`, `status`, `generation_id`, `model`,
-`unsigned_urls`, `usage`, and `error`. Store the job state in your database,
-deduplicate retries with `X-OpenRouter-Idempotency-Key`, then download the
-video from the first `unsigned_urls` entry or from the content endpoint. If the
-URL points to the OpenRouter API, include the bearer token when downloading it.
+Handle webhook delivery as a terminal job update. The payload is an event envelope with the job fields inside `data`. Depending on the terminal state, `data` includes fields such as `id`, `status`, `generation_id`, `model`, `unsigned_urls`, `usage`, and `error`. Store the job state in your database, deduplicate retries with `X-OpenRouter-Idempotency-Key`, then download the video from the first `unsigned_urls` entry or from the content endpoint. If the URL points to the OpenRouter API, include the bearer token when downloading it.
 
-For a complete polling and download helper, see
-[Generate and Download a Video from Text](/cookbook/video-generation/text-to-video).
+For a complete polling and download helper, see [Generate and Download a Video from Text](/cookbook/video-generation/text-to-video).
 
 Actual local receiver log shape from the signature test:
 
@@ -391,7 +362,4 @@ Video ready: {
 
 ## Check your work
 
-Your receiver should return `204` for a valid OpenRouter webhook and `401` for
-a request with a missing or invalid signature. A real callback delivery should
-produce a terminal job update that your app can store and use to download the
-generated video.
+Your receiver should return `204` for a valid OpenRouter webhook and `401` for a request with a missing or invalid signature. A real callback delivery should produce a terminal job update that your app can store and use to download the generated video.

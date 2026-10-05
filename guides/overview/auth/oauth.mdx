@@ -159,9 +159,7 @@ const { key } = await response.json();
 
 ### Deep-link to the user's key
 
-Once you have the API key, you can create links to the user's OpenRouter
-activity and key settings pages by hashing the key with SHA-256. Use the
-lowercase hexadecimal digest in both URLs:
+Once you have the API key, you can create links to the user's OpenRouter activity and key settings pages by hashing the key with SHA-256. Use the lowercase hexadecimal digest in both URLs:
 
 <CodeGroup>
 
@@ -181,9 +179,7 @@ const settingsUrl = `https://openrouter.ai/keys/${keyHash}`;
 
 </CodeGroup>
 
-The links only work for the signed-in owner of the API key. If the hash does
-not resolve for the viewer, the page returns a `404` rather than showing
-unfiltered data.
+The links only work for the signed-in owner of the API key. If the hash does not resolve for the viewer, the page returns a `404` rather than showing unfiltered data.
 
 And that's it for the PKCE flow!
 

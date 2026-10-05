@@ -25,53 +25,32 @@ import { API_KEY_REF } from '/snippets/exports/constants.mdx';
 
 Server tools are currently in beta. The API and behavior may change.
 
-Sandboxed execution (`engine: "openrouter"`) is available on the global
-endpoint (`openrouter.ai`) only. Requests through the
-[in-region endpoints](/guides/features/in-region-routing)
-(`eu.openrouter.ai`, `us.openrouter.ai`) are rejected.
+Sandboxed execution (`engine: "openrouter"`) is available on the global endpoint (`openrouter.ai`) only. Requests through the [in-region endpoints](/guides/features/in-region-routing) (`eu.openrouter.ai`, `us.openrouter.ai`) are rejected.
 </Note>
 
-The `openrouter:bash` server tool gives a model the ability to run shell
-commands. It mirrors Anthropic's native bash tool and is available on the
-**Anthropic Messages API only** (`/api/v1/messages`). When the model needs to
-run a command, it calls the tool; with server-side execution enabled,
-OpenRouter runs the command inside an isolated, sandboxed Linux container and
-returns the combined output and exit code.
+The `openrouter:bash` server tool gives a model the ability to run shell commands. It mirrors Anthropic's native bash tool and is available on the **Anthropic Messages API only** (`/api/v1/messages`). When the model needs to run a command, it calls the tool; with server-side execution enabled, OpenRouter runs the command inside an isolated, sandboxed Linux container and returns the combined output and exit code.
 
 <Note>
 **Messages API only**
 
-`openrouter:bash` is only available on the Anthropic Messages API. Requesting
-it on the Chat Completions or Responses API returns a `400` error.
+`openrouter:bash` is only available on the Anthropic Messages API. Requesting it on the Chat Completions or Responses API returns a `400` error.
 
-For **sandboxed** commands on those APIs, use
-[Shell](/guides/features/server-tools/shell), which runs server-side in the same
-container infrastructure and is available on the Responses API. For
-**client-side** execution, send a normal function tool and run the command
-yourself.
+For **sandboxed** commands on those APIs, use [Shell](/guides/features/server-tools/shell), which runs server-side in the same container infrastructure and is available on the Responses API. For **client-side** execution, send a normal function tool and run the command yourself.
 </Note>
 
 ## How It Works
 
-1. You include `{ "type": "openrouter:bash" }` in your `tools` array on a
-   Messages API request.
-2. Based on the user's prompt, the model decides whether it needs to run a
-   command and emits the call with one or more shell commands.
-3. With `engine: "openrouter"`, OpenRouter executes the commands sequentially
-   in a sandboxed container.
+1. You include `{ "type": "openrouter:bash" }` in your `tools` array on a Messages API request.
+2. Based on the user's prompt, the model decides whether it needs to run a command and emits the call with one or more shell commands.
+3. With `engine: "openrouter"`, OpenRouter executes the commands sequentially in a sandboxed container.
 4. The combined `stdout`, `stderr`, and `exitCode` are returned to the model.
-5. The model incorporates the result into its response. It may run multiple
-   command batches in a single request if needed.
+5. The model incorporates the result into its response. It may run multiple command batches in a single request if needed.
 
-Server-side execution is opt-in: set `engine: "openrouter"` on the tool (see
-[Execution engine](#execution-engine)). With the default `engine` (`auto`), the
-tool is a local, human-in-the-loop tool instead: the call is returned to your
-application to run client-side, and nothing executes on OpenRouter's servers.
+Server-side execution is opt-in: set `engine: "openrouter"` on the tool (see [Execution engine](#execution-engine)). With the default `engine` (`auto`), the tool is a local, human-in-the-loop tool instead: the call is returned to your application to run client-side, and nothing executes on OpenRouter's servers.
 
 ## Quick Start
 
-Send the tool on a Messages API request. Set `engine: "openrouter"` to run
-commands server-side in the OpenRouter sandbox.
+Send the tool on a Messages API request. Set `engine: "openrouter"` to run commands server-side in the OpenRouter sandbox.
 
 <Template data={{
   API_KEY_REF,
@@ -157,8 +136,7 @@ curl https://openrouter.ai/api/v1/messages \
 
 ## Configuration
 
-The bash tool accepts optional `parameters` to choose its execution
-environment:
+The bash tool accepts optional `parameters` to choose its execution environment:
 
 ```json lines
 {
@@ -223,8 +201,7 @@ Requests to hosts outside the policy fail inside the container with a connection
 
 ### Call Arguments
 
-The model generates the call arguments. They mirror Anthropic's native bash
-tool action:
+The model generates the call arguments. They mirror Anthropic's native bash tool action:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -236,8 +213,7 @@ tool action:
 
 ## Anthropic Messages API native bash tool
 
-On the Messages API you can also use Anthropic's native bash tool shape
-(`{ "type": "bash_20250124", "name": "bash" }`) instead of `openrouter:bash`.
+On the Messages API you can also use Anthropic's native bash tool shape (`{ "type": "bash_20250124", "name": "bash" }`) instead of `openrouter:bash`.
 
 ```json lines
 {
@@ -247,10 +223,7 @@ On the Messages API you can also use Anthropic's native bash tool shape
 }
 ```
 
-The native `bash_20250124` tool runs **client-side** by default: OpenRouter
-returns the `tool_use` to your application to execute locally, exactly as a
-direct call to the provider would. To run commands server-side in OpenRouter's
-sandbox instead, send the OpenRouter tool shape with `engine: "openrouter"`:
+The native `bash_20250124` tool runs **client-side** by default: OpenRouter returns the `tool_use` to your application to execute locally, exactly as a direct call to the provider would. To run commands server-side in OpenRouter's sandbox instead, send the OpenRouter tool shape with `engine: "openrouter"`:
 
 ```json lines
 {
@@ -265,32 +238,18 @@ sandbox instead, send the OpenRouter tool shape with `engine: "openrouter"`:
 
 ### Restart
 
-Anthropic's bash tool supports a `restart` action that resets the shell
-session. When the model emits `{ "restart": true }`, OpenRouter provisions a
-fresh sandbox container, so commands run after a restart start from a clean
-state. The reset applies for the remainder of the current agentic turn. To keep
-a container alive across separate API requests in a conversation, send a stable
-`session_id` on each request; the sandbox is keyed by it.
+Anthropic's bash tool supports a `restart` action that resets the shell session. When the model emits `{ "restart": true }`, OpenRouter provisions a fresh sandbox container, so commands run after a restart start from a clean state. The reset applies for the remainder of the current agentic turn. To keep a container alive across separate API requests in a conversation, send a stable `session_id` on each request; the sandbox is keyed by it.
 
 ## Execution engine
 
-The `engine` parameter controls where commands run. To check whether an
-endpoint runs bash natively, read `native_tools` on the endpoint object. See
-[Native Execution](/guides/features/server-tools#native-execution).
+The `engine` parameter controls where commands run. To check whether an endpoint runs bash natively, read `native_tools` on the endpoint object. See [Native Execution](/guides/features/server-tools#native-execution).
 
 - `openrouter`: run commands server-side in the OpenRouter sandbox.
-- `auto` (default) / `native`: local, human-in-the-loop execution. The tool
-  call is returned to your application, which runs the commands itself and
-  sends the results back on the next request — no commands are executed on any
-  server. The native `bash_20250124` tool always uses this behavior, since it
-  has no `engine` field.
+- `auto` (default) / `native`: local, human-in-the-loop execution. The tool call is returned to your application, which runs the commands itself and sends the results back on the next request — no commands are executed on any server. The native `bash_20250124` tool always uses this behavior, since it has no `engine` field.
 
-This lets you opt into OpenRouter's sandboxed execution with `openrouter`, while
-the default leaves command execution entirely to your own application.
+This lets you opt into OpenRouter's sandboxed execution with `openrouter`, while the default leaves command execution entirely to your own application.
 
-`engine` selects where commands run, not which APIs accept the tool: every
-engine, `openrouter` included, is Messages-API-only. For sandboxed commands on
-the Responses API, use [Shell](/guides/features/server-tools/shell).
+`engine` selects where commands run, not which APIs accept the tool: every engine, `openrouter` included, is Messages-API-only. For sandboxed commands on the Responses API, use [Shell](/guides/features/server-tools/shell).
 
 ## Response Format
 
@@ -305,8 +264,7 @@ When the model calls the bash tool, it receives a response like:
 }
 ```
 
-A non-zero `exitCode` indicates the command itself failed; the error output is
-returned on `stderr` so the model can read and react to it.
+A non-zero `exitCode` indicates the command itself failed; the error output is returned on `stderr` so the model can read and react to it.
 
 ## Output files
 
@@ -346,23 +304,15 @@ A request that starts a new or sleeping container is billed a minimum of 30 seco
 
 Running shell commands is powerful and is sandboxed by design:
 
-- Commands execute in an isolated container, not on OpenRouter
-  infrastructure or your machine. With `container_auto` the container is
-  ephemeral; with `container_reference` it persists across requests.
+- Commands execute in an isolated container, not on OpenRouter infrastructure or your machine. With `container_auto` the container is ephemeral; with `container_reference` it persists across requests.
 - Containers are scoped per account, so they are never shared across tenants.
 - Network access is intended to be disabled by default at the container level.
 - Execution time is bounded by `timeout_ms`, clamped to 5 minutes.
-- `stdout` and `stderr` are each truncated to `max_output_length`, a per-stream
-  cap clamped to 65,536 characters. See [Configuration](#configuration) for the
-  defaults.
+- `stdout` and `stderr` are each truncated to `max_output_length`, a per-stream cap clamped to 65,536 characters. See [Configuration](#configuration) for the defaults.
 
 ## Next Steps
 
-- [Server Tools Overview](/guides/features/server-tools). Learn about
-  server tools
-- [Containers](/guides/features/containers). How sandbox
-  containers work
-- [Web Fetch](/guides/features/server-tools/web-fetch). Fetch content
-  from URLs
-- [Tool Calling](/guides/features/tool-calling). Learn about user-defined
-  tool calling
+- [Server Tools Overview](/guides/features/server-tools). Learn about server tools
+- [Containers](/guides/features/containers). How sandbox containers work
+- [Web Fetch](/guides/features/server-tools/web-fetch). Fetch content from URLs
+- [Tool Calling](/guides/features/tool-calling). Learn about user-defined tool calling

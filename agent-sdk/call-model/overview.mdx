@@ -17,18 +17,12 @@ icon: book
 
 ## Why callModel?
 
-- **Items-Based Model**: Built on OpenRouter's Responses API with structured
-  items (messages, tool calls, reasoning) instead of raw message chunks
-- **Multiple Consumption Patterns**: Get text, stream responses, or access
-  structured data - all from a single call
-- **Automatic Tool Execution**: Define tools with Zod schemas and let the SDK
-  handle execution loops
-- **Type Safety**: Full TypeScript inference for tool inputs, outputs, and
-  events
-- **Format Compatibility**: Convert to/from OpenAI chat and Anthropic Claude
-  message formats
-- **Streaming First**: Built on a reusable stream architecture that supports
-  concurrent consumers
+- **Items-Based Model**: Built on OpenRouter's Responses API with structured items (messages, tool calls, reasoning) instead of raw message chunks
+- **Multiple Consumption Patterns**: Get text, stream responses, or access structured data - all from a single call
+- **Automatic Tool Execution**: Define tools with Zod schemas and let the SDK handle execution loops
+- **Type Safety**: Full TypeScript inference for tool inputs, outputs, and events
+- **Format Compatibility**: Convert to/from OpenAI chat and Anthropic Claude message formats
+- **Streaming First**: Built on a reusable stream architecture that supports concurrent consumers
 
 ## Quick Start
 
@@ -51,8 +45,7 @@ console.log(text); // "The capital of France is Paris."
 
 ## Consumption Patterns
 
-callModel returns a `ModelResult` object that provides multiple ways to consume
-the response:
+callModel returns a `ModelResult` object that provides multiple ways to consume the response:
 
 ### Text Methods
 
@@ -141,26 +134,16 @@ const result3 = openrouter.callModel({
 
 Explore the guides to learn more about specific features:
 
-- **[Working with Items](/agent-sdk/call-model/items)** - Understand
-  the items-based streaming paradigm
-- **[Text Generation](/agent-sdk/call-model/text-generation)** -
-  Input formats, model selection, and response handling
-- **[Streaming](/agent-sdk/call-model/streaming)** - All streaming
-  methods and patterns
-- **[Tools](/agent-sdk/call-model/tools)** - Creating typed tools
-  with Zod schemas and multi-turn orchestration
-- **[Lifecycle Hooks](/agent-sdk/call-model/lifecycle-hooks)** - Observe and
-  control tools, prompts, approvals, sessions, and model calls
-- **[nextTurnParams](/agent-sdk/call-model/next-turn-params)** -
-  Tool-driven context injection for skills and plugins
-- **[Message Formats](/agent-sdk/call-model/message-formats)** -
-  Converting to/from OpenAI and Claude formats
-- **[Dynamic Parameters](/agent-sdk/call-model/dynamic-parameters)**
-  \- Async functions for adaptive behavior
-- **[Stop Conditions](/agent-sdk/call-model/stop-conditions)** -
-  Intelligent execution control
-- **[API Reference](/agent-sdk/call-model/api-reference)** - Complete
-  type definitions and method signatures
+- **[Working with Items](/agent-sdk/call-model/items)** - Understand the items-based streaming paradigm
+- **[Text Generation](/agent-sdk/call-model/text-generation)** - Input formats, model selection, and response handling
+- **[Streaming](/agent-sdk/call-model/streaming)** - All streaming methods and patterns
+- **[Tools](/agent-sdk/call-model/tools)** - Creating typed tools with Zod schemas and multi-turn orchestration
+- **[Lifecycle Hooks](/agent-sdk/call-model/lifecycle-hooks)** - Observe and control tools, prompts, approvals, sessions, and model calls
+- **[nextTurnParams](/agent-sdk/call-model/next-turn-params)** - Tool-driven context injection for skills and plugins
+- **[Message Formats](/agent-sdk/call-model/message-formats)** - Converting to/from OpenAI and Claude formats
+- **[Dynamic Parameters](/agent-sdk/call-model/dynamic-parameters)** \- Async functions for adaptive behavior
+- **[Stop Conditions](/agent-sdk/call-model/stop-conditions)** - Intelligent execution control
+- **[API Reference](/agent-sdk/call-model/api-reference)** - Complete type definitions and method signatures
 
 ### Example Tools
 
