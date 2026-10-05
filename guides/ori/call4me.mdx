@@ -1,0 +1,113 @@
+---
+title: Make Phone Calls with call4me
+sidebarTitle: Phone Calls
+description: Connect call4me over MCP so Claude Code or Codex launched through Ori can call businesses and report the results.
+seoTitle: "Phone Calls with Ori and call4me | OpenRouter"
+og:site_name: OpenRouter Documentation
+og:title: "Make Phone Calls with Ori and call4me"
+og:description: "Connect a calling MCP server to your agent, launch it through Ori, and bring phone answers back into your task."
+og:image: https://openrouter.ai/dynamic-og?title=Phone%20Calls%20with%20Ori&description=Connect%20call4me%20over%20MCP
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: "@OpenRouter"
+nofollow: false
+icon: phone
+---
+
+An agent launched through [Ori Harness](/guides/ori/harness) can use [call4me](https://call4.me) to call businesses, ask questions, and arrange appointments. The agent sends a brief through MCP, a voice caller handles the conversation, and the agent follows the transcript and outcome in the same task.
+
+This guide uses Claude Code or Codex CLI. Add call4me to that agent's MCP configuration, then launch the agent through Ori to use OpenRouter for its model requests.
+
+## Before you start
+
+Install Ori and sign in by following the [Ori Harness setup](/guides/ori/harness#install-ori). You also need a [call4me account](https://call4.me/account) and calling credits to place a call. Choose a model that supports [tool calling](/guides/features/tool-calling).
+
+<Note>
+  OpenRouter bills the agent's model requests. call4me bills phone calls separately through its own account and credits. Signing in to Ori does not sign you in to call4me.
+</Note>
+
+## Connect your agent
+
+call4me's remote MCP server is `https://call4.me/mcp`. It uses Streamable HTTP and browser OAuth, so you do not need to paste an API key into your agent's prompt.
+
+<Tabs>
+  <Tab title="Claude Code">
+    Add the server to your user configuration:
+
+    ```sh
+    claude mcp add --scope user --transport http call4me https://call4.me/mcp
+    ```
+
+    Start Claude Code through Ori:
+
+    ```sh
+    ori claude
+    ```
+
+    Run `/mcp`, select **call4me**, and choose **Authenticate**. Complete the call4me sign in in your browser. User scope makes this connection available across projects; use `--scope local` instead to confine it to the current project.
+  </Tab>
+
+  <Tab title="Codex CLI">
+    Add the server and sign in:
+
+    ```sh
+    codex mcp add call4me --url https://call4.me/mcp
+    codex mcp login call4me
+    ```
+
+    Complete the call4me sign in in your browser, then start a fresh session through Ori:
+
+    ```sh
+    ori codex
+    ```
+
+    Run `/mcp` to inspect the active connection.
+  </Tab>
+</Tabs>
+
+The [call4me setup guide](https://call4.me/mcp) also documents other clients and API key authentication.
+
+## Check the connection
+
+Ask the agent:
+
+```text
+Use call4me_get_balance to check the connection. Show my balance and my call4me phone numbers. Do not place a call.
+```
+
+The agent should invoke the tool and return an actual account result. This verifies authentication and account access. It does not test dialing. If no call4me number has been assigned yet, the free US number is assigned on the first call.
+
+## Give the caller a task
+
+Name the business you want to reach, verify its phone number on its official website, and specify what the caller may ask, share, and agree to. For a booking, include the name, date, party size, and acceptable alternatives. The agent should check the call's requirements and collect missing details before dialing.
+
+For an information request, name the restaurant first, then ask:
+
+```text
+Call that restaurant using the number on its official website. Ask whether the entrance is accessible without stairs and whether it has vegetarian options. This is an information request. Do not make a reservation or agree to a charge. Follow the call until it finishes, then tell me what was answered and what remains unknown.
+```
+
+## Follow the call to its outcome
+
+call4me exposes the following tools to the agent:
+
+| Tool | What the agent does |
+| --- | --- |
+| `call4me_get_profile` | Checks saved calling details and asks for missing information relevant to the task |
+| `call4me_get_requirements` | Checks the fields required for the call's category |
+| `call4me_place_call` | Starts the call with its goal, facts, and permitted alternatives; returns a call ID |
+| `call4me_get_call` | Follows that call ID for status, transcript, open questions, and the final outcome |
+| `call4me_answer_question` | Answers a question from the caller while the business waits |
+| `call4me_hang_up` | Ends a call early when requested |
+
+The initial call ID means the call was submitted. Keep following it with `call4me_get_call` and `wait_seconds: 30` until the result reports `finished: true`. If `open_questions` contains a question, answer it promptly with `call4me_answer_question` using its question ID and the call ID. Ask the user when the answer falls outside the supplied facts or permitted alternatives.
+
+A finished call may have reached voicemail, gone unanswered, or left a question unresolved. Read the outcome and transcript before reporting success. See the [call4me tool reference](https://call4.me/llms.txt) for the complete calling workflow.
+
+## Troubleshooting
+
+* **No call4me tools appear.** Check the MCP configuration in the agent you launch. Claude Code and Codex each have their own configuration; adding a server to one does not add it to the other. Start a fresh session through Ori after changing the configuration.
+* **Authentication is required.** Repeat the call4me authentication step for your agent. Ori's OpenRouter login is a separate connection.
+* **The call has not started.** If `call4me_place_call` returns "Not calling yet", gather the missing information it lists before trying again. Use `call4me_get_balance` to check calling credits.
+* **The call is still running.** Continue following the returned call ID instead of submitting another call. Report the final outcome once `finished` is true.
