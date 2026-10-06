@@ -318,7 +318,7 @@ curl https://openrouter.ai/api/v1/batches \
 
 </CodeGroup>
 
-`provider.only` is the only provider preference the Batch API accepts. `order`, `sort`, `allow_fallbacks`, and the other sync preferences are rejected. If none of the listed providers has an eligible `:batch` endpoint for the model, the submit returns `404` instead of falling back to another provider. Use the [batch variant filter on the models page](https://openrouter.ai/models?variant=batch) to see which providers serve a model in batch.
+`provider.only` and `provider.allow_fallbacks` are the only provider preferences the Batch API accepts. `order`, `sort`, and the other sync preferences are rejected. If none of the listed providers has an eligible `:batch` endpoint for the model, the submit returns `404` instead of falling back to another provider. Use the [batch variant filter on the models page](https://openrouter.ai/models?variant=batch) to see which providers serve a model in batch.
 
 ---
 
