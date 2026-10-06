@@ -323,6 +323,24 @@ Use `passthrough` to run the candidates through the same eligibility checks as t
 
 The judge is a small, fast model (`google/gemini-2.5-flash-lite`) that estimates whether the efficient tier can solve your task. Switchyard is open source, so everything below can be checked against the [NVIDIA-NeMo/Switchyard](https://github.com/NVIDIA-NeMo/Switchyard) source; the capability classifier lives in the [`crates/libsy`](https://github.com/NVIDIA-NeMo/Switchyard/tree/main/crates/libsy) directory.
 
+**Choose the judge.** To run the judge on a different model, set `judge_model` on the plugin:
+
+```json
+{
+  "model": "nvidia/switchyard",
+  "plugins": [{ "id": "switchyard-router", "judge_model": "openai/gpt-5.4-nano" }]
+}
+```
+
+Switchyard uses the model that you name only if the model meets both of the following conditions:
+
+- It's in the model catalog.
+- It has at least one endpoint that supports structured outputs and that your account settings and the request's `provider` settings allow.
+
+Otherwise, the request still runs with the default judge, and the pipeline data reports `judge_model_requested` and `judge_model_fallback`. The fallback reason is `not_in_catalog`, `no_structured_outputs`, `no_eligible_endpoint`, or `catalog_unavailable`.
+
+The 2.5-second time budget and the fall-open behavior described later on this page apply to whichever judge runs, so a slow judge model can send more requests to the capable tier. The `auto`, `random`, and `passthrough` algorithms don't call the judge, so they ignore `judge_model`.
+
 **What the judge receives.** One chat completion request with a fixed system prompt and, from your request, the first user message and (when there is more than one) the latest user message. Before that, OpenRouter reduces your request to a compact projection: the last 64 messages, message text cut at 8,000 characters, at most 32 content parts and 16 tool calls per message, and binary parts (images, audio, files) replaced with markers. The judge does not receive your candidate list, endpoint prices, provider names, or tool definitions. Tiers are assigned by price before the judge runs (see [How candidates become tiers](#how-candidates-become-tiers)); the judge only decides which tier the task needs.
 
 **What the system prompt asks.** The prompt describes the efficient tier as a small, low-cost model that is reliable on short, well-specified tasks and unreliable on multi-step reasoning, formal proofs, long code changes, and nuanced writing. It asks the judge to name the crux (the hardest requirement for getting the whole request right), match it to one rule on a capability card, and then estimate the probability that the efficient model completes the whole request correctly on one fresh attempt. The card has nine rules: `SUP-1` to `SUP-5` (supported: short replies, factual lookups, formatting or extraction of short text, small code snippets, simple lists), `UNC-1` and `UNC-2` (uncertain: ambiguous requests, long-document summaries or edits), and `LIM-1` and `LIM-2` (unsupported: multi-step math or logic, substantial code work). The judge is told not to invent success rates and that the routing threshold is not part of its forecast.
@@ -377,6 +395,8 @@ Send the `X-OpenRouter-Metadata: enabled` header to see what the router did. The
 - `strategy` names how the model was chosen: the algorithm that ran (`capability`, `stage`, `auto`, `composite`, `random`, or `passthrough`), `session_pin` when a remembered choice was reused, or `caller_order` when OpenRouter served your `models` order instead of a router decision. `caller_order` covers one eligible candidate, every eligible candidate at the same price, and the router being unavailable. Requests still succeed in that case.
 - `judge_ms` is the wall time of the judge call. It is absent when no judge call was made.
 - `route_ms` is the wall time of the whole routing decision inside the router, from the moment it receives the request to the moment it returns a choice. It includes the judge call, so it is at least `judge_ms` and usually a little more.
+- `judge_model_requested` is the `judge_model` value that you sent, and is absent when you don't set `judge_model`.
+- `judge_model_fallback` names the reason that the default judge ran instead of your `judge_model`, and is absent otherwise.
 - `judge_failure` names the reason when the judge could not be used (for example `timeout`), and is absent otherwise.
 - `degraded_reason` names the reason for `caller_order` (`single_candidate`, `equal_pricing`, or an infrastructure reason such as `service_binding_missing`), and is present only when `strategy` is `caller_order`.
 
