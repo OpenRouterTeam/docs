@@ -89,57 +89,20 @@ ori dsh
 
 This points your global DeepSeek Harness config at OpenRouter. After that, run `dsh` the way you always do.
 
-## Use Ori with desktop apps
+## Set up a harness with `ori harness`
 
-Ori routes Codex Desktop through OpenRouter. The Codex CLI and Codex Desktop share one Codex config, so one setup puts both on OpenRouter, and one reset puts both back.
-
-<Note>
-  Quit Codex Desktop before you run setup or reset.
-</Note>
-
-### Set up Codex Desktop
-
-1. Install Codex Desktop, then [install Ori](#install-ori).
-2. Sign in to OpenRouter:
-
-   ```sh
-   ori login
-   ```
-
-3. Route Codex through OpenRouter:
-
-   ```sh
-   ori harness setup codex
-   ```
-
-4. Open Codex Desktop and pick a model from the model picker. The picker lists models from the OpenRouter catalog.
-
-The setup stays in place until you reset it, so your plain `codex` command also runs on OpenRouter. You don't need to launch Codex Desktop through Ori.
-
-### Go back to your own Codex setup
-
-To put Codex back on your own setup, run:
+An `ori <agent>` command puts one session on OpenRouter. `ori harness setup` makes it the default instead: it writes the OpenRouter settings into the agent's own config, so the agent's desktop app and its plain command both run on OpenRouter. `ori harness reset` puts back what you had.
 
 ```sh
+ori harness setup codex
 ori harness reset codex
 ```
 
-Reset removes the OpenRouter provider from your Codex config and restores the settings that setup replaced.
+Each harness has its own page, with the setup steps, what works, and what isn't available yet:
 
-### What works in Codex Desktop
+- [Ori Codex](/guides/ori/codex): the Codex CLI and Codex Desktop.
 
-- Setup with `ori harness setup codex`.
-- Chat turns on OpenRouter.
-- The model picker with the OpenRouter catalog.
-- Reset with `ori harness reset codex`.
-
-Verified on Ori 0.15.6 with Codex Desktop 26.930 on macOS. Codex Desktop on Windows and Linux isn't verified.
-
-### Not available yet
-
-- Plugin search in Codex Desktop.
-- Image generation in Codex Desktop.
-- Claude Desktop and Claude Code setup through `ori harness setup claude`. To use Claude Desktop with OpenRouter today, see the [Claude Desktop integration guide](/cookbook/coding-agents/claude-desktop-integration).
+Setup for Claude Desktop and Claude Code through `ori harness setup claude` isn't available yet. To use Claude Desktop with OpenRouter today, see the [Claude Desktop integration guide](/cookbook/coding-agents/claude-desktop-integration).
 
 ## Sign in instead of managing keys
 

@@ -177,7 +177,7 @@ The declaration follows these rules:
 - The declaration applies only when the key can serve the request. If the key's **This key applies to** filters exclude the request, the declaration has no effect.
 - A region declaration does not change your key's retention policy. Under ZDR enforcement, the key still needs a ZDR declaration or a ZDR endpoint.
 - A saved or cleared declaration takes effect within a few minutes. Routing reads your keys from a short-lived per-account cache, so requests sent right after you save can still use the previous value.
-- The setting is not yet available through the [BYOK management API](/api/api-reference/byok). Change it in your workspace BYOK settings.
+- The [BYOK management API](/api/api-reference/byok) exposes the setting as `declared_region` (`global`, `europe`, `us`, or `null` for undeclared). Omit it on update to keep the stored value, or send `null` to clear it. For OpenAI and Fireworks the value must match the region in the key material, so change it by sending a key with that region.
 
 OpenRouter fails closed where it cannot rely on your account alone to keep the request in the region. A region declaration is **not** honored for:
 
