@@ -11,6 +11,8 @@ og:image:height: 630
 twitter:card: summary_large_image
 twitter:site: '@OpenRouter'
 icon: route
+models:
+  - typesafe/jev-router
 ---
 
 The [Jev Router](https://openrouter.ai/typesafe/jev-router) (`typesafe/jev-router`) picks a model and reasoning effort for each request. [Jev](/guides/community/jev), TypeSafe's decision model, reads the conversation and judges the task type, difficulty, and how much a stronger model would help. The router then chooses the cheapest candidate that meets that bar from a curated pool of models.
