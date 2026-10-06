@@ -21,6 +21,8 @@ models:
 
 Each entry is `author/name-prefix`, lowercase. A model page links the doc when its author matches and its model name equals the prefix or starts with `<prefix>-`, so `typesafe/jev` covers `typesafe/jev-1.13`, `~typesafe/jev-latest`, and `typesafe/jev-1.13:free`. List several families when a page covers several (`openai/gpt-6-astra` and `openai/gpt-astra` on the Astra migration guide). Pages under `cookbook/` show as Cookbook, everything else as Guide, and the `sidebarTitle` (or `title`) is the link text. A page marked `noindex: true` cannot declare models.
 
+The Validate Docs workflow also flags a page that names a public model slug in its body and that model's name in its file name or title (`openrouter/fusion` on `fusion-router.mdx`) but has no `models:` key. Add the suggested list, or `models: []` when the page is not written for that model. Run the check locally with `bun scripts/ci/check-docs-model-coverage.ts`.
+
 After editing frontmatter run `bun run generate:docs:model-map` and commit the regenerated `model-documentation-map.gen.ts` in `projects/web`. The Validate Docs workflow fails when that file is stale. Labs live in `projects/web` rather than here and are listed by hand in `model-documentation-resources.ts` next to the generated file.
 
 ## Local Development
