@@ -908,3 +908,62 @@ To maximize the tool-calling traffic routed to your endpoints:
 - **Return early 429s under load** -- rather than queueing and degrading throughput, return rate limit errors so we can retry with another provider and your metrics stay healthy.
 
 For the full user-facing documentation on Auto Exacto, see [Auto Exacto](/guides/routing/auto-exacto).
+
+### 13. Provider API
+
+Provider dashboard settings are moving to an API under `https://openrouter.ai/api/v1/providers/{provider_slug}`. Authenticate with an OpenRouter API key from an account that owns the provider or has been added as a member, sent as `Authorization: Bearer <key>`. The routes available today, with request and response schemas, are listed in an OpenAPI 3.1 document at `GET /api/v1/providers/{provider_slug}/openapi`.
+
+#### Endpoint rate limits
+
+`PATCH /api/v1/providers/{provider_slug}/endpoints/{endpoint_id}/limits` sets the requests-per-minute and requests-per-day caps OpenRouter enforces before routing to one of your endpoints. Omitted fields stay unchanged, and `null` removes a cap. `disable_free_endpoint_limits` is accepted only on free-variant endpoints.
+
+```bash
+curl -X PATCH https://openrouter.ai/api/v1/providers/my-provider/endpoints/$ENDPOINT_ID/limits \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "limit_rpm": 600, "limit_rpd": null }'
+```
+
+#### Endpoint visibility
+
+`PATCH /api/v1/providers/{provider_slug}/endpoints/{endpoint_id}/visibility` with `{ "hidden": true }` hides an endpoint: it stops receiving traffic and disappears from OpenRouter listings on the next catalog refresh, usually within a minute. Unhiding re-runs the baseline tests, so it is only available from the provider dashboard. The response echoes `hidden`, which is always `true` for this route; read the endpoint-health route to see the current state after a dashboard unhide.
+
+```bash
+curl -X PATCH https://openrouter.ai/api/v1/providers/my-provider/endpoints/$ENDPOINT_ID/visibility \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "hidden": true }'
+```
+
+#### Endpoint capabilities
+
+`POST /api/v1/providers/{provider_slug}/endpoints/{endpoint_id}/capabilities/disable` removes capabilities from an endpoint (the accepted names are the `capabilities` enum in the provider's OpenAPI document) and excludes them so automated capability tests do not re-enable them. Disabling a capability also disables the capabilities that depend on it; the response lists everything that was removed. Enabling a capability runs the capability tests first, so it is only available from the provider dashboard.
+
+```bash
+curl -X POST https://openrouter.ai/api/v1/providers/my-provider/endpoints/$ENDPOINT_ID/capabilities/disable \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "capabilities": ["tools"] }'
+```
+
+#### Provider page links
+
+`PATCH /api/v1/providers/{provider_slug}` updates the links shown on your public provider page: `terms_of_service_url`, `privacy_policy_url`, and `status_page_url`. Omitted fields stay unchanged, and `null` or an empty string clears a link. Only `http(s)` URLs are accepted.
+
+```bash
+curl -X PATCH https://openrouter.ai/api/v1/providers/my-provider \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "status_page_url": "https://status.my-provider.com" }'
+```
+
+#### Team members
+
+Owners can share dashboard and API access with teammates. `GET /api/v1/providers/{provider_slug}/members` lists everyone with access and their role: `owner` (full access, including managing members) or `member` (full dashboard and API access, except managing members). `POST .../members` with `{ "email": "..." }` adds a member; the email must belong to an existing OpenRouter account. The response is `201` with `is_new: true` for a new grant, or `200` with `is_new: false` when the account already had access. `DELETE .../members/{member_id}` removes a member, using the `id` from the list. Each entry carries `is_current_user`, so a client can tell the caller their own role. Only owners (and OpenRouter staff) can add or remove members; owners are managed by OpenRouter.
+
+```bash
+curl -X POST https://openrouter.ai/api/v1/providers/my-provider/members \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "email": "teammate@my-provider.com" }'
+```

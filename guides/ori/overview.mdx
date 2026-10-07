@@ -1,0 +1,67 @@
+---
+title: Ori
+description: Ori is OpenRouter's family of tools for putting agents to work with any model, in your terminal, in Slack, and on your desktop
+seoTitle: 'Ori | OpenRouter Agent Tools: Harness, Code, Eval, Intern, and Desktop'
+og:site_name: OpenRouter Documentation
+og:title: 'Ori - OpenRouter Agent Tools'
+og:description: "Ori is OpenRouter's family of tools for putting agents to work with any model. Run your coding agent on OpenRouter with Ori Harness, find the best model with Ori Eval, and more."
+og:image: https://openrouter.ai/dynamic-og?title=Ori&description=OpenRouter%27s%20family%20of%20agent%20tools
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+nofollow: false
+icon: terminal
+---
+
+[Ori](https://openrouter.ai/ori) is OpenRouter's family of tools for putting agents to work with any model. One CLI, `ori`, signs you in with your OpenRouter account and gives every tool access to the models, credits, and org settings you already have.
+
+## The Ori tools
+
+| Tool | What it does | Status |
+| --- | --- | --- |
+| [Ori Harness](https://openrouter.ai/ori/harness) | Runs the agent CLI you already use, such as Claude Code, Codex, OpenCode, or Hermes, on OpenRouter with one command. See the [Ori Harness guide](/guides/ori/harness). | Available |
+| Ori Code | OpenRouter's native terminal coding agent, built for working with many models. | Available |
+| [Ori Eval](https://openrouter.ai/ori/eval) | Finds the best model for your project by running your agent on your own prompts and grading the results. See the [Ori Eval guide](/guides/ori/eval). | Available |
+| Ori Intern | Slack agents that learn skills and run on any model. See the [Intern chat guide](/guides/ori/intern-chat). | Waitlist |
+| Ori Desktop | Send tasks to any OpenRouter model from the Mac menu bar. | Waitlist |
+
+Join the waitlist for Ori Intern and Ori Desktop at [openrouter.ai/ori](https://openrouter.ai/ori).
+
+## Install Ori
+
+Install the CLI, then sign in with your OpenRouter account. For interactive use you don't need an API key.
+
+<Tabs>
+  <Tab title="macOS, Linux, WSL">
+    ```sh
+    curl -fsSL https://openrouter.ai/labs/ori/install.sh | bash
+    ```
+  </Tab>
+
+  <Tab title="Windows PowerShell">
+    ```powershell
+    irm https://openrouter.ai/labs/ori/install.ps1 | iex
+    ```
+  </Tab>
+</Tabs>
+
+```sh
+ori login
+```
+
+Then run the tool you want:
+
+```sh
+ori claude          # Claude Code on OpenRouter (or codex, opencode, hermes, ...)
+ori code -p "What is the best model for my support agent?"   # writes and runs an eval, then recommends a model
+```
+
+After the agent writes the eval, `ori eval` runs every `*.eval.ts` file in your project again, locally or in CI.
+
+## Next steps
+
+- [Ori Harness](/guides/ori/harness): run your agent CLI on OpenRouter.
+- [Ori Eval](/guides/ori/eval): write and run evals that pick the best model.
+- [Configuration](/guides/ori/configuration): settings, models, and defaults for every Ori tool.
+- [Changelog](/guides/ori/changelog): what changed in each Ori release.

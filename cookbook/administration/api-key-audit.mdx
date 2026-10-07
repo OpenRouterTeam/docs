@@ -1,0 +1,152 @@
+---
+title: API Key Audit
+description: Find API keys without spend limits, without expirations, or with no recent use
+seoTitle: 'API Key Audit | Automate API Key Hygiene Checks on OpenRouter'
+og:site_name: OpenRouter Documentation
+og:title: 'API Key Audit - Automate API Key Hygiene Checks'
+og:description: 'Use a Management API key to list your OpenRouter API keys and flag keys with no spend limit, no expiration, or no recent use.'
+og:image: https://openrouter.ai/dynamic-og?title=API%20Key%20Audit&description=Automate%20API%20Key%20Hygiene%20Checks
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: magnifying-glass
+---
+
+The [Security settings page](/guides/overview/auth/security-settings) shows which API keys lack a spend limit or an expiration, and which haven't been used recently. To run the same checks on a schedule, or to feed them into your own tooling, call the [List API keys](/api/api-reference/api-keys/list-api-keys) endpoint with a [Management API key](/guides/overview/auth/management-api-keys).
+
+## Prerequisites
+
+- A [Management API key](/guides/overview/auth/management-api-keys). For organizations, only organization admins can create one.
+- Python 3 with the `requests` package, or any HTTP client.
+
+## Fields to check
+
+Each key returned by `GET /api/v1/keys` includes these fields:
+
+- `limit`: the spend limit in USD, or `null` if the key has no limit.
+- `expires_at`: the ISO 8601 UTC expiration, or `null` if the key never expires.
+- `last_used_at`: the ISO 8601 UTC timestamp of the most recent usage recorded for the key, or `null` if no usage has been recorded since the end of 2025.
+- `usage` and `byok_usage`: lifetime spend in USD, on OpenRouter credits and on your own provider keys (BYOK).
+- `created_at`, `creator_user_id`, `workspace_id`, `name`, and `hash`: to identify the key and its owner.
+
+OpenRouter has recorded last-use times since the end of 2025. A key whose `last_used_at` is `null` but whose `usage` or `byok_usage` is greater than 0 was last used before then. Treat it as idle, not as never used.
+
+The endpoint lists the keys in one workspace: the `workspace_id` you pass, or your default workspace if you omit it. To audit every workspace, list them with [List workspaces](/api/api-reference/workspaces/list-workspaces) and call the endpoint once per `workspace_id`. It returns up to 100 keys per page. Pass `offset` to read the next page, and stop when a page has fewer than 100 keys. Disabled keys are excluded unless you pass `include_disabled=true`.
+
+The endpoint returns standard API keys only. Management API keys and keys created through OAuth aren't included, so review those on the Security settings page.
+
+## Example
+
+The following script reads your Management API key from the `OPENROUTER_MANAGEMENT_KEY` environment variable, lists the keys in every workspace, and prints the ones that have no spend limit, never expire, or have been idle for 90 days or more:
+
+<CodeGroup>
+
+```typescript title="TypeScript SDK" expandable lines
+import { OpenRouter } from '@openrouter/sdk';
+
+const openRouter = new OpenRouter({
+  apiKey: process.env.OPENROUTER_MANAGEMENT_KEY,
+});
+
+const PAGE_SIZE = 100;
+const IDLE_AFTER_MS = 90 * 24 * 60 * 60 * 1000;
+
+async function* listKeys() {
+  const workspacePages = await openRouter.workspaces.list({ limit: PAGE_SIZE });
+  for await (const workspacePage of workspacePages) {
+    for (const workspace of workspacePage.result.data) {
+      for (let offset = 0; ; offset += PAGE_SIZE) {
+        const page = await openRouter.apiKeys.list({ workspaceId: workspace.id, offset });
+        yield* page.data;
+        if (page.data.length < PAGE_SIZE) break;
+      }
+    }
+  }
+}
+
+const now = Date.now();
+for await (const key of listKeys()) {
+  const findings: string[] = [];
+  if (key.limit === null) findings.push('no spend limit');
+  if (key.expiresAt == null) findings.push('never expires');
+  if (key.lastUsedAt === null) {
+    findings.push(key.usage > 0 || key.byokUsage > 0 ? 'idle 90+ days' : 'never used');
+  } else if (now - key.lastUsedAt.getTime() >= IDLE_AFTER_MS) {
+    findings.push('idle 90+ days');
+  }
+  if (findings.length > 0) {
+    console.log(key.hash, key.name, key.creatorUserId, findings.join(', '));
+  }
+}
+```
+
+```python title="Python" expandable lines
+import os
+from datetime import datetime, timedelta, timezone
+
+import requests
+
+MANAGEMENT_API_KEY = os.environ["OPENROUTER_MANAGEMENT_KEY"]
+BASE_URL = "https://openrouter.ai/api/v1"
+PAGE_SIZE = 100
+IDLE_AFTER = timedelta(days=90)
+
+
+def list_pages(path, params=None):
+    offset = 0
+    while True:
+        response = requests.get(
+            f"{BASE_URL}{path}",
+            headers={"Authorization": f"Bearer {MANAGEMENT_API_KEY}"},
+            params={**(params or {}), "offset": offset},
+        )
+        response.raise_for_status()
+        page = response.json()["data"]
+        yield from page
+        if len(page) < PAGE_SIZE:
+            return
+        offset += PAGE_SIZE
+
+
+def list_keys():
+    for workspace in list_pages("/workspaces", {"limit": PAGE_SIZE}):
+        yield from list_pages("/keys", {"workspace_id": workspace["id"]})
+
+
+def parse(timestamp):
+    return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+
+
+now = datetime.now(timezone.utc)
+for key in list_keys():
+    findings = []
+    if key["limit"] is None:
+        findings.append("no spend limit")
+    if key["expires_at"] is None:
+        findings.append("never expires")
+    if key["last_used_at"] is None:
+        used = key["usage"] > 0 or key["byok_usage"] > 0
+        findings.append("idle 90+ days" if used else "never used")
+    elif now - parse(key["last_used_at"]) >= IDLE_AFTER:
+        findings.append("idle 90+ days")
+    if findings:
+        print(key["hash"], key["name"], key["creator_user_id"], ", ".join(findings))
+```
+
+</CodeGroup>
+
+To audit one workspace, list keys for that `workspace_id` only. To build a list for owners to review, group the output by `creator_user_id`.
+
+## Act on the results
+
+The API returns raw key data, not the risk or **Safe to remove** labels shown in the dashboard. Decide what counts as safe to remove for your organization. For example, keys that were never used, or that have been idle for 90 days with little lifetime `usage`.
+
+Confirm with each key's owner before you change it. Then use [Update an API key](/api/api-reference/api-keys/update-an-api-key) to set a `limit` or set `disabled` to `true`, or [Delete an API key](/api/api-reference/api-keys/delete-an-api-key) to remove it. Disabling is reversible; deleting is not. An expiration can't be added to an existing key, so replace keys that never expire with new expiring keys, following the [API key rotation](/cookbook/administration/api-key-rotation) guide.
+
+## Check your work
+
+- A key you just used shows a recent `last_used_at`, and a key you just created shows `null` with `usage` and `byok_usage` of 0.
+- Standard API keys flagged **No limit** or **No expiry** in the dashboard also appear in the script's output.
