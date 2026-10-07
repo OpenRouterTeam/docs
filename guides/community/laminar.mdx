@@ -1,0 +1,290 @@
+---
+title: Laminar
+description: Using OpenRouter with Laminar
+seoTitle: 'Laminar Integration | OpenRouter SDK Support'
+og:site_name: OpenRouter Documentation
+og:title: 'Laminar Integration - OpenRouter SDK Support'
+og:description: 'Integrate OpenRouter using Laminar for observability and tracing. Complete guide for Laminar integration with OpenRouter for TypeScript and Python applications.'
+og:image: https://openrouter.ai/dynamic-og?title=Laminar&description=Laminar%20Integration
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: puzzle-piece
+---
+
+{/* <llms-ignore> */}
+<Tip>
+Laminar maintains its own [OpenRouter integration guide](https://laminar.sh/docs/integrations/openrouter), which also covers direct API calls, Next.js setup, and querying traces.
+</Tip>
+
+## Using Laminar
+
+[Laminar](https://laminar.sh/) is an open-source, OpenTelemetry-native observability platform for AI agents. It auto-instruments the OpenRouter SDK, so you initialize Laminar once and every chat, responses, and embeddings call is traced with its prompts, response, model, token usage, cost, and latency.
+
+### Installation
+
+<CodeGroup>
+
+```bash title="TypeScript" lines
+npm install @lmnr-ai/lmnr @openrouter/sdk
+```
+
+```bash title="Python" lines
+pip install lmnr openrouter
+```
+
+</CodeGroup>
+
+### Configuration
+
+Create a project in [Laminar](https://laminar.sh/) and copy its API key from **Settings > Project API Keys**. Then set both keys as environment variables:
+
+```bash title="Environment Setup" lines
+LMNR_PROJECT_API_KEY="<LAMINAR_PROJECT_API_KEY>"
+OPENROUTER_API_KEY="<OPENROUTER_API_KEY>"
+```
+
+Laminar reads `LMNR_PROJECT_API_KEY` from the environment. If you self-host Laminar, also pass your instance's base URL when you initialize it.
+
+### Simple LLM call
+
+Call `Laminar.initialize()` once at startup, before any OpenRouter call. In TypeScript, pass the OpenRouter SDK to `instrumentModules` so Laminar can patch it. In Python, Laminar detects the `openrouter` package on its own.
+
+<CodeGroup>
+
+```typescript title="TypeScript" expandable lines
+import { Laminar } from '@lmnr-ai/lmnr';
+import { OpenRouter } from '@openrouter/sdk';
+
+// Initialize Laminar before creating the OpenRouter client
+Laminar.initialize({
+  instrumentModules: { openrouter: OpenRouter },
+});
+
+const client = new OpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+// Make a chat completion request
+const response = await client.chat.send({
+  chatRequest: {
+    model: 'anthropic/claude-sonnet-4.6',
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: 'Tell me a fun fact about space.' },
+    ],
+  },
+});
+
+if (response instanceof ReadableStream) {
+  throw new Error('Expected a non-streaming response');
+}
+
+// Print the assistant's reply
+console.log(response.choices[0].message.content);
+
+// Send any buffered spans before the process exits
+await Laminar.flush();
+```
+
+```python title="Python" expandable lines
+import os
+
+from lmnr import Laminar
+from openrouter import OpenRouter
+
+# Initialize Laminar before creating the OpenRouter client
+Laminar.initialize()
+
+with OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY")) as client:
+    # Make a chat completion request
+    response = client.chat.send(
+        model="anthropic/claude-sonnet-4.6",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Tell me a fun fact about space."},
+        ],
+    )
+
+    # Print the assistant's reply
+    print(response.choices[0].message.content)
+
+# Send any buffered spans before the process exits
+Laminar.flush()
+```
+
+</CodeGroup>
+
+### Using the OpenAI SDK
+
+Laminar also traces OpenRouter calls made through the OpenAI SDK. Point the client's base URL at OpenRouter and initialize Laminar the same way:
+
+<CodeGroup>
+
+```typescript title="TypeScript" expandable lines
+import { Laminar } from '@lmnr-ai/lmnr';
+import OpenAI from 'openai';
+
+Laminar.initialize({
+  instrumentModules: { OpenAI: OpenAI },
+});
+
+// Create an OpenAI client with OpenRouter's base URL
+const client = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+const response = await client.chat.completions.create({
+  model: 'anthropic/claude-sonnet-4.6',
+  messages: [{ role: 'user', content: 'Tell me a fun fact about space.' }],
+});
+
+console.log(response.choices[0].message.content);
+
+await Laminar.flush();
+```
+
+```python title="Python" expandable lines
+import os
+
+from lmnr import Laminar
+from openai import OpenAI
+
+Laminar.initialize()
+
+# Create an OpenAI client with OpenRouter's base URL
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+)
+
+response = client.chat.completions.create(
+    model="anthropic/claude-sonnet-4.6",
+    messages=[{"role": "user", "content": "Tell me a fun fact about space."}],
+)
+
+print(response.choices[0].message.content)
+
+Laminar.flush()
+```
+
+</CodeGroup>
+
+### Advanced tracing with nested calls
+
+By default each OpenRouter call is its own trace. Wrap the function that orchestrates several calls with `observe` to group them into one trace:
+
+<CodeGroup>
+
+```typescript title="TypeScript" expandable lines
+import { Laminar, observe } from '@lmnr-ai/lmnr';
+import { OpenRouter } from '@openrouter/sdk';
+
+Laminar.initialize({
+  instrumentModules: { openrouter: OpenRouter },
+});
+
+const client = new OpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+async function ask(system: string, user: string) {
+  const response = await client.chat.send({
+    chatRequest: {
+      model: 'openai/gpt-4o-mini',
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+    },
+  });
+
+  if (response instanceof ReadableStream) {
+    throw new Error('Expected a non-streaming response');
+  }
+
+  return String(response.choices[0].message.content);
+}
+
+// Both LLM calls appear as children of the "analyze_text" span
+const result = await observe({ name: 'analyze_text' }, async () => {
+  const summary = await ask(
+    'You summarize texts in a concise manner.',
+    "OpenRouter's unified API gives developers access to hundreds of models.",
+  );
+  const sentiment = await ask('You analyze the sentiment of texts.', summary);
+
+  return { summary, sentiment };
+});
+
+console.log(result);
+
+await Laminar.flush();
+```
+
+```python title="Python" expandable lines
+import os
+
+from lmnr import Laminar, observe
+from openrouter import OpenRouter
+
+Laminar.initialize()
+
+client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
+
+
+def ask(system: str, user: str) -> str:
+    response = client.chat.send(
+        model="openai/gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+    )
+    return response.choices[0].message.content
+
+
+@observe()  # Both LLM calls appear as children of the "analyze_text" span
+def analyze_text(text: str):
+    summary = ask("You summarize texts in a concise manner.", text)
+    sentiment = ask("You analyze the sentiment of texts.", summary)
+
+    return {"summary": summary, "sentiment": sentiment}
+
+
+result = analyze_text(
+    "OpenRouter's unified API gives developers access to hundreds of models."
+)
+print(result)
+
+Laminar.flush()
+```
+
+</CodeGroup>
+
+### What gets traced
+
+Each call becomes an LLM span named after the resource you called:
+
+- `openrouter.chat` for `client.chat.send`
+- `openrouter.responses` for `client.responses.send`
+- `openrouter.embeddings` for `client.embeddings.generate`
+
+Every span includes:
+
+- Request messages and the model's response
+- The model that served the request
+- Token usage and cost
+- Latency, for both single responses and streams
+
+### Learn more
+
+- **Laminar OpenRouter Integration**: [https://laminar.sh/docs/integrations/openrouter](https://laminar.sh/docs/integrations/openrouter)
+- **OpenRouter Quick Start Guide**: [https://openrouter.ai/docs/quickstart](https://openrouter.ai/docs/quickstart)
+- **Laminar `observe` Reference**: [https://laminar.sh/docs/sdk/observe](https://laminar.sh/docs/sdk/observe)
+- **Laminar on GitHub**: [https://github.com/lmnr-ai/lmnr](https://github.com/lmnr-ai/lmnr)
+{/* </llms-ignore> */}
