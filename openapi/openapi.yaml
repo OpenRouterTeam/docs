@@ -14364,6 +14364,8 @@ components:
               - $ref: '#/components/schemas/AdditionalToolsItem'
               - $ref: '#/components/schemas/AgentMessageItem'
               - $ref: '#/components/schemas/ConfigurationUpdateItem'
+              - $ref: '#/components/schemas/ToolSearchCallItem'
+              - $ref: '#/components/schemas/ToolSearchOutputItem'
           type: 'array'
       description: 'Input for a response request - can be a string or array of items'
       example:
@@ -17530,7 +17532,7 @@ components:
             openrouter_metadata:
               $ref: '#/components/schemas/OpenRouterMetadata'
             provider:
-              $ref: '#/components/schemas/ProviderName'
+              type: 'string'
             safeguard_results:
               items:
                 $ref: '#/components/schemas/AnthropicSafeguardResult'
@@ -17859,6 +17861,7 @@ components:
                 - 'Z.AI'
                 - 'FakeProvider'
               type: 'string'
+              x-speakeasy-unknown-values: 'allow'
             role:
               enum:
                 - 'assistant'
@@ -22717,12 +22720,16 @@ components:
       properties:
         call_id:
           type: 'string'
+        error:
+          description: 'The error message when the tool call failed before producing a result. Set together with `status: ''failed''`; absent on a successful call.'
+          example: 'Tool execution failed'
+          type: 'string'
         id:
           type: 'string'
         operation:
           $ref: '#/components/schemas/ApplyPatchCallOperation'
         status:
-          $ref: '#/components/schemas/ToolCallStatus'
+          $ref: '#/components/schemas/FailableToolCallStatus'
         type:
           enum:
             - 'openrouter:apply_patch'
@@ -22975,10 +22982,14 @@ components:
         datetime:
           description: 'ISO 8601 datetime string'
           type: 'string'
+        error:
+          description: 'The error message when the tool call failed before producing a result. Set together with `status: ''failed''`; absent on a successful call.'
+          example: 'Tool execution failed'
+          type: 'string'
         id:
           type: 'string'
         status:
-          $ref: '#/components/schemas/ToolCallStatus'
+          $ref: '#/components/schemas/FailableToolCallStatus'
         timezone:
           description: 'IANA timezone name'
           type: 'string'
@@ -23186,6 +23197,10 @@ components:
         status: 'completed'
         type: 'openrouter:image_generation'
       properties:
+        error:
+          description: 'The error message when the tool call failed before producing a result. Set together with `status: ''failed''`; absent on a successful call.'
+          example: 'Tool execution failed'
+          type: 'string'
         id:
           type: 'string'
         imageB64:
@@ -23203,7 +23218,7 @@ components:
         revisedPrompt:
           type: 'string'
         status:
-          $ref: '#/components/schemas/ToolCallStatus'
+          $ref: '#/components/schemas/FailableToolCallStatus'
         type:
           enum:
             - 'openrouter:image_generation'
@@ -23622,6 +23637,7 @@ components:
           reasoning: '#/components/schemas/OutputReasoningItem'
           shell_call: '#/components/schemas/OutputShellCallItem'
           shell_call_output: '#/components/schemas/OutputShellCallOutputItem'
+          tool_search_call: '#/components/schemas/OutputToolSearchCallItem'
           web_search_call: '#/components/schemas/OutputWebSearchCallItem'
         propertyName: 'type'
       example:
@@ -23664,6 +23680,7 @@ components:
         - $ref: '#/components/schemas/OutputSubagentServerToolItem'
         - $ref: '#/components/schemas/OutputFilesServerToolItem'
         - $ref: '#/components/schemas/OutputCustomToolCallItem'
+        - $ref: '#/components/schemas/OutputToolSearchCallItem'
     OutputItemWebSearchCall:
       additionalProperties: {}
       example:
@@ -23920,12 +23937,16 @@ components:
         arguments:
           description: 'The JSON arguments submitted to the search tool (e.g. {"query":"Claude"})'
           type: 'string'
+        error:
+          description: 'The error message when the tool call failed before producing a result. Set together with `status: ''failed''`; absent on a successful call.'
+          example: 'Tool execution failed'
+          type: 'string'
         id:
           type: 'string'
         query:
           type: 'string'
         status:
-          $ref: '#/components/schemas/ToolCallStatus'
+          $ref: '#/components/schemas/FailableToolCallStatus'
         type:
           enum:
             - 'openrouter:experimental__search_models'
@@ -24229,6 +24250,38 @@ components:
         - 'status'
         - 'type'
       type: 'object'
+    OutputToolSearchCallItem:
+      description: 'A call the model made to a `tool_search` tool declared with `"execution": "client"`. The client runs the search and replays this item with a `tool_search_output` item.'
+      example:
+        arguments:
+          query: 'weather'
+        call_id: 'call-abc123'
+        execution: 'client'
+        id: 'tsc-abc123'
+        status: 'completed'
+        type: 'tool_search_call'
+      properties:
+        arguments: {}
+        call_id:
+          type: 'string'
+        execution:
+          enum:
+            - 'client'
+          type: 'string'
+        id:
+          type: 'string'
+        status:
+          $ref: '#/components/schemas/ToolCallStatus'
+        type:
+          enum:
+            - 'tool_search_call'
+          type: 'string'
+      required:
+        - 'type'
+        - 'execution'
+        - 'call_id'
+        - 'status'
+      type: 'object'
     OutputToolSearchServerToolItem:
       description: 'An openrouter:tool_search server tool output item'
       example:
@@ -24237,12 +24290,16 @@ components:
         status: 'completed'
         type: 'openrouter:tool_search'
       properties:
+        error:
+          description: 'The error message when the tool call failed before producing a result. Set together with `status: ''failed''`; absent on a successful call.'
+          example: 'Tool execution failed'
+          type: 'string'
         id:
           type: 'string'
         query:
           type: 'string'
         status:
-          $ref: '#/components/schemas/ToolCallStatus'
+          $ref: '#/components/schemas/FailableToolCallStatus'
         type:
           enum:
             - 'openrouter:tool_search'
@@ -24332,10 +24389,14 @@ components:
             - 'type'
             - 'query'
           type: 'object'
+        error:
+          description: 'The error message when the tool call failed before producing a result. Set together with `status: ''failed''`; absent on a successful call.'
+          example: 'Tool execution failed'
+          type: 'string'
         id:
           type: 'string'
         status:
-          $ref: '#/components/schemas/ToolCallStatus'
+          $ref: '#/components/schemas/FailableToolCallStatus'
         type:
           enum:
             - 'openrouter:web_search'
@@ -26239,6 +26300,7 @@ components:
             - 'FakeProvider'
           example: 'OpenAI'
           type: 'string'
+          x-speakeasy-unknown-values: 'allow'
         routed_service_tier:
           description: 'The service tier this request was routed to (e.g. flex, priority). The tier actually applied and billed is determined by the provider response and may differ.'
           enum:
@@ -28606,6 +28668,48 @@ components:
       oneOf:
         - $ref: '#/components/schemas/ContainerAutoEnvironment'
         - $ref: '#/components/schemas/ContainerReferenceEnvironment'
+    SignInternDaemonRequest:
+      additionalProperties: false
+      properties:
+        bodySha256:
+          description: 'Lower-case hex SHA-256 of the exact bytes the CLI will send as the daemon request body.'
+          example: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+          pattern: '^[0-9a-f]{64}$'
+          type: 'string'
+      required:
+        - 'bodySha256'
+      type: 'object'
+    SignInternDaemonResponse:
+      additionalProperties: false
+      description: 'Headers the CLI copies onto the daemon request so the sidecar can verify who is asking.'
+      example:
+        x-ori-invoke-signature: 'MEUCIQ...'
+        x-ori-invoke-timestamp: '1789000000'
+        x-ori-invoke-user: 'user_2abc'
+      properties:
+        x-ori-invoke-signature:
+          description: 'Base64 Ed25519 signature over the intern id, timestamp, user and body digest.'
+          type: 'string'
+        x-ori-invoke-timestamp:
+          description: 'Unix seconds at signing; the daemon refuses proofs older than its window.'
+          type: 'string'
+        x-ori-invoke-user:
+          description: 'The verified OAuth subject the proof names. Never taken from the request.'
+          type: 'string'
+      required:
+        - 'x-ori-invoke-signature'
+        - 'x-ori-invoke-timestamp'
+        - 'x-ori-invoke-user'
+      type: 'object'
+    SpeechInput:
+      anyOf:
+        - type: 'string'
+        - items:
+            $ref: '#/components/schemas/SpeechTurn'
+          minItems: 1
+          type: 'array'
+      description: 'Text to synthesize, or a list of turns for multi-speaker input. Each turn has its own text, voice, and instructions. Multi-speaker input is currently supported by Gemini TTS models only.'
+      example: 'Hello world'
     SpeechInputReference:
       description: 'Reference content part for stateless voice cloning or voice design'
       discriminator:
@@ -28713,9 +28817,7 @@ components:
         voice: 'en_paul_neutral'
       properties:
         input:
-          description: 'Text to synthesize'
-          example: 'Hello world'
-          type: 'string'
+          $ref: '#/components/schemas/SpeechInput'
         input_references:
           description: 'Reference content for stateless voice cloning or voice design. Audio mode: one to three `input_audio` parts, each optionally paired with a `text` part carrying its transcript (a single clip accepts its transcript before or after it; with multiple clips each transcript immediately follows its clip); only routed to endpoints that support voice cloning (and multiple references when more than one part is sent). Image mode: exactly one `image_url` part; only routed to endpoints that support image references. The two modes cannot be mixed. An empty array is treated as no reference.'
           example:
@@ -28727,6 +28829,10 @@ components:
           items:
             $ref: '#/components/schemas/SpeechInputReference'
           type: 'array'
+        instructions:
+          description: 'Delivery instructions for the whole request, such as tone, pacing, or emotion. Supported by OpenAI gpt-4o-mini-tts and Gemini TTS models. Ignored by other providers.'
+          example: 'Speak in a warm and friendly tone.'
+          type: 'string'
         model:
           description: 'TTS model identifier'
           example: 'mistralai/voxtral-mini-tts-2603'
@@ -28787,6 +28893,24 @@ components:
       required:
         - 'model'
         - 'input'
+      type: 'object'
+    SpeechTurn:
+      properties:
+        instructions:
+          description: 'Delivery instructions for this turn, such as tone, pacing, or emotion. Overrides the top-level `instructions`.'
+          example: 'whispering'
+          type: 'string'
+        text:
+          description: 'Text to synthesize'
+          example: 'Hi Jane.'
+          type: 'string'
+        voice:
+          description: 'Voice for this turn. Defaults to the top-level `voice`.'
+          example: 'Kore'
+          minLength: 1
+          type: 'string'
+      required:
+        - 'text'
       type: 'object'
     StopServerToolsWhen:
       description: 'Stop conditions for the server-tool agent loop. Any condition firing halts the loop (OR logic). When set, this overrides `max_tool_calls`. When a condition fires while the model is still emitting tool calls, the pending tool calls are executed and one final turn is made with tool calls disabled so the response ends with a natural-language answer instead of an unfinished tool call.'
@@ -29814,7 +29938,7 @@ components:
             - 'switchyard-router'
           type: 'string'
         judge_model:
-          description: 'The model that runs the judge call for the judge-backed algorithms ("capability", "stage", and "composite"). The model must support structured outputs and have a provider that your account and request settings allow. Otherwise, the request uses the platform default judge, google/gemini-2.5-flash-lite, and reports the reason in the routing metadata. The judge call is billed to you like any other request.'
+          description: 'The model that runs the judge call for the judge-backed algorithms ("capability", "stage", and "composite"). The model must support structured outputs and have a provider that your account and request settings allow. Otherwise, the request uses the platform default judge, google/gemini-3.5-flash-lite, or openai/gpt-4o-mini when the default does not fit either, and reports the reason in the routing metadata. The judge call is billed to you like any other request.'
           example: 'openai/gpt-5.4-nano'
           minLength: 1
           type: 'string'
@@ -30218,6 +30342,160 @@ components:
         - 'auto'
         - 'required'
         - 'function'
+      type: 'object'
+    ToolSearchCallItem:
+      description: 'A tool search call the client executed'
+      example:
+        arguments:
+          query: 'weather'
+        call_id: 'call_search_1'
+        execution: 'client'
+        status: 'completed'
+        type: 'tool_search_call'
+      properties:
+        arguments: {}
+        call_id:
+          type: 'string'
+        execution:
+          enum:
+            - 'server'
+            - 'client'
+          type: 'string'
+        id:
+          type:
+            - 'string'
+            - 'null'
+        status:
+          enum:
+            - 'in_progress'
+            - 'completed'
+            - 'incomplete'
+            - null
+          type:
+            - 'string'
+            - 'null'
+        type:
+          enum:
+            - 'tool_search_call'
+          type: 'string'
+      required:
+        - 'type'
+        - 'call_id'
+        - 'execution'
+      type: 'object'
+    ToolSearchOutputItem:
+      description: 'The tools a client-executed tool search loaded'
+      example:
+        call_id: 'call_search_1'
+        execution: 'client'
+        status: 'completed'
+        tools:
+          - name: 'get_weather'
+            parameters:
+              properties:
+                location:
+                  type: 'string'
+              type: 'object'
+            type: 'function'
+        type: 'tool_search_output'
+      properties:
+        call_id:
+          type: 'string'
+        execution:
+          enum:
+            - 'server'
+            - 'client'
+          type: 'string'
+        id:
+          type:
+            - 'string'
+            - 'null'
+        status:
+          enum:
+            - 'in_progress'
+            - 'completed'
+            - 'incomplete'
+            - null
+          type:
+            - 'string'
+            - 'null'
+        tools:
+          items:
+            anyOf:
+              - allOf:
+                  - $ref: '#/components/schemas/FunctionTool'
+                  - properties:
+                      async:
+                        description: 'Lets the model keep working after calling this tool instead of waiting for its output. The tool is still executed by the client; return the result in a later request as a `function_call_output` with the original `call_id`. Only honored by providers whose Responses API supports async tools; ignored elsewhere.'
+                        example: true
+                        type: 'boolean'
+                      defer_loading:
+                        description: 'Withhold this tool from the model until `openrouter:tool_search` finds it. Requires the tool search server tool; at least one tool must remain non-deferred.'
+                        example: true
+                        type: 'boolean'
+                    type: 'object'
+                description: 'Function tool definition'
+                example:
+                  description: 'Get the current weather in a location'
+                  name: 'get_weather'
+                  parameters:
+                    properties:
+                      location:
+                        description: 'The city and state'
+                        type: 'string'
+                      unit:
+                        enum:
+                          - 'celsius'
+                          - 'fahrenheit'
+                        type: 'string'
+                    required:
+                      - 'location'
+                    type: 'object'
+                  type: 'function'
+              - $ref: '#/components/schemas/Preview_WebSearchServerTool'
+              - $ref: '#/components/schemas/Preview_20250311_WebSearchServerTool'
+              - $ref: '#/components/schemas/Legacy_WebSearchServerTool'
+              - $ref: '#/components/schemas/WebSearchServerTool'
+              - $ref: '#/components/schemas/FileSearchServerTool'
+              - $ref: '#/components/schemas/ComputerUseServerTool'
+              - $ref: '#/components/schemas/CodeInterpreterServerTool'
+              - $ref: '#/components/schemas/McpServerTool'
+              - $ref: '#/components/schemas/ImageGenerationServerTool'
+              - $ref: '#/components/schemas/CodexLocalShellTool'
+              - $ref: '#/components/schemas/ShellServerTool'
+              - $ref: '#/components/schemas/ApplyPatchServerTool'
+              - $ref: '#/components/schemas/CustomTool'
+              - $ref: '#/components/schemas/NamespaceTool'
+              - $ref: '#/components/schemas/AdvisorServerTool_OpenRouter'
+              - $ref: '#/components/schemas/SubagentServerTool_OpenRouter'
+              - $ref: '#/components/schemas/DatetimeServerTool'
+              - $ref: '#/components/schemas/FilesServerTool'
+              - $ref: '#/components/schemas/FusionServerTool_OpenRouter'
+              - $ref: '#/components/schemas/ImageGenerationServerTool_OpenRouter'
+              - $ref: '#/components/schemas/SearchModelsServerTool_OpenRouter'
+              - $ref: '#/components/schemas/WebFetchServerTool'
+              - $ref: '#/components/schemas/WebSearchServerTool_OpenRouter'
+              - $ref: '#/components/schemas/ApplyPatchServerTool_OpenRouter'
+              - $ref: '#/components/schemas/BashServerTool'
+              - $ref: '#/components/schemas/ShellServerTool_OpenRouter'
+              - $ref: '#/components/schemas/ToolSearchServerTool'
+              - additionalProperties: {}
+                properties:
+                  type:
+                    type: 'string'
+                required:
+                  - 'type'
+                type: 'object'
+          type: 'array'
+        type:
+          enum:
+            - 'tool_search_output'
+          type: 'string'
+      required:
+        - 'type'
+        - 'call_id'
+        - 'execution'
+        - 'tools'
       type: 'object'
     ToolSearchServerTool:
       description: 'OpenRouter built-in server tool: finds tools marked `defer_loading` and makes them callable'
@@ -41733,6 +42011,315 @@ paths:
       summary: 'Get an intern''s daemon access (deprecated alias)'
       tags:
         - 'Interns'
+  /interns/{internId}/daemon-access/sign:
+    post:
+      deprecated: true
+      description: 'Deprecated alias of `POST /interns/{internId}/daemon/sign` with the same request, response, and errors. The API key selects the caller, workspace and visible interns. An intern''s own API key sees only that intern: the collection and every other intern answer 404 to it. There is no default workspace fallback. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
+      operationId: 'signInternDaemonAccessRequest'
+      parameters:
+        - description: 'ID of an intern visible to the authenticated API key.'
+          in: 'path'
+          name: 'internId'
+          required: true
+          schema:
+            description: 'ID of an intern visible to the authenticated API key.'
+            example: '7c9e6679-7425-40de-944b-e07fc1f90ae7'
+            minLength: 1
+            type: 'string'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInternDaemonRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignInternDaemonResponse'
+          description: 'Signature headers for the digest.'
+        '400':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 400
+                  message: 'Invalid request body'
+                  metadata:
+                    reason: 'invalid_body'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is invalid.'
+        '401':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 401
+                  message: 'Invalid or missing API key'
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'Missing, unknown or provisioning API key.'
+        '403':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 403
+                  message: 'Personal connections require ori login --oidc.'
+                  metadata:
+                    reason: 'personal_identity_required'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The caller is an API key, which names no person (`personal_identity_required`), or an OAuth grant without `vault:read` (`insufficient_scope`). Also returned when the key owner no longer has access or the request used a regional hostname.'
+        '404':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 404
+                  message: 'Intern not found'
+                  metadata:
+                    reason: 'not_found'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The caller is outside the Intern API programme, the intern is hidden, or lifecycle writes are disabled.'
+        '408':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 408
+                  message: 'Operation timed out after 10s. Please try again later.'
+                  metadata:
+                    reason: 'timeout'
+                    retryable: true
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request exceeded its route deadline. The deadline quoted in the message is the route''s own, so it differs between operations.'
+        '413':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 413
+                  message: 'Request body exceeds 1048576 bytes'
+                  metadata:
+                    reason: 'payload_too_large'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is larger than 1048576 bytes.'
+        '415':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 415
+                  message: 'Request body must be sent as application/json'
+                  metadata:
+                    reason: 'unsupported_media_type'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is non-empty and its Content-Type is not application/json.'
+        '429':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 429
+                  message: 'Too many intern turns. Please wait a moment.'
+                  metadata:
+                    reason: 'rate_limited'
+                    retryable: true
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'Too many turns for the user or organization this credential acts as (`rate_limited`). Shares the chat turn limiter, reports `retryable: true` and carries `Retry-After`.'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before retrying this request.'
+              required: true
+              schema:
+                description: 'Seconds to wait before retrying this request.'
+                example: '60'
+                type: 'string'
+        '500':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 500
+                  message: 'The request could not be completed'
+                  metadata:
+                    reason: 'internal_error'
+                    retryable: true
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request could not be completed. `metadata.reason` says whether to try again: `internal_error` is a transient failure and carries `metadata.retryable: true`, so the same request may be sent again, while `configuration_error` carries `retryable: false` because the next attempt reads the same missing binding or unusable stored credential.'
+      security:
+        - apiKey: []
+      summary: 'Sign a daemon request with the caller''s identity (deprecated alias)'
+      tags:
+        - 'Interns'
+  /interns/{internId}/daemon/sign:
+    post:
+      description: 'Signs the SHA-256 digest of one request the CLI is about to send to the intern daemon, binding it to the intern and to the signed-in member so personal connections resolve. Only an OAuth session from `ori login --oidc` whose grant carries `vault:read` can sign: an API key is refused with 403 because it names no person, and an `interns`-only grant is refused with 403 because a proof releases that user''s personal connections. The route is behind the same gate as chat and counts against the chat turn limiter. The response is sent with `Cache-Control: no-store`. The API key selects the caller, workspace and visible interns. An intern''s own API key sees only that intern: the collection and every other intern answer 404 to it. There is no default workspace fallback. Requests on regional hostnames such as `eu.openrouter.ai` are refused. [API key](/docs/api-reference/authentication) required.'
+      operationId: 'signInternDaemonRequest'
+      parameters:
+        - description: 'ID of an intern visible to the authenticated API key.'
+          in: 'path'
+          name: 'internId'
+          required: true
+          schema:
+            description: 'ID of an intern visible to the authenticated API key.'
+            example: '7c9e6679-7425-40de-944b-e07fc1f90ae7'
+            minLength: 1
+            type: 'string'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInternDaemonRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignInternDaemonResponse'
+          description: 'Signature headers for the digest.'
+        '400':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 400
+                  message: 'Invalid request body'
+                  metadata:
+                    reason: 'invalid_body'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is invalid.'
+        '401':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 401
+                  message: 'Invalid or missing API key'
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'Missing, unknown or provisioning API key.'
+        '403':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 403
+                  message: 'Personal connections require ori login --oidc.'
+                  metadata:
+                    reason: 'personal_identity_required'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The caller is an API key, which names no person (`personal_identity_required`), or an OAuth grant without `vault:read` (`insufficient_scope`). Also returned when the key owner no longer has access or the request used a regional hostname.'
+        '404':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 404
+                  message: 'Intern not found'
+                  metadata:
+                    reason: 'not_found'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The caller is outside the Intern API programme, the intern is hidden, or lifecycle writes are disabled.'
+        '408':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 408
+                  message: 'Operation timed out after 10s. Please try again later.'
+                  metadata:
+                    reason: 'timeout'
+                    retryable: true
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request exceeded its route deadline. The deadline quoted in the message is the route''s own, so it differs between operations.'
+        '413':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 413
+                  message: 'Request body exceeds 1048576 bytes'
+                  metadata:
+                    reason: 'payload_too_large'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is larger than 1048576 bytes.'
+        '415':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 415
+                  message: 'Request body must be sent as application/json'
+                  metadata:
+                    reason: 'unsupported_media_type'
+                    retryable: false
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request body is non-empty and its Content-Type is not application/json.'
+        '429':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 429
+                  message: 'Too many intern turns. Please wait a moment.'
+                  metadata:
+                    reason: 'rate_limited'
+                    retryable: true
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'Too many turns for the user or organization this credential acts as (`rate_limited`). Shares the chat turn limiter, reports `retryable: true` and carries `Retry-After`.'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before retrying this request.'
+              required: true
+              schema:
+                description: 'Seconds to wait before retrying this request.'
+                example: '60'
+                type: 'string'
+        '500':
+          content:
+            application/json:
+              example:
+                error:
+                  code: 500
+                  message: 'The request could not be completed'
+                  metadata:
+                    reason: 'internal_error'
+                    retryable: true
+              schema:
+                $ref: '#/components/schemas/InternLifecycleError'
+          description: 'The request could not be completed. `metadata.reason` says whether to try again: `internal_error` is a transient failure and carries `metadata.retryable: true`, so the same request may be sent again, while `configuration_error` carries `retryable: false` because the next attempt reads the same missing binding or unusable stored credential.'
+      security:
+        - apiKey: []
+      summary: 'Sign a daemon request with the caller''s identity'
+      tags:
+        - 'Interns'
   /interns/{internId}/invoke:
     post:
       description: "Starts a run on one of your interns and answers `202` with the `session_id` as soon as the intern accepts it. The run keeps going on the intern after the response. Nothing about its progress comes back on this request; the intern reports through its own tools, such as Slack.\n\nSend the same `session_id` later to continue the conversation, for example to hand the intern a decision on work it started. If that session already has a run going, the prompt is delivered into it and the status is `steered`. A `session_id` is accepted only from the caller it was issued to, on the same intern; any other, including sessions started from Slack or the chat endpoint, is refused with `404`.\n\nRuns started here self-drive: the intern consents to its own tool approvals, and a question it asks is answered by its own fallback. A run ends when the intern finishes it or after its execution deadline (1 hour by default).\n\nAvailable to interns programme members. Callers outside the programme receive `404` for every path under `/api/v1/interns`."
@@ -42603,6 +43190,7 @@ paths:
                     hash: 'f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943'
                     include_byok_in_limit: false
                     label: 'Production API Key'
+                    last_used_at: '2026-09-15T15:45:00Z'
                     limit: 100
                     limit_remaining: 74.5
                     limit_reset: 'monthly'
@@ -42628,6 +43216,7 @@ paths:
                       hash: 'f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943'
                       include_byok_in_limit: false
                       label: 'Production API Key'
+                      last_used_at: '2026-09-15T15:45:00Z'
                       limit: 100
                       limit_remaining: 74.5
                       limit_reset: 'monthly'
@@ -42655,6 +43244,7 @@ paths:
                         hash: 'f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943'
                         include_byok_in_limit: false
                         label: 'sk-or-v1-0e6...1c96'
+                        last_used_at: '2026-09-15T15:45:00Z'
                         limit: 100
                         limit_remaining: 74.5
                         limit_reset: 'monthly'
@@ -42725,6 +43315,13 @@ paths:
                           description: 'Human-readable label for the API key'
                           example: 'sk-or-v1-0e6...1c96'
                           type: 'string'
+                        last_used_at:
+                          description: 'ISO 8601 UTC timestamp of the most recent usage recorded for the API key, or null if no usage has been recorded since the end of 2025'
+                          example: '2026-09-15T15:45:00Z'
+                          format: 'date-time'
+                          type:
+                            - 'string'
+                            - 'null'
                         limit:
                           description: 'Spending limit for the API key in USD'
                           example: 100
@@ -42798,6 +43395,7 @@ paths:
                         - 'byok_usage_monthly'
                         - 'created_at'
                         - 'updated_at'
+                        - 'last_used_at'
                         - 'external_user'
                         - 'creator_user_id'
                         - 'workspace_id'
@@ -42956,6 +43554,7 @@ paths:
                   hash: 'f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943'
                   include_byok_in_limit: true
                   label: 'My New API Key'
+                  last_used_at: null
                   limit: 50
                   limit_remaining: 50
                   limit_reset: 'monthly'
@@ -42982,6 +43581,7 @@ paths:
                     hash: 'f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943'
                     include_byok_in_limit: true
                     label: 'My New API Key'
+                    last_used_at: null
                     limit: 50
                     limit_remaining: 50
                     limit_reset: 'monthly'
@@ -43009,6 +43609,7 @@ paths:
                       hash: 'f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943'
                       include_byok_in_limit: false
                       label: 'sk-or-v1-0e6...1c96'
+                      last_used_at: '2026-09-15T15:45:00Z'
                       limit: 100
                       limit_remaining: 74.5
                       limit_reset: 'monthly'
@@ -43079,6 +43680,13 @@ paths:
                         description: 'Human-readable label for the API key'
                         example: 'sk-or-v1-0e6...1c96'
                         type: 'string'
+                      last_used_at:
+                        description: 'ISO 8601 UTC timestamp of the most recent usage recorded for the API key, or null if no usage has been recorded since the end of 2025'
+                        example: '2026-09-15T15:45:00Z'
+                        format: 'date-time'
+                        type:
+                          - 'string'
+                          - 'null'
                       limit:
                         description: 'Spending limit for the API key in USD'
                         example: 100
@@ -43152,6 +43760,7 @@ paths:
                       - 'byok_usage_monthly'
                       - 'created_at'
                       - 'updated_at'
+                      - 'last_used_at'
                       - 'external_user'
                       - 'creator_user_id'
                       - 'workspace_id'
@@ -43324,6 +43933,7 @@ paths:
                   hash: 'f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943'
                   include_byok_in_limit: false
                   label: 'Production API Key'
+                  last_used_at: '2026-09-15T15:45:00Z'
                   limit: 100
                   limit_remaining: 74.5
                   limit_reset: 'monthly'
@@ -43349,6 +43959,7 @@ paths:
                     hash: 'f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943'
                     include_byok_in_limit: false
                     label: 'Production API Key'
+                    last_used_at: '2026-09-15T15:45:00Z'
                     limit: 100
                     limit_remaining: 74.5
                     limit_reset: 'monthly'
@@ -43375,6 +43986,7 @@ paths:
                       hash: 'f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943'
                       include_byok_in_limit: false
                       label: 'sk-or-v1-0e6...1c96'
+                      last_used_at: '2026-09-15T15:45:00Z'
                       limit: 100
                       limit_remaining: 74.5
                       limit_reset: 'monthly'
@@ -43445,6 +44057,13 @@ paths:
                         description: 'Human-readable label for the API key'
                         example: 'sk-or-v1-0e6...1c96'
                         type: 'string'
+                      last_used_at:
+                        description: 'ISO 8601 UTC timestamp of the most recent usage recorded for the API key, or null if no usage has been recorded since the end of 2025'
+                        example: '2026-09-15T15:45:00Z'
+                        format: 'date-time'
+                        type:
+                          - 'string'
+                          - 'null'
                       limit:
                         description: 'Spending limit for the API key in USD'
                         example: 100
@@ -43518,6 +44137,7 @@ paths:
                       - 'byok_usage_monthly'
                       - 'created_at'
                       - 'updated_at'
+                      - 'last_used_at'
                       - 'external_user'
                       - 'creator_user_id'
                       - 'workspace_id'
@@ -43648,6 +44268,7 @@ paths:
                   hash: 'f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943'
                   include_byok_in_limit: true
                   label: 'Updated API Key Name'
+                  last_used_at: '2026-09-15T15:45:00Z'
                   limit: 75
                   limit_remaining: 49.5
                   limit_reset: 'daily'
@@ -43673,6 +44294,7 @@ paths:
                     hash: 'f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943'
                     include_byok_in_limit: true
                     label: 'Updated API Key Name'
+                    last_used_at: '2026-09-15T15:45:00Z'
                     limit: 75
                     limit_remaining: 49.5
                     limit_reset: 'daily'
@@ -43699,6 +44321,7 @@ paths:
                       hash: 'f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943'
                       include_byok_in_limit: false
                       label: 'sk-or-v1-0e6...1c96'
+                      last_used_at: '2026-09-15T15:45:00Z'
                       limit: 100
                       limit_remaining: 74.5
                       limit_reset: 'monthly'
@@ -43769,6 +44392,13 @@ paths:
                         description: 'Human-readable label for the API key'
                         example: 'sk-or-v1-0e6...1c96'
                         type: 'string'
+                      last_used_at:
+                        description: 'ISO 8601 UTC timestamp of the most recent usage recorded for the API key, or null if no usage has been recorded since the end of 2025'
+                        example: '2026-09-15T15:45:00Z'
+                        format: 'date-time'
+                        type:
+                          - 'string'
+                          - 'null'
                       limit:
                         description: 'Spending limit for the API key in USD'
                         example: 100
@@ -43842,6 +44472,7 @@ paths:
                       - 'byok_usage_monthly'
                       - 'created_at'
                       - 'updated_at'
+                      - 'last_used_at'
                       - 'external_user'
                       - 'creator_user_id'
                       - 'workspace_id'

@@ -52,6 +52,11 @@ The `X-OpenRouter-App-Visibility` header controls whether a **new** app is liste
 
 `hidden` applies only when the request creates a brand-new app: an `HTTP-Referer` that resolves to an app that already exists — including through origin grouping, or through an app created by a prior OAuth authorization — keeps that app's current visibility. The header is ignored on every later request, so it cannot list a hidden app publicly, and a caller of somebody else's app cannot hide it. To change an app that already exists, contact support.
 
+```http
+HTTP-Referer: https://internal-service.example.com
+X-OpenRouter-App-Visibility: hidden
+```
+
 #### Category groups
 
 Categories are organized into groups for the [marketplace](https://openrouter.ai/apps):

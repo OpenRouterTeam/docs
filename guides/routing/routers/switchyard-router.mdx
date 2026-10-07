@@ -321,7 +321,7 @@ Use `passthrough` to run the candidates through the same eligibility checks as t
 
 ### The judge
 
-The judge is a small, fast model (`google/gemini-2.5-flash-lite`) that estimates whether the efficient tier can solve your task. Switchyard is open source, so everything below can be checked against the [NVIDIA-NeMo/Switchyard](https://github.com/NVIDIA-NeMo/Switchyard) source; the capability classifier lives in the [`crates/libsy`](https://github.com/NVIDIA-NeMo/Switchyard/tree/main/crates/libsy) directory.
+The judge is a small, fast model (`google/gemini-3.5-flash-lite`) that estimates whether the efficient tier can solve your task. Switchyard is open source, so everything below can be checked against the [NVIDIA-NeMo/Switchyard](https://github.com/NVIDIA-NeMo/Switchyard) source; the capability classifier lives in the [`crates/libsy`](https://github.com/NVIDIA-NeMo/Switchyard/tree/main/crates/libsy) directory.
 
 **Choose the judge.** To run the judge on a different model, set `judge_model` on the plugin:
 
@@ -337,7 +337,7 @@ Switchyard uses the model that you name only if the model meets both of the foll
 - It's in the model catalog.
 - It has at least one endpoint that supports structured outputs and that your account settings and the request's `provider` settings allow.
 
-Otherwise, the request still runs with the default judge, and the pipeline data reports `judge_model_requested` and `judge_model_fallback`. The fallback reason is `not_in_catalog`, `no_structured_outputs`, `no_eligible_endpoint`, or `catalog_unavailable`.
+Otherwise, the request still runs with the default judge, and the pipeline data reports `judge_model_requested` and `judge_model_fallback`. If the default judge doesn't meet those conditions either, for example because your `provider` settings exclude Google, Switchyard uses `openai/gpt-4o-mini` as the judge. If neither fits, the judge call fails and the request goes to the capable tier. The fallback reason is `not_in_catalog`, `no_structured_outputs`, `no_eligible_endpoint`, or `catalog_unavailable`.
 
 The 2.5-second time budget and the fall-open behavior described later on this page apply to whichever judge runs, so a slow judge model can send more requests to the capable tier. The `auto`, `random`, and `passthrough` algorithms don't call the judge, so they ignore `judge_model`.
 
@@ -410,7 +410,7 @@ Requests to `nvidia/switchyard` are billed at the rate of the model that answere
 
 - `models`, when present, must contain at least one concrete model and at most three; without it, the router uses the default pair described in [Choose your candidates](#choose-your-candidates). Other router slugs (`openrouter/auto`, `openrouter/fusion`, `~latest` aliases) are not accepted as candidates.
 - Tiers are derived from price. With one eligible candidate, or every eligible candidate at the same price, there is no cheap-versus-strong split to judge, and the router serves your `models` order (`random` still picks at random).
-- `capability`, `stage`, and `composite` send part of your prompt to the judge model, `google/gemini-2.5-flash-lite` (see [The judge](#the-judge)). Choose `auto`, `random`, or `passthrough` if no part of the prompt may leave your candidate list.
+- `capability`, `stage`, and `composite` send part of your prompt to the judge model, `google/gemini-3.5-flash-lite`, or `openai/gpt-4o-mini` when your settings exclude the default judge (see [The judge](#the-judge)). Choose `auto`, `random`, or `passthrough` if no part of the prompt may leave your candidate list.
 - The judge receives a compact projection of your prompt (message text truncated, binary parts replaced with markers). Requests with a [ZDR](/guides/features/zdr) requirement or provider restrictions pass those same restrictions to the judge call.
 - The judge reads text that your end users wrote, so an end user can word a request to steer it toward the efficient or the capable tier. Set a [price limit](/guides/routing/provider-selection) or choose the candidates with that in mind.
 - The router runs only on the global API endpoint (`openrouter.ai`). Regional endpoints return `400`.
