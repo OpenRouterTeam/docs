@@ -1,0 +1,115 @@
+---
+title: 'Multimodal Decisions: Images in the Decisions API'
+sidebarTitle: Multimodal Decisions
+description: Send images to Decisions models on OpenRouter. Quickstart, the image part format, supported models, and size limits.
+seoTitle: 'Multimodal Decisions | Images in the OpenRouter Decisions API'
+og:site_name: OpenRouter Documentation
+og:title: 'Multimodal Decisions - Images in the OpenRouter Decisions API'
+og:description: 'Ask Decisions models typed questions about images. Quickstart, image part format, supported models, and limits.'
+og:image: https://openrouter.ai/dynamic-og?title=Multimodal%20Decisions&description=Ask%20typed%20questions%20about%20images
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: image
+models:
+  - perplexity/pplx-decider-v1-27b
+  - perplexity/pplx-decider-v1.1-27b
+  - cloudflare/clef
+  - cloudflare/clef-flash
+  - openai/gpt-6-luna-decisions
+---
+
+Decisions models answer typed questions about content you send in `state`. These models also accept images:
+
+| Model | Input |
+| --- | --- |
+| [`perplexity/pplx-decider-v1-27b`](https://openrouter.ai/perplexity/pplx-decider-v1-27b) | Text and images |
+| [`perplexity/pplx-decider-v1.1-27b`](https://openrouter.ai/perplexity/pplx-decider-v1.1-27b) | Text and images |
+| [`cloudflare/clef`](https://openrouter.ai/cloudflare/clef) | Text and images |
+| [`cloudflare/clef-flash`](https://openrouter.ai/cloudflare/clef-flash) | Text and images |
+| [`openai/gpt-6-luna-decisions`](https://openrouter.ai/openai/gpt-6-luna-decisions) | Text and images |
+
+Text-only Decisions requests, including every request to [Jev](/guides/community/jev), work the same as before.
+
+## Quickstart
+
+Encode an image as base64 and put it in the `state` array as an `image_url` part, next to any text:
+
+```bash
+IMAGE=$(base64 < listing.png | tr -d '\n')
+
+curl https://openrouter.ai/api/alpha/decisions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @- <<EOF
+{
+  "model": "cloudflare/clef-flash",
+  "state": [
+    "Listing title: Red square sticker",
+    { "type": "image_url", "image_url": { "url": "data:image/png;base64,$IMAGE" } }
+  ],
+  "questions": {
+    "matches_title": { "type": "noul", "instructions": "The photo shows the item in the title." },
+    "color": {
+      "type": "choice",
+      "instructions": "What color is the item?",
+      "criteria": { "red": null, "green": null, "blue": null }
+    }
+  }
+}
+EOF
+```
+
+The response has one typed answer per question:
+
+```json
+{
+  "model": "cloudflare/clef-flash",
+  "answers": {
+    "matches_title": { "type": "noul", "noul": 0.8607 },
+    "color": {
+      "type": "choice",
+      "choice": "red",
+      "probabilities": { "red": 0.9844, "green": 0.008, "blue": 0.0076 },
+      "confidence": 0.9536
+    }
+  },
+  "usage": { "input_tokens": 289, "output_tokens": 0, "cost": 0.00002601 },
+  "id": "gen-dec-1791209504-cXRBLHSCBmsjQX93jkWe",
+  "provider": "Cloudflare"
+}
+```
+
+## Image part format
+
+An image is an item of the `state` array with this shape, the same image part Chat Completions uses in message content:
+
+```json
+{ "type": "image_url", "image_url": { "url": "data:image/jpeg;base64,/9j/4AAQ..." } }
+```
+
+- `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Remote `http(s)` URLs are not fetched.
+- `detail` (`auto`, `low`, or `high`) is accepted, but Clef and Clef Flash ignore it.
+- Put image parts directly in the top-level `state` array. Images nested inside other objects in `state` are not read as images.
+- Send at most 4 images per request to Clef and Clef Flash, and at most 128 to GPT-6 Luna Decisions.
+- Text items in the array are plain strings, not `{ "type": "text" }` parts.
+
+These shapes are not image inputs:
+
+- A top-level `images` field. The API rejects it with a `400`.
+- The Responses API `input_image` part (`{ "type": "input_image", "image_url": "data:..." }`).
+- A raw base64 string without the `data:image/...;base64,` prefix.
+
+## Limits
+
+- **Image size on Clef and Clef Flash.** Workers AI estimates a request's tokens from the base64 length before it processes the image, at about 4 base64 characters per token, and rejects the request with a `413` once that estimate passes its 65,536-token window. Keep each image under about 300 KB before encoding, and resize or recompress larger images. Billing uses the tokens the model actually processes.
+- **Text length on Clef and Clef Flash.** Workers AI reads roughly the first 2,000 tokens of text in `state` and drops the rest without an error. Images are counted separately.
+- See each [model page](https://openrouter.ai/models) for the current context length and pricing.
+
+## Related
+
+- [Jev Documentation](/guides/community/jev) covers the Decisions primitives (Choice, Noul, Score) in depth.
+- [Decisions API reference](/api/api-reference/alphadecisions/submit-a-decisions-questions-and-answers-request) has the full request and response schema.
