@@ -34,7 +34,7 @@ Each key returned by `GET /api/v1/keys` includes these fields:
 
 OpenRouter has recorded last-use times since the end of 2025. A key whose `last_used_at` is `null` but whose `usage` or `byok_usage` is greater than 0 was last used before then. Treat it as idle, not as never used.
 
-The endpoint lists the keys in one workspace: the `workspace_id` you pass, or your default workspace if you omit it. To audit every workspace, list them with [List workspaces](/api/api-reference/workspaces/list-workspaces) and call the endpoint once per `workspace_id`. It returns up to 100 keys per page. Pass `offset` to read the next page, and stop when a page has fewer than 100 keys. Disabled keys are excluded unless you pass `include_disabled=true`.
+The endpoint lists the keys in one workspace: the `workspace_id` you pass, or your default workspace if you omit it. To audit every workspace, list them with [List workspaces](/api/api-reference/workspaces/list-workspaces) and call the endpoint once per `workspace_id`. It returns up to 100 keys per page. Pass `offset` to read the next page, and stop when a page has fewer than 100 keys. Disabled keys are excluded unless you pass `include_disabled=true`, and expired keys are excluded unless you pass `include_expired=true`.
 
 The endpoint returns standard API keys only. Management API keys and keys created through OAuth aren't included, so review those on the Security settings page.
 

@@ -1,0 +1,410 @@
+---
+title: Add a Push-to-Talk Voice Button to Your App
+sidebarTitle: Push-to-Talk Button
+description: Build a hold-to-talk button that records a question, transcribes it with Scribe v2, answers it with a chat model, and speaks the reply with Eleven v4 Turbo
+seoTitle: 'Add a Push-to-Talk Voice Button to Your App | OpenRouter Cookbook'
+og:site_name: OpenRouter Documentation
+og:title: 'Add a Push-to-Talk Voice Button to Your App - OpenRouter Cookbook'
+og:description: 'A hold-to-talk button and one server route that chain speech-to-text, a chat model, and text-to-speech through OpenRouter.'
+og:image: https://openrouter.ai/dynamic-og?title=Add%20a%20Push-to-Talk%20Voice%20Button&description=Hold%2C%20ask%2C%20hear%20the%20answer
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: microphone-lines
+models:
+  - elevenlabs/scribe-v2
+  - elevenlabs/eleven-v4-turbo
+---
+
+Use this guide when you want users to hold a button, ask your app a question out loud, and hear the answer spoken back.
+
+## What you're building
+
+<Frame caption="The finished button in Chrome. Hold it, ask, release, and the answer plays back in about ten seconds; the wait while it thinks is shortened in this clip. The follow-up says only “it”, and the agent knows it means the sky.">
+  <video
+    controls
+    playsInline
+    preload="none"
+    poster="/assets/cookbook/audio/push-to-talk-button/push-to-talk-button-poster.jpg"
+    className="w-full aspect-video rounded-xl"
+    src="/assets/cookbook/audio/push-to-talk-button/push-to-talk-button.mp4"
+  ></video>
+</Frame>
+
+<Accordion title="Transcript">
+**You:** Why is the sky blue?
+
+**Agent:** The sky looks blue because sunlight is made of many colors, and when it passes through the atmosphere, air molecules scatter the short blue wavelengths much more than the longer red ones. That scattered blue light reaches our eyes from every direction, so the whole sky glows blue. This effect is called Rayleigh scattering.
+
+**You:** Why does it turn orange at sunset?
+
+**Agent:** At sunset, sunlight has to travel through much more atmosphere before reaching your eyes, because the sun sits low on the horizon. Along that long path, most of the blue light gets scattered away, leaving the reds and oranges to dominate what you see.
+</Accordion>
+
+The button records the microphone while it is held down. When it is released, the browser posts the recording to one route on your server, which makes three OpenRouter calls in a row: `elevenlabs/scribe-v2` turns the speech into text, a chat model writes a short spoken answer, and `elevenlabs/eleven-v4-turbo` reads it out. The route returns the transcript, the answer, and the MP3, and the browser plays it. The API key stays on the server, and the browser keeps the conversation so follow-up questions work.
+
+By the end, you will have:
+
+1. A `/api/talk` route that takes a recording and returns a spoken answer.
+2. A hold-to-talk button that records, sends, and plays the reply.
+3. A conversation that remembers earlier turns.
+
+<Tip>
+  Building with a coding agent? Paste the URL of this page into Claude Code, Codex, or Cursor and ask it to add this push-to-talk button to your app.
+</Tip>
+
+## Before you start
+
+You need:
+
+- An OpenRouter API key available as `OPENROUTER_API_KEY`
+- [Bun](https://bun.sh) to run the server
+- A browser with a microphone
+
+This guide uses `elevenlabs/scribe-v2` for transcription, `anthropic/claude-haiku-5.5` for answers, and `elevenlabs/eleven-v4-turbo` for speech. Any chat model in the [catalog](https://openrouter.ai/models) works for the middle step. [Speech-to-Text](/guides/overview/multimodal/stt) and [Text-to-Speech](/guides/overview/multimodal/tts) list the other audio models and every request parameter. See the [Scribe v2](https://openrouter.ai/elevenlabs/scribe-v2) and [Eleven v4 Turbo](https://openrouter.ai/elevenlabs/eleven-v4-turbo) model pages for pricing.
+
+## Step 1: Add the server route
+
+Create `server.ts`. `handleTalk` reads the recording and the conversation so far from a form post, then transcribes, answers, and speaks. The system prompt asks for short plain sentences, because everything the model writes is read aloud, and for one opening audio tag such as `[warmly]`, which Eleven v4 Turbo performs instead of saying. Browsers record WebM, except Safari, which records MP4 audio, so the route picks the `format` from the file's type. If any of the three calls fails, the route returns the OpenRouter error with a 502 so the browser can show why, and a malformed `history` field starts a fresh conversation instead of failing the turn.
+
+```ts expandable lines title="server.ts"
+// The server half of a push-to-talk button. One route takes a recording,
+// and returns what was heard, the answer, and the answer as speech.
+// Run with: bun server.ts
+import page from "./index.html";
+
+const apiKey = process.env.OPENROUTER_API_KEY;
+
+if (!apiKey) {
+  throw new Error("Set OPENROUTER_API_KEY first.");
+}
+
+const API = "https://openrouter.ai/api/v1";
+const headers = {
+  Authorization: `Bearer ${apiKey}`,
+  "Content-Type": "application/json",
+};
+
+type Message = { role: "system" | "user" | "assistant"; content: string };
+
+const SYSTEM_PROMPT =
+  "You are a friendly voice assistant. Everything you write is read aloud by a " +
+  "text-to-speech model, so answer in two or three short spoken sentences with " +
+  "no markdown, lists, numbers in digits, or emoji. Begin your reply with one " +
+  "audio tag in square brackets that sets the tone, such as [warmly] or [curious].";
+
+async function call(path: string, body: unknown) {
+  const response = await fetch(`${API}${path}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  return response;
+}
+
+// Speech to text with Scribe v2
+async function transcribe(audio: File) {
+  const data = Buffer.from(await audio.arrayBuffer()).toString("base64");
+  // Chrome and Firefox record WebM; Safari records MP4 audio.
+  const format = audio.type.includes("mp4") ? "m4a" : "webm";
+  const response = await call("/audio/transcriptions", {
+    model: "elevenlabs/scribe-v2",
+    input_audio: { data, format },
+    language: "en",
+  });
+  const result = await response.json();
+  return result.text as string;
+}
+
+// The answer, written to be spoken
+async function think(history: Message[]) {
+  const response = await call("/chat/completions", {
+    model: "anthropic/claude-haiku-5.5",
+    messages: [{ role: "system", content: SYSTEM_PROMPT }, ...history],
+    max_tokens: 300,
+  });
+  const completion = await response.json();
+  return (completion.choices[0].message.content as string).trim();
+}
+
+// Text to speech with Eleven v4 Turbo
+async function speak(text: string) {
+  const response = await call("/audio/speech", {
+    model: "elevenlabs/eleven-v4-turbo",
+    input: text,
+    voice: "george",
+    response_format: "mp3",
+  });
+  return Buffer.from(await response.arrayBuffer()).toString("base64");
+}
+
+export async function handleTalk(request: Request) {
+  const form = await request.formData();
+  const audio = form.get("audio") as File;
+  let history: Message[] = [];
+  try {
+    history = JSON.parse((form.get("history") as string) ?? "[]") as Message[];
+  } catch {
+    // A malformed history starts a fresh conversation instead of failing the turn.
+  }
+
+  try {
+    const question = await transcribe(audio);
+    const answer = await think([...history, { role: "user", content: question }]);
+    const speech = await speak(answer);
+    return Response.json({ question, answer, speech });
+  } catch (error) {
+    // Pass the OpenRouter error back so the browser can show why the turn failed.
+    return Response.json({ error: (error as Error).message }, { status: 502 });
+  }
+}
+
+Bun.serve({
+  port: 3000,
+  routes: {
+    "/": page,
+    "/api/talk": { POST: handleTalk },
+  },
+});
+
+console.log("Open http://localhost:3000");
+```
+
+Start it:
+
+```bash lines
+bun server.ts
+```
+
+Then, in a second terminal, post any short voice memo to the route, here `question-1.m4a`, to check the server half on its own:
+
+```bash lines
+curl -s -F "audio=@question-1.m4a;type=audio/mp4" -F 'history=[]' \
+  http://localhost:3000/api/talk | jq '{question, answer, speech: .speech[:24]}'
+```
+
+```json lines
+{
+  "question": "Why is the sky blue?",
+  "answer": "[warmly] The sky looks blue because sunlight is made of many colors, and when it hits the air, the tiny molecules scatter the short blue wavelengths much more than the longer red ones. That scattered blue light reaches our eyes from every direction overhead, so the whole sky appears blue.",
+  "speech": "SUQzBAAAAAAAI1RTU0UAAAAP"
+}
+```
+
+`speech` is the spoken answer as a base64 MP3.
+
+## Step 2: Add the button
+
+The page is one button and a list for the conversation. Put the three files next to `server.ts`; Bun bundles `index.html` and the files it links when the server starts.
+
+```html lines title="index.html"
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Push to talk</title>
+    <link rel="stylesheet" href="./talk.css" />
+  </head>
+  <body>
+    <button id="talk" type="button">Hold to talk</button>
+    <ol id="log"></ol>
+    <script type="module" src="./talk.js"></script>
+  </body>
+</html>
+```
+
+`talk.js` does the work. Pressing the button asks for the microphone and starts a `MediaRecorder`. Releasing it, or dragging off it, stops the recorder, and the recording goes to `/api/talk` with the conversation so far. The reply comes back as base64, so it plays straight from a `data:` URL. The audio tag is stripped before the answer is shown, because the listener hears it as delivery rather than words. A press shorter than 400 ms is ignored, so an accidental tap does not send an empty recording. Any failure, whether the network drops, OpenRouter rejects a request, or the browser blocks playback, puts the button back to **Hold to talk** and logs the reason to the browser console as `Talk failed:`.
+
+```js expandable lines title="talk.js"
+const button = document.querySelector("#talk");
+const log = document.querySelector("#log");
+const history = [];
+let recorder;
+let held = false;
+
+function setState(state, label) {
+  button.dataset.state = state;
+  button.textContent = label;
+}
+
+function addLine(who, text) {
+  const item = document.createElement("li");
+  item.className = who;
+  // Hide the audio tag the speech model performs, such as [warmly].
+  item.textContent = who === "agent" ? text.replace(/^\[[^\]]*\]\s*/, "") : text;
+  log.append(item);
+  item.scrollIntoView({ behavior: "smooth", block: "end" });
+}
+
+async function start() {
+  if (button.dataset.state && button.dataset.state !== "idle") return;
+  held = true;
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (error) {
+    addLine("error", `No microphone: ${error.message}`);
+    return;
+  }
+  // A quick tap can end before the microphone opens.
+  if (!held) {
+    stream.getTracks().forEach((track) => track.stop());
+    return;
+  }
+  const chunks = [];
+  const startedAt = Date.now();
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = (event) => chunks.push(event.data);
+  recorder.onstop = () => {
+    stream.getTracks().forEach((track) => track.stop());
+    if (Date.now() - startedAt < 400) {
+      setState("idle", "Hold to talk");
+      return;
+    }
+    send(new Blob(chunks, { type: recorder.mimeType }));
+  };
+  recorder.start();
+  setState("listening", "Listening… release to send");
+}
+
+function stop() {
+  held = false;
+  if (recorder?.state === "recording") recorder.stop();
+}
+
+async function send(audio) {
+  setState("thinking", "Thinking…");
+  const form = new FormData();
+  form.append("audio", audio);
+  form.append("history", JSON.stringify(history));
+
+  try {
+    const response = await fetch("/api/talk", { method: "POST", body: form });
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+    const { question, answer, speech } = await response.json();
+    history.push({ role: "user", content: question }, { role: "assistant", content: answer });
+    addLine("you", question);
+    addLine("agent", answer);
+
+    setState("speaking", "Speaking…");
+    const player = new Audio(`data:audio/mpeg;base64,${speech}`);
+    player.onended = () => setState("idle", "Hold to talk");
+    await player.play();
+  } catch (error) {
+    // Network errors, OpenRouter errors, and blocked playback all land here.
+    console.error("Talk failed:", error);
+    addLine("error", "Something went wrong. Try again.");
+    setState("idle", "Hold to talk");
+  }
+}
+
+button.addEventListener("pointerdown", start);
+button.addEventListener("pointerup", stop);
+button.addEventListener("pointerleave", stop);
+```
+
+The styles give each state its own look, so users can tell when the button is listening. `touch-action: none` stops a long press on a phone from scrolling the page or opening a menu.
+
+```css expandable lines title="talk.css"
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  max-width: 36rem;
+  margin: 2.5rem auto;
+  padding: 0 1rem;
+  text-align: center;
+}
+
+#talk {
+  width: 16rem;
+  padding: 1.25rem;
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 1.1rem;
+  color: white;
+  background: #6d28d9;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+}
+
+#talk[data-state="listening"] {
+  background: #dc2626;
+  box-shadow: 0 0 0 0.6rem #fecaca;
+}
+
+#talk[data-state="thinking"],
+#talk[data-state="speaking"] {
+  background: #4b5563;
+}
+
+#log {
+  list-style: none;
+  padding: 0;
+  text-align: left;
+}
+
+#log li {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  line-height: 1.4;
+}
+
+#log .you {
+  background: #ede9fe;
+  margin-left: 4rem;
+}
+
+#log .agent {
+  background: #f3f4f6;
+  margin-right: 4rem;
+}
+
+#log .error {
+  color: #b91c1c;
+}
+```
+
+## Step 3: Try it
+
+```bash lines
+bun server.ts
+```
+
+```text lines
+Open http://localhost:3000
+```
+
+Open the page, allow the microphone, and hold the button while you ask a question. Release it and the button shows **Thinking…** and then **Speaking…** while the answer plays. Each turn takes about ten seconds from release to the first word of the reply, and speech is the longest stage, so the system prompt's two-or-three-sentence limit is what keeps it short.
+
+## Use it in your own app
+
+`handleTalk` takes a standard `Request` and returns a `Response`, so it works in any fetch-style server on Bun or Node, which provide the `process.env` and `Buffer` it uses. Copy `server.ts` into your app without the `index.html` import and the `Bun.serve` block, and mount `handleTalk` at `/api/talk`, for example as `export const POST = handleTalk` in a Next.js `app/api/talk/route.ts`. Then copy the button, `talk.js`, and `talk.css` into the page that needs it.
+
+## Troubleshooting
+
+Microphone errors show in the conversation list. Errors from OpenRouter show in the browser console after `Talk failed:`, and in the `/api/talk` response body.
+
+| Error | Cause | Fix |
+|---|---|---|
+| `No microphone: Permission denied` | The user blocked the microphone, or dismissed the prompt | Allow the microphone from the lock icon in the address bar, then reload |
+| `No microphone: Requested device not found` | The computer has no microphone connected | Connect one, or pick an input in the system sound settings |
+| `No microphone: Cannot read properties of undefined (reading 'getUserMedia')` | The page is served over plain HTTP from a host other than `localhost`, and browsers only expose the microphone on secure pages | Serve the page over HTTPS |
+| `An explicit voice is required for this TTS provider.` | The speech request has no `voice` | Pass a premade voice name such as `george`, or an ElevenLabs voice ID |
+| `Unknown voice "alloy".` | The voice name belongs to another provider | Use a name from the model's `supported_voices` list in the [models API](https://openrouter.ai/api/v1/models?output_modalities=speech) |
+| `speed is not supported by eleven_v4_turbo; omit it or use a model with speed control.` | The request sets `speed` | Leave `speed` out and steer pacing with audio tags, or use a model with speed control such as `elevenlabs/eleven-multilingual-v2` |
+| `Provider could not process the audio input (unsupported or malformed audio)` | The upload is empty or is not audio | Check that the `audio` form field holds the recording |
+| `Invalid input: expected string, received undefined` (path `format`) | `input_audio` has `data` but no `format` | Add `format`, such as `webm`, `m4a`, `mp3`, or `wav` |
+
+## Check your work
+
+Hold the button and ask "Why is the sky blue?", then ask "Why does it turn orange at sunset?". Both questions should appear in the list as you said them, and the second answer should be about the sky even though the question never names it. The answers should play in the `george` voice, with no bracketed tag on screen or in the audio.
