@@ -1,0 +1,269 @@
+---
+title: Turn Any Text into a Two-Voice Podcast
+sidebarTitle: Two-Voice Podcast
+description: Write a dialogue with a chat model, then voice both speakers in one text-to-speech request
+seoTitle: 'Turn Any Text into a Two-Voice Podcast | OpenRouter Cookbook'
+og:site_name: OpenRouter Documentation
+og:title: 'Turn Any Text into a Two-Voice Podcast - OpenRouter Cookbook'
+og:description: 'Generate a podcast script with structured outputs and voice a host and a guest in a single multi-speaker TTS request.'
+og:image: https://openrouter.ai/dynamic-og?title=Turn%20Any%20Text%20into%20a%20Two-Voice%20Podcast&description=One%20script%2C%20two%20voices%2C%20one%20request
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: podcast
+models:
+  - google/gemini-3.8-flash-lite-tts
+  - google/gemini-3.8-flash-tts
+---
+
+Use this guide when you want to turn a document, changelog, or article into a short audio conversation between two speakers.
+
+## What you're building
+
+<Frame caption="A four-sentence paragraph about tides, scripted by a chat model and voiced by two speakers in one request. 49 seconds, $0.0074.">
+  <video
+    controls
+    playsInline
+    preload="none"
+    poster="/assets/cookbook/audio/two-voice-podcast/two-voice-podcast-poster.jpg"
+    className="w-full aspect-video rounded-xl"
+    src="/assets/cookbook/audio/two-voice-podcast/two-voice-podcast.mp4"
+  ></video>
+</Frame>
+
+<Accordion title="Transcript">
+**Host:** Welcome back! Today we're talking tides. Most people know the Moon causes them, but why do we get two high tides a day instead of just one?
+
+**Guest:** It comes down to ocean bulges. The Moon's gravity pulls hardest on the ocean facing it, but it also creates a second bulge on the exact opposite side.
+
+**Host:** Wait, on the far side too? How does the Moon pull water away from itself?
+
+**Guest:** It pulls the Earth's center harder than the far water! Because the pull is weaker out there, the ocean stretches outward, forming that second bulge.
+
+**Host:** Ah, so the Earth basically spins right beneath both of these bulges every day?
+
+**Guest:** Exactly! Coastlines rotate through both, which is why we usually see two high and two low tides roughly every twenty-five hours.
+</Accordion>
+
+The `/api/v1/audio/speech` endpoint accepts a list of turns as `input`, and each turn can name its own voice and delivery instructions. The model voices the whole conversation in one request and returns a single audio stream, so you never split the dialogue into per-line requests or stitch clips back together in order.
+
+By the end, you will have a script that:
+
+1. Asks a chat model for a host-and-guest dialogue as structured JSON.
+2. Sends every turn to a Gemini TTS model in one request, with a different voice for each speaker.
+3. Saves the result as a WAV file you can play.
+
+<Tip>
+  Building with a coding agent? Paste the URL of this page into Claude Code, Codex, or Cursor and ask it to add a "listen to this post" button to your blog using this recipe.
+</Tip>
+
+## Before you start
+
+You need:
+
+- An OpenRouter API key available as `OPENROUTER_API_KEY`
+- Bun, or Node.js 24 or newer, both of which run TypeScript files directly
+- About one cent of credits per minute of audio
+
+The three steps below form one script. Paste them in order into `podcast.ts` and run it with `bun podcast.ts` or `node podcast.ts`.
+
+This guide uses `google/gemini-3.8-flash-lite-tts`. Not every TTS provider supports multi-speaker input, and those that do not return a 400 rather than reading the whole dialogue in one voice. [Text-to-Speech](/guides/overview/multimodal/tts#multi-speaker-input) lists the supported models and the full parameter reference.
+
+## Step 1: Write the script
+
+Ask a chat model for the dialogue and use [structured outputs](/guides/features/structured-outputs) to get it back as a list of turns. A schema saves you from parsing speaker labels out of free text, and the `direction` field gives the voice model something to act on.
+
+```ts expandable lines
+const apiKey = process.env.OPENROUTER_API_KEY;
+
+if (!apiKey) {
+  throw new Error("Set OPENROUTER_API_KEY first.");
+}
+
+const source = `Tides are caused mostly by the Moon. Its gravity pulls hardest on the side
+of the Earth facing it, so the ocean bulges toward the Moon. On the far side the
+pull is weaker than at the Earth's center, and that difference stretches the
+ocean outward into a second bulge. As the Earth turns, most coastlines pass
+through both bulges, which is why they see two high tides and two low tides
+roughly every 25 hours.`;
+
+const scriptResponse = await fetch(
+  "https://openrouter.ai/api/v1/chat/completions",
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-3.8-flash",
+      messages: [
+        {
+          role: "system",
+          content:
+            "Write a short podcast dialogue between a host and a guest about the text the user sends. " +
+            "Use 6 to 8 turns, alternate speakers, and keep each turn under 40 words. " +
+            "Give each turn a few words of delivery direction, such as 'curious' or 'laughing'.",
+        },
+        { role: "user", content: source },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "podcast_script",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              turns: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    speaker: { type: "string", enum: ["host", "guest"] },
+                    text: { type: "string" },
+                    direction: { type: "string" },
+                  },
+                  required: ["speaker", "text", "direction"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["turns"],
+            additionalProperties: false,
+          },
+        },
+      },
+    }),
+  },
+);
+
+if (!scriptResponse.ok) {
+  throw new Error(await scriptResponse.text());
+}
+
+type Turn = { speaker: "host" | "guest"; text: string; direction: string };
+const completion = await scriptResponse.json();
+const { turns } = JSON.parse(completion.choices[0].message.content) as {
+  turns: Turn[];
+};
+
+for (const turn of turns) {
+  console.log(`${turn.speaker.padEnd(5)} (${turn.direction}): ${turn.text}`);
+}
+```
+
+The model returns a script like this one:
+
+```text lines
+host  (curious and upbeat): Welcome back! Today we're talking tides. Most people know the Moon causes them, but why do we get two high tides a day instead of just one?
+guest (eagerly explaining): It comes down to ocean bulges. The Moon's gravity pulls hardest on the ocean facing it, but it also creates a second bulge on the exact opposite side.
+host  (perplexed and amused): Wait, on the far side too? How does the Moon pull water away from itself?
+guest (animated and clear): It pulls the Earth's center harder than the far water! Because the pull is weaker out there, the ocean stretches outward, forming that second bulge.
+host  (nodding with realization): Ah, so the Earth basically spins right beneath both of these bulges every day?
+guest (warm and conclusive): Exactly! Coastlines rotate through both, which is why we usually see two high and two low tides roughly every twenty-five hours.
+```
+
+## Step 2: Voice the whole script in one request
+
+Map each speaker to a voice, then send the turns as `input`, with each turn's direction as its `instructions`. A top-level `instructions` applies only to turns that omit their own, so this request leaves it out.
+
+```ts lines
+const voices = { host: "Kore", guest: "Puck" } as const;
+
+const speechResponse = await fetch(
+  "https://openrouter.ai/api/v1/audio/speech",
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-3.8-flash-lite-tts",
+      response_format: "pcm",
+      input: turns.map((turn) => ({
+        text: turn.text,
+        voice: voices[turn.speaker],
+        instructions: turn.direction,
+      })),
+    }),
+  },
+);
+
+if (!speechResponse.ok) {
+  throw new Error(await speechResponse.text());
+}
+
+console.log(`Content-Type: ${speechResponse.headers.get("content-type")}`);
+console.log(`Generation ID: ${speechResponse.headers.get("x-generation-id")}`);
+```
+
+```text lines
+Content-Type: audio/pcm;rate=24000;channels=1
+Generation ID: gen-tts-1791408882-gsi0JmqAdk574VPMDHMH
+```
+
+Gemini TTS returns `pcm` only. Requesting `mp3` returns `400 Gemini TTS only supports response_format="pcm"`. The 30 available voice names are listed under `supported_voices` in the [models API](https://openrouter.ai/api/v1/models?output_modalities=speech).
+
+## Step 3: Save it as a WAV file
+
+The response body is raw 16-bit PCM at 24 kHz, mono, as the `Content-Type` header says. Most players will not open raw PCM, so add a 44-byte WAV header in front of it:
+
+```ts expandable lines
+import { writeFile } from "node:fs/promises";
+
+function pcmToWav(data: Buffer, sampleRate = 24_000, channels = 1) {
+  const bitsPerSample = 16;
+  const byteRate = (sampleRate * channels * bitsPerSample) / 8;
+  const header = Buffer.alloc(44);
+
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + data.length, 4);
+  header.write("WAVE", 8);
+  header.write("fmt ", 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(channels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE((channels * bitsPerSample) / 8, 32);
+  header.writeUInt16LE(bitsPerSample, 34);
+  header.write("data", 36);
+  header.writeUInt32LE(data.length, 40);
+
+  return Buffer.concat([header, data]);
+}
+
+const pcm = Buffer.from(await speechResponse.arrayBuffer());
+await writeFile("podcast.wav", pcmToWav(pcm));
+
+const seconds = pcm.length / (24_000 * 2);
+console.log(`Saved podcast.wav (${seconds.toFixed(1)} seconds)`);
+```
+
+```text lines
+Saved podcast.wav (48.7 seconds)
+```
+
+To ship MP3 instead, convert the WAV with `ffmpeg -i podcast.wav podcast.mp3`.
+
+## What it costs
+
+The 49-second clip above cost $0.0074 to voice. Look up any request's cost with `GET /api/v1/generation?id=<generation ID>`, using the ID from the response header. Writing the script with `google/gemini-3.8-flash` adds a fraction of a cent. For higher-quality speech, `google/gemini-3.8-flash-tts` takes the same request at a higher output price.
+
+## Troubleshooting
+
+| Error | Cause | Fix |
+|---|---|---|
+| `Multi-speaker input is not supported by this provider.` | The model's provider does not accept a list of turns | Switch to a model listed under [Multi-Speaker Input](/guides/overview/multimodal/tts#multi-speaker-input) |
+| `An explicit voice is required for this TTS provider.` | A turn has no `voice` and the request has no top-level `voice` | Give every turn a voice, or set a top-level `voice` as the default |
+| `Provider returned 400` | The turns use more than two distinct voices | Gemini rejects a third speaker. Keep each request to two voices |
+| `Gemini TTS only supports response_format="pcm"` | `response_format` is `mp3` | Request `pcm` and convert it afterwards |
+
+## Check your work
+
+The script should print a dialogue of six to eight alternating turns, then save a `podcast.wav` that plays two clearly different voices taking turns in the order the script lists them.

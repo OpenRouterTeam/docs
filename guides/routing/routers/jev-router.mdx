@@ -1,10 +1,10 @@
 ---
 title: Jev Router
-description: Let Jev pick the model and reasoning effort for each request, within model lists you control
+description: Route requests with Jev, choose a cost tier, and control model selection and reasoning effort
 seoTitle: 'Jev Router | Per-Request Model and Effort Selection'
 og:site_name: OpenRouter Documentation
 og:title: 'Jev Router - typesafe/jev-router'
-og:description: 'Route each request to a model and reasoning effort chosen by Jev, and narrow the candidates with include and exclude lists.'
+og:description: 'Let Jev select a model and reasoning effort for each request. Choose a cost tier, set model preferences, and inspect routing decisions.'
 og:image: https://openrouter.ai/dynamic-og?title=Jev%20Router&description=Per-request%20model%20and%20effort%20selection
 og:image:width: 1200
 og:image:height: 630
@@ -15,7 +15,17 @@ models:
   - typesafe/jev-router
 ---
 
-The [Jev Router](https://openrouter.ai/typesafe/jev-router) (`typesafe/jev-router`) picks a model and reasoning effort for each request. [Jev](/guides/community/jev), TypeSafe's decision model, reads the conversation and judges the task type, difficulty, and how much a stronger model would help. The router then chooses the cheapest candidate that meets that bar from a curated pool of models.
+The [Jev Router](https://openrouter.ai/typesafe/jev-router) (`typesafe/jev-router`) selects a model and reasoning effort for each request. [Jev](/guides/community/jev), TypeSafe's decision model, assesses the task, its difficulty, and the potential benefit of a stronger model. The routing policy balances those signals against estimated cost and your preferences.
+
+Use it as a model, or add the `jev-router` plugin to choose a cost tier and set model preferences. Jev makes the routing decision; the selected model generates the response.
+
+## How it works
+
+1. **Assess the request.** Jev evaluates the conversation to identify what the task needs.
+1. **Select a model and effort.** The router applies the selected cost policy, available model capabilities, and your model and provider restrictions.
+1. **Adapt across turns.** During supported agentic workflows, the router can retain a model, adjust its effort, or switch models as the task progresses. When the policy permits it, an expert advisor can assist the model doing the work.
+
+The available models and routing policies can change over time. A cost tier is a routing preference, not a fixed model, guaranteed score, or per-request price cap.
 
 ## Usage
 
@@ -35,9 +45,19 @@ curl https://openrouter.ai/api/v1/chat/completions \
 
 The response `model` field reports the model that served the request. The router works with Chat Completions, Responses, and Messages, streaming and non-streaming.
 
-## Restricting the candidate models
+## Plugin parameters
 
-Pass the `jev-router` plugin to narrow the pool Jev chooses from:
+The plugin is optional. Add it to configure routing for a request:
+
+| Parameter | Type | Behavior |
+| --- | --- | --- |
+| `id` | string | Required. Must be `"jev-router"`. |
+| `cost_tier` | string | Select `"low"`, `"medium"`, or `"high"`. Omit to use Jev's default routing policy. |
+| `models` | string array | Include preferences within the router's pool. Omitted or empty means no include restriction; a list that matches nothing is ignored. |
+| `allowed_models` | string array | Alias of `models`. Entries from both fields are combined. |
+| `excluded_models` | string array | Remove matching models. Exclusions take precedence over either include field and are never ignored. |
+
+All fields except `id` are optional. Unknown fields and invalid values return `400`; for example, `allowed_model` is not accepted as an alias.
 
 <CodeGroup>
 
@@ -53,8 +73,7 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     plugins: [
       {
         id: 'jev-router',
-        models: ['anthropic/*', 'google/*'],
-        excluded_models: ['anthropic/claude-opus*'],
+        cost_tier: 'medium',
       },
     ],
     messages: [{ role: 'user', content: 'Summarize this incident report.' }],
@@ -74,8 +93,7 @@ curl https://openrouter.ai/api/v1/chat/completions \
     "plugins": [
       {
         "id": "jev-router",
-        "models": ["anthropic/*", "google/*"],
-        "excluded_models": ["anthropic/claude-opus*"]
+        "cost_tier": "medium"
       }
     ],
     "messages": [
@@ -86,11 +104,49 @@ curl https://openrouter.ai/api/v1/chat/completions \
 
 </CodeGroup>
 
-| Field | Description |
+## Cost tiers
+
+`cost_tier` selects the routing policy, not the model's reasoning effort:
+
+| Tier | Intent |
 | --- | --- |
-| `models` | Include list. Only pool models matching an entry are candidates. |
-| `allowed_models` | Alias of `models`, using the [Auto Router](/guides/routing/routers/auto-router) field name. Entries from both fields are combined. |
-| `excluded_models` | Exclude list. Matching models are never used, even if they match `models`. |
+| `low` | Prioritize lower estimated cost. |
+| `medium` | Balance estimated cost and capability. |
+| `high` | Favor more capable models when the expected benefit justifies the added cost. |
+
+Set `cost_tier` to choose a policy for your request. Your model and provider restrictions still apply.
+
+If you omit `cost_tier`, Jev uses its default routing policy. To explicitly choose the medium policy, set `cost_tier: "medium"`. An unrecognized tier name returns `400`.
+
+Changing cost tiers can change the selected model, even within the same conversation.
+
+## Reasoning effort
+
+The router normally chooses reasoning effort. You can supply the standard top-level `reasoning.effort` field as a hint, independently of `cost_tier`:
+
+```json
+{
+  "model": "typesafe/jev-router",
+  "plugins": [{"id": "jev-router", "cost_tier": "medium"}],
+  "reasoning": {"effort": "high"},
+  "messages": [{"role": "user", "content": "Analyze the tradeoffs in this design."}]
+}
+```
+
+The legacy top-level `reasoning_effort` field is also accepted. The router can select a different effort or adapt it across turns, so a hint is not a guarantee of the setting sent to the final model. `reasoning.max_tokens` and `reasoning.mode: "pro"` are not supported and return `400`. See [Reasoning tokens](/guides/best-practices/reasoning-tokens) for the standard reasoning fields.
+
+## Model preferences
+
+Combine a cost tier with include and exclude preferences when needed:
+
+```json
+{
+  "id": "jev-router",
+  "cost_tier": "high",
+  "models": ["anthropic/*", "google/*"],
+  "excluded_models": ["anthropic/claude-opus*"]
+}
+```
 
 Each entry can be:
 
@@ -99,7 +155,7 @@ Each entry can be:
 - A wildcard pattern, such as `anthropic/*` or `*flash*`. Matching is case-sensitive.
 - A `~author/family-latest` alias, such as `~openai/gpt-luna-latest`, which matches every revision of that family.
 
-Each list takes up to 1,024 patterns. The plugin rejects unknown keys with a `400`, so a misspelled field such as `allowed_model` fails instead of being ignored.
+Each list takes up to 1,024 patterns, with at most 1,024 characters per pattern and 65,536 characters total per list.
 
 ### How the lists apply
 
@@ -107,18 +163,22 @@ The lists only narrow the router's pool. They do not add models, and they do not
 
 - **An include list that matches nothing is ignored.** If no pool model matches `models`, the router uses the whole pool, and `excluded_models` still applies. This keeps requests working when an entry is misspelled or names a model outside the pool. The [pipeline stage](#seeing-what-the-router-did) reports `list_fallback: "models_ignored"`.
 - **Exclusions are never ignored.** If `excluded_models` removes every pool model, the request fails with `404` instead of routing to an excluded model.
-- **The lists can lower the tier.** When a hard request needs a stronger tier than the remaining models offer, the router uses the strongest tier the lists leave. The stage reports that tier as `list_tier_cap`.
-- **The lists can remove the advisor.** For the hardest requests, the router can pair the chosen model with an expert advisor. If your lists remove every advisor, the router answers with a deep-tier model and no advisor, and the stage reports `max_fallback: "deep"`.
+- **The lists can lower the capability tier.** When a hard request needs stronger models than the lists leave, the router can lower its capability requirement. The stage reports this as `list_tier_cap`; it is not the `low`/`medium`/`high` cost tier.
+- **The lists can remove the advisor.** For the hardest requests, the router can pair the chosen model with an expert advisor. If your lists remove every advisor, the router uses an eligible model without an advisor, and the stage reports `max_fallback: "deep"`.
 
-If the lists leave no model that is admitted for the request, for example because the only remaining models are excluded for that task type, the request fails with `404`. The error names the fields you sent, such as `widen allowed_models` or `remove excluded_models`.
+If no eligible model remains in the pool, the request fails with `404`. The error names the fields you sent, such as `widen allowed_models` or `remove excluded_models`.
 
 ## Seeing what the router did
 
-Send `X-OpenRouter-Metadata: enabled` to get [router metadata](/guides/features/router-metadata) on the response. The `jev-router` entry in `openrouter_metadata.pipeline` includes:
+The response's `model` field identifies the model that served the request. Send `X-OpenRouter-Metadata: enabled` for more detail in [router metadata](/guides/features/router-metadata). The `jev-router` entry in `openrouter_metadata.pipeline` includes:
 
 | Field | Meaning |
 | --- | --- |
 | `resolved_models` | Models the router selected, in fallback order. |
+| `candidates` | Routed candidates with `model`, `effort`, capability `tier`, and `estimated_cost`. Estimates are not final billed costs. |
+| `reason` | The policy's reason for selecting or retaining a route. |
+| `pipeline` | `"default"` or `"agentic"`. |
+| `advisor_model` | The advisor, when one is selected. |
 | `models`, `excluded_models` | The lists the router applied. `models` includes `allowed_models` entries. |
 | `list_fallback` | `"models_ignored"` when the include list matched no pool model. |
 | `list_tier_cap` | The tier the lists capped the request at, when they lowered it. |
@@ -131,13 +191,23 @@ curl https://openrouter.ai/api/v1/chat/completions \
   -H "X-OpenRouter-Metadata: enabled" \
   -d '{
     "model": "typesafe/jev-router",
-    "plugins": [{"id": "jev-router", "models": ["anthropic/*"]}],
+    "plugins": [{"id": "jev-router", "cost_tier": "medium"}],
     "messages": [{"role": "user", "content": "Reply with ok"}]
-  }' | jq '.openrouter_metadata.pipeline[] | select(.name == "jev-router") | .data | {resolved_models, models, list_fallback}'
+  }' | jq '.openrouter_metadata.pipeline[] | select(.name == "jev-router") | .data | {resolved_models, candidates, reason, pipeline, advisor_model}'
 ```
+
+## Availability and errors
+
+Jev Router is available only in the global data region and is not supported for HIPAA workspaces. Access to the router and the selected models is still required. Do not combine `typesafe/jev-router` with another router model in the same request.
+
+| Status | Examples |
+| --- | --- |
+| `400` | Unknown cost tier or plugin field, unsupported reasoning settings, regional routing, or combining router models. |
+| `404` | No eligible model remains after applying model preferences and request requirements, or you don't have access to the router. |
+| `503` | Jev Router is unavailable. |
 
 ## Related
 
 - [Jev](/guides/community/jev): the decision model behind the router
-- [Auto Router](/guides/routing/routers/auto-router): classifier-based routing with `allowed_models`
+- [Auto Router](/guides/routing/routers/auto-router): a separate router with its own cost-tier behavior
 - [Router metadata](/guides/features/router-metadata): the `openrouter_metadata` response field

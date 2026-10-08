@@ -353,9 +353,10 @@ By default, the cache expires after 5 minutes, but you can extend this to 1 hour
 
 Each model has a minimum cacheable prompt length (see [Anthropic's cache limitations](https://platform.claude.com/docs/en/build-with-claude/prompt-caching#cache-limitations)):
 
-- **4,096 tokens**: Claude Opus 4.8, Claude Opus 4.7, Claude Opus 4.6, Claude Opus 4.5, Claude Haiku 4.5
-- **2,048 tokens**: Claude Haiku 3.5
-- **1,024 tokens**: Claude Sonnet 4.6, Claude Sonnet 4.5, Claude Opus 4.1, Claude Opus 4, Claude Sonnet 4
+- **512 tokens**: Claude Fable 5.1, Claude Opus 5.5, Claude Opus 5, Claude Sonnet 5.5, Claude Fable 5, Claude Haiku 5.5
+- **4,096 tokens**: Claude Opus 4.6, Claude Opus 4.5, Claude Haiku 4.5
+- **2,048 tokens**: Claude Opus 4.7, Claude Haiku 3.5
+- **1,024 tokens**: Claude Opus 4.8, Claude Sonnet 5, Claude Sonnet 4.6, Claude Sonnet 4.5, Claude Opus 4.1, Claude Opus 4, Claude Sonnet 4
 
 Prompts shorter than these minimums will not be cached.
 
