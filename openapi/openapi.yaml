@@ -15287,6 +15287,11 @@ components:
             type: 'string'
           maxItems: 1024
           type: 'array'
+        cost_tier:
+          description: 'Select low, medium, high, or a cost tier configured by the operator. Overrides the live-config tier and replaces the shared routing policy with that tier. Omit to use the live configuration. Model exclusions and the router kill switch still apply.'
+          example: 'medium'
+          pattern: '^[a-z][a-z0-9_-]{0,31}$'
+          type: 'string'
         excluded_models:
           description: 'Remove these models from the router. Each entry is a model slug or a wildcard pattern (e.g. "xiaomi/*"). A `~author/family-latest` alias matches every revision of that family. Up to 1024 patterns, each at most 1024 characters, with 65536 total characters across all patterns. Applied after `models`, so an excluded pattern always wins over an included one; when the lists leave no model the request can use, it fails with 404 rather than routing outside them.'
           example:
@@ -26738,7 +26743,7 @@ components:
             - $ref: '#/components/schemas/PercentileStats'
             - description: 'Throughput percentiles in tokens per second over the last 30 minutes. Throughput measures output token generation speed. Only visible when authenticated with an API key or cookie; returns null for unauthenticated requests.'
         uptime_last_1d:
-          description: 'Uptime percentage over the last 1 day, calculated as successful requests / (successful + error requests) * 100. Rate-limited requests are excluded. Returns null if insufficient data.'
+          description: 'Uptime percentage over the last day: the share of minutes in which at least 80% of provider attempts succeeded, counting only minutes with 10 or more attempts. Rate-limited and caller-caused failures are excluded. Null when no minute had enough traffic.'
           format: 'double'
           type:
             - 'number'
@@ -26749,7 +26754,7 @@ components:
             - 'number'
             - 'null'
         uptime_last_5m:
-          description: 'Uptime percentage over the last 5 minutes, calculated as successful requests / (successful + error requests) * 100. Rate-limited requests are excluded. Returns null if insufficient data.'
+          description: 'Uptime percentage over the last 5 minutes: the share of minutes in which at least 80% of provider attempts succeeded, counting only minutes with 10 or more attempts. Rate-limited and caller-caused failures are excluded. Null when no minute had enough traffic.'
           format: 'double'
           type:
             - 'number'

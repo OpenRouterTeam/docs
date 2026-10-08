@@ -1,0 +1,349 @@
+---
+title: Claude 5.5 Migration Guide
+description: Migrate to Claude Opus 5.5, Claude Sonnet 5.5, and Claude Haiku 5.5. Adaptive thinking by default with effort as the control, between_tools on Sonnet 5.5, forced tool use and prefill removed, preserved and account-bound thinking, and new pricing
+seoTitle: 'Claude 5.5 Migration Guide | OpenRouter'
+og:site_name: OpenRouter Documentation
+og:title: 'Claude 5.5 Migration Guide'
+og:description: 'Learn what changed in Claude Opus 5.5, Claude Sonnet 5.5, and Claude Haiku 5.5. Adaptive thinking by default, effort levels, between_tools, removed forced tool use and prefill, preserved thinking, and new pricing.'
+og:image: https://openrouter.ai/dynamic-og?title=Claude%205.5%20Migration%20Guide&description=Opus%205.5%2C%20Sonnet%205.5%2C%20and%20Haiku%205.5%3A%20adaptive%20thinking%2C%20effort%20levels%2C%20and%20new%20pricing
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: arrow-right-arrow-left
+models:
+  - anthropic/claude-opus-5.5
+  - anthropic/claude-opus-latest
+  - anthropic/claude-sonnet-5.5
+  - anthropic/claude-sonnet-latest
+  - anthropic/claude-haiku-5.5
+  - anthropic/claude-haiku-latest
+---
+
+## What's New
+
+This guide covers the three Claude 5.5 models.
+
+| | Claude Opus 5.5 | Claude Sonnet 5.5 | Claude Haiku 5.5 |
+| --- | --- | --- | --- |
+| OpenRouter slug | [`anthropic/claude-opus-5.5`](https://openrouter.ai/anthropic/claude-opus-5.5) | [`anthropic/claude-sonnet-5.5`](https://openrouter.ai/anthropic/claude-sonnet-5.5) | [`anthropic/claude-haiku-5.5`](https://openrouter.ai/anthropic/claude-haiku-5.5) |
+| Latest alias | `~anthropic/claude-opus-latest` | `~anthropic/claude-sonnet-latest` | `~anthropic/claude-haiku-latest` |
+| Migrating from | Claude Opus 5 | Claude Sonnet 5 | Claude Haiku 4.5 |
+| Thinking | Adaptive, always on | Adaptive, always on through Chat Completions | Adaptive by default, can be turned off |
+| Default effort | `medium` | `high` | `medium` |
+| Context / max output | 1M / 128K | 1M / 128K | 1M / 128K |
+
+All three models share these changes:
+
+1. **Adaptive thinking runs by default.** Effort (`low`, `medium`, `high`, `xhigh`, `max`) controls how much the model thinks. Thinking budgets are not forwarded
+2. **Sampling parameters and assistant prefill are removed.** Non-default `temperature`, `top_p`, and `top_k` are not supported, and neither is a final assistant turn (already the case on Opus 5)
+3. **Preserved thinking.** Thinking blocks are bound to the transcript prefix that produced them. Not enforced on requests through OpenRouter, see [Preserved Thinking](#preserved-thinking). Sonnet 5.5 and Haiku 5.5 thinking blocks are also account-bound, and OpenRouter keeps replays on a provider that can read them
+4. **Mid-conversation controls.** Mid-conversation system messages, `clear_at`, and per-turn effort
+5. **512-token minimum cacheable prompt.** See [Prompt Caching](/guides/best-practices/prompt-caching#minimum-token-requirements)
+
+See Anthropic's [Opus 5.5](https://platform.claude.com/docs/en/models/opus-5-5/migration-guide), [Sonnet 5.5](https://platform.claude.com/docs/en/models/sonnet-5-5/migration-guide), and [Haiku 5.5](https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide) migration guides for the full upstream lists.
+
+## Claude Opus 5.5
+
+Most Opus 5 prompts work unchanged. The API changes are the same set that arrived with [Fable 5.1](/cookbook/evaluate-and-optimize/model-migrations/fable-5-1), plus mid-thinking display updates. Pricing is lower than Opus 5, see the [Opus 5.5 model page](https://openrouter.ai/anthropic/claude-opus-5.5) for current rates.
+
+### Thinking Is Always Adaptive
+
+On Opus 5, reasoning was on by default but could be disabled, or given a fixed budget with `thinking.budget_tokens` / `reasoning.max_tokens`. On Opus 5.5 both options are gone upstream. Anthropic returns a 400 `invalid_request_error` for `thinking: {"type": "disabled"}` and for `thinking: {"type": "enabled", "budget_tokens": ...}`. Omitting `thinking` or setting `{"type": "adaptive"}` are the only valid forms, and `output_config.effort` (`low`, `medium`, `high`, `xhigh`, `max`) decides how much the model thinks.
+
+How this surfaces through OpenRouter
+
+- **Disabling reasoning fails at OpenRouter, not upstream.** The model is registered as mandatory-reasoning, so `reasoning: {"enabled": false}`, `reasoning: {"effort": "none"}`, and Messages API `thinking: {"type": "disabled"}` return a 400 (`Reasoning is mandatory for this endpoint and cannot be disabled.`) before the request is routed. The exception is the `~anthropic/claude-opus-latest` alias, where OpenRouter coerces a disable request to the lowest supported effort instead. The `/models` entry reports `reasoning.mandatory: true` so client UIs can hide the disable control (see [Reasoning Tokens](/guides/best-practices/reasoning-tokens#discovering-per-model-reasoning-options)).
+- **Budgets are not forwarded.** `reasoning.max_tokens` and `thinking.budget_tokens` are accepted by OpenRouter but the request goes upstream as adaptive thinking with no budget, the same as [Sonnet 5](/cookbook/evaluate-and-optimize/model-migrations/sonnet-5#adaptive-only-thinking). Remove them and set an effort instead.
+- **Effort maps straight through.** Chat Completions `reasoning.effort` and Messages API `output_config.effort` both become Anthropic's `output_config.effort`. Requests that set no effort are sent without one and run at Anthropic's default of `medium` (Opus 5's default was `high`), so a request that never set effort gets a different setting than it did on Opus 5.
+- **Reasoning text is summarized by default.** OpenRouter sends `display: "summarized"` unless you set otherwise. Set `thinking.display` to `"omitted"`, or `reasoning.exclude: true` on Chat Completions, if you do not want it.
+
+```json lines
+// Chat Completions API — pick an effort instead of a budget
+{
+  "model": "anthropic/claude-opus-5.5",
+  "reasoning": { "effort": "medium" },
+  "messages": [{ "role": "user", "content": "Find the bug in this diff and propose a fix." }]
+}
+```
+
+```json lines
+// Messages API — adaptive is the only thinking type; effort lives in output_config
+{
+  "model": "anthropic/claude-opus-5.5",
+  "max_tokens": 64000,
+  "thinking": { "type": "adaptive" },
+  "output_config": { "effort": "medium" },
+  "messages": [{ "role": "user", "content": "Find the bug in this diff and propose a fix." }]
+}
+```
+
+Thinking and the reply share `max_tokens`. Anthropic reports that 64k worked well for long agentic coding turns in its testing, and a `max_tokens` sized for a non-thinking Opus 5 request can now end with `stop_reason: "max_tokens"` and no visible answer. A response can also begin with a thinking block, so read responses by block type.
+
+Anthropic's guidance is to re-tune effort rather than carry over your Opus 5 setting. In their testing Opus 5.5 at `medium` exceeded Opus 5 at `high` on coding and knowledge-work evaluations, and at a given effort Opus 5.5 thinks more per turn than Opus 5 did, especially at `xhigh` and `max`. Start at `medium`, lower it if you need faster first tokens, and raise it only where quality demands it.
+
+### Forced Tool Use Is Rejected
+
+On models with thinking always enabled, forcing a tool call makes the model skip its thinking and squeeze its working-out into the tool arguments. Opus 5.5 rejects `tool_choice` set to `{"type": "any"}` or a named tool, and the Chat Completions forms `tool_choice: "required"` and `{"type": "function", "function": {"name": ...}}`, with the provider's 400 (`tool_choice: type "tool" and "any" are not supported for this model.`). `{"type": "auto"}` (the default) and `{"type": "none"}` are unaffected.
+
+- **Steering toward a tool**: use `tool_choice: {"type": "auto"}` and state the expectation in the prompt (e.g. "Use the get_weather tool to answer"). Because `auto` does not guarantee a call, check that one was made and retry if not.
+- **Extracting structured data**: if you were forcing a tool call to get JSON back, use [structured outputs](/guides/features/structured-outputs) instead, which constrain the response format without skipping thinking.
+
+### Mid-Thinking Display Updates (Beta)
+
+Between tool calls, Opus 5.5 writes short progress notes on what it just found and what it is doing next. On Opus 5 these came back as ordinary text. On Opus 5.5, as on Fable 5.1, notes longer than a sentence or two are returned as thinking blocks, so under `display: "omitted"` they are hidden along with the reasoning and a long turn can look silent.
+
+`thinking.display` controls what thinking blocks contain. `"summarized"` (OpenRouter's default) returns a summarized reasoning trace and `"omitted"` returns empty thinking blocks. `"updates"` is meant for long tool-using turns: it returns a short summary of each progress note in its thinking block and leaves the reasoning blocks empty, so you can render any thinking block that has text.
+
+```json lines
+// Messages API
+{
+  "model": "anthropic/claude-opus-5.5",
+  "max_tokens": 64000,
+  "thinking": { "type": "adaptive", "display": "updates" },
+  "tools": ["..."],
+  "messages": [{ "role": "user", "content": "Review the PRs open against our billing service." }]
+}
+```
+
+How much text `"updates"` emits depends on the shape of the turn. Outside multi-tool agent loops it can return an empty thinking block where `"summarized"` would stream a full trace. If your UI needs thinking text on every request, stay on `"summarized"`.
+
+### Computer Use
+
+OpenRouter's Messages API does not accept either computer tool form, so computer-use requests through OpenRouter are rejected at validation. If you call Anthropic directly, Opus 5.5 accepts only the `computer_toolset_20260801` toolset and rejects `computer_20251124`. See [Anthropic's computer use documentation](https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool).
+
+## Claude Sonnet 5.5
+
+Code written for Sonnet 5 mostly keeps working. The changes below are the ones that return errors or change the response shape.
+
+### Thinking and Effort
+
+Sonnet 5.5 thinks adaptively on every request. Its effort levels are recalibrated against Sonnet 5, so re-run your effort sweep instead of carrying a setting over.
+
+How this surfaces through OpenRouter
+
+- **No reasoning setting means adaptive thinking at `high`.** OpenRouter sends `thinking: {"type": "adaptive", "display": "summarized"}` with no effort, so Anthropic's default of `high` applies.
+- **Effort maps straight through.** Chat Completions `reasoning.effort` (or `verbosity`) and Messages API `output_config.effort` become Anthropic's `output_config.effort`.
+- **Budgets are not forwarded.** `reasoning.max_tokens` and `thinking.budget_tokens` go upstream as adaptive thinking with no budget. Set an effort instead.
+- **Reasoning can't be disabled on Chat Completions.** Sonnet 5 accepted `reasoning: {"enabled": false}`. On Sonnet 5.5, OpenRouter returns a 400 (`Reasoning is mandatory for this endpoint and cannot be disabled.`) for `enabled: false` or `effort: "none"`. The exception is the `~anthropic/claude-sonnet-latest` alias, where OpenRouter runs adaptive thinking instead of returning the 400 (`effort: "none"` becomes `low`).
+- **Reasoning text is summarized by default.** Anthropic's default for Sonnet 5.5 is empty thinking blocks (`display: "omitted"`). OpenRouter sends `display: "summarized"` instead, so you get a reasoning summary.
+
+### Turn Off Up-Front Thinking with `between_tools`
+
+Sonnet 5 turned thinking off with `thinking: {"type": "disabled"}`. On Sonnet 5.5, OpenRouter returns the same mandatory-reasoning 400 for `disabled` (Anthropic rejects it too). Sonnet 5.5 uses `thinking: {"type": "between_tools"}` as its lowest setting: the model does not think before responding, and the short notes it writes between tool calls come back as thinking blocks. Send it through OpenRouter's [Messages API](/api/api-reference/anthropic-messages/create-a-message). It works at effort `high` and below. At `xhigh` or `max` Anthropic returns a 400.
+
+```json lines
+// Messages API — no up-front thinking
+{
+  "model": "anthropic/claude-sonnet-5.5",
+  "max_tokens": 4096,
+  "thinking": { "type": "between_tools" },
+  "output_config": { "effort": "high" },
+  "messages": [{ "role": "user", "content": "What's the weather in Paris?" }]
+}
+```
+
+With `between_tools`, effort can't change mid-conversation. Use adaptive thinking if you need per-turn effort.
+
+### Forced Tool Use Removed
+
+Sonnet 5.5 rejects forced tool choice. Chat Completions `tool_choice: "required"` or a named function, and Messages API `{"type": "any"}` or `{"type": "tool"}`, return the provider's 400 (`tool_choice: type "tool" and "any" are not supported for this model.`). Send `auto`, say in the prompt when to call the tool, and mark the tool `strict: true` so its input matches the schema.
+
+### Text Between Tool Calls Moves into Thinking Blocks
+
+Notes longer than a sentence or two that Sonnet 5.5 writes between tool calls come back as progress-update thinking blocks instead of text. Because OpenRouter requests summarized display, these notes appear in the reasoning output rather than disappearing. If your interface streams text between tool calls, read reasoning too, or set Messages API `thinking.display` to `"updates"` (beta) to get only the progress updates.
+
+### Account-Bound Thinking (Sonnet)
+
+Sonnet 5.5 thinking blocks are readable only by the account that produced them or an account linked to it. Anthropic, Claude Platform on AWS, and Azure share an account group, so OpenRouter can fall back among them when you replay Sonnet 5.5 thinking blocks. It does not send those replays to Amazon Bedrock or Google Vertex. If `provider.only` or `provider.ignore` leaves no provider that can read the blocks, OpenRouter returns a 400 asking you to allow one of them or start a new conversation without the thinking blocks.
+
+Sonnet 5.5 thinking blocks are also bound to the transcript prefix that produced them, see [Preserved Thinking](#preserved-thinking).
+
+### Other Sonnet Changes
+
+- **Computer use**: OpenRouter's Messages API does not accept either computer tool form, so computer-use requests through OpenRouter are rejected at validation. If you call Anthropic or Google Vertex directly, Sonnet 5.5 accepts only the `computer_toolset_20260801` toolset and rejects `computer_20251124`. See [Anthropic's computer use documentation](https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool).
+- **Refusals**: a declined request returns `stop_reason: "refusal"` with a `stop_details` category (`cyber`, `bio`, `frontier_llm`, `reasoning_extraction`, or `general_harms`).
+- **Prompt caching**: the minimum cacheable prompt drops from 1,024 tokens to 512.
+- **Pricing**: cache reads cost less than on Sonnet 5. See the [Sonnet 5.5 model page](https://openrouter.ai/anthropic/claude-sonnet-5.5) for current rates.
+
+## Claude Haiku 5.5
+
+Haiku 5.5 is the first Haiku with an effort setting. Code written for Haiku 4.5 can break on Haiku 5.5, mostly around thinking and request parameters. Pricing is tiered by prompt length, so prompts over 100K tokens cost more per token. See the [Haiku 5.5 model page](https://openrouter.ai/anthropic/claude-haiku-5.5) for current rates.
+
+### Thinking and Effort
+
+Haiku 4.5 ran without thinking unless you enabled it with a token budget. Haiku 5.5 thinks adaptively by default at effort `medium`, and Anthropic returns a 400 for `thinking: {"type": "enabled", "budget_tokens": ...}`. Unlike Opus 5.5 and Sonnet 5.5, thinking can still be turned off.
+
+How this surfaces through OpenRouter
+
+- **No reasoning setting means adaptive thinking at `medium`.** OpenRouter sends no `thinking` field, so Anthropic's default applies. A response can begin with a reasoning block even though the request never asked for one.
+- **Effort maps straight through.** Chat Completions `reasoning.effort` and Messages API `output_config.effort` both become Anthropic's `output_config.effort`, with adaptive thinking. Where Haiku 4.5 ran without thinking to save tokens, try `low` before turning thinking off.
+- **Budgets are not forwarded.** `reasoning.max_tokens` and `thinking.budget_tokens` are accepted by OpenRouter, but the request goes upstream as adaptive thinking with no budget, the same as [Sonnet 5](/cookbook/evaluate-and-optimize/model-migrations/sonnet-5#adaptive-only-thinking). Set an effort instead.
+- **Disabling thinking works at `high` and below.** `reasoning: {"enabled": false}`, `reasoning: {"effort": "none"}`, and Messages API `thinking: {"type": "disabled"}` send `thinking: {"type": "disabled"}`. Combining that with effort `xhigh` or `max` returns a 400 from Anthropic.
+- **Reasoning text is summarized by default.** When reasoning is enabled, OpenRouter sends `display: "summarized"`, so you get a reasoning summary rather than Anthropic's default of empty thinking blocks. Set `thinking.display` to `"omitted"`, or `reasoning.exclude: true` on Chat Completions, if you do not want it.
+
+```json lines
+// Chat Completions API — pick an effort instead of a budget
+{
+  "model": "anthropic/claude-haiku-5.5",
+  "reasoning": { "effort": "low" },
+  "messages": [{ "role": "user", "content": "Classify this support ticket." }]
+}
+```
+
+```json lines
+// Messages API — adaptive thinking with effort in output_config
+{
+  "model": "anthropic/claude-haiku-5.5",
+  "max_tokens": 16000,
+  "thinking": { "type": "adaptive" },
+  "output_config": { "effort": "medium" },
+  "messages": [{ "role": "user", "content": "Summarize this changelog." }]
+}
+```
+
+Thinking tokens count toward `max_tokens`, so a `max_tokens` sized for non-thinking Haiku 4.5 requests can end with `stop_reason: "max_tokens"` before any text. Raise it or lower the effort, and read responses by block type rather than assuming the first block is text.
+
+Forced tool use still works on Haiku 5.5 (`tool_choice: "required"`, `{"type": "any"}`, or a named tool), but the model skips thinking before a forced call. Use `{"type": "auto"}` plus a prompt instruction if you want it to think first.
+
+### Sampling Parameters Removed
+
+Haiku 5.5 rejects any `temperature` other than `1`, any `top_p` other than its default, any `top_k`, and requests that set both `temperature` and `top_p`. Remove all three from your requests and steer the model with prompting instead.
+
+### Assistant Prefill Removed
+
+Haiku 4.5 continued a final assistant turn when thinking was off. Haiku 5.5 rejects it on every provider, even with thinking off, and OpenRouter returns the provider's 400 (`This model does not support assistant message prefill. The conversation must end with a user message.`). End `messages` with a user turn and replace each prefill:
+
+- **Output format**: use [structured outputs](/guides/features/structured-outputs).
+- **Preambles**: ask for a direct answer in the system prompt.
+- **Continuations**: move the partial text into the user message and ask the model to continue from it.
+
+### Recount Tokens
+
+Haiku 5.5 uses the tokenizer introduced with Claude 4.7, which produces about 30% more tokens than Haiku 4.5 for the same text. Request and response shapes do not change, but `usage` numbers, `max_tokens` limits, and cost estimates measured on Haiku 4.5 need re-measuring. The minimum cacheable prompt length drops from 4,096 tokens to 512 (see [Prompt Caching](/guides/best-practices/prompt-caching#minimum-token-requirements)).
+
+### Account-Bound Thinking (Haiku)
+
+Thinking blocks from Haiku 5.5 are only readable by the provider account that produced them. Replaying one through a different account is not an error upstream: Anthropic drops the block and the model loses that reasoning.
+
+OpenRouter handles this in routing. When a request replays Haiku 5.5 thinking blocks, OpenRouter keeps it on the provider that produced them instead of falling back to a different provider. If you pass thinking blocks back unchanged, nothing changes for you. If `provider.only` or `provider.ignore` excludes the provider that produced the blocks, OpenRouter returns a 400 asking you to allow that provider or start a new conversation without the thinking blocks.
+
+Haiku 5.5 thinking blocks are also bound to the transcript prefix that produced them, see [Preserved Thinking](#preserved-thinking).
+
+## Preserved Thinking
+
+Preserved thinking ties each thinking block to the conversation that produced it, meaning the system prompt, the tool list, and every message before it. This applies to all three models. Upstream, replaying a thinking block after editing any part of that prefix (injected or removed messages, in-place summarization, a changed system prompt, a changed tool list) returns a 400 `invalid_request_error` on enforced accounts (Anthropic API accounts created on or after August 31, 2026), or drops the affected blocks if you opt in to `drop_block`.
+
+**Requests through OpenRouter are not subject to this enforcement**, as with Fable 5.1. History edits that would 400 against the Anthropic API directly succeed through OpenRouter. Keep harnesses prefix-stable anyway, because a stable prefix also keeps the prompt cache valid. If your harness replays history exactly as received and only appends, nothing changes for you. Three kinds of edit break the prefix, and each has an append-only alternative:
+
+- **Per-turn reminders or mid-session system prompt changes**: append a mid-conversation system message instead of editing the system prompt, and mark a one-turn reminder with `clear_at: "next_user_message"` (see [Mid-Conversation Controls](#mid-conversation-controls)).
+- **Adding or removing tools**: declare the full set at session start and send a [mid-conversation tool-change block](/cookbook/evaluate-and-optimize/model-migrations/opus-5#mid-conversation-tool-changes-beta) instead of changing `tools`.
+- **Compaction that summarizes older turns while replaying newer ones with their thinking blocks**: replace the whole history with one summary message and replay no earlier thinking blocks, or set `drop_block` below so mismatched blocks are dropped instead of erroring.
+
+```json lines
+// Messages API — drop mismatched thinking blocks instead of erroring
+{
+  "model": "anthropic/claude-opus-5.5",
+  "max_tokens": 64000,
+  "thinking": {
+    "type": "adaptive",
+    "block_binding": { "prefix_mismatch_behavior": "drop_block" }
+  },
+  "messages": ["...full history with thinking blocks replayed verbatim..."]
+}
+```
+
+With `drop_block`, each removal is reported in the response's `input_transformations`, which makes it a good audit tool. Run a session with it set, log `input_transformations`, and fix any `prefix_binding_mismatch` your harness produces. (`model_binding_mismatch` entries after a model switch are expected.)
+
+## Mid-Conversation Controls
+
+These Messages API controls work on all three models through OpenRouter's [Messages API](/api/api-reference/anthropic-messages/create-a-message) (`/api/v1/messages`). You do **not** need to send Anthropic beta headers: OpenRouter detects each feature, attaches the beta, and routes only to providers that support it.
+
+- **Mid-conversation system messages and `clear_at`**: append a `role: "system"` message instead of editing the system prompt, and mark one-turn reminders with `clear_at: "next_user_message"`. See [Fable 5.1](/cookbook/evaluate-and-optimize/model-migrations/fable-5-1#ephemeral-mid-conversation-system-messages-beta).
+- <a id="per-turn-effort-changes-beta" />**Per-turn effort changes**: a system message with `output_config.effort` changes effort for later turns without busting the prompt cache. See [Fable 5.1](/cookbook/evaluate-and-optimize/model-migrations/fable-5-1#per-turn-effort-changes-beta).
+
+## Migration Checklist
+
+**Opus 5 → Opus 5.5**
+
+1. Swap the slug to `anthropic/claude-opus-5.5`, or use `~anthropic/claude-opus-latest`.
+2. Remove any `reasoning: {"enabled": false}`, `reasoning.effort: "none"`, `thinking: {"type": "disabled"}`, or thinking budget. Set an effort instead, starting at `medium`, and re-tune rather than carrying over your Opus 5 effort.
+3. Raise `max_tokens` so thinking and the reply both fit, and parse responses by block type.
+4. Replace forced tool use with `{"type": "auto"}` plus prompt instructions, or structured outputs for JSON extraction. Add a check-and-retry when a tool call is required.
+5. If your product shows progress during long agentic turns, try `thinking: {"type": "adaptive", "display": "updates"}`, and keep `"summarized"` where you need thinking text on every request.
+6. Keep passing thinking blocks back unchanged, and audit transcript edits with `prefix_mismatch_behavior: "drop_block"` plus `input_transformations` logging.
+
+**Sonnet 5 → Sonnet 5.5**
+
+1. Swap the slug to `anthropic/claude-sonnet-5.5`, or use `~anthropic/claude-sonnet-latest`.
+2. Remove `reasoning: {"enabled": false}` and `effort: "none"`. To skip up-front thinking, use Messages API `thinking: {"type": "between_tools"}` at effort `high` or below.
+3. Replace forced `tool_choice` with `auto` plus strict tools and a prompt instruction.
+4. Read text between tool calls from reasoning output.
+5. Re-run your effort sweep. Levels are recalibrated.
+6. Keep passing thinking blocks back unchanged, and keep replayed conversations on Anthropic, Claude Platform on AWS, or Azure.
+
+**Haiku 4.5 → Haiku 5.5**
+
+1. Swap the slug to `anthropic/claude-haiku-5.5`, or use `~anthropic/claude-haiku-latest`.
+2. Replace `reasoning.max_tokens` or `thinking.budget_tokens` with an effort. Requests with no reasoning setting now think at `medium`, so set `low` or disable reasoning where latency matters most.
+3. Raise `max_tokens` so thinking and the reply both fit, and parse responses by block type.
+4. Remove `temperature`, `top_p`, and `top_k`.
+5. Replace assistant prefills with structured outputs, tools, or instructions in the user turn.
+6. Re-measure token counts and costs with Haiku 5.5's tokenizer.
+7. Keep passing thinking blocks back unchanged, and avoid pinning a replayed conversation to a different provider.
+
+## Breaking Changes
+
+**Opus 5 → Opus 5.5**
+
+| Behavior | Opus 5 | Opus 5.5 |
+| --- | --- | --- |
+| `thinking: {"type": "disabled"}` / `reasoning.enabled: false` / `effort: "none"` | Allowed (at effort `high` or lower) | 400, reasoning is mandatory (lowest effort through `~anthropic/claude-opus-latest`) |
+| `thinking.budget_tokens` / `reasoning.max_tokens` | Sets a thinking budget | Not forwarded (adaptive used), rejected upstream if sent directly |
+| Default effort when none is set | `high` | `medium` |
+| Forced `tool_choice` (`required`, named, `any`, `tool`) | Accepted | 400 upstream |
+| Progress notes between tool calls | Returned as text | Returned as thinking blocks, readable via `display: "updates"` |
+| Replaying thinking blocks after a history edit | Allowed | Can be rejected (400) on enforced accounts, not enforced via OpenRouter |
+| `computer_20251124` on direct Anthropic requests | Accepted | 400, use `computer_toolset_20260801` |
+
+**Sonnet 5 → Sonnet 5.5**
+
+| Behavior | Sonnet 5 | Sonnet 5.5 |
+| --- | --- | --- |
+| `reasoning.enabled: false` / `effort: "none"` (Chat Completions) | Thinking off | 400, reasoning is mandatory (adaptive thinking through `~anthropic/claude-sonnet-latest`) |
+| `thinking: {"type": "disabled"}` (Messages API) | Thinking off | 400, use `between_tools` |
+| Forced `tool_choice` (`required`, named, `any`, `tool`) | Accepted | 400 upstream |
+| Text between tool calls | Text blocks | Longer notes arrive as thinking blocks |
+| Thinking block replay across provider accounts | Works | Dropped upstream outside Anthropic, Claude Platform on AWS, and Azure. OpenRouter keeps replays in that group |
+| `computer_20251124` on direct Anthropic and Google Vertex requests | Accepted | 400, use `computer_toolset_20260801` |
+| Minimum cacheable prompt | 1,024 tokens | 512 tokens |
+
+**Haiku 4.5 → Haiku 5.5**
+
+| Behavior | Haiku 4.5 | Haiku 5.5 |
+| --- | --- | --- |
+| Thinking when no reasoning setting is sent | Off | Adaptive, effort `medium` |
+| `thinking.budget_tokens` / `reasoning.max_tokens` | Sets a thinking budget | Not forwarded (adaptive used), rejected upstream if sent directly |
+| Effort levels | None | `low`, `medium`, `high`, `xhigh`, `max` |
+| `temperature`, `top_p`, `top_k` | Accepted | Non-default values not supported |
+| Final assistant turn (prefill) | Accepted with thinking off | Rejected (400) |
+| Thinking block replay across provider accounts | Works | Dropped upstream. OpenRouter keeps replays on the producing provider and returns 400 if provider preferences exclude it |
+| Tokenizer | Haiku 4.5 tokenizer | Claude 4.7+ tokenizer, about 30% more tokens |
+| Minimum cacheable prompt | 4,096 tokens | 512 tokens |
+| Context / max output | 200K / 64K | 1M / 128K |
+
+## Resources
+
+- [Claude Opus 5 Migration Guide](/cookbook/evaluate-and-optimize/model-migrations/opus-5), mid-conversation tool changes
+- [Claude Sonnet 5 Migration Guide](/cookbook/evaluate-and-optimize/model-migrations/sonnet-5)
+- [Claude Fable 5.1 Migration Guide](/cookbook/evaluate-and-optimize/model-migrations/fable-5-1), `clear_at` ephemeral system messages and per-turn effort
+- [Reasoning Tokens](/guides/best-practices/reasoning-tokens)
+- [Structured Outputs](/guides/features/structured-outputs)
+- [Prompt Caching](/guides/best-practices/prompt-caching)
+- [OpenRouter Messages API](/api/api-reference/anthropic-messages/create-a-message)
+- [Anthropic Opus 5.5 migration guide](https://platform.claude.com/docs/en/models/opus-5-5/migration-guide)
+- [Anthropic Sonnet 5.5 migration guide](https://platform.claude.com/docs/en/models/sonnet-5-5/migration-guide)
+- [Anthropic Haiku 5.5 migration guide](https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide)
+- [Anthropic preserved thinking](https://platform.claude.com/docs/en/build-with-claude/preserved-thinking)
