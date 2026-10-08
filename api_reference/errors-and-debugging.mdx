@@ -513,7 +513,7 @@ fetch('https://openrouter.ai/api/v1/chat/completions', {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'anthropic/claude-haiku-4.5',
+    model: 'anthropic/claude-haiku-5.5',
     stream: true, // Debug only works with streaming
     messages: [
       { role: 'system', content: 'You are a helpful assistant.' },
@@ -554,7 +554,7 @@ response = requests.post(
     "Content-Type": "application/json",
   },
   data=json.dumps({
-    "model": "anthropic/claude-haiku-4.5",
+    "model": "anthropic/claude-haiku-5.5",
     "stream": True,
     "messages": [
       { "role": "system", "content": "You are a helpful assistant." },
@@ -588,7 +588,7 @@ fetch('https://openrouter.ai/api/v1/responses', {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'anthropic/claude-haiku-4.5',
+    model: 'anthropic/claude-haiku-5.5',
     stream: true,
     input: 'Hello!',
     debug: {
@@ -624,7 +624,7 @@ response = requests.post(
     "Content-Type": "application/json",
   },
   data=json.dumps({
-    "model": "anthropic/claude-haiku-4.5",
+    "model": "anthropic/claude-haiku-5.5",
     "stream": True,
     "input": "Hello!",
     "debug": {
@@ -653,7 +653,7 @@ When `debug.echo_upstream_body` is set to `true`, OpenRouter sends a debug chunk
 {
   "id": "gen-xxxxx",
   "provider": "Anthropic",
-  "model": "anthropic/claude-haiku-4.5",
+  "model": "anthropic/claude-haiku-5.5",
   "object": "chat.completion.chunk",
   "created": 1234567890,
   "choices": [],
@@ -665,10 +665,9 @@ When `debug.echo_upstream_body` is set to `true`, OpenRouter sends a debug chunk
       "messages": [
         { "role": "user", "content": "Hello!" }
       ],
-      "model": "claude-haiku-4-5-20251001",
+      "model": "claude-haiku-5-5",
       "stream": true,
-      "max_tokens": 64000,
-      "temperature": 1
+      "max_tokens": 65536
     }
   }
 }
@@ -683,13 +682,12 @@ On the Responses API, debug data arrives as a `response.debug` SSE event:
   "type": "response.debug",
   "debug": {
     "echo_upstream_body": {
-      "model": "claude-haiku-4-5-20251001",
+      "model": "claude-haiku-5-5",
       "messages": [
         { "role": "user", "content": "Hello!" }
       ],
       "stream": true,
-      "max_tokens": 64000,
-      "temperature": 1
+      "max_tokens": 65536
     }
   },
   "sequence_number": 0
