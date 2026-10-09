@@ -1,6 +1,5 @@
 ---
 title: Alignment
-hidden: true
 description: Check every assistant message against rules sent with the request, in audit or enforce mode
 seoTitle: 'Alignment | Check Every Assistant Message Against Your Rules'
 og:site_name: OpenRouter Documentation
@@ -11,8 +10,6 @@ og:image:width: 1200
 og:image:height: 630
 twitter:card: summary_large_image
 twitter:site: '@OpenRouter'
-noindex: true
-nofollow: true
 icon: shield-check
 tag: Beta
 ---
@@ -33,7 +30,6 @@ The examples call the [Responses API](/api_reference/responses/overview) (`/api/
 
 ## Prerequisites
 
-- An OpenRouter workspace admitted to the beta. [Request from outside the beta](#request-from-outside-the-beta) shows the response that any other workspace gets.
 - An [API key](https://openrouter.ai/settings/keys) in the `OPENROUTER_API_KEY` environment variable.
 - For the TypeScript example, the [OpenRouter TypeScript SDK](/client-sdks/typescript), installed with npm or another Node.js package manager:
 
@@ -919,22 +915,6 @@ data: {
     "error_type": "permission_denied"
   },
   "sequence_number": 2
-}
-```
-
-### Request from outside the beta
-
-The [Quickstart](#quickstart) request, sent from a workspace that is not in the beta, gets this body. OpenRouter answers before it calls the model, so the body has no `id` and no `usage`:
-
-```json
-{
-  "error": {
-    "message": "Alignment plugin: the request cannot be evaluated: not_admitted",
-    "code": 400,
-    "metadata": {
-      "provider_name": null
-    }
-  }
 }
 ```
 
