@@ -67,7 +67,7 @@ Here is OpenRouter's default load balancing strategy:
 
 If Provider A costs \$1 per million tokens, Provider B costs \$2, and Provider C costs \$3, and Provider B recently saw a few outages.
 
-- Your request is routed to Provider A. Provider A is 9x more likely to be first routed to Provider A than Provider C because $(1 / 3^2 = 1/9)$ (inverse square of the price).
+- Your request is most likely routed to Provider A first. Provider A is 9x more likely than Provider C to be routed to first, because each provider is weighted by the inverse square of its price: $1 / 1^2 = 1$ for Provider A vs. $1 / 3^2 = 1/9$ for Provider C.
 - If Provider A fails, then Provider C will be tried next.
 - If Provider C also fails, Provider B will be tried last.
 

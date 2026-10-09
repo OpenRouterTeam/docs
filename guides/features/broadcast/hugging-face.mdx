@@ -1,0 +1,126 @@
+---
+title: Hugging Face Storage Buckets
+description: Send traces to Hugging Face Storage Buckets
+seoTitle: 'Broadcast to Hugging Face Storage Buckets | OpenRouter Observability'
+og:site_name: OpenRouter Documentation
+og:title: 'Broadcast to Hugging Face Storage Buckets - Send Traces to Hugging Face'
+og:description: 'Connect a Hugging Face Storage Bucket to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for the Hugging Face Storage Buckets integration.'
+og:image: https://openrouter.ai/dynamic-og?title=Hugging%20Face%20Storage%20Broadcast&description=Send%20traces%20to%20Hugging%20Face%20Storage%20Buckets
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: puzzle-piece
+---
+
+[Hugging Face Storage Buckets](https://huggingface.co/docs/hub/storage-buckets) are object storage for AI files that live next to your models and datasets on the Hugging Face Hub. OpenRouter writes each trace to your bucket as a JSON file through Hugging Face's [S3-compatible API](https://huggingface.co/docs/hub/storage-buckets-s3), so the stored files have the same shape as the [S3 destination](/guides/features/broadcast/s3).
+
+<Note>
+Storage Buckets are available to all Hugging Face users and organizations and are billed on the amount of data stored, with per-TB pricing; see [Hugging Face Storage pricing](https://hf.co/storage) for current rates.
+</Note>
+
+## Step 1: Create a storage bucket
+
+1. On the Hugging Face Hub, open **New** > **Storage Bucket** (or go to `https://huggingface.co/new-bucket`).
+2. Choose the **owner** (your user or an organization) and a **bucket name**, for example `openrouter-traces`.
+
+You will enter the owner as the **Namespace** and the bucket name as the **Bucket Name** in OpenRouter.
+
+## Step 2: Generate S3 credentials
+
+OpenRouter authenticates to the bucket with S3 credentials derived from a Hugging Face access token.
+
+1. Go to [Settings > Access Tokens](https://huggingface.co/settings/tokens) and create a token with **Write** permission (or a fine-grained token with write access to the bucket's namespace).
+2. In the token's dropdown menu, click **Generate S3 credentials**.
+3. Copy the **Access Key ID** (it starts with `HFAK`) and the **Secret Access Key**.
+
+See Hugging Face's [S3 credentials documentation](https://huggingface.co/docs/hub/storage-buckets-s3#generating-s3-credentials) for details.
+
+## Step 3: Enable Broadcast in OpenRouter
+
+Go to [Settings > Observability](https://openrouter.ai/settings/observability) and toggle **Enable Broadcast**.
+
+<Frame>
+![Enable Broadcast](/assets/guides/features/broadcast/arize/broadcast-enable.png)
+</Frame>
+
+## Step 4: Configure Hugging Face Storage Buckets
+
+Click the edit icon next to **Hugging Face Storage Buckets** and enter:
+
+- **Namespace**: The user or organization that owns the bucket (e.g., `my-org`)
+- **Bucket Name**: The bucket name without the namespace (e.g., `openrouter-traces`)
+- **Access Key Id**: The `HFAK...` access key ID from Step 2
+- **Secret Access Key**: The secret access key from Step 2
+- **Path Template** (optional): Customize the object path inside the bucket. Default is `openrouter-traces/{date}`. Available variables: `{prefix}`, `{date}`, `{year}`, `{month}`, `{day}`, `{apiKeyName}`
+
+OpenRouter connects to `https://s3.hf.co/<namespace>` in the `us-east-1` region with path-style addressing, so there is no endpoint or region to configure.
+
+## Step 5: Test and save
+
+Click **Test Connection** to verify the setup. OpenRouter writes a small `.openrouter-connection-test.json` file under your path template; the configuration only saves if that write succeeds. A `401` or `403` means Hugging Face rejected the credentials, the token lacks write access to the namespace, or the bucket doesn't exist.
+
+## Step 6: Send a test trace
+
+Make an API request through OpenRouter, then open the bucket on the Hub (`https://huggingface.co/buckets/<namespace>/<bucket>`) and browse to the date folder. Each trace is saved as a separate JSON file named `{traceId}-{timestamp}.json`.
+
+## Path template examples
+
+Customize how traces are organized in your bucket:
+
+- `openrouter-traces/{date}` - Default, organizes by date (e.g., `openrouter-traces/2024-01-15/abc123-1705312800.json`)
+- `traces/{year}/{month}/{day}` - Hierarchical date structure
+- `{apiKeyName}/{date}` - Organize by API key name, then date
+- `production/llm-traces/{date}` - Custom prefix for environment separation
+
+Hugging Face doesn't accept empty, `.`, or `..` path segments or a leading `/` in object keys, so OpenRouter drops those segments from the rendered path: repeated slashes collapse, leading and trailing slashes are trimmed, and `.` or `..` segments are removed.
+
+## Trace file format
+
+Trace files are identical to the ones the [S3 destination](/guides/features/broadcast/s3) writes. A single-trace file is `{ "trace": { ... }, "exported_at": "..." }`; the [custom metadata](/guides/features/broadcast/s3#custom-metadata), [billing quantities](/guides/features/broadcast/s3#billing-quantities), and [raw provider usage](/guides/features/broadcast/s3#raw-provider-usage) field locations documented for S3 apply unchanged.
+
+## Custom Metadata
+
+Custom metadata from the `trace` field is included in the JSON trace file stored in your bucket. The metadata is available in the `metadata` field of each observation within the trace.
+
+### Supported Metadata Keys
+
+| Key | JSON Mapping | Description |
+|-----|--------------|-------------|
+| `trace_id` | `id` (trace level) | Custom trace identifier |
+| `trace_name` | `name` (trace level) | Custom name for the trace |
+| `span_name` | `name` (observation level) | Name for intermediate spans |
+| `generation_name` | `name` (observation level) | Name for the LLM generation |
+
+### Example
+
+```json lines
+{
+  "model": "openai/gpt-4o",
+  "messages": [{ "role": "user", "content": "Analyze this document..." }],
+  "user": "user_12345",
+  "session_id": "session_abc",
+  "trace": {
+    "trace_name": "Document Analysis",
+    "generation_name": "Extract Key Points",
+    "document_type": "contract",
+    "batch_id": "batch_456"
+  }
+}
+```
+
+### Accessing Metadata in Hugging Face Storage Buckets
+
+Each trace file is a JSON object. Custom metadata keys from `trace` are stored in the `metadata` field. Read the files with any S3 client pointed at `https://s3.hf.co/<namespace>`, with the [`hf` CLI](https://huggingface.co/docs/hub/storage-buckets#using-the-cli), or by mounting the bucket, then query them with any JSON-aware tool such as DuckDB or `jq`.
+
+### Additional Context
+
+- The `user` field maps to `userId` in the trace JSON
+- The `session_id` field maps to `sessionId` in the trace JSON
+- Trace files include full input/output messages, token counts, costs, and timing data alongside your custom metadata
+
+## Privacy Mode
+
+When [Privacy Mode](/guides/features/broadcast#privacy-mode) is enabled for this destination, prompt and completion content is excluded from traces. All other trace data (token usage, costs, timing, model information, and custom metadata) is still sent normally. Raw provider usage is replaced with `null` and reported as `privacy_mode`, because a provider's usage object can contain arbitrary future fields. See [Privacy Mode](/guides/features/broadcast#privacy-mode) for details.
