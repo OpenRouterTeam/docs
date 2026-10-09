@@ -19,6 +19,7 @@ models:
   - perplexity/pplx-decider-v1.1-27b
   - cloudflare/clef
   - cloudflare/clef-flash
+  - cloudflare/clef-omni
   - openai/gpt-6-luna-decisions
 ---
 
@@ -30,6 +31,7 @@ Decisions models answer typed questions about content you send in `state`. These
 | [`perplexity/pplx-decider-v1.1-27b`](https://openrouter.ai/perplexity/pplx-decider-v1.1-27b) | Text and images |
 | [`cloudflare/clef`](https://openrouter.ai/cloudflare/clef) | Text and images |
 | [`cloudflare/clef-flash`](https://openrouter.ai/cloudflare/clef-flash) | Text and images |
+| [`cloudflare/clef-omni`](https://openrouter.ai/cloudflare/clef-omni) | Text and images |
 | [`openai/gpt-6-luna-decisions`](https://openrouter.ai/openai/gpt-6-luna-decisions) | Text and images |
 
 Text-only Decisions requests, including every request to [Jev](/guides/community/jev), work the same as before.
@@ -92,9 +94,9 @@ An image is an item of the `state` array with this shape, the same image part Ch
 ```
 
 - `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Remote `http(s)` URLs are not fetched.
-- `detail` (`auto`, `low`, or `high`) is accepted, but Clef and Clef Flash ignore it.
+- `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, and Clef Omni ignore it.
 - Put image parts directly in the top-level `state` array. Images nested inside other objects in `state` are not read as images.
-- Send at most 4 images per request to Clef and Clef Flash, and at most 128 to GPT-6 Luna Decisions.
+- Send at most 4 images per request to Clef, Clef Flash, and Clef Omni, and at most 128 to GPT-6 Luna Decisions.
 - Text items in the array are plain strings, not `{ "type": "text" }` parts.
 
 These shapes are not image inputs:
