@@ -395,7 +395,7 @@ Each output modality entry carries:
 | Field | Required | Description |
 |---|---|---|
 | `type` | Yes | The modality discriminator |
-| `supported_parameters` | Yes | Descriptor map of the generation parameters this modality accepts |
+| `supported_parameters` | Yes | Descriptor map of the generation parameters this modality accepts. Applied for `text` outputs. Accepted on every other output modality, but OpenRouter does not ingest them there yet |
 | `streaming` | No | Whether this output supports native SSE streaming (not applicable to `embeddings` / `rerank`) |
 | `max_length` | No | Maximum output length (`text` only) |
 | `pricing` | No | Prices billed against this output (see [Pricing](#3-pricing)) |
@@ -674,6 +674,8 @@ Each map uses the same [capability descriptor](#capability-descriptors) grammar,
 }
 ```
 
+**Applied.** OpenRouter merges the parameter names from every scope into the endpoint's passthrough allowlist, which controls the `provider.options` keys forwarded to your API. Descriptors are not enforced yet. New endpoints receive the list when they are created; changes to an existing endpoint, including removed names, are reviewed by OpenRouter before they apply. Omit `passthrough_parameters` everywhere to leave the endpoint's current allowlist untouched, or declare an empty map to clear it.
+
 ### 6. Datacenters and deployment region
 
 Declare where each endpoint physically serves from:
@@ -690,6 +692,7 @@ Declare where each endpoint physically serves from:
 
 - `datacenters[].country_code`: ISO 3166-1 alpha-2 country code.
 - `datacenters[].region`: provider-scoped region identifier (e.g. `us-east-1`).
+- `datacenters` is **detection-only** today: OpenRouter compares it against the region configured for the endpoint and flags a mismatch, or an endpoint with no configured region, for review. It does not change routing or the region OpenRouter displays.
 - `deployment_region`: optional provider-scoped label for the model deployment's region or scope (e.g. `US`, `global`). Use it when the same underlying model is deployed to more than one region under distinct model `id`s, so each document declares which regional deployment it describes. It complements `datacenters`, which lists the physical serving locations. This is a display-only label today: OpenRouter does not route or bill on it, so use consistent values across your documents and coordinate the vocabulary with us before publishing.
 
 ### 7. Operational fields

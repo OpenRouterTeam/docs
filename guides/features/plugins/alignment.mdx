@@ -200,9 +200,9 @@ OpenRouter rejects a request with the plugin in three cases, in both modes. In t
 
 | Case | Error |
 |------|-------|
-| The workspace is under HIPAA (the Health Insurance Portability and Accountability Act), or its HIPAA status is unknown | `403` |
 | The workspace has [zero data retention](/guides/features/zdr), or the request has `provider.zdr: true` | `400` |
 | The request goes to a regional hostname ([In-Region Routing](/guides/features/in-region-routing)) | `400` |
+| The workspace does not allow the plugin, or its status is unknown | `403` |
 
 ## Examples
 
