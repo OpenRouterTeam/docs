@@ -580,6 +580,17 @@ Limitations:
 - Declarations beyond these shapes are accepted by the schema but produce translation warnings and are not billed.
 - Your base pricing must be your cheapest (off-peak) rate. Unsupported schedule declarations fall back to the base pricing, so a base price that is the cheapest rate guarantees users are never overcharged while your declaration is reviewed.
 
+#### Which conditional prices are billed
+
+Conditional pricing is honoured only when the pricing strategy OpenRouter assigned to your endpoints can represent it. Two conditions are billable today:
+
+- Long-context tiers (`context_length_tier`): `overrides` with a single `prompt_tokens.gte` predicate on text `prompt`, `completion`, and `cached_prompt` entries, up to two tiers, billed only by the `openai_extended` strategy.
+- Time windows (`time_window`): `utc_start`/`utc_end`/`utc_days` on text `prompt`, `completion`, and `cached_prompt` entries, up to two peak windows priced alike, billed by the `openai_extended` and `alibaba` strategies.
+
+Every other conditional price is not billable yet: overrides on cache entries qualified by `ttl_seconds` or `implicit`, overrides on image, audio, video, and request entries, parameter predicates other than `prompt_tokens`, overrides that combine a token threshold with a time window or leave a window half-specified, an `overrides` list that mixes tiers and time windows (a list is billed only when every entry is the same kind), more tiers or windows than the limits above, and any override on an embeddings endpoint, which is billed at the base prompt price. The same applies when your endpoints run on a strategy that lacks the SKUs for a condition, even one listed above.
+
+When a declared override is not billed, the feed is still accepted and the base rate applies. Each ignored override produces an `unsupported_override` warning carrying the JSON path of the declaration and, once the declaration reaches an endpoint, the pricing strategy and the override condition (`time_window` or `context_length_tier`), so nothing is dropped silently. If you see one of these warnings for a shape you need billed, reach out and we will review the strategy assignment with you.
+
 ### 4. Capacity
 
 Capacity uses the same typed, scoped placement as pricing. Each input and output modality may carry its own `capacity` array as a sibling of `pricing`. The root `capacity` array holds request-scoped entries only. This adds no new root structure.
@@ -816,6 +827,94 @@ The full schema is available as an OpenAPI 3.1 document, in which every closed v
 [Download the provider schema (OpenAPI 3.1 JSON)](/assets/provider-monitor-schema-v2.openapi.json)
 
 The schema only gains optional fields. Existing fields are never removed, renamed, narrowed, or made required, so a document you publish today keeps validating when we add fields. `schema_version` marks a V2 document: we publish `2.4` in these docs, and any `2.x` value is accepted, so you never need to republish to track it.
+
+#### Field reference and compatibility
+
+OpenRouter polls your feed on every monitor run, but it does not act on every field the schema accepts. This section lists what each field does once a document validates, which aliases win in the legacy format, which fields are read only once, which retired fields are still tolerated, how modalities interact with auto-staging, and where the legacy format stands. Each field has one of five statuses:
+
+- **Applied**: written to your endpoint automatically on every poll. Rows marked *held if set manually* are the exception: when OpenRouter staff set that field by hand, a feed change to it waits in the monitor inbox for review instead of being applied.
+- **Reviewed**: the change is placed in the monitor inbox and takes effect only when OpenRouter staff apply it.
+- **Detection-only**: compared with what OpenRouter records. A difference opens a review item for OpenRouter staff and never changes the endpoint, its routing, or what users see.
+- **Staging-only**: read when OpenRouter first creates a model record from your feed, then never read again. To correct such a value after staging, contact your OpenRouter representative.
+- **Ignored**: accepted by the schema, so the validator passes, but no ingestion step reads it. Where noted, the dashboard validator reports a warning.
+
+| Field | Status | Notes |
+|---|---|---|
+| `schema_version` | Ignored | Its presence is what routes the entry to the current-format parser. A value that is not `2.x` fails parsing and rejects the whole document (validator error `document_schema_version_mismatch`); a valid value is not read afterwards. |
+| `id` | Applied | The identifier OpenRouter matches your endpoint by on every poll. Also the fallback for auto-staging when `hugging_face_id` is absent. |
+| `hugging_face_id` | Staging-only, detection-only | Matches a new entry to an OpenRouter model at staging. Afterwards a review item opens only when the value resolves to exactly one other OpenRouter model and the attached model has a Hugging Face identifier; any other mismatch is skipped silently. |
+| `name` | Ignored | Used only to label the entry in OpenRouter's internal reports; model names come from OpenRouter's catalog. |
+| `description` | Staging-only | Prefills the description when OpenRouter staff create a model from your entry. |
+| `created` | Ignored | Carried through translation, but no staging or update step writes it. |
+| `tokenizer` | Ignored | Carried through translation, but no staging or update step writes it. |
+| `quantization` | Applied | Held if set manually. |
+| `input_modalities[].type`, `output_modalities[].type` | Detection-only | See [Modalities and auto-staging](#modalities-and-auto-staging). |
+| `input_modalities[].supported_inputs.max_context_length` | Applied | Text input only. Becomes the endpoint's context length. Held if set manually. Non-token units are ignored with validator warning `unsupported_limit_unit`. |
+| `input_modalities[].supported_inputs.max_prompt_length` | Applied | Text input only. Becomes the endpoint's maximum prompt length. Held if set manually. Non-token units are ignored with validator warning `unsupported_limit_unit`. |
+| `input_modalities[].supported_inputs.sources` | Reviewed | Image, video, and file input only (audio has no sources yet, and a `sources` declaration on audio input is silently ignored with no validator warning). Controls whether URL and inline (base64) inputs are accepted. Applied directly when a new endpoint is staged; on an existing endpoint the change waits for review. |
+| Other `input_modalities[].supported_inputs` keys (`formats`, `detail_levels`, `references`, `max_content_size_bytes`, and limits on non-text input) | Ignored | OpenRouter does not store or enforce these yet. On image, video, and file input the validator warns `unsupported_input_constraint`; on audio input they are skipped silently. |
+| `input_modalities[].supported_parameters` | Ignored | Only `output_modalities[].supported_parameters` on the text output is read. |
+| `input_modalities[].streaming` | Ignored | |
+| `output_modalities[].max_length` | Applied | Text output only. Becomes the endpoint's maximum completion length. Held if set manually. Non-token units are ignored with validator warning `unsupported_limit_unit`. |
+| `output_modalities[].supported_parameters` | Applied | Text output only. Plain sampling parameters are applied; parameters OpenRouter verifies by test (`tools`, `tool_choice`, `response_format`, `structured_outputs`, `logprobs`, and the rest of the capability suite) are never enabled from the feed, only by the capability tests passing. Held if set manually. On non-text outputs the list is not ingested yet. |
+| `pricing`, `input_modalities[].pricing`, `output_modalities[].pricing` | Applied, reviewed | Token and request priced entries, cache entries, and the documented `overrides` are read. A price change to an entry OpenRouter already prices and a first-time price for an unpriced endpoint apply automatically, and cache-discount entries are added or removed automatically when they look like a discount; any other new or removed entry waits for review, and pricing changes on `:free` and batch variants always wait for review. Entries OpenRouter cannot represent yet (for example search pricing, TTL cache tiers, or non-token units) are ignored with validator warnings `unsupported_pricing_entry`, `unsupported_cache_qualifier`, or `unsupported_override`. |
+| `input_modalities[].capacity` | Applied | Text input only, and only `type: prompt`, `unit: token`, `per: minute`, which becomes the endpoint's tokens-per-minute capacity. Held if set manually. Every other entry is ignored with validator warning `unsupported_capacity_entry`. |
+| `capacity`, `output_modalities[].capacity` | Ignored | Validator warning `unsupported_capacity_entry`. |
+| `passthrough_parameters`, `input_modalities[].passthrough_parameters`, `output_modalities[].passthrough_parameters` | Reviewed | All three levels are merged into one list; applied directly when a new endpoint is staged, held for review on an existing endpoint. |
+| `deprecation_date` | Applied | Held if set manually. A new entry whose date has passed is not staged. |
+| `is_ready` | Applied | `false` hides the endpoint on that poll; see [Controlling launch with `is_ready`](#controlling-launch-with-is_ready). |
+| `is_free` | Applied | |
+| `service_tier` | Applied | |
+| `discount_to_user` | Applied | Held if set manually. |
+| `openrouter.slug` | Ignored | Not read by ingestion today. OpenRouter fills it in the feed the dashboard generates for you. |
+| `datacenters` | Detection-only | See [Datacenters and deployment region](#6-datacenters-and-deployment-region). |
+| `deployment_region` | Detection-only | See [Datacenters and deployment region](#6-datacenters-and-deployment-region). |
+| `compliance` | Ignored | Retired. See [Retired V2 fields](#retired-v2-fields). |
+
+The validator warnings named above appear in the **Schema validator** tab of your provider dashboard (`https://openrouter.ai/provider/{provider_slug}/dashboard`), which also reports rejected documents and includes a **Generate feed** panel that builds a current-format document from the endpoints OpenRouter already serves for you. The same warnings are logged on every monitor run.
+
+##### Aliases and precedence
+
+The current format has exactly one field per concept, so there is nothing to choose between. The [legacy flat format](/guides/community/for-providers-legacy) accepts several aliases, and when an entry carries both the canonical field and an alias the following wins:
+
+| Canonical field | Aliases | Rule |
+|---|---|---|
+| `max_completion_tokens` | `max_output_tokens`, `max_output_length` | `max_completion_tokens` wins. When it is null or absent, `max_output_tokens` fills it, and `max_output_length` is used only when both are null or absent. |
+| `hugging_face_id` | `hf_slug` | `hugging_face_id` wins. `hf_slug` is used only when `hugging_face_id` is absent or blank; when neither is set, `id` is used as the Hugging Face identifier for model matching. |
+| `context_length` | `context_window`, `max_context_length`, `max_context_tokens`, `max_model_len` | `context_length` wins. The first alias present with an integer value fills it when it is absent. |
+| `supported_sampling_parameters` | `supported_parameters` | `supported_sampling_parameters` wins. |
+
+Send one spelling per concept. When both are present, the losing value is dropped silently and never surfaces as a warning or a review item. The legacy `supported_features` list (`tools`, `json_mode`, `structured_outputs`, `logprobs`, and so on) is parsed and ignored: OpenRouter discovers testable capabilities by running capability tests against the endpoint, so declaring a feature there does not enable it.
+
+##### Fields read only at staging
+
+`hugging_face_id` and `description` are read when OpenRouter first creates a model record from your feed: the first to match or attach the entry to a model, the second to prefill the model's description. After that the model record is owned by OpenRouter and the monitor never updates it from your feed, so changing these values in a published document has no effect. `name`, `created`, and `tokenizer` are accepted but not written at any point. To correct a model's name, description, release date, or Hugging Face identifier, contact your OpenRouter representative.
+
+##### Retired V2 fields
+
+The schema is append-only, so fields are retired rather than repurposed. One root field has been retired:
+
+| Field | Retired | Behavior |
+|---|---|---|
+| `compliance` | 2026-09-30 | Accepted and ignored. A document that still carries it validates and is ingested; the key is dropped before validation and nothing reads it. |
+
+Any other key the schema does not know, at the root or inside a nested object, rejects the whole document: the schema is strict. A rejected document is dropped from that poll before anything else runs, and the rejection is logged against your provider. Because the entry is then missing from your feed, an endpoint OpenRouter already serves for it is treated as removed and hidden on that run (unless your monitor opts out of auto-hiding or the model produces video, text-to-speech, transcription, or embeddings output). Nothing unhides it automatically when the document validates again: contact your OpenRouter representative to restore it. Run your feed through the **Schema validator** tab before publishing.
+
+##### Modalities and auto-staging
+
+On an endpoint OpenRouter already serves, `input_modalities[].type` and `output_modalities[].type` are detection-only. Adding, removing, or changing a modality type in your feed opens a review item for OpenRouter staff and does not change the endpoint; the per-modality limits, pricing, capacity, sources, and passthrough parameters listed above are still processed as their rows describe. To change what an existing endpoint accepts or produces, contact us.
+
+A document whose `id` OpenRouter does not serve yet is a new entry. An entry whose `deprecation_date` has passed is skipped. Otherwise the monitor tries to attach it to an existing OpenRouter model:
+
+1. **Hugging Face match (authoritative).** `hugging_face_id` (or, when it is absent, `id`) is matched against the Hugging Face identifier of OpenRouter's models. A single match auto-stages; several matches are held for manual review.
+1. **OpenRouter slug match.** When nothing matches by Hugging Face identifier, models that have no Hugging Face identifier (closed-weights and dedicated image, video, audio, and embeddings models) are matched by the name part of their OpenRouter slug. The identifier must be namespaced as `author/name` and the author must match the OpenRouter model's author; a bare name such as `my-model` is held for manual review, as are several matches. Slug matches for `anthropic`, `google`, `openai`, and `x-ai` models are also held for manual review.
+1. **No match.** The entry is reported to OpenRouter staff and nothing is staged until they create or attach a model.
+
+A matched entry is staged as a hidden endpoint and put through the baseline test suite. It is unhidden automatically only when every test passes, pricing is present and non-zero (unless `is_free`), `is_ready` is not `false`, you already have a launched endpoint on OpenRouter (and a launched paid endpoint, for a paid entry), and the endpoint serves chat completions: the decision looks at the output modality and the tests run, so a vision model with text output qualifies. Endpoints whose output modality or templates involve embeddings, reranking, decisions, speech-to-text, text-to-speech, image generation, or video generation stay hidden after a passing run until OpenRouter staff unhide them, as do endpoints OpenRouter cannot tell apart from another variant you already serve for the same model and a small list of models whose authors restrict distribution.
+
+##### Legacy format timeline
+
+The [legacy flat format](/guides/community/for-providers-legacy) remains supported for existing integrations. We have not set an end-of-support date for it. When we do, we will announce it here and to each provider still publishing it with advance notice, together with what happens to legacy feeds after that date. Use the current format for every new integration, and use **Generate feed** in the dashboard's Schema validator to produce a current-format document from the endpoints OpenRouter already serves for you if you want to migrate ahead of time.
 
 ### 9. Auto top up or invoicing
 
