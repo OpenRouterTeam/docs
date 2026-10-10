@@ -1,0 +1,149 @@
+---
+title: How OpenRouter Routes Traffic Between Providers
+description: How routing splits a model's traffic between provider endpoints, and the inputs that decide your share
+seoTitle: 'How OpenRouter Routes Traffic | Guide for Providers'
+og:site_name: OpenRouter Documentation
+og:title: 'How OpenRouter Routes Traffic Between Providers'
+og:description: 'How OpenRouter splits traffic between provider endpoints: adjusted price, speed, the competitive edge, and the inputs that decide your share.'
+og:image: https://openrouter.ai/dynamic-og?title=Traffic%20Routing&description=How%20OpenRouter%20routes%20traffic%20between%20providers
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: route
+sidebarTitle: Traffic Routing
+---
+import {
+  RoutingSwatch,
+  RoutingTradeoff,
+  RoutingPreferenceCurve,
+  RoutingEffectivePrice,
+  RoutingSpeed,
+  RoutingTtftSession,
+  RoutingReliability,
+  RoutingQuality,
+  RoutingRateLimits,
+  RoutingLearnedCapacity,
+} from '/snippets/exports/ProviderRoutingFigures.jsx';
+
+When a request lets OpenRouter choose the provider, routing gives each endpoint a share of the model's traffic. The share depends on two things: your adjusted price and your speed.
+
+## Adjusted price and speed
+
+Routing compares endpoints by what a user actually pays for a good result, not by list price alone. It takes each of these into account, along with what it costs the user:
+
+<div className="pr-factors">
+
+- <RoutingSwatch part="price" />**Effective price**: overall cache-adjusted price
+- <RoutingSwatch part="ttft" />**TTFT**
+- <RoutingSwatch part="rel" />**Reliability & quality**: failed or broken responses
+- <RoutingSwatch part="429" />**429s**: rate-limited requests which have to fall back
+- <RoutingSwatch part="speed" />**Speed**: end-to-end TPS
+
+</div>
+
+<RoutingTradeoff />
+
+## The best endpoints get the most traffic
+
+Adjusted price and speed, taken together, place each endpoint on one side of the **competitive edge**, which separates the best endpoints from the rest.
+
+- **Competitive:** endpoints inside the edge get the most traffic. Being a little behind the best costs you little.
+- **Exploration:** past the edge, your share drops off fast. Every endpoint still gets a small amount of traffic no matter what, so routing can see when it improves.
+
+<RoutingPreferenceCurve />
+
+Each request picks an endpoint at random, weighted by these shares. If it fails, the retry is picked the same way from the endpoints that are left.
+
+## Limits on top of the shares
+
+- **Breaker.** If a degradation signal like reliability, quality or 429s is far worse than your peers', routing pauses your traffic until it recovers.
+- **Traffic cap.** Routing learns how much load you can take before you start returning 429s. If your share would push you past that, your share is capped and the extra goes to other endpoints. The cap rises once the 429s stop.
+- **Short-term backoff.** A burst of 429s or a sudden jump in latency briefly lowers your share while it lasts.
+
+## The inputs
+
+Every input is measured from your recent production traffic on OpenRouter. The last few minutes count the most, so changes show up within minutes. An endpoint with little traffic starts out looking like a typical peer and moves toward its own numbers as data comes in.
+
+### <RoutingSwatch part="price" />Effective price
+
+Effective price is the price your endpoint actually charged over the last 30 minutes, across all its traffic. It reflects your real **cache hit rate** and the mix of input and output tokens, so it can differ a lot from your list price.
+
+<RoutingEffectivePrice />
+
+For each new request, routing estimates how many input and output tokens it will use and prices it with your effective price, so it can go where it is actually cheapest for the user.
+
+### <RoutingSwatch part="speed" />Speed
+
+Speed is the main factor that trades off against price: a faster endpoint can cost more and still win traffic. It's measured as output tokens per second, end to end, so it _includes_ TTFT: the user waits for the whole response, from sending the request to the last token.
+
+<RoutingSpeed />
+
+### <RoutingSwatch part="ttft" />TTFT
+
+TTFT adds directly to your adjusted price, even though it already counts toward speed, because interactive use depends on it most. It's the time to first token: how long users wait before your response starts streaming. In agentic sessions, a model may make many tool calls in a row, and each one waits for a first token.
+
+<RoutingTtftSession />
+
+### <RoutingSwatch part="rel" />Reliability
+
+A reliability error is a request that fails because of your endpoint. The user loses the attempt and has to retry, so each error carries a heavy penalty.
+
+<RoutingReliability />
+
+<div className="pr-cols">
+<div>
+
+**Counts**
+
+- 5xx responses
+- No response: dropped connections, timeouts
+- Setup errors: 401, 402, 404, 405, 408, 410, 421, 423, 424, 426, 498
+- Responses that fail partway through
+
+</div>
+<div>
+
+**Doesn't count**
+
+- Bad requests: 400, 413, 422
+- Geographic or legal blocks: 403, 451
+- User disconnects: 499
+- 429s, covered below
+
+</div>
+</div>
+
+If your error rate is far above your peers', the **breaker** pauses your traffic until it recovers.
+
+### <RoutingSwatch part="rel" />Quality
+
+How often your responses to tool-calling requests come back well formed. Each broken one raises your adjusted price a little.
+
+<RoutingQuality />
+
+An endpoint flagged for broken tool calls, or for benchmark accuracy well below what the model should score, falls far behind and gets exploration traffic only until the flag clears.
+
+### <RoutingSwatch part="429" />429s
+
+A 429 makes the user wait for the rejection and then send a full request somewhere else. Routing charges that wait plus a penalty, weighted by how often you return 429s, so the cost is usually small in adjusted price.
+
+<RoutingRateLimits />
+
+429s matter more through the limits: repeated 429s at high load set your **traffic cap**, a burst of them triggers short-term backoff, and a rate far above your peers' trips the **breaker**.
+
+### <RoutingSwatch part="capacity" />Learned capacity
+
+Routing watches how your 429 rate changes as your load goes up, and learns the load you can handle while keeping 429s low. That becomes your traffic cap. If you add capacity, the cap rises on its own once the 429s stop. You don't need to tell us.
+
+<RoutingLearnedCapacity />
+
+## Excluded traffic
+
+Routing only chooses between providers when the user leaves that choice to OpenRouter. It's skipped, and the request goes where the user asked, when the user:
+
+- Names specific providers
+- Brings their own provider key
+- Sorts by price, throughput or latency

@@ -12,7 +12,7 @@ twitter:site: '@OpenRouter'
 noindex: false
 nofollow: false
 icon: cloud
-sidebarTitle: For Providers
+sidebarTitle: Integration
 ---
 
 ## For providers
@@ -20,7 +20,7 @@ sidebarTitle: For Providers
 If you'd like to be a model provider and sell inference on OpenRouter, [fill out our form](https://openrouter.ai/how-to-list) to get started.
 
 <Note>
-  Integrated before the current model document format? The [legacy flat format](/guides/community/for-providers-legacy) remains supported for existing integrations.
+  Integrated before the current model document format? The [legacy flat format](/guides/providers/integration-legacy) remains supported for existing integrations.
 </Note>
 
 To be eligible to provide inference on OpenRouter you must have the following:
@@ -142,7 +142,7 @@ The `id` field should be the exact model identifier that OpenRouter will use whe
 All `cost_usd` fields are in string format to avoid floating point precision issues, and must be in USD.
 
 <Note>
-  The [previous flat model document format](/guides/community/for-providers-legacy) (a flat `pricing` object with `pricing.overrides`, `supported_sampling_parameters`, `supported_features`, and `capacity_tpm`) remains supported for existing integrations, but use the format above for all new integrations.
+  The [previous flat model document format](/guides/providers/integration-legacy) (a flat `pricing` object with `pricing.overrides`, `supported_sampling_parameters`, `supported_features`, and `capacity_tpm`) remains supported for existing integrations, but use the format above for all new integrations.
 </Note>
 
 Valid quantization values are: `int4`, `int8`, `fp4`, `mxfp4`, `nvfp4`, `fp6`, `fp8`, `mxfp8`, `fp16`, `bf16`, `fp32`. Use `null` (or omit the field) when the precision is undeclared.
@@ -875,7 +875,7 @@ The validator warnings named above appear in the **Schema validator** tab of you
 
 ##### Aliases and precedence
 
-The current format has exactly one field per concept, so there is nothing to choose between. The [legacy flat format](/guides/community/for-providers-legacy) accepts several aliases, and when an entry carries both the canonical field and an alias the following wins:
+The current format has exactly one field per concept, so there is nothing to choose between. The [legacy flat format](/guides/providers/integration-legacy) accepts several aliases, and when an entry carries both the canonical field and an alias the following wins:
 
 | Canonical field | Aliases | Rule |
 |---|---|---|
@@ -914,7 +914,7 @@ A matched entry is staged as a hidden endpoint and put through the baseline test
 
 ##### Legacy format timeline
 
-The [legacy flat format](/guides/community/for-providers-legacy) remains supported for existing integrations. We have not set an end-of-support date for it. When we do, we will announce it here and to each provider still publishing it with advance notice, together with what happens to legacy feeds after that date. Use the current format for every new integration, and use **Generate feed** in the dashboard's Schema validator to produce a current-format document from the endpoints OpenRouter already serves for you if you want to migrate ahead of time.
+The [legacy flat format](/guides/providers/integration-legacy) remains supported for existing integrations. We have not set an end-of-support date for it. When we do, we will announce it here and to each provider still publishing it with advance notice, together with what happens to legacy feeds after that date. Use the current format for every new integration, and use **Generate feed** in the dashboard's Schema validator to produce a current-format document from the endpoints OpenRouter already serves for you if you want to migrate ahead of time.
 
 ### 9. Auto top up or invoicing
 
@@ -924,11 +924,14 @@ For OpenRouter to use the provider we must be able to pay for inference automati
 
 OpenRouter automatically monitors provider reliability and adjusts traffic routing based on uptime metrics. Your endpoint's uptime is calculated as: **successful requests ÷ total requests** (excluding user errors).
 
+Uptime and routing's reliability signal count the same setup and server errors. Routing also weighs quality and 429s separately. See [Traffic Routing](/guides/providers/traffic-routing#reliability) for details.
+
 **Errors that affect your uptime:**
 
 - Authentication issues (401)
 - Payment failures (402)
 - Model not found (404)
+- Other setup errors (405, 408, 410, 421, 423, 424, 426, 498)
 - All server errors (500+)
 - Mid-stream errors
 - Successful requests with error finish reasons
