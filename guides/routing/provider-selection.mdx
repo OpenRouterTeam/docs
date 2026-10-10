@@ -851,7 +851,7 @@ curl https://openrouter.ai/api/v1/chat/completions \
 In this example, if you have a BYOK key configured for OpenAI but not for Anthropic, OpenRouter can route to the GPT-4o endpoint using your own key even though Claude is listed first. Without `partition: "none"`, the router would always try Claude's endpoints first before falling back to GPT-4o.
 
 <Note>
-  BYOK endpoints are automatically prioritized when you have API keys configured for a provider. The `partition: "none"` setting allows this prioritization to work across model boundaries.
+  BYOK endpoints are automatically prioritized when you have API keys configured for a provider and the request sets no `order`. The `partition: "none"` setting allows this prioritization to work across model boundaries. A request that sets `order` is routed in that order, with your BYOK endpoint tried first within each provider you name; see [BYOK with Provider Ordering](/guides/overview/auth/byok#byok-with-provider-ordering).
 </Note>
 
 ## Ordering Specific Providers
@@ -862,7 +862,7 @@ You can set the providers that OpenRouter will prioritize for your request using
 | --- | --- | --- | --- |
 | `order` | string[] | - | List of provider slugs to try in order (e.g. `["anthropic", "openai"]`). |
 
-The router will prioritize providers in this list, and in this order, for the model you're using. If you don't set this field, the router will [load balance](#price-based-load-balancing-default-strategy) across the top providers to maximize uptime.
+The router will prioritize providers in this list, and in this order, for the model you're using. The order also outranks the priority your [BYOK keys](/guides/overview/auth/byok#byok-with-provider-ordering) would otherwise get: within each provider you name, your own key is tried before OpenRouter's shared capacity. If you don't set this field, the router will [load balance](#price-based-load-balancing-default-strategy) across the top providers to maximize uptime.
 
 <Tip>
   You can use the copy button next to provider names on model pages to get the exact provider slug, including any variants like "/turbo". See [Targeting Specific Provider Endpoints](#targeting-specific-provider-endpoints) for details.

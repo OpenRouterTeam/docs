@@ -38,7 +38,7 @@ The cost of using custom provider keys on OpenRouter is **{BYOK_FEE_PERCENTAGE}%
 
 Each BYOK key belongs to one of two sections:
 
-- **Prioritized**, attempted in order, before falling back to OpenRouter endpoints. Use this section for your primary provider keys.
+- **Prioritized**, attempted in order, before falling back to OpenRouter endpoints, unless the request sets [`order`](#byok-with-provider-ordering). Use this section for your primary provider keys.
 - **Fallback**, tried only after OpenRouter endpoints have been attempted, in order. Use this section for backup keys you only want used as a last resort.
 
 You can drag keys between sections on the provider detail page (e.g. [/settings/integrations/openai](https://openrouter.ai/settings/integrations/openai)).
@@ -55,50 +55,40 @@ When you have multiple keys for the same provider, OpenRouter tries them in prio
 
 ### BYOK with Provider Ordering
 
-When you combine BYOK keys with [provider ordering](/guides/routing/provider-selection#ordering-specific-providers), OpenRouter **always prioritizes BYOK endpoints first**, regardless of where that provider appears in your specified order. After all BYOK endpoints are exhausted, OpenRouter falls back to shared capacity in the order you specified.
+When you combine BYOK keys with [provider ordering](/guides/routing/provider-selection#ordering-specific-providers), the `order` you send decides which provider is tried first. Within each provider you name, your BYOK endpoint for that provider is tried before OpenRouter's shared capacity for it. Providers you do not name come after the ones you named, with their BYOK endpoints first and shared capacity after, which is the same ranking a request without `order` gets.
 
-This means BYOK keys effectively override your provider ordering for the initial routing attempts. There is currently no way to change this behavior.
-
-For example, if you have BYOK keys for Amazon Bedrock, Google Vertex AI, and Anthropic, and you send a request with:
+For example, if you have BYOK keys for Amazon Bedrock and Google Vertex AI but not for Anthropic, and you send a request with:
 
 ```json lines
 {
   "provider": {
     "allow_fallbacks": true,
-    "order": ["amazon-bedrock", "google-vertex", "anthropic"]
+    "order": ["anthropic"]
   }
 }
 ```
 
 The routing order will be:
 
-1. Amazon Bedrock (your BYOK key)
-2. Google Vertex AI (your BYOK key)
-3. Anthropic (your BYOK key)
+1. Anthropic (OpenRouter's shared capacity)
+2. Amazon Bedrock (your BYOK key)
+3. Google Vertex AI (your BYOK key)
 4. Amazon Bedrock (OpenRouter's shared capacity)
 5. Google Vertex AI (OpenRouter's shared capacity)
-6. Anthropic (OpenRouter's shared capacity)
 
-#### Partial BYOK with Provider Ordering
+If you name a provider you hold a key for, that key is tried first in its slot. With the same keys and `order: ["amazon-bedrock", "google-vertex", "anthropic"]`, the routing order will be:
 
-If you only have a BYOK key for some of the providers in your order, the BYOK provider is still tried first. For example, if you specify `order: ["amazon-bedrock", "google-vertex"]` but only have a BYOK key for Google Vertex AI:
-
-```json lines
-{
-  "provider": {
-    "allow_fallbacks": true,
-    "order": ["amazon-bedrock", "google-vertex"]
-  }
-}
-```
-
-The routing order will be:
-
-1. Google Vertex AI (your BYOK key)
+1. Amazon Bedrock (your BYOK key)
 2. Amazon Bedrock (OpenRouter's shared capacity)
-3. Google Vertex AI (OpenRouter's shared capacity)
+3. Google Vertex AI (your BYOK key)
+4. Google Vertex AI (OpenRouter's shared capacity)
+5. Anthropic (OpenRouter's shared capacity)
 
-Note that even though Amazon Bedrock is listed first in the `order` array, the Google Vertex AI BYOK endpoint takes priority.
+A key set to be used as a fallback keeps that behavior inside its slot: the shared endpoint is tried first, then your key. A key set to **Never use shared capacity** removes the shared endpoint from its slot, so only your key is tried for that provider.
+
+#### Requests Without Provider Ordering
+
+When a request sets no `order`, OpenRouter prioritizes BYOK endpoints first: every provider you hold a prioritized key for is tried on your key before any shared capacity, and shared capacity follows in the router's normal order. To put a particular provider first regardless of your keys, send it in `order`.
 
 If you want to prevent fallback to OpenRouter endpoints entirely, set **Shared capacity fallback** to **"Never use shared capacity for any model on this provider"** on your BYOK keys in your [workspace BYOK settings](https://openrouter.ai/integrations).
 
@@ -489,7 +479,7 @@ You can find these values in your Google Cloud Console:
 
 1. **Service Account Key**: Navigate to the Google Cloud Console, go to "IAM & Admin" > "Service Accounts", select your service account, and create/download a JSON key.
 
-2. **region** (optional): Specify the region for your Vertex AI deployment. Use `"global"` to allow requests to run in any available region, or specify a specific region like `"us-central1"` or `"europe-west1"`.
+2. **region** (optional): Specify the region for your Vertex AI deployment. Use `"global"` to allow requests to run in any available region, or specify a specific region like `"us-central1"` or `"europe-west1"`. A `"global"` or empty region doesn't pin the key: when a request is routed to a regional endpoint, such as one on `us.openrouter.ai`, OpenRouter uses that endpoint's region instead. A specific region always takes precedence.
 
 ### Vertex Batch storage
 
