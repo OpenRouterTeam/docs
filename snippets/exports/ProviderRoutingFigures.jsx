@@ -25,13 +25,13 @@ export const RoutingTradeoff = () => {
     { name: "Unreliable", share: 2, cx: 334.6, cy: 49.1, isCompetitive: false, isLabelLeft: true },
   ];
   const rows = [
-    { name: "Balanced", parts: ["38.1%", "6.7%", "1.4%", "0.5%"], adjusted: "$0.98", speed: "51.8%", tps: 92, share: 35 },
-    { name: "Fast", parts: ["55.2%", "5.7%", "1.4%", "0.5%"], adjusted: "$1.32", speed: "38.1%", tps: 125, share: 34 },
-    { name: "Budget", parts: ["29.5%", "8.6%", "1.4%", "0.5%"], adjusted: "$0.84", speed: "80.7%", tps: 59, share: 22 },
-    { name: "Slow start", parts: ["40.5%", "31.0%", "1.4%", "0.5%"], adjusted: "$1.54", speed: "61.8%", tps: 77, share: 7 },
-    { name: "Unreliable", parts: ["38.1%", "6.7%", "47.6%", "5.7%"], adjusted: "$2.06", speed: "57.4%", tps: 83, share: 2 },
+    { name: "Balanced", parts: ["23.8%", "4.2%", "0.9%", "0.3%", "32.4%"], adjusted: "$0.98", tps: 92, share: 35 },
+    { name: "Fast", parts: ["34.5%", "3.6%", "0.9%", "0.3%", "23.8%"], adjusted: "$1.32", tps: 125, share: 34 },
+    { name: "Budget", parts: ["18.4%", "5.4%", "0.9%", "0.3%", "50.4%"], adjusted: "$0.84", tps: 59, share: 22 },
+    { name: "Slow start", parts: ["25.3%", "19.4%", "0.9%", "0.3%", "38.6%"], adjusted: "$1.54", tps: 77, share: 7 },
+    { name: "Unreliable", parts: ["23.8%", "4.2%", "29.8%", "3.6%", "35.9%"], adjusted: "$2.06", tps: 83, share: 2 },
   ];
-  const partNames = ["price", "ttft", "rel", "429"];
+  const partNames = ["price", "ttft", "rel", "429", "speed"];
   return (
     <figure className="pr-fig">
       <svg
@@ -86,27 +86,19 @@ export const RoutingTradeoff = () => {
       <div className="pr-table" role="table" aria-label="Example endpoints: adjusted price, speed and traffic share">
         <div className="pr-row pr-head" role="row">
           <span role="columnheader">Endpoint</span>
-          <span role="columnheader">Adjusted price / 1M</span>
-          <span />
-          <span />
-          <span role="columnheader">Speed</span>
-          <span />
+          <span role="columnheader">
+            Price & speed<span className="pr-sub">lower is better</span>
+          </span>
           <span role="columnheader">Share</span>
         </div>
         {rows.map((e) => (
           <div key={e.name} className="pr-row" role="row">
             <span className="pr-name">{e.name}</span>
-            <span className="pr-bar">
+            <span className="pr-bar" role="img" aria-label={`${e.adjusted} adjusted price, ${e.tps} tok/s`}>
               {e.parts.map((width, i) => (
                 <i key={partNames[i]} className={`pr-bg-${partNames[i]}`} style={{ width }} />
               ))}
             </span>
-            <span className="pr-num">{e.adjusted}</span>
-            <span className="pr-plus">+</span>
-            <span className="pr-bar">
-              <i className="pr-bg-speed" style={{ width: e.speed }} />
-            </span>
-            <span className="pr-num">{`${e.tps} tok/s`}</span>
             <span className="pr-share">
               <i style={{ width: `${e.share}%` }} />
               <b>{`${e.share}%`}</b>
@@ -339,13 +331,12 @@ export const RoutingTtftSession = () => {
 
 /** A 1% error rate times an 8× penalty per error is about 8% on adjusted price. */
 export const RoutingReliability = () => (
-  <div className="pr-mini">
-    <svg
-      viewBox="0 0 560 74"
-      width="560"
-      role="img"
-      aria-label="Example: a 1% error rate times an 8× penalty per error raises adjusted price by about 8%."
-    >
+  <div
+    className="pr-mini pr-mini-row"
+    role="img"
+    aria-label="Example: a 1% error rate times an 8× penalty per error raises adjusted price by about 8%."
+  >
+    <svg viewBox="0 0 250 74" width="250" aria-hidden="true">
       {Array.from({ length: 100 }, (_, i) => (
         <rect
           key={i}
@@ -363,6 +354,8 @@ export const RoutingReliability = () => (
       <text x="124" y="70" textAnchor="middle" className="lbl">
         error rate
       </text>
+    </svg>
+    <svg viewBox="258 0 290 74" width="290" aria-hidden="true">
       <text x="270" y="26" textAnchor="middle" className="op">
         ×
       </text>
@@ -391,13 +384,12 @@ export const RoutingReliability = () => (
 
 /** 19 of 20 well-formed tool calls raises adjusted price by about 5%. */
 export const RoutingQuality = () => (
-  <div className="pr-mini">
-    <svg
-      viewBox="0 0 434 58"
-      width="434"
-      role="img"
-      aria-label="Example: 95% of tool calls well formed raises adjusted price by about 5%."
-    >
+  <div
+    className="pr-mini pr-mini-row"
+    role="img"
+    aria-label="Example: 95% of tool calls well formed raises adjusted price by about 5%."
+  >
+    <svg viewBox="0 0 262 58" width="262" aria-hidden="true">
       {Array.from({ length: 20 }, (_, i) =>
         i === 13 ? (
           <g key={i}>
@@ -414,6 +406,8 @@ export const RoutingQuality = () => (
       <text x="128" y="54" textAnchor="middle" className="lbl">
         tool calls well formed
       </text>
+    </svg>
+    <svg viewBox="280 0 140 58" width="140" aria-hidden="true">
       <path d="M282,10 H298" className="big-arrow" />
       <path d="M296,3 L310,10 L296,17 Z" className="big-arrow-head" />
       <rect x="330" y="0" width="84" height="20" rx="10" className="neg-pill" />
@@ -429,13 +423,12 @@ export const RoutingQuality = () => (
 
 /** Where a 429 costs the user time, and how its rate turns that into a small adjusted-price penalty. */
 export const RoutingRateLimits = () => (
-  <div className="pr-mini">
-    <svg
-      viewBox="0 0 600 82"
-      width="600"
-      role="img"
-      aria-label="A 429 makes the user wait for the rejection and then send a full request elsewhere. Example: a $2.50 wait plus penalty times a 0.4% 429 rate adds $0.01 to adjusted price."
-    >
+  <div
+    className="pr-mini pr-mini-row"
+    role="img"
+    aria-label="A 429 makes the user wait for the rejection and then send a full request elsewhere. Example: a $2.50 wait plus penalty times a 0.4% 429 rate adds $0.01 to adjusted price."
+  >
+    <svg viewBox="0 0 322 70" width="322" aria-hidden="true">
       <text x="0" y="17" className="lbl strong-lbl">
         Request
       </text>
@@ -449,6 +442,8 @@ export const RoutingRateLimits = () => (
         Full request elsewhere
       </text>
       <rect x="182" y="54" width="138" height="14" rx="2" className="pr-fill-speed" />
+    </svg>
+    <svg viewBox="330 8 268 74" width="268" aria-hidden="true">
       <path d="M330,37 H346" className="big-arrow" />
       <path d="M344,30 L358,37 L344,44 Z" className="big-arrow-head" />
       <text x="370" y="22" className="lbl strong-lbl">
@@ -486,13 +481,13 @@ export const RoutingRateLimits = () => (
 export const RoutingLearnedCapacity = () => {
   // Illustrative scenario, drawn from precomputed paths.
   const notes = [
-    [349.9, 63.8, "Your real capacity", "end"],
-    [360.6, 36.9, "You add capacity", "start"],
-    [413.8, 92.2, "Cap rises", "start"],
-    [133.6, 199.2, "Big spike: cap set", "middle"],
-    [250.6, 249.4, "Steady 429s: cap holds", "start"],
-    [420.9, 253.3, "No 429s", "middle"],
-    [488.2, 249.4, "Steady again", "start"],
+    [349.9, 63.8, ["Your real capacity"], "end"],
+    [360.6, 36.9, ["You add capacity"], "start"],
+    [413.8, 92.2, ["Cap rises"], "start"],
+    [133.6, 199.2, ["Big spike: cap set"], "middle"],
+    [250.6, 249.4, ["Steady 429s:", "cap holds"], "start"],
+    [420.9, 253.3, ["No 429s"], "middle"],
+    [488.2, 249.4, ["Steady", "again"], "start"],
   ];
   return (
     <figure className="pr-fig">
@@ -516,9 +511,13 @@ export const RoutingLearnedCapacity = () => {
         </text>
         <path d="M52,261.3L96.3,261.1L101.7,260.3L105.2,258.9L107,257.7L110.5,254.2L114.1,248.5L117.6,240.5L124.7,220L128.3,211.1L130,207.9L131.8,205.9L133.6,205.2L135.3,205.9L137.1,207.9L138.9,211.1L142.4,220L149.5,240.5L153.1,248.5L154.9,251.7L156.6,254.2L160.2,257.7L163.7,259.7L169,260.9L176.1,261.3L197.4,261.3L209.8,260.9L213.4,259.6L215.1,258.4L220.5,253.2L222.2,251.9L224,251.4L225.8,251.9L231.1,256.7L232.9,257.8L234.7,258.4L236.4,258.5L243.5,257.4L353.5,257.4L357,258L364.1,260.8L367.7,261.3L458.1,261.3L463.4,260.6L475.8,257.8L481.1,257.4L584,257.4L584,262L52,262Z" className="rate" />
         <line x1="52" x2="584" y1="262" y2="262" className="axis" />
-        {notes.map(([x, y, text, anchor]) => (
-          <text key={text} x={x} y={y} textAnchor={anchor} className="tick">
-            {text}
+        {notes.map(([x, y, lines, anchor]) => (
+          <text key={lines[0]} x={x} y={y} textAnchor={anchor} className="tick">
+            {lines.map((line, i) => (
+              <tspan key={line} x={x} dy={i === 0 ? `${(1 - lines.length) * 1.1}em` : "1.1em"}>
+                {line}
+              </tspan>
+            ))}
           </text>
         ))}
         <text transform="translate(12 229) rotate(-90)" textAnchor="middle" className="tick">
