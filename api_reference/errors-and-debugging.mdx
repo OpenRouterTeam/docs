@@ -92,6 +92,38 @@ type ModerationErrorMetadata = {
 };
 ```
 
+## Budget errors
+
+When a guardrail budget, a workspace budget, or the key's own limit is spent, the request is rejected with a `403` before it reaches a provider. The message ends with the figures (`$X of $Y used; resets <ISO instant>.`), and `error.metadata` carries the same values as fields so you can branch on them:
+
+```json lines
+{
+  "error": {
+    "code": 403,
+    "message": "Budget limit exceeded (weekly limit). Contact your org admin. $52.00 of $50.00 used; resets 2026-10-12T00:00:00.000Z.",
+    "metadata": {
+      "limit_source": "openrouter_guardrail_budget",
+      "remedy_hint": "Wait for the budget window to reset (see metadata.resets_at), or ask your org admin to raise the guardrail budget.",
+      "scope": "workspace_default_member",
+      "limit_usd": 50,
+      "spend_usd": 52,
+      "resets_at": "2026-10-12T00:00:00.000Z"
+    }
+  }
+}
+```
+
+| Field          | Meaning                                                                                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `limit_source` | `openrouter_guardrail_budget`, `openrouter_workspace_budget`, or `openrouter_key_limit`                                                                    |
+| `scope`        | Which layer blocked: `workspace_default_member`, `workspace_default_key`, `member`, `api_key`, `workspace`, or `key_limit`, as listed by `GET /api/v1/key` |
+| `limit_usd`    | The budget's limit in USD                                                                                                                                 |
+| `spend_usd`    | The spend counted against it in the current window                                                                                                        |
+| `resets_at`    | ISO 8601 UTC instant the window rolls over, or `null` for a lifetime budget                                                                               |
+| `remedy_hint`  | A one-line next step for people reading logs; branch on `limit_source`, not on this text                                                                  |
+
+`GET /api/v1/key` reports the same budgets before they block, under `budgets` and `effective_budget`; see [Budget limits](/api_reference/limits#budget-limits).
+
 ## Guardrail errors
 
 On inference endpoints (`/chat/completions`, `/responses`, `/messages`), a request can be blocked before it reaches a provider — for example by a content filter or prompt-injection detector configured via [guardrails](/guides/features/guardrails). When this happens, the response is a `403` with a message describing the block reason. The OpenRouter-shaped body below applies to `/chat/completions` and `/responses`; on `/messages` the block is returned as an Anthropic `permission_error` envelope (see [Anthropic Messages](#anthropic-messages-apiv1messages) below), with `openrouter_metadata` still carried at the top level when opted in:

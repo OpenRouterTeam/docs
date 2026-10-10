@@ -68,7 +68,7 @@ One rule applies, and breaking it fails the request with a `400` rather than qui
 
 - **`openrouter:tool_search` itself can never be deferred.** It is what reveals the rest of the library, so deferring it would leave nothing able to load anything. This also guarantees at least one tool is always callable.
 
-Using `defer_loading` *without* `openrouter:tool_search` remains valid and is unchanged: those requests route to a provider whose gateway expands deferred tools itself, and your own search tool is an ordinary function tool that provider recognizes. This provider-managed path is only available on Anthropic models and Anthropic-compatible endpoints that implement deferral; other models return a `400`. With `openrouter:tool_search` in the request, deferral is managed by OpenRouter and works on any model and any provider.
+Using `defer_loading` *without* `openrouter:tool_search` remains valid. On Anthropic models and Anthropic-compatible endpoints that implement deferral, the provider's gateway expands deferred tools itself, and your own search tool is an ordinary function tool that provider recognizes. On other models OpenRouter may serve the deferral itself (on the Chat Completions and Responses APIs, by adding `openrouter:tool_search` to the request); otherwise it sends deferred tools in full or returns a `400`. With `openrouter:tool_search` in the request, deferral is managed by OpenRouter and works on any model and any provider.
 
 Keep your three to five most frequently used tools loaded. A tool the model needs on almost every request costs more in search round-trips than it saves in tokens.
 
@@ -88,6 +88,8 @@ If your request omits `tool_choice`, or sets it to the default `"auto"`, nothing
 
 If you set anything else, it must be `{"type": "allowed_tools", ...}` naming the tools that should be callable immediately. Deferred tools are added to that set as the model finds them.
 
+On the Responses API, `allowed_tools` is the authoritative set of callable tools. A deferred tool you leave out of it is revoked, not merely hidden: search cannot reveal it. List a deferred tool in `allowed_tools` if the model should be able to find it; it stays deferred until the model does.
+
 Any other `tool_choice` conflicts with deferral — forcing a specific tool, requiring a call, or forbidding calls entirely all contradict "reveal these tools gradually." Rather than silently overriding what you asked for, the request fails with a `400`:
 
 > `tool_choice` conflicts with `openrouter:tool_search`. Deferred tools are revealed through `tool_choice`, so it must be omitted or set to `{"type": "allowed_tools", ...}`. Remove `tool_choice`, or drop `defer_loading` from your tools to use it as-is.
@@ -98,9 +100,66 @@ The alternative would be worse in both directions: honoring `tool_choice` would 
 
 Discovering a tool does not disturb the tools already in the conversation, so prompt caching is preserved across a search. You can start a conversation with a small loaded set, let the model discover more as it goes, and keep your cache hit across every turn.
 
+## Deferred Tools Protocol
+
+The `deferred_tools` request field opts a conversation into OpenRouter's versioned deferred-tool protocol. It works on the Chat Completions, Responses, and Messages APIs. Every field is required:
+
+```json title="Request (excerpt)"
+{
+  "deferred_tools": {
+    "protocol": "v1",
+    "profile": "portable",
+    "validation": "runtime",
+    "search": { "type": "regex", "max_results": 5 }
+  }
+}
+```
+
+| Field | Values |
+| --- | --- |
+| `protocol` | `"v1"` |
+| `profile` | `"portable"` is the only profile in this release: OpenRouter serves deferral with router-built search and call wrappers, on any model and provider. |
+| `validation` | `"runtime"` is the only mode in this release: OpenRouter validates each call against the original tool schema before it reaches you. |
+| `search` | `{ "type": "regex" }` or `{ "type": "bm25" }` searches your deferred tools inside OpenRouter. `{ "type": "custom", "tool_id": "...", "result_key": "..." }` uses one of your non-deferred function tools as the search: your client runs it and returns matching tool names under `result_key` in its result. `max_results` defaults to `5` and accepts `1` to `100`. |
+
+### Continuation State
+
+OpenRouter carries each turn's deferred-tool changes inside the encrypted reasoning it returns: a `reasoning_details` entry on Chat Completions, a reasoning item's `encrypted_content` on Responses, and a `redacted_thinking` block on Messages. Each turn records only what changed, such as the ID of a tool it loaded. There is no separate state field.
+
+Freeform (custom) tools that are not deferred, such as Codex `apply_patch`, are sent to the model unchanged and their calls are passed back without validation. Hosted tools the provider executes itself are also sent unchanged when their executed calls can be replayed with the conversation: `web_search` (every variant) and `code_interpreter`. They are never deferred or loaded, they are part of the fixed catalog like every other tool, and an `allowed_tools` choice that leaves one out removes it from the request. Other hosted tool types (`file_search`, `mcp`, `image_generation`, `computer_use_preview`, shells) return a `400` with `deferred_tools` until their replayed items are supported. Deferred function and freeform tools are loaded through search.
+
+### Client Requirements and Limits
+
+- **Send assistant messages back exactly as returned**, including the encrypted reasoning described above. Each turn's state is chained to the turns before it, so editing, removing, reordering, trimming, or compacting earlier messages breaks the chain.
+- **Interrupted turns are recoverable.** The state is the last thing a turn emits, so a cancelled or dropped response leaves a partial assistant message without it. You can keep that partial text or drop it: an assistant message that contains only text and carries no state is accepted as ordinary conversation content, and the next turn continues from the last complete one. An assistant message with tool calls but no state is rejected.
+- **Earlier history without tool calls is accepted.** You can enable `deferred_tools` partway through a conversation if its earlier assistant messages contain only text, images, audio, video, or files. Earlier assistant messages with tool calls or provider-specific tool items require a new conversation.
+- **Keep the tool catalog fixed.** Send the same `tools`, `tool_choice`, and `deferred_tools` settings on every turn. Tool order, descriptions, and `cache_control` are part of the catalog, so changing any of them requires a new conversation.
+- **Context compression is off.** OpenRouter does not apply `middle-out` or other context compression to deferred-tool requests, so a conversation that outgrows the model's context window fails instead of being trimmed.
+- **The Batch API is not supported.** Batch requests that set `deferred_tools` are rejected.
+
+Known clients:
+
+- **Claude Code** replays encrypted reasoning as-is within a session. Resuming with `--continue` after a tool-using turn is not supported: the resumed transcript drops the `redacted_thinking` blocks, so the next turn returns `deferred_tools_state_missing`; start a new conversation instead.
+- **Codex** replays encrypted reasoning as-is; its default `web_search` tool is accepted as a hosted tool.
+- **pi** needs pi-ai `0.84.3` or later on Chat Completions. Earlier versions drop the encrypted `reasoning_details` entry. Keep the same provider, API, and model for the whole conversation: switching models makes pi strip reasoning signatures, and the next turn returns a `400`.
+- **pi on the Messages API with a non-Anthropic model** is not supported: pi rewrites that model's unsigned thinking blocks, which removes the carried state.
+
+### Errors
+
+A continuation that cannot be verified returns a `400` whose message says what happened and what to do next. The error also carries a stable code, in `error.metadata.code` on Chat Completions and Responses and in `metadata.code` on Messages:
+
+| Code | Cause |
+| --- | --- |
+| `deferred_tools_state_missing` | An assistant message with tool calls carries no deferred-tool state, usually because the client did not send the encrypted reasoning back, or carries state altered until it is no longer recognisable. |
+| `deferred_tools_state_invalid` | The deferred-tool state fails verification: it was modified, or was issued for a different workspace. |
+| `deferred_tools_history_changed` | Earlier messages, or the state attached to them, were edited, removed, or reordered. |
+| `deferred_tools_catalog_changed` | The tools, `tool_choice`, or `deferred_tools` settings differ from the ones the conversation started with. |
+
+To recover, resend the conversation exactly as OpenRouter returned it, or start a new conversation.
+
 ## Supported APIs
 
-Tool search is available through the [Responses API](/api_reference/responses/overview) and the [Messages API](/api/api-reference/anthropic-messages/create-a-message). Requesting it on the Chat Completions API returns a `400` error.
+The `openrouter:tool_search` tool type is accepted by the [Responses API](/api_reference/responses/overview) and the [Messages API](/api/api-reference/anthropic-messages/create-a-message). The Chat Completions API does not accept it in `tools` and returns a `400`; on Chat Completions, use the [`deferred_tools` protocol](#deferred-tools-protocol) instead.
 
 Each API's native spelling is accepted as an alias and answered in kind, so an existing integration does not need rewriting:
 

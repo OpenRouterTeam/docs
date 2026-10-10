@@ -300,8 +300,14 @@
             "pages": [
               "guides/ori/overview",
               "guides/ori/eval",
-              "guides/ori/harness",
-              "guides/ori/codex",
+              {
+                "group": "Ori Harness",
+                "icon": "plug",
+                "pages": [
+                  "guides/ori/harness",
+                  "guides/ori/codex"
+                ]
+              },
               "guides/ori/files",
               "guides/ori/configuration",
               "guides/ori/intern-chat",
@@ -338,6 +344,7 @@
               "guides/best-practices/latency-and-performance",
               "guides/best-practices/prompt-caching",
               "guides/best-practices/spend-controls",
+              "guides/best-practices/capping-shared-agent-keys",
               "guides/best-practices/uptime-optimization",
               "guides/best-practices/reasoning-tokens"
             ]
@@ -1059,6 +1066,10 @@
     {
       "source": "/projects/docs/faq",
       "destination": "/faq"
+    },
+    {
+      "source": "/projects/docs/guides/best-practices/capping-shared-agent-keys",
+      "destination": "/guides/best-practices/capping-shared-agent-keys"
     },
     {
       "source": "/projects/docs/guides/best-practices/latency-and-performance",

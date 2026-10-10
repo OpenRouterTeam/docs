@@ -32,11 +32,12 @@ import {
   Making additional accounts or API keys will not affect your rate limits, as we govern capacity globally. We do however have different rate limits for different models, so you can share the load that way if you do run into issues.
 </Tip>
 
-OpenRouter enforces two kinds of limits:
+OpenRouter enforces three kinds of limits:
 
 | Limit type                        | What it governs                                                             | Error on exceeding                              | Where to check                                                |
 | --------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------- |
 | [Credit limits](#credit-limits)   | How much you can spend (account balance, per-key credit caps, and the in-flight spending budget) | <StatusCode code={HTTPStatus.S402_Payment_Required} />  | `GET /api/v1/key` → `limit_remaining`; `error.metadata.limit_source` on the error response |
+| [Budget limits](#budget-limits)   | Spend caps an org admin configured: guardrail budgets, workspace budgets, and the key's own limit once it is spent | <StatusCode code={HTTPStatus.S403_Forbidden} />  | `GET /api/v1/key` → `budgets` and `effective_budget`; `error.metadata` on the error response |
 | [Rate limits](#rate-limits)       | How many requests you can make (free-model request caps and DDoS protection) | <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> | `X-RateLimit-*` headers on the error response                   |
 
 ## Checking your limits
@@ -89,6 +90,19 @@ console.log(keyInfo);
 If you submit a valid API key, you should get a response of the form:
 
 ```typescript title="TypeScript" expandable lines
+// One budget that applies to requests made with the key (see Budget limits below)
+type Budget = {
+  scope: 'workspace_default_member' | 'workspace_default_key' | 'member' | 'api_key' | 'workspace' | 'key_limit';
+  guardrail_id: string | null; // Set for guardrail scopes
+  budget_id: string | null; // Set for the workspace scope
+  limit_usd: number;
+  spend_usd: number; // Spend counted against the limit in the current window
+  remaining_usd: number; // limit_usd - spend_usd; zero or negative blocks requests
+  reset_interval: 'daily' | 'weekly' | 'monthly' | null; // null never resets
+  resets_at: string | null; // ISO 8601 UTC instant the window rolls over, or null
+  include_byok: boolean; // Whether external BYOK spend counts toward this budget
+};
+
 type Key = {
   data: {
     label: string;
@@ -96,6 +110,9 @@ type Key = {
     limit_reset: string | null; // Type of limit reset for the key, or null if never resets
     limit_remaining: number | null; // Remaining credits for the key, or null if unlimited
     include_byok_in_limit: boolean;  // Whether to include external BYOK usage in the credit limit
+
+    budgets: Budget[]; // Every budget enforced for this key, in the order enforcement checks them
+    effective_budget: Budget | null; // The budget that blocks requests first, or null if none
 
     usage: number; // Number of credits used (all time)
     usage_daily: number; // Number of credits used (current UTC day)
@@ -163,6 +180,90 @@ To resolve <StatusCode code={HTTPStatus.S402_Payment_Required} /> errors:
 - **Check per-key limits.** If `limit_remaining` on the key is exhausted, raise the key's credit limit or wait for it to reset (see `limit_reset`).
 - **Reduce the request size** (fewer input tokens or a lower `max_tokens`) so its estimated cost fits your balance and in-flight budget.
 - **Monitor proactively.** Call `GET /api/v1/key` as shown above to track `limit_remaining` and usage before requests start failing.
+
+## Budget limits
+
+Budget limits are spend caps an org admin configures. They come from three places, and OpenRouter checks them in this order on every paid request, so the first one that is spent is the one that blocks:
+
+1. **Guardrail budgets**: a `limit_usd` with a `reset_interval` on the workspace default guardrail (checked against the member's combined spend, then against the key's own spend), on the guardrail assigned to the member, and on the guardrail assigned to the API key. See [Guardrails](/guides/features/guardrails).
+2. **Workspace budgets**: caps on the whole workspace's spend per interval. See [Workspace budgets](/guides/features/workspaces/workspace-budgets).
+3. **The key's own limit**: the `limit` field above, once its window is spent.
+
+Spend windows are UTC: a daily budget resets at 00:00 UTC, a weekly one on Monday 00:00 UTC, a monthly one on the first of the month 00:00 UTC. A lifetime workspace budget never resets.
+
+### Checking your budgets
+
+`GET /api/v1/key` lists every budget that applies to the key in `budgets`, with the spend enforcement counts against it, how much is left, and when the window rolls over. `effective_budget` is the budget that blocks requests first: when one is already spent it is the entry enforcement rejects on (the first in the order above, or the broadest spent workspace budget), otherwise it is the entry with the least `remaining_usd`. `limit` and `limit_remaining` keep describing only the key's own limit.
+
+```json title="GET /api/v1/key (excerpt)" lines
+{
+  "data": {
+    "limit": null,
+    "limit_remaining": null,
+    "budgets": [
+      {
+        "scope": "workspace_default_member",
+        "guardrail_id": "0df9e665-d932-5740-b2c7-b52af166bc11",
+        "budget_id": null,
+        "limit_usd": 100,
+        "spend_usd": 40,
+        "remaining_usd": 60,
+        "reset_interval": "weekly",
+        "resets_at": "2026-10-12T00:00:00.000Z",
+        "include_byok": false
+      },
+      {
+        "scope": "member",
+        "guardrail_id": "6b1d2c3e-4f50-4a61-9b72-83c4d5e6f708",
+        "budget_id": null,
+        "limit_usd": 50,
+        "spend_usd": 40,
+        "remaining_usd": 10,
+        "reset_interval": "weekly",
+        "resets_at": "2026-10-12T00:00:00.000Z",
+        "include_byok": false
+      }
+    ],
+    "effective_budget": {
+      "scope": "member",
+      "guardrail_id": "6b1d2c3e-4f50-4a61-9b72-83c4d5e6f708",
+      "budget_id": null,
+      "limit_usd": 50,
+      "spend_usd": 40,
+      "remaining_usd": 10,
+      "reset_interval": "weekly",
+      "resets_at": "2026-10-12T00:00:00.000Z",
+      "include_byok": false
+    }
+  }
+}
+```
+
+### Handling 403 budget errors
+
+A request that a budget blocks fails with <StatusCode code={HTTPStatus.S403_Forbidden} /> before it reaches a provider. The message names the budget and ends with the figures, and `error.metadata` carries them as fields:
+
+```json lines
+{
+  "error": {
+    "code": 403,
+    "message": "Org member budget limit exceeded (weekly limit). Contact your org admin. $52.00 of $50.00 used; resets 2026-10-12T00:00:00.000Z.",
+    "metadata": {
+      "limit_source": "openrouter_guardrail_budget",
+      "remedy_hint": "Wait for the budget window to reset (see metadata.resets_at), or ask your org admin to raise the guardrail budget.",
+      "scope": "member",
+      "limit_usd": 50,
+      "spend_usd": 52,
+      "resets_at": "2026-10-12T00:00:00.000Z"
+    }
+  }
+}
+```
+
+- `limit_source` is `openrouter_guardrail_budget` for a guardrail budget, `openrouter_workspace_budget` for a workspace budget, and `openrouter_key_limit` for the key's own limit.
+- `scope` matches the `scope` values in `GET /api/v1/key`, so you can find the same entry in `budgets`.
+- `resets_at` is the ISO 8601 UTC instant the window rolls over, or `null` for a lifetime workspace budget. Retrying before it will fail the same way; there is no `Retry-After` header because the wait is usually hours or days.
+- Call `GET /api/v1/key` before a long task and watch `effective_budget.remaining_usd` to avoid hitting the cap partway through.
 
 ## Rate limits
 
