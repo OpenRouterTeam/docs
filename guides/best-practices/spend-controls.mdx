@@ -88,7 +88,7 @@ Budget enforcement follows the **key creator**, not the person using the key. Th
 **Practical implications:**
 
 - A shared admin-owned key used by an entire team draws against the admin member budget, not against each user who calls it. For per-person enforcement, each person needs their own key.
-- A workspace-owned key with no creator is unattributed at the member level. Assign a key guardrail to it if it needs a budget.
+- A workspace-owned key with no creator is unattributed at the member level. Assign a key guardrail to it if it needs a budget, or follow [Capping Shared Agent Keys](/guides/best-practices/capping-shared-agent-keys) to cap it with a workspace budget and a per-key credit limit.
 - When a member creates a new key to bypass a rate limit, that key still counts toward the same member guardrail budget. A new key does not reset the member-level counter.
 
 ## BYOK and Budget Accounting
@@ -133,6 +133,7 @@ Guardrail member and key assignments require the [Management API](/guides/overvi
 
 ## Related Guides
 
+- [Capping Shared Agent Keys](/guides/best-practices/capping-shared-agent-keys)
 - [Workspace Budgets](/guides/features/workspaces/workspace-budgets)
 - [Guardrails](/guides/features/guardrails)
 - [BYOK](/guides/overview/auth/byok)
