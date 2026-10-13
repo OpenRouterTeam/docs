@@ -1,13 +1,13 @@
 ---
 publish: true
-title: 'Multimodal Decisions: Images in the Decisions API'
+title: 'Multimodal Decisions: Images, Audio, and Video in the Decisions API'
 sidebarTitle: Multimodal Decisions
-description: Send images to Decisions models on OpenRouter. Quickstart, the image part format, supported models, and size limits.
-seoTitle: 'Multimodal Decisions | Images in the OpenRouter Decisions API'
+description: Send images, audio, and video to Decisions models on OpenRouter. Quickstart, part formats, supported models, and size limits.
+seoTitle: 'Multimodal Decisions | Images, Audio, and Video in the OpenRouter Decisions API'
 og:site_name: OpenRouter Documentation
-og:title: 'Multimodal Decisions - Images in the OpenRouter Decisions API'
-og:description: 'Ask Decisions models typed questions about images. Quickstart, image part format, supported models, and limits.'
-og:image: https://openrouter.ai/dynamic-og?title=Multimodal%20Decisions&description=Ask%20typed%20questions%20about%20images
+og:title: 'Multimodal Decisions - Images, Audio, and Video in the OpenRouter Decisions API'
+og:description: 'Ask Decisions models typed questions about images, audio, and video. Quickstart, part formats, supported models, and limits.'
+og:image: https://openrouter.ai/dynamic-og?title=Multimodal%20Decisions&description=Ask%20typed%20questions%20about%20images%2C%20audio%2C%20and%20video
 og:image:width: 1200
 og:image:height: 630
 twitter:card: summary_large_image
@@ -22,9 +22,10 @@ models:
   - cloudflare/clef-flash
   - cloudflare/clef-omni
   - openai/gpt-6-luna-decisions
+  - inception/mercury-decide
 ---
 
-Decisions models answer typed questions about content you send in `state`. These models also accept images:
+Decisions models answer typed questions about content you send in `state`. These models also accept media:
 
 | Model | Input |
 | --- | --- |
@@ -32,8 +33,9 @@ Decisions models answer typed questions about content you send in `state`. These
 | [`perplexity/pplx-decider-v1.1-27b`](https://openrouter.ai/perplexity/pplx-decider-v1.1-27b) | Text and images |
 | [`cloudflare/clef`](https://openrouter.ai/cloudflare/clef) | Text and images |
 | [`cloudflare/clef-flash`](https://openrouter.ai/cloudflare/clef-flash) | Text and images |
-| [`cloudflare/clef-omni`](https://openrouter.ai/cloudflare/clef-omni) | Text and images |
+| [`cloudflare/clef-omni`](https://openrouter.ai/cloudflare/clef-omni) | Text, images, audio, and video |
 | [`openai/gpt-6-luna-decisions`](https://openrouter.ai/openai/gpt-6-luna-decisions) | Text and images |
+| [`inception/mercury-decide`](https://openrouter.ai/inception/mercury-decide) | Text and images |
 
 Text-only Decisions requests, including every request to [Jev](/guides/community/jev), work the same as before.
 
@@ -95,9 +97,9 @@ An image is an item of the `state` array with this shape, the same image part Ch
 ```
 
 - `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Remote `http(s)` URLs are not fetched.
-- `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, and Clef Omni ignore it.
+- `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, Clef Omni, and Mercury Decide ignore it.
 - Put image parts directly in the top-level `state` array. Images nested inside other objects in `state` are not read as images.
-- Send at most 4 images per request to Clef, Clef Flash, and Clef Omni, and at most 128 to GPT-6 Luna Decisions.
+- Send at most 4 images per request to Clef, Clef Flash, and Clef Omni, at most 16 to Mercury Decide, and at most 128 to GPT-6 Luna Decisions.
 - Text items in the array are plain strings, not `{ "type": "text" }` parts.
 
 These shapes are not image inputs:
@@ -106,10 +108,30 @@ These shapes are not image inputs:
 - The Responses API `input_image` part (`{ "type": "input_image", "image_url": "data:..." }`).
 - A raw base64 string without the `data:image/...;base64,` prefix.
 
+## Audio and video parts (Clef Omni)
+
+[`cloudflare/clef-omni`](https://openrouter.ai/cloudflare/clef-omni) also takes audio and video items in the top-level `state` array, using the same part shapes Chat Completions uses in message content:
+
+```json
+{ "type": "input_audio", "input_audio": { "data": "UklGRiQAAABXQVZF...", "format": "wav" } }
+```
+
+```json
+{ "type": "video_url", "video_url": { "url": "data:video/mp4;base64,AAAAIGZ0eXBpc29t..." } }
+```
+
+- `input_audio.data` is raw base64 (no `data:` prefix). `format` must be one of `wav`, `mp3`, `mpeg`, `m4a`, `mp4`, `aac`, `aiff`, `aif`, `flac`, `ogg`, `opus`, or `webm`.
+- `video_url.url` must be a base64 `data:video/...` URL. Remote `http(s)` URLs are not fetched. `processing` is accepted but ignored. Clef Omni samples every video at 2 frames per second regardless.
+- Send at most 4 audio clips and 2 videos per request. Each audio clip can be up to 8 MiB or 300 seconds, each video up to 16 MiB or 60 seconds, and all audio and video together up to 16 MiB decoded.
+- Audio costs about 780 input tokens per minute; audio, video, and image tokens all count toward the 65,536-token context window.
+- Only Clef Omni reads audio and video. Clef and Clef Flash reject requests that contain them; other Decisions models see these parts as plain JSON text.
+
 ## Limits
 
 - **Image size on Clef and Clef Flash.** Workers AI estimates a request's tokens from the base64 length before it processes the image, at about 4 base64 characters per token, and rejects the request with a `413` once that estimate passes its 65,536-token window. Keep each image under about 300 KB before encoding, and resize or recompress larger images. Billing uses the tokens the model actually processes.
 - **Text length on Clef and Clef Flash.** Workers AI reads roughly the first 2,000 tokens of text in `state` and drops the rest without an error. Images are counted separately.
+- **Image size on Mercury Decide.** A 7 MB JPEG (a 10 MB request body) is accepted and billed as about 1,000 input tokens. A 12 MB image fails with a `422`, and a 16 MB image with a `413`, so keep each image under a few MB.
+- **Provider errors on Mercury Decide.** Image parts pass through to Inception as sent, so an image it can't read (a remote URL, a raw base64 string) or more than 16 images fails with a `422` from the provider rather than a `400` from OpenRouter.
 - See each [model page](https://openrouter.ai/models) for the current context length and pricing.
 
 ## Related
