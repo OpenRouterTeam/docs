@@ -1,6 +1,10 @@
 # OpenRouter Docs
 
-This directory contains the [Mintlify](https://mintlify.com)-hosted documentation for [openrouter.ai/docs](https://openrouter.ai/docs).
+This directory contains the [Mintlify](https://mintlify.com)-hosted documentation for [openrouter.ai/docs](https://openrouter.ai/docs). Mintlify builds from the public mirror [OpenRouterTeam/docs](https://github.com/OpenRouterTeam/docs), which each release overwrites from here; edit docs in this directory only.
+
+## Publishing
+
+A page reaches the public site only when its frontmatter contains `publish: true`, and only with the next release after it merges. The Validate Docs workflow fails a PR whose navigation, redirects, or `models:` lists reference a page without that line. See [AGENTS.md](./AGENTS.md) for the full rules and how to preview what a release would publish.
 
 ## PR Workflows
 
