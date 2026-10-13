@@ -370,6 +370,33 @@ Every documented destination receives both.
 | Webhook | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 
   </Accordion>
+  <Accordion title="Cost allocation (beta)">
+
+`openrouter_cost_allocation` is added to the trace metadata and the generation span's metadata only for destinations with the **Cost allocation** opt-in, so it reaches a destination exactly where that destination receives `metadata` in the next table. OTLP destinations flatten it to attributes such as `openrouter_cost_allocation.input_tokens`; see [Cost allocation](#cost-allocation-beta) for the fields.
+
+| Destination | `openrouter_cost_allocation`<br />(trace) | `openrouter_cost_allocation`<br />(span) |
+|---|---|---|
+| Arize AX | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
+| Braintrust | — | <Icon icon="check" color="#16a34a" /> |
+| ClickHouse | — | <Icon icon="check" color="#16a34a" /> |
+| Comet Opik | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
+| Datadog | — | <Icon icon="check" color="#16a34a" /> |
+| Google BigQuery (beta) | — | <Icon icon="check" color="#16a34a" /> |
+| Grafana Cloud | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
+| Langfuse | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
+| LangSmith | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
+| New Relic | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
+| OpenTelemetry Collector | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
+| PostHog | <Icon icon="check" color="#16a34a" /> | — |
+| Raindrop (beta) | <Icon icon="check" color="#16a34a" /> | — |
+| Ramp | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
+| S3 / S3-Compatible | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
+| Sentry | — | — |
+| Snowflake | — | <Icon icon="check" color="#16a34a" /> |
+| W&B Weave | <Icon icon="check" color="#16a34a" /> | — |
+| Webhook | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
+
+  </Accordion>
   <Accordion title="Metadata and tags">
 
 | Destination | `metadata`<br />(trace) | `tags` | `metadata`<br />(span) | `type` | `version` |
