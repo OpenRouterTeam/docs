@@ -1,0 +1,283 @@
+---
+title: Gemini 4 Migration Guide
+description: Use long decode on Gemini 4 models to keep generating past the per-request output limit by resending a continuation token across requests
+seoTitle: 'Gemini 4 Migration Guide | OpenRouter'
+og:site_name: OpenRouter Documentation
+og:title: 'Gemini 4 Migration Guide'
+og:description: 'Learn how Gemini 4 long decode works on OpenRouter: the continuation token, the total max_tokens budget, and how to resume across the Chat Completions, Responses, and Anthropic Messages APIs.'
+og:image: https://openrouter.ai/dynamic-og?title=Gemini%204%20Migration%20Guide&description=Long%20decode%20with%20continuation%20tokens
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: arrow-right-arrow-left
+models:
+  - google/gemini-4-argon
+---
+
+## What's New
+
+Gemini 4 Argon, the first Gemini 4 model, returns at most 65,536 output tokens per request (its per-request output limit), but it can keep working on one answer for up to 1M output tokens in total. See the [model page](https://openrouter.ai/google/gemini-4-argon) for current limits. Google calls this long decode. When a response stops at the per-request limit or uses up its `max_tokens` budget, it returns a continuation token. You send that token back in your next request, and the model picks up where it left off.
+
+On OpenRouter, the continuation token is an encrypted reasoning item. Clients that already pass reasoning back between turns get long decode with no new fields.
+
+This guide covers:
+
+- [How long decode works](#how-long-decode-works): the total budget, when a token is returned, and what each hop costs
+- [Chat Completions](#chat-completions-api), [Responses](#responses-api), and [Anthropic Messages](#anthropic-messages-api) request shapes
+- [Reasoning effort](#reasoning-effort): the supported `reasoning.effort` values
+- [Limits and routing](#limits-and-routing): token size, provider pinning, and `reasoning.exclude`
+
+## How Long Decode Works
+
+### `max_tokens` is a total budget
+
+Set `max_tokens` (or `max_output_tokens` on the Responses API) to the total number of output tokens you allow for the whole answer, across every hop. Do not subtract what earlier hops used: Google tracks the running total and stops once it is spent. After a `CONTINUATION` hop you can resend the same value. After a `MAX_TOKENS` hop the budget is spent, so raise it to continue.
+
+| `max_tokens`                          | Behavior                                                                                                                                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| At or below the per-request limit     | A normal single request. If the model hits the limit, the response ends with `finish_reason: "length"` and `native_finish_reason: "MAX_TOKENS"` and returns a continuation token. Raise `max_tokens` to continue |
+| Above the per-request limit             | Long decode. If the model reaches the per-request limit with budget left, the response ends with `finish_reason: "length"`, `native_finish_reason: "CONTINUATION"`, and a continuation token |
+
+When `max_tokens` is omitted, OpenRouter sends its default output budget of 65,536 tokens, the same as Argon's per-request limit. A response that reaches it ends with `MAX_TOKENS` and a continuation token, so raise `max_tokens` to continue.
+
+`max_tokens` is cumulative across hops. A response that ended with `MAX_TOKENS` has spent its whole budget but still returns a continuation token: resend it with a higher `max_tokens` to continue. Resending it with the same `max_tokens` returns a 400 error. Raising `max_tokens` on a resume also works after `CONTINUATION`, so one rule covers both cases: set `max_tokens` above the total output of every hop so far.
+
+<Note>
+At `high` effort the model can spend a hop's full per-request limit on reasoning and return little or no visible text in that hop. A hop with empty content and `native_finish_reason: "CONTINUATION"` is normal: resume it.
+</Note>
+
+### The continuation loop
+
+1. Send your request with `max_tokens` above the per-request limit.
+2. If the response stopped at a length limit (Chat Completions `finish_reason: "length"`, Responses `status: "incomplete"` with `incomplete_details.reason: "max_output_tokens"`, Messages `stop_reason: "max_tokens"`), keep the stopped turn with its continuation items (reasoning details or Responses API reasoning items whose `id` is `gemini-continuation`). Gemini stops this way on both `CONTINUATION` and `MAX_TOKENS` finishes.
+3. Resend the same conversation and parameters with the stopped turn appended as the last assistant turn. Set `max_tokens` above the total output of every hop so far, or the request returns a 400 error after a `MAX_TOKENS` hop.
+4. Repeat until a response finishes without a length stop. Concatenate the visible text from every hop to get the full answer, and add up the usage of every hop.
+
+Change nothing else between hops. The continuation token holds the model's progress on the stopped turn, so the conversation before it must be resent unchanged. Do not add a new user message in the middle of a continuation.
+
+Only a continuation item in the last assistant turn resumes the decode. Each hop replaces the previous continuation turn, and OpenRouter removes continuation items from earlier turns, so a finished long answer in your history does not affect later requests. Visible text from the stopped turn does not need to be resent: OpenRouter drops the trailing continuation turn before forwarding the request, because the token already carries its state. Treat the token as opaque and pass it back byte for byte.
+
+A streaming hop can return more than one continuation item: one for each checkpoint Gemini saves while it generates, plus one when the hop stops at a limit. A hop that finishes normally can still carry checkpoint items, so decide whether to continue from the finish reason, not from whether an item is present. OpenRouter resumes from the last continuation item in the turn, so you can pass the stopped turn back unchanged. Keeping only the latest item makes the request smaller.
+
+The sections below show only the response and request shapes for each API.
+
+### Each hop is a separate billed request
+
+Every hop is its own generation with its own usage and cost. A continuation hop's prompt tokens include all the reasoning from earlier hops, and each hop bills its full prompt, so input cost grows with every hop. Implicit caching can cover part of that prompt, and cached tokens bill at the cached input rate. Explicit caching with `cache_control` is skipped on continuation hops. The sum of every hop's usage is the total cost of a long answer. Use that sum for cost only: for context-window or compaction checks, use the first hop's `prompt_tokens`, because the summed prompt tokens count earlier output once per hop and are much larger than the context the model uses. `max_tokens` caps the output tokens, not the input that earlier hops add back. See the [model page](https://openrouter.ai/google/gemini-4-argon) for current rates.
+
+## Chat Completions API
+
+A hop that stops at a limit returns the continuation token in `reasoning_details`:
+
+```json lines
+{
+  "choices": [
+    {
+      "finish_reason": "length",
+      "native_finish_reason": "CONTINUATION",
+      "message": {
+        "role": "assistant",
+        "content": "",
+        "reasoning_details": [
+          {
+            "type": "reasoning.encrypted",
+            "id": "gemini-continuation",
+            "format": "google-gemini-v1",
+            "data": "<opaque continuation token>",
+            "index": 0
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+To continue, append the assistant message with its `reasoning_details` and resend:
+
+```json lines
+{
+  "model": "google/gemini-4-argon",
+  "max_tokens": 262144,
+  "reasoning": { "effort": "high" },
+  "messages": [
+    { "role": "user", "content": "Prove that ..." },
+    {
+      "role": "assistant",
+      "content": "",
+      "reasoning_details": [
+        {
+          "type": "reasoning.encrypted",
+          "id": "gemini-continuation",
+          "format": "google-gemini-v1",
+          "data": "<opaque continuation token>"
+        }
+      ]
+    }
+  ]
+}
+```
+
+When streaming, continuation items arrive in `delta.reasoning_details` chunks during the stream, as Gemini saves checkpoints, and at the end of a hop that stops at a limit. A non-streaming response carries only the hop's final item. If the stream drops partway, discard the text and reasoning received after the latest item, then resend that item as the last assistant turn with the same `max_tokens` to resume from that checkpoint. The resumed hop regenerates everything after the checkpoint. If the stream drops before the first item arrives, there is no checkpoint to resume from, so resend the original request. A dropped stream reports no `usage` or finish reason, so you cannot tell whether the dropped hop had already spent its budget. If the resume returns a 400 error saying `max_output_tokens` has been exhausted, raise `max_tokens` and resend.
+
+A loop in TypeScript:
+
+```typescript
+type Message = { role: string; content: string; reasoning_details?: unknown[] };
+
+const conversation: Message[] = [{ role: 'user', content: 'Prove that ...' }];
+let continuation: Message | undefined;
+let maxTokens = 262_144;
+let answer = '';
+let promptTokens = 0;
+let completionTokens = 0;
+
+while (true) {
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-4-argon',
+      max_tokens: maxTokens,
+      reasoning: { effort: 'high' },
+      messages: continuation ? [...conversation, continuation] : conversation,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`OpenRouter returned ${response.status}: ${await response.text()}`);
+  }
+  const { choices, usage } = await response.json();
+  const [choice] = choices;
+  answer += choice.message.content ?? '';
+  promptTokens += usage.prompt_tokens;
+  completionTokens += usage.completion_tokens;
+
+  const latestContinuation = choice.message.reasoning_details?.findLast(
+    (detail: { id?: string }) => detail.id === 'gemini-continuation',
+  );
+  if (choice.finish_reason !== 'length' || !latestContinuation) {
+    break;
+  }
+  if (choice.native_finish_reason === 'MAX_TOKENS') {
+    maxTokens = completionTokens + 262_144;
+  }
+
+  continuation = {
+    role: 'assistant',
+    content: '',
+    reasoning_details: [latestContinuation],
+  };
+}
+```
+
+## Responses API
+
+A hop that stops at a limit returns `status: "incomplete"` with `incomplete_details.reason: "max_output_tokens"` and a reasoning output item that carries the token in `encrypted_content`. A streaming hop can return one such item per checkpoint, and a `completed` response can carry them too, so resume only when `status` is `"incomplete"` and `incomplete_details.reason` is `"max_output_tokens"`. Other incomplete reasons, such as `content_filter`, cannot be resumed:
+
+```json lines
+{
+  "status": "incomplete",
+  "incomplete_details": { "reason": "max_output_tokens" },
+  "output": [
+    {
+      "type": "reasoning",
+      "id": "gemini-continuation",
+      "summary": [],
+      "encrypted_content": "<opaque continuation token>",
+      "format": "google-gemini-v1"
+    }
+  ]
+}
+```
+
+To continue, append the reasoning item to `input`:
+
+```json lines
+{
+  "model": "google/gemini-4-argon",
+  "max_output_tokens": 262144,
+  "reasoning": { "effort": "high" },
+  "input": [
+    { "role": "user", "content": "Prove that ..." },
+    {
+      "type": "reasoning",
+      "id": "gemini-continuation",
+      "summary": [],
+      "encrypted_content": "<opaque continuation token>",
+      "format": "google-gemini-v1"
+    }
+  ]
+}
+```
+
+The Responses API returns this same shape for `CONTINUATION` and `MAX_TOKENS` hops, so set `max_output_tokens` above the total output of every hop so far on each resume. Resending a spent budget returns a 400 error.
+
+This is the stateless pattern the Responses API already uses for encrypted reasoning. OpenRouter does not store the response, so `previous_response_id` cannot be used to continue.
+
+## Anthropic Messages API
+
+A hop that stops at a limit returns `stop_reason: "max_tokens"` and a `redacted_thinking` content block that carries the token. A streaming hop can return one such block per checkpoint, interleaved with text:
+
+```json lines
+{
+  "role": "assistant",
+  "stop_reason": "max_tokens",
+  "content": [{ "type": "redacted_thinking", "data": "<opaque continuation data>" }]
+}
+```
+
+To continue, append the assistant turn with the `redacted_thinking` block:
+
+```json lines
+{
+  "model": "google/gemini-4-argon",
+  "max_tokens": 262144,
+  "messages": [
+    { "role": "user", "content": "Prove that ..." },
+    {
+      "role": "assistant",
+      "content": [{ "type": "redacted_thinking", "data": "<opaque continuation data>" }]
+    }
+  ]
+}
+```
+
+Messages returns this same shape for `CONTINUATION` and `MAX_TOKENS` hops, so set `max_tokens` above the total output of every hop so far on each resume. Resending a spent budget returns a 400 error.
+
+Messages has no native finish reason field. Resume only when `stop_reason` is `"max_tokens"`, and pass the assistant content back unchanged: continuation blocks look like other `redacted_thinking` blocks, such as thought signatures, and OpenRouter resumes from the last continuation block. A dropped stream has no `stop_reason`; resend the content received up to and including the latest `redacted_thinking` block. The `data` value wraps the Gemini token in an OpenRouter envelope so its format survives the round trip.
+
+## Reasoning Effort
+
+Gemini 4 Argon always reasons. `reasoning.effort` accepts `low`, `medium`, and `high`. `reasoning.max_tokens` is not supported, and reasoning cannot be turned off.
+
+## Limits and Routing
+
+- **Token size grows with the decode** and can reach several MB for a long answer. Your client must accept and resend bodies of that size on later hops.
+- **Continuations stay on one provider.** A continuation token only works on the provider that issued it. OpenRouter routes a continuation request back to that provider and does not fall back to another one. If that provider is unavailable, the request fails instead of restarting the answer elsewhere.
+- **`reasoning.exclude` keeps the token.** With `reasoning: { "exclude": true }`, reasoning text is hidden but the continuation item is still returned, so long decode keeps working.
+
+## Migration Checklist
+
+1. To keep single-request behavior, omit `max_tokens` or set it at or below the per-request limit.
+2. To enable long decode, set `max_tokens` above the per-request limit, as the total budget for the whole answer, and run [the continuation loop](#the-continuation-loop). A response that stops with `MAX_TOKENS` can also be continued later by raising `max_tokens`.
+3. Use `reasoning.effort` `low`, `medium`, or `high` instead of `reasoning.max_tokens`. Reasoning cannot be turned off.
+
+## Breaking Changes
+
+Compared with earlier Gemini models:
+
+- **Length stops can be resumed.** A response that reaches the per-request limit or the `max_tokens` budget returns a continuation token. A request that sets `max_tokens` above the per-request limit ends with `native_finish_reason: "CONTINUATION"` instead of `MAX_TOKENS` when it reaches the limit. A client that does not resume gets a partial answer, as with any length stop.
+- **No reasoning budget.** `reasoning.max_tokens` does not set a thinking budget, and reasoning cannot be turned off. Use `reasoning.effort`.
+
+Other Gemini models are unaffected.
+
+## Resources
+
+- [Reasoning Tokens](/guides/best-practices/reasoning-tokens), including how to preserve `reasoning_details` across turns
+- [OpenRouter Responses API](/api/api-reference/responses/create-a-response)
