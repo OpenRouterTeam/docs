@@ -158,6 +158,22 @@ With **Cost** enabled under **Additional generation metadata**, the same quantit
 
 The example shows attribute values as a flat map; OTLP encodes numbers as `intValue` and the estimate flag as `boolValue`. Root spans also carry generation metadata under `trace.metadata.openrouter_generation.*`. Read each generation once. These representations repeat the same generation quantities; do not add them together. Unavailable quantities are omitted from OTEL attributes, while zero and `false` are preserved. See [Token and cost fields](/guides/features/broadcast#token-and-cost-fields) for interpretation and billing caveats.
 
+### Cost allocation
+
+With **Cost allocation** enabled, the [cost-allocation block](/guides/features/broadcast#cost-allocation-beta) is flattened under its own key, independently of `openrouter_generation`. Counts are `intValue` attributes and costs are `stringValue` decimals, so no precision is lost:
+
+```json
+{
+  "span.metadata.openrouter_cost_allocation.cost_status": "reconciled",
+  "span.metadata.openrouter_cost_allocation.input_tokens": 1000,
+  "span.metadata.openrouter_cost_allocation.cache_read_input_tokens": 400,
+  "span.metadata.openrouter_cost_allocation.output_cost": "0.0005",
+  "span.metadata.openrouter_cost_allocation.is_byok": false
+}
+```
+
+Root spans also carry it under `trace.metadata.openrouter_cost_allocation.*`. Read each generation once.
+
 ### Raw provider usage
 
 Unlike the quantities above, [`upstream_raw_response_usage`](/guides/features/broadcast#raw-provider-usage) is not flattened into one attribute per provider field. It is sent as a single `stringValue` attribute holding JSON, because its keys are provider-controlled and can change without notice:

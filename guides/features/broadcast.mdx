@@ -185,6 +185,61 @@ An absent reason with a `null` value means provider usage was simply unavailable
 
 See the [S3 field locations](/guides/features/broadcast/s3#billing-quantities) and [OTEL attribute mappings](/guides/features/broadcast/otel-collector#billing-quantities) for destination-specific examples.
 
+#### Cost allocation (beta)
+
+Enable **Cost allocation** under **Additional generation metadata**, or set `broadcast_generation_cost_allocation` through the [destinations API](/api/api-reference/observability/create-an-observability-destination), to add `metadata.openrouter_cost_allocation` to each generation. It splits the generation's billed usage and cost by token kind so a cost-allocation tool can join it to your bill by date, provider, model, token kind, and the pricing qualifiers below. It is independent of **Cost**: you can enable it without exporting `openrouter_generation`, and it remains available in Privacy Mode. Like `openrouter_generation`, it appears in the trace metadata and in the generation observation's metadata, not on provider attempt spans. A `trace` field in your request cannot set or override it, either as a top-level key or as dotted keys inside a nested object such as `trace.metadata`.
+
+Counts and costs are currently available for chat generations (the Chat Completions, Responses, Messages, and Completions APIs). Other generations, such as embeddings, images, video, and audio, carry only `cost_status` (`no_sku_items`) and the pricing qualifiers.
+
+| Field | Meaning |
+| --- | --- |
+| `cost_status` | Whether the counts and costs below are present; see the next table. Always present. |
+| `input_tokens` | All billed input tokens, including cache reads and cache writes: `non_cache_input_tokens + cache_read_input_tokens + cache_write_input_tokens`. |
+| `non_cache_input_tokens`, `cache_read_input_tokens`, `cache_write_input_tokens` | Billed input tokens by kind. The counts do not overlap. |
+| `output_tokens`, `reasoning_tokens` | Billed output tokens by kind. `reasoning_tokens` appears only for providers that price reasoning separately; elsewhere reasoning is billed, and counted, as output. |
+| `non_cache_input_cost`, `cache_read_input_cost`, `cache_write_input_cost`, `output_cost`, `reasoning_cost` | Cost of each token kind in USD, as a decimal string. |
+| `advisor_cost` | Cost of Anthropic advisor-model tokens in USD. They belong to the advisor model, not the generation's model, so they are not in any count or per-kind cost above. |
+| `tool_cost` | Cost of provider server tools and OpenRouter plugins (web search, web fetch, file parsing) in USD. |
+| `unclassified_cost` | Cost of priced rows with no token kind, such as Gemini cache storage, in USD. |
+| `platform_cost` | What OpenRouter charged beyond inference and tools in USD: fees, discounts, and waivers. Can be negative. For BYOK, all of OpenRouter's charge beyond tools, because the token costs were billed by your provider. |
+| `is_byok`, `billed_service_tier`, `is_long_context`, `endpoint_region`, `endpoint_deployment_type` | The pricing qualifiers, with the same meaning as in `openrouter_generation`. |
+
+Counts are the quantities OpenRouter billed, so they can differ from `promptTokens` when the provider's own report is inconsistent. For example, when Gemini reports cache reads above an uncached input, it bills both, and `input_tokens` follows what was billed. In a reconciled block, a count is present only when the generation billed at least one row of that kind, so an absent count means the kind was not billed separately, not zero. Provider and model are not repeated here; read them from the generation's own fields.
+
+Counts and per-kind costs are emitted only when OpenRouter can show they match what was billed. The rows' costs must equal the generation's upstream inference cost (`usage_upstream`, or `byok_usage_inference` for BYOK, compared as stored) and OpenRouter's plugin charges (`usage_web`, `usage_web_fetch`, and `usage_file`). When they do, the costs sum to the OpenRouter charge, plus the provider-billed inference cost for BYOK, to within float64 rounding of the stored amounts. Otherwise the block carries only `cost_status` and the pricing qualifiers, and `cost_status` says why:
+
+| `cost_status` | Meaning |
+| --- | --- |
+| `reconciled` | Every count and cost field for the billed kinds is present and adds up as described above. |
+| `unreconciled` | The rows do not add up to the billed cost. Known causes: a provider discount (the stored upstream cost is after the discount, the rows are at list price), and BYOK requests that used OpenRouter web search or web fetch (the charge is in `usage` but not in `usage_web` / `usage_web_fetch`). |
+| `null_price` | A token row has no price, for example fallback pricing or a provider-reported total cost. |
+| `row_error` | A billed row could not be split into non-overlapping quantities. |
+| `no_billed_cost` | The generation carries no upstream cost to reconcile against. |
+| `no_sku_items` | The generation's billed rows are not available to Broadcast: it stored none (for example a failed request), or it is not a chat generation. |
+
+```json
+{
+  "openrouter_cost_allocation": {
+    "cost_status": "reconciled",
+    "input_tokens": 1000,
+    "non_cache_input_tokens": 600,
+    "cache_read_input_tokens": 400,
+    "output_tokens": 50,
+    "non_cache_input_cost": "0.0012",
+    "cache_read_input_cost": "0.0002",
+    "output_cost": "0.0005",
+    "platform_cost": "0.00019",
+    "is_byok": false,
+    "billed_service_tier": "default",
+    "is_long_context": false,
+    "endpoint_region": "us-east-1",
+    "endpoint_deployment_type": "global"
+  }
+}
+```
+
+This field is in beta: its shape may change before a dedicated cost-allocation destination ships.
+
 ### Large Trace Values
 
 This applies to the OpenTelemetry-based destinations (Arize, Elastic, Grafana, Langfuse, LangSmith, New Relic, OpenInference, OTel Collector, Phoenix, Ramp, Sentry, and Webhook). Other destinations are not bounded this way and emit no truncation markers.
