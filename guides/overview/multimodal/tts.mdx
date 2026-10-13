@@ -177,7 +177,7 @@ curl https://openrouter.ai/api/v1/audio/speech \
 | `model` | string | Yes | The TTS model to use (e.g., `openai/gpt-4o-mini-tts-2025-12-15`, `mistralai/voxtral-mini-tts-2603`) |
 | `input` | string or array | Yes | The text to synthesize into speech, or a list of turns for multi-speaker input. See [Multi-Speaker Input](#multi-speaker-input) below. Some models treat a string input as a prompt that can also describe non-speech audio; see [Non-Speech Prompts](#non-speech-prompts) below |
 | `voice` | string | Provider-dependent | Voice identifier. Available voices vary by model, so check each model's page on the [Models page](/guides/overview/models) for supported voices. Omit this parameter only when the selected provider documents a default voice; otherwise an explicit voice is required. |
-| `instructions` | string | No | Delivery instructions such as tone, pacing, or emotion, for example `Speak in a warm and friendly tone.` Supported by OpenAI `gpt-4o-mini-tts` and Gemini TTS models. Ignored by other providers |
+| `instructions` | string | No | Delivery instructions such as tone, pacing, or emotion, for example `Speak in a warm and friendly tone.` Supported by OpenAI `gpt-4o-mini-tts`, Gemini TTS, and Fish Audio models. Ignored by other providers |
 | `response_format` | string | No | Audio output format: `mp3` or `pcm`. Defaults to `pcm` |
 | `speed` | number | No | Playback speed multiplier. Honored by models that support it (e.g., OpenAI TTS). Other providers either ignore it or return a 400 for a non-default value when the model has no speed control. Defaults to `1.0` |
 | `input_references` | array | No | Reference content for stateless voice cloning or voice design: one to three `input_audio` parts (each optionally paired with a `text` transcript), or exactly one `image_url` part. See [Voice Cloning](#voice-cloning) below |
@@ -201,7 +201,7 @@ Some models can voice a conversation between several speakers in one request. To
 }
 ```
 
-Multi-speaker input is currently supported by Gemini TTS models only. Other providers return a 400 error for it.
+Multi-speaker input is supported by Gemini TTS models and by Fish Audio models other than S1. Other providers return a 400 error for it.
 
 ### Voice Cloning
 
@@ -342,6 +342,10 @@ Azure serves `microsoft/mai-voice-2`, `microsoft/mai-voice-2.1`, and `microsoft/
   "response_format": "mp3"
 }
 ```
+
+#### Fish Audio
+
+Fish Audio models take delivery directions in square brackets inside the text, for example `[whispering] Nobody answered.` OpenRouter adds `instructions` to the text the same way, at the start of the input or of each turn. For [multi-speaker input](#multi-speaker-input), OpenRouter sends Fish one `reference_id` for each distinct turn voice and starts each turn with a `<|speaker:N|>` tag. Fish bills these added characters along with the input. Fish Audio S1 returns a 400 error for multi-speaker input, and reference audio cannot be combined with it.
 
 #### Google (Gemini TTS)
 
