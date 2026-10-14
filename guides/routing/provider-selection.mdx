@@ -1012,7 +1012,7 @@ Each provider on OpenRouter may host multiple endpoints for the same model, such
 
 When you use a base provider slug (e.g. `"google-vertex"`) in any provider routing field (`order`, `only`, or `ignore`), it matches **all** endpoints for that provider, including any variants or regions. For example, `"google-vertex"` matches `google-vertex`, `google-vertex/us-east5`, `google-vertex/us-central1`, and so on. Note that [service tier endpoints](/guides/features/service-tiers) (e.g. `openai/fast`, `google-vertex/flex`) are **not** matched by base slugs — they require explicit opt-in via the `service_tier` parameter or a tier-suffixed slug.
 
-To target a **specific** variant or region, use the full slug including the suffix (e.g. `"google-vertex/us-east5"` or `"deepinfra/turbo"`).
+To target a **specific** variant or region, use the full slug including the suffix (e.g. `"google-vertex/us-east5"` or `"deepinfra/turbo"`). When a provider serves the same variant from more than one region, the region follows the variant as its own segment (e.g. `"baseten/fp4/us"`); the variant slug alone (`"baseten/fp4"`) still matches every region of it.
 
 | Slug in request | What it matches |
 | --- | --- |
