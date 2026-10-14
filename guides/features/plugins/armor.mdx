@@ -1,0 +1,396 @@
+---
+publish: true
+title: Armor
+description: A safety classifier for tool calls, between the model and your application
+seoTitle: 'Armor | A Safety Classifier for Tool Calls'
+og:site_name: OpenRouter Documentation
+og:title: 'Armor - A Safety Classifier for Tool Calls'
+og:description: 'Armor checks every tool call a model makes against rules you write, before the call reaches your application. Blocked calls never run; the model is told and carries on.'
+og:image: https://openrouter.ai/dynamic-og?title=Armor&description=A%20safety%20classifier%20for%20tool%20calls
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+icon: shield-halved
+tag: Beta
+---
+
+<Badge color="blue">Beta since October 2026</Badge>
+
+A coding agent that can run shell commands can also push to `main`, delete a directory, or send your `.env` file to an external server. Most harnesses handle this by asking the user to approve each command.
+
+Armor is a classifier that runs between the model and your application and evaluates every tool call the model makes. You write rules in plain English: what the model must never do, what it should usually not do, and what is permitted. If a call breaks a rule, Armor blocks it, tells the model why, and the model continues with the rest of its work.
+
+<Note>
+Armor is in beta. The configuration fields, the `safeguard_results` object and the `openrouter:armor_blocked` item type may still change.
+</Note>
+
+## How it works
+
+For each tool call the model makes:
+
+- OpenRouter does not forward the call to your application yet.
+- It sends the call, your rules and the conversation so far to the decision model.
+- For each rule, the decision model returns a probability that the call matches it.
+- Armor combines those into one verdict: `flagged` or `not_flagged`.
+
+Rules come in three kinds:
+
+- A **hard-deny** rule describes an action that must never happen. A match blocks the call and nothing clears it.
+- A **soft-deny** rule describes an action that is usually wrong but is sometimes requested legitimately. A match blocks the call unless an allow rule also matches, or the user asked for that exact operation in the conversation.
+- An **allow** rule describes an exception. It never blocks anything; it exists only to clear a soft-deny match.
+
+[Writing rules](#writing-rules) covers each in detail.
+
+If the verdict is `flagged`:
+
+- The tool call is marked to skip execution, alongside some metadata naming the rule and instructing it not to retry with the same arguments.
+- The model handles it as it would any failed tool call: it makes a narrower call, or explains the situation to the user.
+
+If the verdict is `not_flagged`:
+
+- The call is released to your application unchanged.
+- The only visible difference is a `safeguard_results` field in the response that records the verdict.
+
+## Use with Claude Code auto mode
+
+OpenRouter Armor implements a Claude Code compatible API. No extra configuration is needed to turn on Claude Code auto mode when doing inference through OpenRouter's Ori metaharness:
+
+```bash
+ori claude --model moonshotai/kimi-k2-0905 -- --permission-mode auto
+```
+
+Armor reads Claude Code's `safeguards` entry and answers in the format Claude Code expects from Anthropic's own implementation, so auto mode works on any model OpenRouter serves:
+
+- A call no rule matches runs successfully.
+- A call a rule matches is returned with a `flagged` verdict. Claude Code declines to run it, writes the denial into the transcript, and the model continues.
+
+No `plugins` entry is needed. Read [Ori guide](/guides/ori/harness) to learn more about launching Claude Code through Ori.
+
+The rest of this page is for custom agents, where you can build your own 'auto' mode.
+
+## Example
+
+A custom agent adds an `armor` entry to `plugins`, with its rules under `classifier_context`. This request on the Responses API gives the model a `bash` tool and one hard-deny rule against pushing, asks for `custom_item` output so the blocked call comes back as a typed item, then asks the model to push:
+
+```bash
+curl https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4.1",
+    "input": "Lint is fixed. Push the branch with git push origin main.",
+    "tools": [
+      {
+        "type": "function",
+        "name": "bash",
+        "description": "Run a shell command in the project directory",
+        "parameters": {
+          "type": "object",
+          "properties": { "command": { "type": "string" } },
+          "required": ["command"]
+        }
+      }
+    ],
+    "plugins": [
+      {
+        "id": "armor",
+        "output_mode": "custom_item",
+        "classifier_context": {
+          "v": 1,
+          "auto_mode": {
+            "environment": ["Trusted repository: github.com/acme/app"],
+            "hard_deny": [
+              {
+                "id": "git-push",
+                "name": "Git Push",
+                "instructions": "Running any git push command. The user reviews every change before it is pushed."
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }'
+```
+
+The model calls `bash` with `git push origin main`. Armor blocks it. The response has no `function_call`; in its place is an `openrouter:armor_blocked` item carrying the call and the rule that fired, followed by the model's own text, and `safeguard_results` records the verdict under the call's id:
+
+```json
+{
+  "output": [
+    {
+      "type": "openrouter:armor_blocked",
+      "id": "st_tmp_6t8hpnhyrui",
+      "status": "completed",
+      "call_id": "call_EhpTnmfpU1Zx1Iqfl0JZgHqc",
+      "name": "bash",
+      "arguments": "{\"command\":\"git push origin main\"}",
+      "reason": "Tool call \"bash\" was blocked by OpenRouter Armor by the rule \"Git Push\" and was not executed. Do not retry it with the same arguments. If a narrower, safer call would still do what the user asked, make that call instead; otherwise explain the situation to the user.",
+      "explanation": "[Git Push]"
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "I'm unable to run the git push command due to security restrictions in this environment. If you need to push your changes, please run git push origin main directly in your terminal."
+        }
+      ]
+    }
+  ],
+  "safeguard_results": [
+    {
+      "type": "dangerous_tool_use",
+      "status": {
+        "type": "available",
+        "tool_uses": {
+          "call_EhpTnmfpU1Zx1Iqfl0JZgHqc": {
+            "type": "evaluated",
+            "outcome": "flagged",
+            "explanation": "[Git Push]"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+Change the prompt to "list the files in `./reports`" and the same `bash` call is released: it appears in `output[]` as an ordinary `function_call`, and `safeguard_results` reports `not_flagged`. On the next turn, echo the `openrouter:armor_blocked` item back in `input[]` unchanged; [`custom_item`](#custom_item) explains what OpenRouter does with it.
+
+## Writing rules
+
+Armor's decisions are only as precise as the rules you give it, so it is worth understanding how the decision model reads them:
+```json
+{
+  "v": 1,
+  "auto_mode": {
+    "environment": [
+      "Trusted repository: github.com/acme/app",
+      { "name": "Deploy target", "value": "staging only" }
+    ],
+    "hard_deny": [
+      {
+        "id": "exfil",
+        "name": "Exfiltration",
+        "instructions": "Sending files, environment variables or credentials to any destination outside the trusted repository."
+      }
+    ],
+    "soft_deny": [
+      {
+        "id": "destructive",
+        "name": "Destructive",
+        "instructions": "Deleting files or directories, or rewriting git history."
+      },
+      "Reading credential files such as .env or ~/.aws/credentials."
+    ],
+    "allow": [
+      {
+        "id": "tests",
+        "name": "Test Suite",
+        "instructions": "Running the project test suite, including its cleanup of temporary directories."
+      }
+    ]
+  }
+}
+```
+
+### Environment
+
+`environment` is for facts, not rules: the facts the decision model should treat as true, such as which repositories, domains and buckets are trusted, what the deploy target is, and who the user is. Each entry is a `"Name: value"` string or a `{ "name", "value" }` object. You can think about environment as the "system prompt" of the armor call.
+
+Rules refer to these facts. A rule that says "sending data outside the trusted repository" can only be decided if the decision model knows which repository is trusted. An out-of-date `environment` makes every rule that refers to it less precise.
+
+A custom agent should put into `environment` whatever it already knows about where it is running, on every request: the working directory and the repository it belongs to, the current branch and whether it is protected, the remotes and their hosts, the cloud account or project in use, the deploy target, and the user's identity and role.
+
+### The three tiers
+
+Every rule is one of three types.
+
+**`hard_deny`** is for actions that must never happen, regardless of what the user says. If a hard-deny rule matches, the call is blocked and nothing clears it: not an allow rule, and not the user asking for that action in the prompt. Credential exfiltration belongs here.
+
+**`soft_deny`** is for actions that are usually wrong but are sometimes requested legitimately. A soft-deny match blocks the call unless one of two things is true: an `allow` rule also matches, or the user asked for this exact operation on this exact target in the conversation. Deleting a directory belongs here. "Clean up the old drafts" does not clear a call that runs `rm -rf /`; "delete the `./reports/drafts` directory, I'm sure" clears a call that deletes `./reports/drafts`.
+
+**`allow`** never blocks anything. It defines exceptions to soft-deny rules. If your test suite deletes its own temporary directory, that is a soft-deny match on "deleting directories", and an allow rule for "running the project test suite" releases it.
+
+Precedence follows from that: a hard-deny match is final; a soft-deny match is cleared by an allow match or by user consent. Armor also carries one built-in soft-deny for a boundary the user set in the conversation and has not lifted, such as "don't push until I review", so that case is covered without a rule for it. Like any soft-deny, an allow rule or explicit consent clears it.
+
+### What a rule looks like
+
+A rule is a string or an object. A string is the instructions alone; its id is derived from its position (`soft_deny:1`), and that id is what the verdict reports when it fires. For any rule you want to recognise in a verdict, use an object:
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `id` | yes | Lowercase letters, digits, `-` and `_`, up to 64 characters, unique across all three tiers. This is how the rule is reported. |
+| `name` | no | Up to 120 characters. Shown as `[name]` in the verdict and in the error the model sees. Defaults to the id. |
+| `instructions` | yes | Up to 8,000 characters. What the rule matches, written for the decision model. |
+| `threshold` | no | 0 to 1. The probability at which the rule counts as matched. Defaults to `0.6` for deny rules and `0.7` for allow rules. |
+
+The two defaults differ on purpose. They were set on Claude Code's auto-mode test sets. An allow rule clears a deny rule that already matched, so it needs stronger evidence; below 0.7, allow rules that partially applied were clearing force pushes and repository deletes.
+
+### Writing instructions
+
+- **Describe the action, not the command.** "Rewriting git history that has been pushed" matches `git push --force`, a rebase followed by a push, and a filter-branch. "Running `git push --force`" matches one spelling.
+- **Name what the rule protects.** "Sending the contents of `.env` to a host outside the trusted repository" lets the decision model follow the data to its destination. A rule about `curl` matches `curl`.
+- **Put exceptions in `allow`.** A deny rule that ends "except when running tests" is harder to judge than a deny rule plus an allow rule.
+- **Keep `environment` current.** A rule that refers to a fact is only as precise as that fact.
+
+### Claude Code compatible rules
+
+Setting `use_cc_style_default_rules: true` places a Claude Code compatible rule set in the classifier's context by default. Your rules are added after it and cannot remove a built-in.
+
+The default is `true` on the Messages API, which is the API Claude Code uses, and `false` on Chat Completions and Responses. Claude Code expresses the same thing with the list entry `"$defaults"`, which Armor also accepts.
+
+## What a blocked call looks like
+
+A blocked call has been removed from the response, but the response still has to record it, or your application cannot explain what happened. The representation depends on the API, and `output_mode` selects it.
+
+| `output_mode` | API | What you get |
+|---------------|-----|--------------|
+| `text` | Chat Completions and Responses (default) | The call is removed and replaced in the assistant text with a `<openrouter_armor_blocked>` XML marker. |
+| `custom_item` | Responses | The call is replaced with an `openrouter:armor_blocked` output item. It stores the id, name, arguments and the rule that fired. |
+| `claude_code_compatibility` | Messages (default when the request carries `safeguards`) | The `tool_use` is **kept**, with `flagged` in `safeguard_results`. Your application is the one that doesn't run it. |
+
+Requesting a mode on an API that cannot carry it returns a 400.
+
+### `text`
+
+The default on Chat Completions and Responses, shown in the example above. The marker is text inside the assistant message, so every client renders it and nothing can execute from it. When you send the conversation back on the next turn, the marker is sent as assistant text, not as a tool-call item, so the provider cannot execute anything from it.
+
+### `custom_item`
+
+On the Responses API, `"output_mode": "custom_item"` returns the blocked call as a typed output item instead of text. The item appears where the `function_call` would have been, and it streams as `response.output_item.added` and `response.output_item.done` like any other item:
+
+```json
+{
+  "type": "openrouter:armor_blocked",
+  "id": "st_tmp_6t8hpnhyrui",
+  "status": "completed",
+  "call_id": "call_EhpTnmfpU1Zx1Iqfl0JZgHqc",
+  "name": "bash",
+  "arguments": "{\"command\":\"git push origin main\"}",
+  "reason": "Tool call \"bash\" was blocked by OpenRouter Armor by the rule \"Git Push\" and was not executed. Do not retry it with the same arguments. If a narrower, safer call would still do what the user asked, make that call instead; otherwise explain the situation to the user.",
+  "explanation": "[Git Push]"
+}
+```
+
+`arguments` is the string exactly as the model wrote it. `reason` is the error result the model received inside the request. `explanation` is the same `[name]` as in `safeguard_results`.
+
+On the next turn, echo the item back in `input[]`, unchanged and in the position it arrived, with the other output items. OpenRouter expands it into the `function_call` and the failed `function_call_output` the model saw inside the request, so the provider receives the same history the model recovered from. Do not write a `function_call_output` for it; the item already carries its result.
+
+```json
+{
+  "model": "openai/gpt-4.1",
+  "input": [
+    { "role": "user", "content": "Lint is fixed. Push the branch with git push origin main." },
+    {
+      "type": "openrouter:armor_blocked",
+      "id": "st_tmp_6t8hpnhyrui",
+      "status": "completed",
+      "call_id": "call_EhpTnmfpU1Zx1Iqfl0JZgHqc",
+      "name": "bash",
+      "arguments": "{\"command\":\"git push origin main\"}",
+      "reason": "Tool call \"bash\" was blocked by OpenRouter Armor by the rule \"Git Push\" and was not executed. Do not retry it with the same arguments. If a narrower, safer call would still do what the user asked, make that call instead; otherwise explain the situation to the user.",
+      "explanation": "[Git Push]"
+    },
+    { "type": "message", "role": "assistant", "content": [{ "type": "output_text", "text": "The push was blocked by a safety rule, so nothing left the machine." }] },
+    { "role": "user", "content": "What happened to the push?" }
+  ],
+  "tools": [{ "type": "function", "name": "bash", "parameters": { "type": "object", "properties": { "command": { "type": "string" } } } }],
+  "plugins": [{ "id": "armor", "output_mode": "custom_item", "classifier_context": { "v": 1, "auto_mode": { "hard_deny": [{ "id": "git-push", "name": "Git Push", "instructions": "Running any git push command." }] } } }]
+}
+```
+
+### `claude_code_compatibility`
+
+The Messages API follows a different contract, set by Anthropic's own `dangerous_tool_use` classifier and implemented by Claude Code's auto mode: the flagged `tool_use` stays in `content[]`, the response ends with `stop_reason: "tool_use"`, the verdict says `flagged`, and the client declines to run the call and writes an `is_error` tool result. Armor follows that contract on Messages, so Claude Code's auto mode works unchanged on any model OpenRouter serves:
+
+```json
+{
+  "content": [
+    { "type": "tool_use", "id": "call_bPQO3MRISnlDU09qwfs1xkZv", "name": "bash", "input": { "command": "git push origin main" } }
+  ],
+  "stop_reason": "tool_use",
+  "safeguard_results": [
+    {
+      "type": "dangerous_tool_use",
+      "status": {
+        "type": "available",
+        "tool_uses": {
+          "call_bPQO3MRISnlDU09qwfs1xkZv": { "type": "evaluated", "outcome": "flagged", "explanation": "[Git Push]" }
+        }
+      }
+    }
+  ]
+}
+```
+
+A request that carries a `safeguards` entry of type `dangerous_tool_use` selects this mode by itself; no `plugins` entry is needed. `ori claude --model <model> -- --permission-mode auto` runs Claude Code this way; see the [Ori guide](/guides/ori/harness). When the request reaches an Anthropic endpoint that supports the beta, Anthropic's classifier evaluates the call and its verdict is passed through. On every other endpoint, Armor evaluates.
+
+<Warning>
+Under `claude_code_compatibility` your application is what stops the call. A Messages client that ignores `safeguard_results` will run a flagged `tool_use`. That is the native contract of the API. If you do not control the implementation of your client, send `"output_mode": "text"` on Messages and OpenRouter will automatically withhold the call.
+</Warning>
+
+## Testing and debugging
+
+Everything above describes `enforce`, the default. Two things help when you are writing or tuning rules.
+
+**Audit mode.** `"mode": "audit"` runs the same evaluation and reports the same verdicts, but releases every call, flagged or not. Run it against real traffic, read the verdicts, adjust the rules until they match what you want stopped, then switch to `enforce`. Audit mode cannot be combined with the `claude_code_compatibility` output mode.
+
+**`safeguard_results`.** Every response Armor evaluated carries this field, in both modes. It is the verdict for every tool call in the response, keyed by tool call id (`tool_calls[].id` on Chat Completions, `call_id` on Responses, `tool_use.id` on Messages). In audit mode it is the only place a `flagged` verdict shows up, since nothing is blocked.
+
+```json
+{
+  "safeguard_results": [
+    {
+      "type": "dangerous_tool_use",
+      "status": {
+        "type": "available",
+        "tool_uses": {
+          "call_1": { "type": "evaluated", "outcome": "not_flagged" },
+          "call_2": { "type": "evaluated", "outcome": "flagged", "explanation": "[Git Push]" },
+          "call_3": { "type": "unavailable", "reason": "timeout" },
+          "call_4": { "type": "skipped" }
+        }
+      }
+    }
+  ]
+}
+```
+
+`not_flagged`: permitted (a soft-deny may have matched and been cleared). `flagged`: a rule matched; `explanation` names it. `unavailable`: the decision model could not answer. `skipped`: not evaluated; the verdict for a provider-native tool that ran on the provider's side. When streaming, the object arrives at the end: at the top level of the final Chat Completions chunk, on the `response` object inside `response.completed` for Responses, and inside `delta` on the `message_delta` event for Messages.
+
+In `enforce` mode you rarely need to read it. If you want to know what was blocked, use `output_mode: custom_item` on the Responses API and the blocked call arrives as an item in `output[]`.
+
+## When the decision model cannot answer
+
+A call is reported `unavailable` when the decision model times out, returns an error, or the request is too large for it. `on_error` decides what happens to that call. `block` (the default) blocks it and tells the model it could not be evaluated. `log` releases it. Under `claude_code_compatibility` an `unavailable` call is always released with its verdict visible.
+
+Armor evaluation is not yet supported for requests under HIPAA, Zero Data Retention or a data-region restriction. A plugin-armed request in one of those contexts that enables Armor is rejected with a 403. A Claude Code request is not rejected: the call is released with an `unavailable` verdict and Claude Code falls back to its own local auto-mode evaluation, as it does when Anthropic's classifier is unavailable.
+
+## All the options
+
+Every field the `armor` plugin entry accepts:
+
+| Field | Values | Default | What it does |
+|-------|--------|---------|--------------|
+| `classifier_context` | object | none | Your rules and environment facts. See [Writing rules](#writing-rules). |
+| `mode` | `enforce`, `audit` | `enforce` | `audit` reports verdicts without blocking anything; see [Testing and debugging](#testing-and-debugging). |
+| `on_error` | `block`, `log` | `block` | What happens to a call if there is an error when making a request to the decision model. |
+| `use_cc_style_default_rules` | boolean | `true` on Messages, `false` elsewhere | Append a rule set compatible with Claude Code's builtin ones. |
+| `output_mode` | `text`, `custom_item`, `claude_code_compatibility` | per API | Output format for blocked calls. |
+| `evaluate_native_tools` | boolean | `false` | Force provider-native server tools (web search, code execution) to exit the native path so that they can be evaluated by Armor. Off, they run on the provider's side and are reported `skipped`. |
+| `enabled` | boolean | `true` | Set `false` to turn Armor off for this request. |
+
+OpenRouter [server tools](/guides/features/server-tools) such as `openrouter:web_search` run inside the request, so a blocked server tool is always refused in place.
+
+## Tradeoffs
+
+**Latency.** Each tool call the model makes is evaluated once by the decision model before it is released or blocked. This added 279 ms of latency at the median and 334 ms at the 90th percentile, with our Claude Code compatible rule set loaded.
+
+**Cost.** During the beta, evaluation is not billed. Pricing will be announced before general availability.
+
+**False positives and misses.** The decision model judges prose rules against prose arguments. It will occasionally block a call you would have allowed, and occasionally release one you would not. Audit mode exists so you can measure both against your own traffic before enforcing, and `threshold` lets you move an individual rule in either direction.
