@@ -235,7 +235,7 @@ The only supported completion window is `24h`.
 
 ## Provider routing
 
-Every request in a batch runs on a single provider, chosen once at submit time. By default OpenRouter picks the cheapest eligible `:batch` endpoint for the model, after applying your account's provider allowlist, data policy, and BYOK settings. Endpoints at the same price share traffic. If you have a BYOK key for one of the providers, that endpoint is preferred over cheaper platform endpoints.
+Every request in a batch runs on a single provider, chosen once at submit time. By default OpenRouter picks the cheapest eligible `:batch` endpoint for the model, after applying your account's provider allowlist, data policy, and BYOK settings. Endpoints at the same price share traffic. When the selected provider rejects a submission for capacity, it may be served by the next cheapest provider allowed by your request's routing constraints and billed at that provider's price, unless you set `provider.allow_fallbacks` to `false`. If you have a BYOK key for one of the providers, that endpoint is preferred over cheaper platform endpoints.
 
 To pin the batch to a provider, add a top-level `provider` object with an `only` array of [provider slugs](/guides/routing/provider-selection), placed before `requests`:
 
@@ -321,7 +321,7 @@ curl https://openrouter.ai/api/v1/batches \
 
 </CodeGroup>
 
-`provider.only` and `provider.allow_fallbacks` are the only provider preferences the Batch API accepts. `order`, `sort`, and the other sync preferences are rejected. If none of the listed providers has an eligible `:batch` endpoint for the model, the submit returns `404` instead of falling back to another provider. Use the [batch variant filter on the models page](https://openrouter.ai/models?variant=batch) to see which providers serve a model in batch.
+`provider.only` and `provider.allow_fallbacks` are the only provider preferences the Batch API accepts. `order`, `sort`, and the other sync preferences are rejected. Set `allow_fallbacks` to `false` to keep the batch on the provider chosen at submit time: if that provider rejects the submission for capacity, the batch fails instead of moving to the next cheapest provider. If none of the listed providers has an eligible `:batch` endpoint for the model, the submit returns `404` instead of falling back to another provider. Use the [batch variant filter on the models page](https://openrouter.ai/models?variant=batch) to see which providers serve a model in batch.
 
 ---
 
