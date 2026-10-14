@@ -416,6 +416,8 @@ curl "https://openrouter.ai/api/v1/videos/{jobId}/content?index=0" \
 
 The `index` query parameter defaults to `0` and can be used if the model generates multiple video outputs.
 
+When OpenRouter holds a stored copy of the outputs, the completed response also includes `urls`: one signed download URL per output that works without an API key until `expires_at`. Use it where you cannot set headers, such as a `<video>` tag, `ffmpeg`, or a tool that only accepts a URL. Anyone holding one of these URLs can download that output until it expires, so do not log or share them. `unsigned_urls` keeps working with your API key for as long as the output is available, including when `urls` is absent.
+
 ## Webhooks
 
 Instead of polling for job status, you can receive a webhook notification when a video generation job completes. There are two ways to configure a callback URL:
