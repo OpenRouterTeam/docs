@@ -58,7 +58,10 @@ const response = await client.responses.send({
       {
         id: 'alignment',
         mode: 'audit',
-        rules: ['Do not say a refund is issued or approved.', 'Do not ask for payment card details.'],
+        rules: [
+          { rule: 'Do not say a refund is issued or approved.', watch: ['content'] },
+          { rule: 'Do not ask for payment card details.', watch: ['content'] }
+        ],
       },
     ],
   },
@@ -86,8 +89,8 @@ curl https://openrouter.ai/api/v1/responses \
         "id": "alignment",
         "mode": "audit",
         "rules": [
-          "Do not say a refund is issued or approved.",
-          "Do not ask for payment card details."
+          { "rule": "Do not say a refund is issued or approved.", "watch": ["content"] },
+          { "rule": "Do not ask for payment card details.", "watch": ["content"] }
         ]
       }
     ]
@@ -130,10 +133,12 @@ The TypeScript example prints the outcome of each message, `blocked` in the run 
         "outcome": "blocked",
         "rules": [
           {
+            "applicable": true,
             "probability": 0.9,
             "broken": true
           },
           {
+            "applicable": true,
             "probability": 0.02,
             "broken": false
           }
@@ -144,13 +149,13 @@ The TypeScript example prints the outcome of each message, `blocked` in the run 
 }
 ```
 
-The request made one model call, which [Billing](#billing) prices. Without `mode`, the plugin runs in `enforce` mode and blocks this message instead of delivering it, as [Retry of a blocked message](#retry-of-a-blocked-message) shows.
+The request made one model call, which [Billing](#billing) prices. `audit` is the default mode, so the request behaves the same without `mode`. In `enforce` mode, OpenRouter blocks this message instead of delivering it, as [Retry of a blocked message](#retry-of-a-blocked-message) shows.
 
 ## Behavior
 
 OpenRouter runs the check on its own servers, between the provider and your application, so the steps below are the same whichever model the request calls. The steps name the fields `instruct`, `threshold`, and `max_retries`, which [Configuration](#configuration) describes. For each model call of a request:
 
-1. When `instruct` is `true`, OpenRouter inserts a system message after the system and developer messages at the start of the conversation. The message is the line `Your reply must follow every rule below.` followed by the rules, one per line.
+1. When `instruct` is `true`, OpenRouter inserts a system message after the system and developer messages at the start of the conversation. The message is the line `Your reply must follow every rule below.` followed by the rules as a list, one list item of the form `- <rule>` per rule.
 2. The model produces a message.
 3. The evaluator receives the message and the rules. For each rule, it answers the question `Does this assistant message break the rule?` with a probability between 0 and 1. A rule is broken when the probability is at or above `threshold`.
 4. OpenRouter records the outcome of the message in `alignment.calls` and acts on it according to the mode:
@@ -175,12 +180,12 @@ The entry below sets every field to its default value, apart from `rules`, which
     {
       "id": "alignment",
       "rules": [
-        "Do not say a refund is issued or approved.",
-        "Do not ask for payment card details."
+        { "rule": "Do not say a refund is issued or approved.", "watch": ["content"] },
+        { "rule": "Do not ask for payment card details.", "watch": ["content"] }
       ],
       "threshold": 0.7,
       "max_retries": 1,
-      "mode": "enforce",
+      "mode": "audit",
       "instruct": true
     }
   ]
@@ -189,21 +194,23 @@ The entry below sets every field to its default value, apart from `rules`, which
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `rules` | string[] | required | 1 to 128 rules of 1 to 200 characters, each on one line. The evaluator checks each rule on its own. |
-| `threshold` | number | `0.7` | Probability, greater than 0 and at most 1, at or above which the evaluator marks a rule as broken. OpenRouter rejects a `threshold` of `0`, which would break every rule. |
+| `rules` | object[] | required | 1 to 128 rules. Each rule is an object with `rule`, 1 to 200 characters of text, and `watch`, one or more of `content`, `tool_calls`, `refusal`, `images`, and `audio`, each once. The evaluator checks a rule on a message that has at least one watched field, on its own; on any other message the rule is not applicable. |
+| `threshold` | number | `0.7` | Probability, from `0.01` to `1`, at or above which the evaluator marks a rule as broken. OpenRouter rejects a `threshold` below `0.01`, which would break every rule on every message. |
 | `max_retries` | integer | `1` | Number of times, 0 to 3, OpenRouter calls the model again after a blocked message in `enforce` mode. With `0`, the first blocked message is an error. |
-| `mode` | string | `enforce` | In `enforce` mode, OpenRouter blocks and retries a message that breaks a rule. In `audit` mode, OpenRouter delivers every message with its outcome. |
+| `mode` | string | `audit` | In `audit` mode, OpenRouter delivers every message with its outcome. In `enforce` mode, OpenRouter blocks and retries a message that breaks a rule, which adds the latency and the model calls of [Billing](#billing). |
 | `instruct` | boolean | `true` | Whether OpenRouter inserts the rules into the conversation as a system message. |
 
 Send at most one `alignment` entry in `plugins`, and put every rule in it. OpenRouter answers a request that has two entries, an unknown field, or a value outside its range with a `400` error.
 
-OpenRouter rejects a request with the plugin in three cases, in both modes. In these cases, your application can call the model only with a request that has no `alignment` entry.
+OpenRouter rejects a request with the plugin in five cases, in both modes. The error message names the case and the change that lets the request through.
 
-| Case | Error |
-|------|-------|
-| The workspace has [zero data retention](/guides/features/zdr), or the request has `provider.zdr: true` | `400` |
-| The request goes to a regional hostname ([In-Region Routing](/guides/features/in-region-routing)) | `400` |
-| The workspace does not allow the plugin, or its status is unknown | `403` |
+| Case | Error | What to change |
+|------|-------|----------------|
+| The request has `provider.zdr: true` | `400` | Remove `provider.zdr`, or remove the `alignment` entry. |
+| The workspace has [zero data retention](/guides/features/zdr) enforced | `400` | Remove the `alignment` entry. |
+| The request goes to a regional hostname ([In-Region Routing](/guides/features/in-region-routing)) | `400` | Send the request to `openrouter.ai`, or remove the `alignment` entry. |
+| The workspace is not admitted to the beta | `400` | Remove the `alignment` entry. |
+| The workspace has HIPAA enabled, or its HIPAA status is unknown | `403` | Remove the `alignment` entry. |
 
 ## Examples
 
@@ -211,7 +218,7 @@ Each example shows a request body for the Responses API and the response body Op
 
 ### Retry of a blocked message
 
-`mode` defaults to `enforce` and `max_retries` to `1`, so the request below triggers one retry:
+The request below sets `mode` to `enforce`. `max_retries` defaults to `1`, so a blocked message triggers one retry:
 
 1. The first message breaks the first rule, and the evaluator marks it `blocked`.
 2. OpenRouter calls the model again with the blocked message and the broken rule.
@@ -228,9 +235,10 @@ Each example shows a request body for the Responses API and the response body Op
     {
       "id": "alignment",
       "rules": [
-        "Do not say a refund is issued or approved.",
-        "Do not ask for payment card details."
-      ]
+        { "rule": "Do not say a refund is issued or approved.", "watch": ["content"] },
+        { "rule": "Do not ask for payment card details.", "watch": ["content"] }
+      ],
+      "mode": "enforce"
     }
   ]
 }
@@ -268,10 +276,12 @@ Each example shows a request body for the Responses API and the response body Op
         "outcome": "blocked",
         "rules": [
           {
+            "applicable": true,
             "probability": 0.92,
             "broken": true
           },
           {
+            "applicable": true,
             "probability": 0.02,
             "broken": false
           }
@@ -282,10 +292,12 @@ Each example shows a request body for the Responses API and the response body Op
         "outcome": "allowed",
         "rules": [
           {
+            "applicable": true,
             "probability": 0.45,
             "broken": false
           },
           {
+            "applicable": true,
             "probability": 0.02,
             "broken": false
           }
@@ -311,10 +323,11 @@ The HTTP status is `403` when OpenRouter knows the error before it sends the fir
     {
       "id": "alignment",
       "rules": [
-        "Do not say a refund is issued or approved.",
-        "Do not ask for payment card details."
+        { "rule": "Do not say a refund is issued or approved.", "watch": ["content"] },
+        { "rule": "Do not ask for payment card details.", "watch": ["content"] }
       ],
-      "max_retries": 0
+      "max_retries": 0,
+      "mode": "enforce"
     }
   ]
 }
@@ -324,7 +337,7 @@ The HTTP status is `403` when OpenRouter knows the error before it sends the fir
 {
   "id": "gen-1790884886-HLX00EKhBqbldEplq8ra",
   "error": {
-    "message": "Alignment plugin: the reply broke these rules: 0: \"Do not say a refund is issued or approved.\"",
+    "message": "Alignment plugin: the reply broke these rules: rules[0]: \"Do not say a refund is issued or approved.\"",
     "code": 403,
     "metadata": {
       "error_type": "permission_denied",
@@ -335,10 +348,12 @@ The HTTP status is `403` when OpenRouter knows the error before it sends the fir
             "outcome": "blocked",
             "rules": [
               {
+                "applicable": true,
                 "probability": 0.96,
                 "broken": true
               },
               {
+                "applicable": true,
                 "probability": 0.02,
                 "broken": false
               }
@@ -390,10 +405,11 @@ The request and response of step 2:
     {
       "id": "alignment",
       "rules": [
-        "Do not say a refund is issued or approved.",
-        "Do not ask for payment card details."
+        { "rule": "Do not say a refund is issued or approved.", "watch": ["content"] },
+        { "rule": "Do not ask for payment card details.", "watch": ["content"] }
       ],
-      "max_retries": 0
+      "max_retries": 0,
+      "mode": "enforce"
     }
   ]
 }
@@ -431,10 +447,12 @@ The request and response of step 2:
         "outcome": "allowed",
         "rules": [
           {
+            "applicable": true,
             "probability": 0.03,
             "broken": false
           },
           {
+            "applicable": true,
             "probability": 0.02,
             "broken": false
           }
@@ -458,10 +476,11 @@ This request passes `issue_refund` as a [tool](/api_reference/responses/tool-cal
     {
       "id": "alignment",
       "rules": [
-        "Never call issue_refund with amount_usd over 25."
+        { "rule": "Never call issue_refund with amount_usd over 25.", "watch": ["tool_calls"] }
       ],
       "instruct": false,
-      "max_retries": 0
+      "max_retries": 0,
+      "mode": "enforce"
     }
   ],
   "tools": [
@@ -509,7 +528,7 @@ This request passes `issue_refund` as a [tool](/api_reference/responses/tool-cal
 {
   "id": "gen-1790884907-jPvRw2jlBnEkhcI03aUP",
   "error": {
-    "message": "Alignment plugin: the reply broke these rules: 0: \"Never call issue_refund with amount_usd over 25.\"",
+    "message": "Alignment plugin: the reply broke these rules: rules[0]: \"Never call issue_refund with amount_usd over 25.\"",
     "code": 403,
     "metadata": {
       "error_type": "permission_denied",
@@ -520,6 +539,7 @@ This request passes `issue_refund` as a [tool](/api_reference/responses/tool-cal
             "outcome": "blocked",
             "rules": [
               {
+                "applicable": true,
                 "probability": 0.97,
                 "broken": true
               }
@@ -560,10 +580,11 @@ The `lookup_order` call below follows the rule about the text and the rule about
     {
       "id": "alignment",
       "rules": [
-        "Do not say a refund is issued or approved.",
-        "Never call issue_refund with amount_usd over 25."
+        { "rule": "Do not say a refund is issued or approved.", "watch": ["content"] },
+        { "rule": "Never call issue_refund with amount_usd over 25.", "watch": ["tool_calls"] }
       ],
-      "max_retries": 0
+      "max_retries": 0,
+      "mode": "enforce"
     }
   ],
   "tools": [
@@ -634,10 +655,12 @@ The `lookup_order` call below follows the rule about the text and the rule about
         "outcome": "allowed",
         "rules": [
           {
+            "applicable": true,
             "probability": 0.03,
             "broken": false
           },
           {
+            "applicable": true,
             "probability": 0.03,
             "broken": false
           }
@@ -648,9 +671,9 @@ The `lookup_order` call below follows the rule about the text and the rule about
 }
 ```
 
-### Text rule on a tool-call message
+### Rule that watches content on a tool-call message
 
-The two requests below differ only in the rule, and show a text rule and its conditional form on a message with `content: null`. They call [`anthropic/claude-sonnet-4`](https://openrouter.ai/anthropic/claude-sonnet-4) in `audit` mode rather than the model of the other examples. In most runs, that model answers `Where is my order ord_8841?` with a `lookup_order` call and no text. The first rule, `End every reply with "Best regards, Support".`, is broken on that message. The second rule, `If the content is not null, the content ends with "Best regards, Support".`, is not.
+The request below sends a rule with `watch: ["content"]` and calls [`anthropic/claude-sonnet-4`](https://openrouter.ai/anthropic/claude-sonnet-4) in `audit` mode rather than the model of the other examples. In most runs, that model answers `Where is my order ord_8841?` with a `lookup_order` call and no text, so `content` is `null`. The message has no field the rule watches, so the rule is not applicable: the evaluator is not asked about it, its record has `applicable: false` and `probability: null`, and the message is `allowed`.
 
 ```json expandable
 {
@@ -662,7 +685,7 @@ The two requests below differ only in the rule, and show a text rule and its con
       "id": "alignment",
       "mode": "audit",
       "rules": [
-        "End every reply with \"Best regards, Support\"."
+        { "rule": "End every reply with \"Best regards, Support\".", "watch": ["content"] }
       ]
     }
   ],
@@ -731,104 +754,11 @@ The two requests below differ only in the rule, and show a text rule and its con
     "calls": [
       {
         "call": 1,
-        "outcome": "blocked",
-        "rules": [
-          {
-            "probability": 0.83,
-            "broken": true
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-The same request with the conditional rule:
-
-```json expandable
-{
-  "model": "anthropic/claude-sonnet-4",
-  "instructions": "You are Northwind support. Damaged items are refunded in full. Keep replies under 15 words.",
-  "input": "Where is my order ord_8841?",
-  "plugins": [
-    {
-      "id": "alignment",
-      "mode": "audit",
-      "rules": [
-        "If the content is not null, the content ends with \"Best regards, Support\"."
-      ]
-    }
-  ],
-  "tools": [
-    {
-      "type": "function",
-      "name": "lookup_order",
-      "description": "Look up an order by id",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "order_id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "order_id"
-        ]
-      }
-    },
-    {
-      "type": "function",
-      "name": "issue_refund",
-      "description": "Issue a refund for an order",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "order_id": {
-            "type": "string"
-          },
-          "amount_usd": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "order_id",
-          "amount_usd"
-        ]
-      }
-    }
-  ]
-}
-```
-
-```json
-{
-  "id": "gen-1790886038-8q4hNlPnbrDQY2aE3Egw",
-  "object": "response",
-  "status": "completed",
-  "output": [
-    {
-      "id": "fc_tmp_zrl4jeixl2l",
-      "type": "function_call",
-      "status": "completed",
-      "call_id": "toolu_bdrk_01WyeGnTd4zz4XiJk5RrZwop",
-      "name": "lookup_order",
-      "arguments": "{\"order_id\": \"ord_8841\"}"
-    }
-  ],
-  "usage": {
-    "input_tokens": 517,
-    "output_tokens": 58,
-    "total_tokens": 575
-  },
-  "alignment": {
-    "calls": [
-      {
-        "call": 1,
         "outcome": "allowed",
         "rules": [
           {
-            "probability": 0.1,
+            "applicable": false,
+            "probability": null,
             "broken": false
           }
         ]
@@ -840,7 +770,7 @@ The same request with the conditional rule:
 
 ### Checked message in a stream
 
-In `enforce` mode with `stream: true`, OpenRouter holds the events of a message until the check has finished. An allowed message then streams as usual; a blocked message ends the stream with the error of [Errors](#errors). The stream below consisted of `response.created`, `response.in_progress`, `response.failed`, and `[DONE]`. The `response.failed` event:
+In `enforce` mode with `stream: true`, OpenRouter holds the events of a message until the check has finished, so the client receives no tokens during the generation and the check, and a retry repeats the wait. The connection stays open: on Chat Completions, OpenRouter sends the SSE comment line `: OPENROUTER PROCESSING` about every 420 ms during the hold, which SSE clients ignore. An allowed message then streams as usual; a blocked message ends the stream with the error of [Errors](#errors). The stream below consisted of `response.created`, `response.in_progress`, `response.failed`, and `[DONE]`. The `response.failed` event:
 
 ```json
 {
@@ -851,10 +781,11 @@ In `enforce` mode with `stream: true`, OpenRouter holds the events of a message 
     {
       "id": "alignment",
       "rules": [
-        "Do not say a refund is issued or approved.",
-        "Do not ask for payment card details."
+        { "rule": "Do not say a refund is issued or approved.", "watch": ["content"] },
+        { "rule": "Do not ask for payment card details.", "watch": ["content"] }
       ],
-      "max_retries": 0
+      "max_retries": 0,
+      "mode": "enforce"
     }
   ],
   "stream": true
@@ -870,8 +801,8 @@ data: {
     "status": "failed",
     "output": [],
     "error": {
-      "code": "server_error",
-      "message": "Alignment plugin: the reply broke these rules: 0: \"Do not say a refund is issued or approved.\"",
+      "code": "permission_denied",
+      "message": "Alignment plugin: the reply broke these rules: rules[0]: \"Do not say a refund is issued or approved.\"",
       "metadata": {
         "alignment": {
           "calls": [
@@ -880,10 +811,12 @@ data: {
               "outcome": "blocked",
               "rules": [
                 {
+                  "applicable": true,
                   "probability": 0.93,
                   "broken": true
                 },
                 {
+                  "applicable": true,
                   "probability": 0.02,
                   "broken": false
                 }
@@ -921,14 +854,14 @@ data: {
 
 ## Response fields
 
-Every response that follows at least one message carries `alignment`. In a non-streaming response, it is a top-level field. In a stream, it is on the response object inside `response.completed`. In an error, it is `error.metadata.alignment`. [Retry of a blocked message](#retry-of-a-blocked-message) shows an object with two records.
+Every completed response of a request with the plugin carries `alignment`, apart from a response that ends in a provider error before any message was evaluated; `calls` is empty when no message had content to check, such as a message that holds only reasoning. In a non-streaming response, it is a top-level field. In a stream, it is on the response object inside `response.completed`. In an error, it is `error.metadata.alignment`. [Retry of a blocked message](#retry-of-a-blocked-message) shows an object with two records.
 
 | Field | Type | Description |
 |-------|------|-------|
-| `calls` | object[] | One record per message, in the order the model produced the messages. A model call that failed before it produced a message has no record. |
+| `calls` | object[] | One record per checked message, in the order the model produced the messages. A model call that failed before it produced a message, or a message without content to check, has no record. |
 | `calls[].call` | integer | Position of the message, counted from 1. |
 | `calls[].outcome` | string | `allowed`, `blocked`, or `unavailable`. |
-| `calls[].rules` | object[] | One record per rule, in the order of the request's `rules`, with the `probability` the evaluator gave and whether the evaluator marked the rule as `broken`. Present when the outcome is `allowed` or `blocked`. |
+| `calls[].rules` | object[] | One record per rule, in the order of the request's `rules`: `applicable`, whether the message has a field the rule watches; `probability`, the evaluator's probability that the message breaks the rule, `null` when the rule is not applicable; and `broken`, whether `probability` is at or above `threshold`, `false` when the rule is not applicable. Present on `allowed` and `blocked` records. |
 | `calls[].reason` | string | Why the evaluator did not check the message: `cut`, `evaluator_error`, `malformed_answer`, or `time_limit`. Present when the outcome is `unavailable`. [Unavailable outcomes](#unavailable-outcomes) explains each reason. |
 | `rejected` | object[] | The blocked message, in the shape of `output` items ([Errors](#errors)). Present in `error.metadata.alignment` of the error for a blocked message only. |
 
@@ -938,7 +871,7 @@ In `enforce` mode, OpenRouter returns an error for a `blocked` message with no r
 
 | Outcome of the last message | HTTP status and `error.code` | `error.metadata.error_type` | `error.message` |
 |-----|-----|-----|-----|
-| `blocked` | `403` | `permission_denied` | `Alignment plugin: the reply broke these rules: <index>: "<rule>"`, with each broken rule separated by `; ` |
+| `blocked` | `403` | `permission_denied` | `Alignment plugin: the reply broke these rules: rules[<index>]: "<rule>"`, with each broken rule separated by `; ` |
 | `unavailable` | `503` | `provider_overloaded` | `Alignment plugin: the reply could not be evaluated: <reason>` |
 
 The body of a non-streaming error has `error`, `usage` summed over every model call of the request, and `error.metadata.alignment`. [Error instead of a retry](#error-instead-of-a-retry) and [Blocked tool call](#blocked-tool-call) show the body for a blocked message. The body for an unavailable message has this shape:
@@ -976,7 +909,7 @@ For a blocked message, `error.metadata.alignment.rejected` holds the blocked mes
 - `image_generation_call`: `ig_<turn id>_<index>`.
 - A native tool call such as `web_search_call`: the provider's item id.
 
-For a streaming request, the HTTP status is `200`. OpenRouter sends the error as the `error` field of the response object inside `response.failed` and then `[DONE]`. The `code` of that `error` is a string from the [Responses API error codes](/api_reference/responses/error-handling), `server_error` for both errors. `error_type` sits next to `error` on the response object. `error.metadata.alignment` has the same content in both shapes. [Checked message in a stream](#checked-message-in-a-stream) shows the streaming shape.
+For a streaming request, the HTTP status is `200`. OpenRouter sends the error as the `error` field of the response object inside `response.failed` and then `[DONE]`. The `code` of that `error` is `permission_denied` for a blocked message and `server_error` for an unavailable outcome; the other codes are listed in [Responses API error codes](/api_reference/responses/error-handling). `error_type` sits next to `error` on the response object with the same two values. A client identifies a block by `error.metadata.alignment`, which is present whatever the status and the transport. `error.metadata.alignment` has the same content in both shapes. [Checked message in a stream](#checked-message-in-a-stream) shows the streaming shape.
 
 ## Unavailable outcomes
 
@@ -989,7 +922,7 @@ The evaluator marks a message `unavailable`, with a `reason` in its `alignment.c
 | `malformed_answer` | The evaluator returned an answer OpenRouter cannot parse. |
 | `time_limit` | The evaluator did not answer within 4 seconds. OpenRouter sets this limit; it is not a request field. |
 
-The size limits apply to each part of a message. Lengths are in UTF-16 code units, the unit of `string.length` in JavaScript.
+The size limits apply to each part of a message, and only when at least one rule is applicable to the message; a message no rule watches is allowed without a size check. Lengths are in UTF-16 code units, the unit of `string.length` in JavaScript.
 
 | Part of the message | Limit |
 |------|------|
@@ -1025,10 +958,11 @@ For each rule, the evaluator receives the rule and the message in this form:
 | `images` | object[] | One entry per image of the message |
 | `audio` | object | `{ "transcript": ... }`, the audio transcript of the message |
 
-`content` is always present. The other fields are present when the message has that part. The evaluator sees the rule and this message, and answers `Does this assistant message break the rule?` with a probability.
+`content` is always present. The other fields are present when the message has that part. Each rule names the fields it watches in `watch`. The evaluator is asked about a rule when the message has at least one watched field; it then sees the rule and this message, and answers `Does this assistant message break the rule?` with a probability. A rule with no watched field in the message is not applicable: it is not sent to the evaluator, and its record has `applicable: false`, `probability: null`, and `broken: false`.
 
-- A rule applies to the fields above: a rule about text to `content`, a rule about tool calls to `tool_calls`. On a message that consists of tool calls, `content` is `null`. The evaluator treats a step of an agent loop and the last message of a conversation alike.
-- A rule that requires a property of the text, such as `End every reply with "Best regards, Support".`, is broken on a message with `content: null`. A rule with a condition, such as `If the content is not null, the content ends with "Best regards, Support".`, is not broken on a message that fails the condition. [Text rule on a tool-call message](#text-rule-on-a-tool-call-message) shows both.
+- A rule about text watches `content`; a rule about tool calls watches `tool_calls`. On a message that consists of tool calls, `content` is `null`, so a rule that watches only `content` is not applicable to it. [Rule that watches content on a tool-call message](#rule-that-watches-content-on-a-tool-call-message) shows this.
+- A rule that watches several fields, such as `["content", "tool_calls"]`, applies to a message that has any of them, and the evaluator reads the whole message when it answers.
+- The evaluator treats a step of an agent loop and the last message of a conversation alike. A clarifying question and a complete answer both have `content`, so a rule that watches `content` applies to both.
 - A rule about text applies to JSON in `content` as text: `{"action":"delete_file","path":"config.yaml"}` in `content` breaks `Do not delete a file outside the dist directory.`.
 - A rule about a tool call, such as `Do not call charge_card with amount_cents above 5000.`, applies to the `name` and `arguments` in `tool_calls` before the tool runs.
 - A rule that depends on data outside the message, such as the user's message or a price list, gets a probability without that data.
@@ -1042,10 +976,12 @@ The table lists rules that the evaluator reads in a way their authors did not in
 | `Answer in the language of the user.` | Depends on the user's message, which is outside the input of the evaluator. | `The content is written in French.` |
 | `Only answer questions about billing.` | Depends on the user's message. | `Do not discuss anything but billing.` |
 | `The final answer must cite a source.` | Depends on which message is the final answer, which is outside the input of the evaluator. In testing, a message that only calls `web_search` breaks this rule. | `If the content states a fact, the content cites a source.` |
-| `End every reply with "Best regards, Support".` | Broken on a message with `content: null`. | `If the content is not null, the content ends with "Best regards, Support".` |
+| `End every reply with "Best regards, Support".` with `watch: ["content", "tool_calls"]` | Broken on a message that consists of tool calls, which has no text to end. | The same rule with `watch: ["content"]`, which is not applicable to that message. |
 | `Never state a wrong price.` | Depends on the price list, which is outside the input of the evaluator. | Put the price list in the system message and drop the rule. |
 | `Be helpful.` | Names no property of the message. | A rule that names a property of `content` or `tool_calls`. |
 | `Do not offer a discount and always be polite.` | Yields one probability for two properties. | `Never offer a discount.` and `Be polite.` as two rules. |
+
+The evaluator reads a statement of policy and a commitment the same way. Against `Do not say a refund is issued or approved.`, the reply `Yes, damaged items are refunded in full.` scored between 0.41 and 0.94 across models and runs, so at `threshold` 0.7 the same wording passes on one request and is blocked on the next. Read the probabilities in `audit` mode on your own traffic before you choose a `threshold`, and word a rule so that the messages it forbids and the messages it allows score far apart.
 
 ## Billing
 
@@ -1061,9 +997,9 @@ The `plugins` entry, the rules, the check, the retry, and the `alignment` object
 
 - `alignment` is a top-level field of the response. In a stream, it is on the last data event before `[DONE]`.
 - `rejected` is the blocked message with the fields `role`, `content`, `tool_calls`, `refusal`, `images`, and `audio`. The `audio` of a `rejected` message holds the `id` and `transcript` of the message's audio. A tool call without arguments has `arguments: "{}"`.
-- In a stream, the error is a data event with `error`, followed by the `usage` event and `[DONE]`.
+- In a stream, the error is a data event with `error`, followed by a chunk with an empty `delta` and `usage`. OpenRouter then closes the stream without `[DONE]`, as after every Chat Completions stream error.
 
-On Chat Completions, your application reads `alignment` from the raw response body, because `@openrouter/sdk` 1.4.15 types the field on the Responses result only. The request of [Error instead of a retry](#error-instead-of-a-retry) as your application sends it to Chat Completions, and the response body OpenRouter returned:
+The OpenAPI specification types `alignment` on the Chat Completions result and stream chunk as well as on the Responses result, so `@openrouter/sdk` generated from it types the field on both APIs. The request of [Error instead of a retry](#error-instead-of-a-retry) as your application sends it to Chat Completions, and the response body OpenRouter returned:
 
 ```json
 {
@@ -1082,10 +1018,11 @@ On Chat Completions, your application reads `alignment` from the raw response bo
     {
       "id": "alignment",
       "rules": [
-        "Do not say a refund is issued or approved.",
-        "Do not ask for payment card details."
+        { "rule": "Do not say a refund is issued or approved.", "watch": ["content"] },
+        { "rule": "Do not ask for payment card details.", "watch": ["content"] }
       ],
-      "max_retries": 0
+      "max_retries": 0,
+      "mode": "enforce"
     }
   ]
 }
@@ -1095,7 +1032,7 @@ On Chat Completions, your application reads `alignment` from the raw response bo
 {
   "id": "gen-1790884912-vYKml04LUCV8gMmJIFEk",
   "error": {
-    "message": "Alignment plugin: the reply broke these rules: 0: \"Do not say a refund is issued or approved.\"",
+    "message": "Alignment plugin: the reply broke these rules: rules[0]: \"Do not say a refund is issued or approved.\"",
     "code": 403,
     "metadata": {
       "error_type": "permission_denied",
@@ -1106,10 +1043,12 @@ On Chat Completions, your application reads `alignment` from the raw response bo
             "outcome": "blocked",
             "rules": [
               {
+                "applicable": true,
                 "probability": 0.88,
                 "broken": true
               },
               {
+                "applicable": true,
                 "probability": 0.03,
                 "broken": false
               }
@@ -1132,7 +1071,7 @@ On Chat Completions, your application reads `alignment` from the raw response bo
 }
 ```
 
-With `stream: true`, the same request yields three events: the error event, a chunk with an empty delta and `usage`, and `[DONE]`:
+With `stream: true`, the same request yields two events, the error event and a chunk with an empty delta and `usage`, and the stream closes:
 
 ```text
 data: {
@@ -1141,7 +1080,7 @@ data: {
   "choices": [],
   "error": {
     "code": 403,
-    "message": "Alignment plugin: the reply broke these rules: 0: \"Do not say a refund is issued or approved.\"",
+    "message": "Alignment plugin: the reply broke these rules: rules[0]: \"Do not say a refund is issued or approved.\"",
     "metadata": {
       "error_type": "permission_denied",
       "alignment": {
@@ -1151,10 +1090,12 @@ data: {
             "outcome": "blocked",
             "rules": [
               {
+                "applicable": true,
                 "probability": 0.97,
                 "broken": true
               },
               {
+                "applicable": true,
                 "probability": 0.02,
                 "broken": false
               }
@@ -1191,8 +1132,6 @@ data: {
     "total_tokens": 88
   }
 }
-
-data: [DONE]
 ```
 
 ## Next steps
