@@ -22,7 +22,7 @@ import { Template } from "/snippets/exports/Template.jsx";
 
 ## Service Tiers
 
-Some providers sell the same model at more than one grade of capacity. Every request uses the standard tier unless you ask for another one; the exception is priority endpoints of open-weight models, which also compete for default traffic (see [Finding Tier Endpoints](#finding-tier-endpoints)):
+Some providers sell the same model at more than one grade of capacity. Every request uses the standard tier unless you ask for another one; the exception is tier endpoints of open-weight models, which also compete for default traffic (see [Finding Tier Endpoints](#finding-tier-endpoints)):
 
 | Tier | Also called | Tradeoff |
 | --- | --- | --- |
@@ -266,7 +266,7 @@ Non-default tier endpoints (`flex`, `priority`, `ultrafast`) are only considered
 - `"provider": { "only": ["openai/fast"] }` restricts routing to OpenAI's Fast tier. See [Provider Selection](/guides/routing/provider-selection) for `provider.order` and `provider.only` in full.
 - The `fast` and `priority` slug suffixes are interchangeable, so `openai/priority` matches the same endpoint as `openai/fast`.
 
-Requests that don't use any of these never reach a flex, ultrafast, or closed-weight tier endpoint. Priority endpoints of open-weight models are the exception: they take part in default routing, as described below.
+Requests that don't use any of these never reach an ultrafast or closed-weight tier endpoint. Priority and flex endpoints of open-weight models are the exception: they take part in default routing, as described below.
 
 ### Comparing Tier Selection Options
 
@@ -294,7 +294,7 @@ Every tier endpoint is marked the same way, whichever provider sells it:
 
 Providers implement a tier in one of two ways: some expose it as a parameter on the same upstream model, others serve it as a dedicated upstream model id. A tier endpoint behaves the same in routing, in the `service_tier` request parameter and tier slugs, in the response's `service_tier` field, and in billing, whichever way its provider built it.
 
-Listing doesn't change routing. Flex endpoints, and every tier endpoint of a closed-weight model, are opt-in: they serve only when you request the tier or pin the provider, as described in [How Routing Works](#how-routing-works). Priority endpoints of open-weight models take part in default routing like any other endpoint, so you may be served by one without asking.
+Listing doesn't change routing. Ultrafast endpoints, and every tier endpoint of a closed-weight model, are opt-in: they serve only when you request the tier or pin the provider, as described in [How Routing Works](#how-routing-works). Priority and flex endpoints of open-weight models take part in default routing like any other endpoint, so you may be served by one without asking.
 
 The response's `service_tier` field reports which tier was actually used. Possible values:
 
