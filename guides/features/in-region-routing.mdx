@@ -226,7 +226,7 @@ See [Declaring a Data Region on a Key](/guides/overview/auth/byok#declaring-a-da
 
 ### Baseten
 
-To use Baseten under in-region routing, create a [regional Dedicated Deployment](https://docs.baseten.co/deployment/regional-deployments) in Baseten and add its URL as a [private model](/guides/routing/private-models) on OpenRouter. OpenRouter derives the region from the `model-{model_id}-region-{us|eu}.api.baseten.co` hostname: a `region-eu` deployment is eligible on `eu.openrouter.ai`, a `region-us` deployment on `us.openrouter.ai`.
+To use Baseten under in-region routing, create a [regional Dedicated Deployment](https://docs.baseten.co/deployment/regional-deployments) in Baseten and add its URL as a [private endpoint](/guides/routing/private-endpoints) on OpenRouter. OpenRouter derives the region from the `model-{model_id}-region-{us|eu}.api.baseten.co` hostname: a `region-eu` deployment is eligible on `eu.openrouter.ai`, a `region-us` deployment on `us.openrouter.ai`.
 
 The region is fixed per deployment, so changing the URL on OpenRouter re-derives it. Shared Model APIs, non-regional dedicated hosts, and regional environments are served on the global domain only.
 

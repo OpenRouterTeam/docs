@@ -102,6 +102,9 @@ OpenRouter traces include the following key attributes. Elastic spans use the cu
 - `gen_ai.usage.cache_read.input_tokens`: Input tokens served from the provider's prompt cache
 - `gen_ai.usage.audio.input_tokens`: Audio input tokens, when the provider reports them
 - `gen_ai.usage.reasoning.output_tokens`: Reasoning output tokens, when the provider reports them
+- `gen_ai.input.messages`: The request messages as a JSON string, in the OpenTelemetry `role` and `parts` format
+- `gen_ai.output.messages`: The model's response as a JSON string, with reasoning, text, and tool call parts
+- `gen_ai.tool.definitions`: The tools offered to the model, as a JSON string
 
 ## Custom Metadata
 

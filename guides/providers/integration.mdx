@@ -791,7 +791,7 @@ OpenRouter recognizes the suffix whenever the standard `id` is also published an
 
 ##### Option 2: the same id with `service_tier`
 
-Use this when your API selects the tier with a request parameter and reports the tier that served the request in the response. Publish one document per tier under the same `id` and mark each non-default document with `service_tier`:
+Use this when your API selects the tier with a `service_tier` request parameter and echoes the tier that actually served the request as a top-level `service_tier` field in the response. Both halves are required: OpenRouter bills the served tier, so a request your API silently downgraded must come back saying so. Publish one document per tier under the same `id` and mark each non-default document with `service_tier`:
 
 ```json lines
 [
@@ -806,7 +806,7 @@ Accepted values are `flex`, `priority`, and the priority labels `fast`, `turbo`,
 Behavior:
 
 - OpenRouter creates a separate endpoint for each tier document, using that document's own pricing, context length, limits, and capabilities. A priority tier with a shorter context window, or a flex tier with fewer supported parameters, declares those differences in its own document.
-- OpenRouter's integration for your API must forward the tier on each request and read back the tier that served it. Tier endpoints stay hidden until that integration is in place, so coordinate with us before publishing tier documents. `service_tier` is OpenRouter's vocabulary, not your API's: if your API names a tier differently, for example `standby` for a discounted tier, still publish it as `flex` here.
+- OpenRouter sends the endpoint's tier as `service_tier` on every request and reads the served tier back from the response's `service_tier`. A tier endpoint is unhidden automatically only once a baseline request for its tier comes back echoing that same tier; a missing, `null`, or different echo keeps it hidden, with the reason shown in your provider dashboard. There is no allowlist for providers that honor the tier without echoing it, because without the echo OpenRouter cannot tell a served request from a downgraded one. `service_tier` is OpenRouter's vocabulary, not your API's: if your API names a tier differently, for example `standby` for a discounted tier, still publish it as `flex` here and echo `flex`.
 - Keep the standard endpoint for the same `id` published and live. When your API serves a lower tier than the one requested, OpenRouter bills the request at your standard endpoint's price for that model, and it needs that endpoint to be live to do so. A tier endpoint is only shown while its standard endpoint is; if the standard endpoint is hidden or removed, OpenRouter hides its tier endpoints as well, and they stay hidden until you re-enable them (from your provider dashboard, or by asking us) once the standard endpoint is back.
 - A tier document is staged only once OpenRouter serves the default tier of the same `id`. Publish the default document first, or alongside the tier documents.
 - A document cannot combine `is_free: true` with `service_tier`. Free endpoints are a separate variant of the default tier.
