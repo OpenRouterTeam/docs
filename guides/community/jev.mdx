@@ -22,7 +22,7 @@ models:
 {/* <llms-ignore> */}
 ## Jev on OpenRouter
 
-Jev is a structured decision model from [TypeSafe](https://docs.typesafe.ai), and the first of its System One models. Send it application state and one or more typed questions, and get back a typed answer with probabilities instead of generated text. `typesafe/jev-1.13` (or the `~typesafe/jev-latest` alias) is available to anyone with an [OpenRouter API key](https://openrouter.ai/settings/keys), and billed to your OpenRouter account.
+Jev is a structured decision model from [TypeSafe](https://docs.typesafe.ai), and the first of its System One models. Send it application state and one or more typed questions, and get back a typed answer with probabilities instead of generated text. `typesafe/jev-1.14` (or the `~typesafe/jev-latest` alias) is available to anyone with an [OpenRouter API key](https://openrouter.ai/settings/keys), and billed to your OpenRouter account.
 
 This is the index for every Jev resource on OpenRouter, and your entry point to the upstream TypeSafe documentation.
 
@@ -30,7 +30,7 @@ This is the index for every Jev resource on OpenRouter, and your entry point to 
   <Card title="Jev Tutorial" icon="bolt" href="/guides/community/jev-tutorial">
     Step-by-step quickstart. Make your first Choice, Noul, and Score call with curl, TypeScript, or Python.
   </Card>
-  <Card title="Jev model page" icon="cube" href="https://openrouter.ai/typesafe/jev-1.13">
+  <Card title="Jev model page" icon="cube" href="https://openrouter.ai/typesafe/jev-1.14">
     Current pricing, context length, provider, and data policy.
   </Card>
   <Card title="Decisions API reference" icon="code" href="/api/api-reference/alphadecisions/submit-a-decisions-questions-and-answers-request">
@@ -48,22 +48,56 @@ This is the index for every Jev resource on OpenRouter, and your entry point to 
 
 Jev is a [System One](https://docs.typesafe.ai/concepts/system-one) model. System One models make fast, structured decisions for software. They are suited for any routing, classification, verification, ranking, or other decision point in your app where a predictable typed answer matters more than generated prose.
 
-Jev answers three kinds of question, called primitives:
+Jev answers four kinds of question, called primitives:
 
 | Primitive | Question it answers | What comes back |
 | --- | --- | --- |
 | [Choice](https://docs.typesafe.ai/primitives/choice) | Which one of these options? | The selected option, a probability for each option, and a confidence value |
 | [Noul](https://docs.typesafe.ai/primitives/noul) | Does this condition hold? | The probability of yes |
 | [Score](https://docs.typesafe.ai/primitives/score) | Where does this fall on an ordered scale? | A probability-weighted position, a probability for each level, and a confidence value |
+| [Box](https://docs.typesafe.ai/go/box) | Where in this image is the thing I describe? | The box's `top`, `bottom`, `left`, and `right` edges as fractions of the image's width and height, and a confidence value |
 
 Because the output is typed, code branches on it directly. Jev does not produce reasoning traces, explanations, or free-form text. It is not a drop-in replacement for a chat model. It replaces the prompt-and-parse step where you were asking an LLM a narrow question and extracting a label from its answer.
 
-Below are the key facts, current as of the [Jev model page](https://openrouter.ai/typesafe/jev-1.13):
+Below are the key facts, current as of the [Jev model page](https://openrouter.ai/typesafe/jev-1.14):
 
-- **Model ID:** `typesafe/jev-1.13`. The `~typesafe/jev-latest` alias tracks the newest release.
-- **Input:** text, as a `state` object plus your `questions`. Context length is 32,000 tokens.
+- **Model ID:** `typesafe/jev-1.14`. The `~typesafe/jev-latest` alias tracks the newest release. `typesafe/jev-1.13` is still available.
+- **Input:** text and images, as a `state` object plus your `questions`. Context length is 262,144 tokens. See [Multimodal Decisions](/guides/community/multimodal-decisions) for the image format and limits.
 - **Output:** typed decisions. Output tokens are free. You pay per input token at the price on the model page.
 - **Provider:** TypeSafe, routed through OpenRouter.
+
+### Box questions
+
+A Box question asks Jev 1.14 to find one target in an image in `state` and answers with one box. It takes `type` and `instructions` and no `criteria`. Write `instructions` as a description of the target, not a command, and name the image it is in. Box needs `typesafe/jev-1.14` (or `~typesafe/jev-latest`): Jev 1.13 rejects it with a `400`, and no other Decisions model supports it.
+
+```json
+{
+  "model": "typesafe/jev-1.14",
+  "state": [
+    "Product photo from the listing:",
+    { "type": "image_url", "image_url": { "url": "data:image/png;base64,iVBORw0KGgo..." } }
+  ],
+  "questions": {
+    "product": { "type": "box", "instructions": "the product in the listing photo" }
+  }
+}
+```
+
+The answer nests the four edges under `box`. `left` and `right` are fractions of the image's width, and `top` and `bottom` are fractions of its height, measured from the top-left corner:
+
+```json
+{
+  "product": {
+    "type": "box",
+    "box": { "top": 0.49, "bottom": 0.89, "left": 0.58, "right": 0.96 },
+    "confidence": 0.93
+  }
+}
+```
+
+Box has no "not found" answer: it returns four edges even when the target is not in the image. To check whether the target is there, ask a [Noul](https://docs.typesafe.ai/primitives/noul) question about it in the same request.
+
+TypeSafe marks image input and Box as early features whose request format, answers, and limits can change between releases.
 
 ### Get access to Jev
 
@@ -111,9 +145,9 @@ TypeSafe maintains the concept, prompting, and SDK documentation for Jev. These 
 
 **Who makes Jev?** TypeSafe. OpenRouter routes your request to TypeSafe, then bills it to your OpenRouter account.
 
-**How much does Jev cost?** Jev charges for input tokens, and output tokens are free. To find the current input token price, see the [Jev model page](https://openrouter.ai/typesafe/jev-1.13). Every Jev response includes a `usage.cost` field that tells you the cost of the response in USD.
+**How much does Jev cost?** Jev charges for input tokens, and output tokens are free. To find the current input token price, see the [Jev model page](https://openrouter.ai/typesafe/jev-1.14). Every Jev response includes a `usage.cost` field that tells you the cost of the response in USD.
 
-**What is Jev's context window?** 32,000 tokens. That's the `state` you send plus the questions.
+**What is Jev's context window?** 262,144 tokens. That's the `state` you send plus the questions. Requests with more than about 32,000 bytes of text, and every request with an image, run in TypeSafe's long-context mode, which TypeSafe says is slower and less accurate than staying within its default limits. Shorter text requests use the default mode.
 
 **Do I need a TypeSafe account or API key?** No, an OpenRouter API key authenticates both the Decisions API and the TypeSafe SDK pointed at OpenRouter.
 

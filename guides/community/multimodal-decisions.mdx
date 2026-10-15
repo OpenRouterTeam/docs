@@ -16,20 +16,21 @@ noindex: false
 nofollow: false
 icon: image
 models:
-  - perplexity/pplx-decider-v1-27b
   - perplexity/pplx-decider-v1.1-27b
   - cloudflare/clef
   - cloudflare/clef-flash
   - cloudflare/clef-omni
   - openai/gpt-6-luna-decisions
   - inception/mercury-decide
+  - typesafe/jev-1.14
+  - typesafe/jev-1.13
+  - typesafe/jev-latest
 ---
 
 Decisions models answer typed questions about content you send in `state`. These models also accept media:
 
 | Model | Input |
 | --- | --- |
-| [`perplexity/pplx-decider-v1-27b`](https://openrouter.ai/perplexity/pplx-decider-v1-27b) | Text and images |
 | [`perplexity/pplx-decider-v1.1-27b`](https://openrouter.ai/perplexity/pplx-decider-v1.1-27b) | Text and images |
 | [`~perplexity/pplx-decider-latest`](https://openrouter.ai/~perplexity/pplx-decider-latest) | Text and images |
 | [`cloudflare/clef`](https://openrouter.ai/cloudflare/clef) | Text and images |
@@ -37,8 +38,11 @@ Decisions models answer typed questions about content you send in `state`. These
 | [`cloudflare/clef-omni`](https://openrouter.ai/cloudflare/clef-omni) | Text, images, audio, and video |
 | [`openai/gpt-6-luna-decisions`](https://openrouter.ai/openai/gpt-6-luna-decisions) | Text and images |
 | [`inception/mercury-decide`](https://openrouter.ai/inception/mercury-decide) | Text and images |
+| [`typesafe/jev-1.14`](https://openrouter.ai/typesafe/jev-1.14) | Text and images, plus [Box](/guides/community/jev#box-questions) questions |
+| [`typesafe/jev-1.13`](https://openrouter.ai/typesafe/jev-1.13) | Text and images |
+| [`~typesafe/jev-latest`](https://openrouter.ai/~typesafe/jev-latest) | Text and images, plus [Box](/guides/community/jev#box-questions) questions |
 
-Text-only Decisions requests, including every request to [Jev](/guides/community/jev), work the same as before.
+Text-only Decisions requests work the same as before.
 
 ## Quickstart
 
@@ -97,9 +101,9 @@ An image is an item of the `state` array with this shape, the same image part Ch
 { "type": "image_url", "image_url": { "url": "data:image/jpeg;base64,/9j/4AAQ..." } }
 ```
 
-- `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Remote `http(s)` URLs are not fetched.
+- `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Jev accepts only `image/png` and `image/jpeg`. Remote `http(s)` URLs are not fetched.
 - `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, Clef Omni, and Mercury Decide ignore it.
-- Put image parts directly in the top-level `state` array. Images nested inside other objects in `state` are not read as images.
+- Put image parts directly in the top-level `state` array. Images nested inside other objects in `state` are not read as images, except by Jev, which also reads image parts at any depth in `state` and in a question's `instructions` and `criteria`. A Score answer whose `legend` names an image returns your original image part.
 - Send at most 4 images per request to Clef, Clef Flash, and Clef Omni, at most 16 to Mercury Decide, and at most 128 to GPT-6 Luna Decisions.
 - Text items in the array are plain strings, not `{ "type": "text" }` parts.
 
@@ -133,6 +137,7 @@ These shapes are not image inputs:
 - **Text length on Clef and Clef Flash.** Workers AI reads roughly the first 2,000 tokens of text in `state` and drops the rest without an error. Images are counted separately.
 - **Image size on Mercury Decide.** A 7 MB JPEG (a 10 MB request body) is accepted and billed as about 1,000 input tokens. A 12 MB image fails with a `422`, and a 16 MB image with a `413`, so keep each image under a few MB.
 - **Provider errors on Mercury Decide.** Image parts pass through to Inception as sent, so an image it can't read (a remote URL, a raw base64 string) or more than 16 images fails with a `422` from the provider rather than a `400` from OpenRouter.
+- **Image size on Jev.** Each image must be 256 to 1,568 pixels on each side and 78,400 to 2,458,624 pixels in total, with inclusive limits. Images below the minimum dimensions return a `400`; images above the maximum dimensions or other size limits return a `413`. Each decoded PNG or JPEG file can be at most 16 MiB. TypeSafe also limits the request body (including base64), all processed images together, and the expanded request (text, questions, structure, and image occurrences) to 32 MiB each. Processing can make images larger than the uploaded files, so fitting the upload-body limit alone is not enough. See [TypeSafe's image limits](https://docs.typesafe.ai/images#limits) for details. Animated PNGs are rejected, and EXIF orientation is not applied, so rotate photos before encoding them. Images count as input tokens at the normal price, and every request with an image runs in TypeSafe's long-context mode.
 - See each [model page](https://openrouter.ai/models) for the current context length and pricing.
 
 ## Related
