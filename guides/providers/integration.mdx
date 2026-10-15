@@ -774,7 +774,7 @@ You can list both a free and a paid version of the same model. Just always set `
 
 #### Service tiers
 
-If you sell more than one grade of capacity for a model, OpenRouter lists each grade as its own [service tier endpoint](/guides/features/service-tiers). Users reach it through the `service_tier` request parameter, the `:nitro` and `:floor` variants, and tier-suffixed provider slugs, and it carries a tier badge and a `service_tier` value in the endpoints API. There are two ways to publish one; pick the first unless your API already has a tier parameter.
+If you sell more than one grade of capacity for a model, OpenRouter lists each grade as its own [service tier endpoint](/guides/features/service-tiers). Users reach it through the `service_tier` request parameter, the `:nitro` and `:floor` variants, and tier-suffixed provider slugs; on open-weight models, priority and flex tier endpoints also compete for default traffic. It carries a tier badge and a `service_tier` value in the endpoints API. There are two ways to publish one; pick the first unless your API already has a tier parameter.
 
 ##### Option 1: a dedicated model id (recommended)
 
