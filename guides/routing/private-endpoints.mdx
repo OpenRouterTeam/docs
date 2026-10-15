@@ -1,12 +1,12 @@
 ---
 publish: true
-title: Private Models
-description: Bring your own model to OpenRouter, scoped to approved users and organizations
-seoTitle: 'Private Models | Private Endpoints on OpenRouter'
+title: Private Endpoints
+description: Bring your own model endpoints to OpenRouter, scoped to approved users and organizations
+seoTitle: 'Private Endpoints | Bring Your Own Model Endpoints to OpenRouter'
 og:site_name: OpenRouter Documentation
-og:title: 'Private Models - Bring Your Own Model Endpoints to OpenRouter'
-og:description: 'Route to your own dedicated or fine-tuned deployment of a catalog model through the OpenRouter API. Private models are scoped to approved users and organizations and hidden from public model lists.'
-og:image: https://openrouter.ai/dynamic-og?title=Private%20Models&description=Bring%20your%20own%20model%20endpoints%20to%20OpenRouter
+og:title: 'Private Endpoints - Bring Your Own Model Endpoints to OpenRouter'
+og:description: 'Route to your own dedicated or fine-tuned deployment of a catalog model through the OpenRouter API. Private endpoints are scoped to approved users and organizations and hidden from public model lists.'
+og:image: https://openrouter.ai/dynamic-og?title=Private%20Endpoints&description=Bring%20your%20own%20model%20endpoints%20to%20OpenRouter
 og:image:width: 1200
 og:image:height: 630
 twitter:card: summary_large_image
@@ -17,16 +17,16 @@ icon: lock
 ---
 
 <Note>
-Private Models are available for Enterprise Plan customers. Talk to your OpenRouter account representative, or visit [openrouter.ai/enterprise/form](https://openrouter.ai/enterprise/form) to learn about upgrading to Enterprise.
+Private Endpoints are available for Enterprise Plan customers. Talk to your OpenRouter account representative, or visit [openrouter.ai/enterprise/form](https://openrouter.ai/enterprise/form) to learn about upgrading to Enterprise.
 </Note>
 
-Private Models let you route to your own dedicated or fine-tuned deployment of a catalog model through OpenRouter, alongside the public models you already use. OpenRouter adds your deployment to that model's provider list instead of creating a new model, so your team calls it with the same slug and API.
+Private Endpoints let you route to your own dedicated or fine-tuned deployment of a catalog model through OpenRouter, alongside the public models you already use. OpenRouter adds your deployment to that model's provider list instead of creating a new model, so your team calls it with the same slug and API.
 
-Your private models and endpoints are only visible to the users and organizations you approve, and they will never show up in public model lists, rankings, search, charts, and benchmarks.
+Your private endpoints are only visible to the users and organizations you approve, and they will never show up in public model lists, rankings, search, charts, and benchmarks.
 
 ## How it works
 
-Once your private model endpoint is onboarded:
+Once your private endpoint is active:
 
 - Approved users and organizations call it through the standard OpenRouter API, the same endpoints they use for public models (chat completions and responses).
 - The model slug behaves like any other OpenRouter model. It can be used with [Model Fallbacks](/guides/routing/model-fallbacks), [Provider Selection](/guides/routing/provider-selection), and other routing features.
@@ -110,7 +110,7 @@ If you think you will need more than 10 private endpoints, talk to your OpenRout
 
 ## Who it's for
 
-Private Models is a good fit if:
+Private Endpoints are a good fit if:
 
 - You have a dedicated or fine-tuned deployment of a model in the OpenRouter catalog that you want to route through OpenRouter.
 - Your endpoint is OpenAI-compatible, or close enough that we can integrate it quickly.
