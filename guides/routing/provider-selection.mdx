@@ -1014,6 +1014,8 @@ When you use a base provider slug (e.g. `"google-vertex"`) in any provider routi
 
 To target a **specific** variant or region, use the full slug including the suffix (e.g. `"google-vertex/us-east5"` or `"deepinfra/turbo"`). When a provider serves the same variant from more than one region, the region follows the variant as its own segment (e.g. `"baseten/fp4/us"`); the variant slug alone (`"baseten/fp4"`) still matches every region of it.
 
+Every endpoint slug has the shape `provider[/variant][/region][/tier]`, with each segment present only when the endpoint needs it: the variant (a quantization such as `fp4`, or a provider-specific label such as `zdr`), then the region, then the [service tier](/guides/features/service-tiers) in the provider's spelling (`priority`, `fast`, `turbo`, `flex`), always last. A tier endpoint's slug is therefore its standard sibling's slug plus the tier (`google-vertex/global` and `google-vertex/global/priority`, `baseten/fp4/us` and `baseten/fp4/us/priority`), and dropping a trailing segment matches every endpoint that shares the remaining prefix, except that dropping the tier never matches a tier endpoint.
+
 | Slug in request | What it matches |
 | --- | --- |
 | `"google-vertex"` | All Google Vertex endpoints (every region) |

@@ -716,7 +716,7 @@ The operational fields control model availability and routing:
 | `deprecation_date` | ISO 8601 date or UTC hour. See [Deprecation Date](#deprecation-date) |
 | `is_ready` | Launch control. See [Controlling Launch with `is_ready`](#controlling-launch-with-is_ready) |
 | `is_free` | Free variant marker. See [Free Model Variants with `is_free`](#free-model-variants-with-is_free) |
-| `service_tier` | Service tier of this entry. See [Service tiers with `service_tier`](#service-tiers-with-service_tier) |
+| `service_tier` | Service tier of this entry. See [Service tiers](#service-tiers) |
 | `discount_to_user` | Fractional user-facing discount. See [Discounts with `discount_to_user`](#discounts-with-discount_to_user) |
 | `openrouter.slug` | The OpenRouter slug this model maps to |
 
@@ -772,9 +772,26 @@ Behavior:
 
 You can list both a free and a paid version of the same model. Just always set `is_free: true` on the free one.
 
-#### Service tiers with `service_tier`
+#### Service tiers
 
-If you sell more than one grade of capacity for a model, publish one document per tier under the same `id` and mark each non-default document with `service_tier`:
+If you sell more than one grade of capacity for a model, OpenRouter lists each grade as its own [service tier endpoint](/guides/features/service-tiers). Users reach it through the `service_tier` request parameter, the `:nitro` and `:floor` variants, and tier-suffixed provider slugs, and it carries a tier badge and a `service_tier` value in the endpoints API. There are two ways to publish one; pick the first unless your API already has a tier parameter.
+
+##### Option 1: a dedicated model id (recommended)
+
+Publish the tier as a separate document whose `id` is the standard id plus a tier suffix: `-fast`, `-turbo`, `-highspeed`, or `-prime` for the priority tier, `-flex` for the flex tier. The suffix is your label for the endpoint: it becomes the endpoint's badge and slug (`your-provider/turbo`, `your-provider/prime`), while users select the tier with the standard `service_tier` values.
+
+```json lines
+[
+  { "id": "your-org/your-model", "pricing": [/* standard prices */] },
+  { "id": "your-org/your-model-fast", "pricing": [/* priority prices */] }
+]
+```
+
+OpenRouter recognizes the suffix whenever the standard `id` is also published and lists the endpoint as that tier. Nothing changes in your API: OpenRouter sends requests to the suffixed model id. Each document declares its own context length, limits, and capabilities. The two endpoints are otherwise independent; hiding one has no effect on the other, and if you remove the standard `id` the suffixed endpoint keeps serving as a plain endpoint without the tier label.
+
+##### Option 2: the same id with `service_tier`
+
+Use this when your API selects the tier with a request parameter and reports the tier that served the request in the response. Publish one document per tier under the same `id` and mark each non-default document with `service_tier`:
 
 ```json lines
 [
@@ -784,17 +801,17 @@ If you sell more than one grade of capacity for a model, publish one document pe
 ]
 ```
 
-Accepted values are `flex`, `priority`, `fast`, and `ultrafast`. `fast` is an alias for `priority`, so publish one or the other for a given `id`, not both. An omitted field means the default tier. Any other value fails validation and the document is dropped.
+Accepted values are `flex`, `priority`, and the priority labels `fast`, `turbo`, `highspeed`, and `prime`. A label only changes the endpoint's badge and slug, so publish one per `id`, not several. An omitted field means the default tier. Any other value fails validation and the document is dropped.
 
 Behavior:
 
 - OpenRouter creates a separate endpoint for each tier document, using that document's own pricing, context length, limits, and capabilities. A priority tier with a shorter context window, or a flex tier with fewer supported parameters, declares those differences in its own document.
-- A tier document is staged only once OpenRouter serves the default tier of the same `id`. Publish the default document first, or alongside the tier documents. Tier endpoints then go through the standard staging, baseline test, and unhide flow.
-- Tier endpoints appear to users as [service tier endpoints](/guides/features/service-tiers): they are reachable through the `service_tier` request parameter, the `:nitro` and `:floor` variants, and tier-suffixed provider slugs, and they stay out of default routing.
-- `service_tier` is OpenRouter's vocabulary, not your API's. If your API names a tier differently, for example `standby` for a discounted tier, still publish it as `flex` here. The mapping to your wire format lives in OpenRouter's integration for your API.
+- OpenRouter's integration for your API must forward the tier on each request and read back the tier that served it. Tier endpoints stay hidden until that integration is in place, so coordinate with us before publishing tier documents. `service_tier` is OpenRouter's vocabulary, not your API's: if your API names a tier differently, for example `standby` for a discounted tier, still publish it as `flex` here.
+- Keep the standard endpoint for the same `id` published and live. When your API serves a lower tier than the one requested, OpenRouter bills the request at your standard endpoint's price for that model, and it needs that endpoint to be live to do so. A tier endpoint is only shown while its standard endpoint is; if the standard endpoint is hidden or removed, OpenRouter hides its tier endpoints as well, and they stay hidden until you re-enable them (from your provider dashboard, or by asking us) once the standard endpoint is back.
+- A tier document is staged only once OpenRouter serves the default tier of the same `id`. Publish the default document first, or alongside the tier documents.
 - A document cannot combine `is_free: true` with `service_tier`. Free endpoints are a separate variant of the default tier.
 
-For OpenRouter to serve a tier endpoint, your inference API must accept `service_tier` on the request and report the tier that served the request in the response, and OpenRouter's integration for your API must forward it. Tier endpoints stay hidden until that integration is in place, so coordinate with us before publishing tier documents. The `passthrough_parameters` example above describes a request parameter you accept, which is unrelated to this field.
+Do not combine the two options for one tier. OpenRouter reads `service_tier` first: a document with a tier-suffixed `id` that also carries `service_tier` is treated as a wire-selected tier of that suffixed `id`, so it needs a default-tier document for the suffixed `id` and the suffix is not recognized as the tier. The `passthrough_parameters` example above describes a request parameter you accept, which is unrelated to this field.
 
 #### Discounts with `discount_to_user`
 
