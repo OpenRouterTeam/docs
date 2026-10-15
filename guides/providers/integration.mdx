@@ -916,7 +916,7 @@ The schema is append-only, so fields are retired rather than repurposed. One roo
 |---|---|---|
 | `compliance` | 2026-09-30 | Accepted and ignored. A document that still carries it validates and is ingested; the key is dropped before validation and nothing reads it. |
 
-Any other key the schema does not know, at the root or inside a nested object, rejects the whole document: the schema is strict. A rejected document is dropped from that poll before anything else runs, and the rejection is logged against your provider. Because the entry is then missing from your feed, an endpoint OpenRouter already serves for it is treated as removed and hidden on that run (unless your monitor opts out of auto-hiding or the model produces video, text-to-speech, transcription, or embeddings output). Nothing unhides it automatically when the document validates again: contact your OpenRouter representative to restore it. Run your feed through the **Schema validator** tab before publishing.
+Any other key the schema does not know, at the root or inside a nested object, rejects the whole document: the schema is strict. A rejected document is dropped from that poll before anything else runs, and the rejection is logged against your provider. The entry is still counted as present in the feed (served but rejected), so the endpoint OpenRouter already serves for it is not treated as removed and is not hidden on that run. Run your feed through the **Schema validator** tab before publishing.
 
 ##### Modalities and auto-staging
 
