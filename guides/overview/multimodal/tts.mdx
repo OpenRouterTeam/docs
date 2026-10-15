@@ -180,7 +180,7 @@ curl https://openrouter.ai/api/v1/audio/speech \
 | `instructions` | string | No | Delivery instructions such as tone, pacing, or emotion, for example `Speak in a warm and friendly tone.` Supported by OpenAI `gpt-4o-mini-tts`, Gemini TTS, and Fish Audio models. Ignored by other providers |
 | `response_format` | string | No | Audio output format: `mp3` or `pcm`. Defaults to `pcm` |
 | `speed` | number | No | Playback speed multiplier. Honored by models that support it (e.g., OpenAI TTS). Other providers either ignore it or return a 400 for a non-default value when the model has no speed control. Defaults to `1.0` |
-| `input_references` | array | No | Reference content for stateless voice cloning or voice design: one to three `input_audio` parts (each optionally paired with a `text` transcript), or exactly one `image_url` part. See [Voice Cloning](#voice-cloning) below |
+| `input_references` | array | No | Reference content for stateless voice cloning or voice design: one to three `input_audio` parts (each optionally paired with a `text` transcript), optionally plus one `image_url` scene image on providers that support it, or exactly one `image_url` part on its own. See [Voice Cloning](#voice-cloning) below |
 | `provider` | object | No | Data policy routing preferences (`zdr`, `data_collection`) and provider-specific passthrough options under `provider.options`. With `zdr: true`, the request only routes to [Zero Data Retention](/guides/features/zdr) endpoints. Other routing preferences (`order`, `only`, `ignore`) are not applied to speech requests |
 
 When `voice` is omitted, OpenRouter only forwards the request to providers whose adapter supports a provider-side default voice. For other providers, the request is rejected with a validation error.
@@ -236,7 +236,26 @@ Not every provider of a voice-cloning model supports voice cloning, and only som
 |---|---|
 | `supports_voice_cloning` | The endpoint accepts `input_audio` reference clips |
 | `supports_multiple_audio_references` | The endpoint accepts more than one `input_audio` clip per request |
-| `supports_image_reference` | The endpoint accepts an `image_url` reference |
+| `supports_image_reference` | The endpoint accepts an `image_url` reference, either on its own (voice design) or alongside an `input_audio` clip (scene image); which shape applies is per model |
+
+#### Scene Image
+
+[HeyGen Voice](https://openrouter.ai/heygen/heygen-voice-1) clones the reference recording on each request and can condition the voice on a picture of the speaker in their setting: a quiet room keeps the voice clean, a car or a stage adds matching acoustics and background sound. Send the picture as an `image_url` part next to the `input_audio` part. The image is optional; a recording on its own works the same way. Omit `voice` when you send a recording, since the recording is the voice, and use `provider.options.heygen.language` to name the recording's language:
+
+```json lines
+{
+  "model": "heygen/heygen-voice-1",
+  "input": "Welcome aboard, please fasten your seat belts.",
+  "response_format": "pcm",
+  "input_references": [
+    { "type": "input_audio", "input_audio": { "data": "data:audio/mpeg;base64,SUQzBAAAAAAA..." } },
+    { "type": "image_url", "image_url": { "url": "https://example.com/pilot-in-cockpit.jpg" } }
+  ],
+  "provider": { "options": { "heygen": { "language": "en" } } }
+}
+```
+
+The recording must be a WAV or MP3 file of clear speech (only its first 3 minutes are used), and the image a JPEG, PNG, or WebP. HeyGen Voice does not accept an image without a recording, and Seed Audio does not accept a recording together with an image; each returns a 400 describing the shape it expects.
 
 #### Multiple Reference Clips
 
@@ -276,12 +295,12 @@ Some models can design a voice from a picture instead of an audio sample. Send e
 }
 ```
 
-Audio and image references cannot be combined in one request, and `@AudioN` placeholders are rejected when no audio clip is present.
+Seed Audio's voice-design mode accepts only an image, with no `input_audio` clips alongside it; providers with `supports_image_reference` and `supports_voice_cloning` take one image together with the clips (see [Scene Image](#scene-image)). `@AudioN` placeholders are rejected when no audio clip is present.
 
 #### Limits and Requirements
 
 - Supported audio formats for reference clips are provider-specific.
-- `input_references` accepts one to three `input_audio` parts (each optionally paired with a `text` transcript) or exactly one `image_url` part, never both kinds in the same request. An empty array is treated as no reference.
+- `input_references` accepts one to three `input_audio` parts (each optionally paired with a `text` transcript), at most one `image_url` part, or both together on providers that support it; two images are rejected. An empty array is treated as no reference.
 - Each inline reference is limited to 20 MiB of base64 (15 MiB of decoded media); a larger `data` value is rejected with a 400. Remote downloads are capped at the same 15 MiB and a larger file is rejected with a 413.
 - Remote `url` values must be public `http(s)` URLs of at most 2048 characters. OpenRouter fetches them server-side and forwards only the bytes, never the URL.
 - A `text` transcript is limited to 10,000 characters.
