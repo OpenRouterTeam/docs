@@ -256,7 +256,7 @@ Non-default tier endpoints (`flex`, `priority`, `ultrafast`) are only considered
 
 - **`priority`**: matching endpoints are tried first, with fallback to other endpoints if none succeed. Within each group, endpoints are sorted by throughput by default, and setting `provider.order` or `provider.sort` replaces that default with your ordering. Billing always follows the endpoint actually used, so a priority request that falls back off-tier is charged at that endpoint's standard rate, not the tier rate.
 - **`ultrafast`**: works like `priority` with one more group in front: ultrafast endpoints, then priority endpoints, then default endpoints. See [Ultrafast](#ultrafast).
-- **`flex`**: routing is restricted to flex endpoints (sorted by price). Flex never falls back to a default-tier endpoint, since that would cost more than the tier you requested, so a flex capacity error surfaces instead.
+- **`flex`**: flex endpoints are tried first, sorted by price. Fallback is bounded by price: the request only falls back to endpoints whose input and output prices are both at or below a flex endpoint's, so you never pay more than the flex rate you asked for, whatever your input/output mix. Where the flex endpoint is the cheapest option for its model, as with a single provider's flex tier, nothing qualifies and a flex capacity error surfaces, the same as when you call that provider directly.
 - If the pool contains no flex endpoints at all (for example, the model has no flex-capable provider), the request routes normally at standard rates.
 - Combine with [`allow_fallbacks: false`](/guides/routing/provider-selection#disabling-fallbacks) to route only to the top endpoint of that tier.
 
@@ -276,7 +276,7 @@ Requests that don't use any of these never reach an ultrafast or closed-weight t
 | `:floor` variant | Default + flex endpoints | Entire pool sorted by price, no tier preference | Next-cheapest endpoint of any tier |
 | `service_tier: "priority"` (or `"fast"`) | Default + priority endpoints | Priority endpoints first, each group sorted by throughput unless `provider.order` or `provider.sort` is set | Falls back to default endpoints |
 | `service_tier: "ultrafast"` | Default + priority + ultrafast endpoints | Ultrafast first, then priority, then default, each group sorted by throughput unless `provider.order` or `provider.sort` is set | Falls back to priority, then default endpoints |
-| `service_tier: "flex"` | Flex endpoints only (when any exist) | Sorted by price | No fallback to default endpoints, capacity errors surface |
+| `service_tier: "flex"` | Flex endpoints, plus endpoints priced at or below them on both input and output | Flex endpoints first, sorted by price | Only to endpoints priced at or below a flex endpoint on both input and output; otherwise capacity errors surface |
 | `provider.only` with a tier slug | Only the endpoints the slugs name (tier slugs opt in that tier) | Default load-balanced ordering unless a sort is set | Within the named endpoints only |
 | `provider.order` with a tier slug | Unchanged (tier slugs opt in the named tier endpoints) | Listed endpoints first, in your order | Falls back to unlisted endpoints unless disabled |
 | `provider.sort` (`"throughput"` / `"price"`) | Unchanged (does not opt into any tier) | Entire pool sorted by the chosen metric | Next endpoint in sorted order |
