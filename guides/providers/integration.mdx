@@ -704,8 +704,8 @@ Declare where each endpoint physically serves from:
 
 - `datacenters[].country_code`: ISO 3166-1 alpha-2 country code.
 - `datacenters[].region`: provider-scoped region identifier (e.g. `us-east-1`).
-- `datacenters` is **detection-only** today: OpenRouter compares it against the region configured for the endpoint and flags a mismatch, or an endpoint with no configured region, for review. It does not change routing or the region OpenRouter displays.
-- `deployment_region`: optional provider-scoped label for the model deployment's region or scope (e.g. `US`, `global`). Use it when the same underlying model is deployed to more than one region under distinct model `id`s, so each document declares which regional deployment it describes. It complements `datacenters`, which lists the physical serving locations. This is a display-only label today: OpenRouter does not route or bill on it, so use consistent values across your documents and coordinate the vocabulary with us before publishing.
+- For providers OpenRouter routes to a dedicated in-region host, these fields set the region of a **new** endpoint: an entry whose declarations resolve to one data region (`deployment_region` `US`, or `datacenters` all in the US, and both agreeing when both are present) is staged pinned to that region, and an entry that later declares a different region OpenRouter also has a host for retires the existing endpoint and stages a new one under the new region. An endpoint already pinned to a region is never re-pinned in place, and a declaration that does not resolve (`global`, mixed regions, or the two fields disagreeing) changes nothing. For every other provider both fields are **detection-only**: OpenRouter compares them against the region configured for the endpoint and flags a mismatch, or an endpoint with no configured region, for review, without changing routing or the region OpenRouter displays.
+- `deployment_region`: optional provider-scoped label for the model deployment's region or scope (e.g. `US`, `global`). Use it when the same underlying model is deployed to more than one region under distinct model `id`s, so each document declares which regional deployment it describes. It complements `datacenters`, which lists the physical serving locations. OpenRouter does not bill on it, so use consistent values across your documents and coordinate the vocabulary with us before publishing.
 
 ### 7. Operational fields
 
@@ -885,8 +885,8 @@ OpenRouter polls your feed on every monitor run, but it does not act on every fi
 | `service_tier` | Applied | |
 | `discount_to_user` | Applied | Held if set manually. |
 | `openrouter.slug` | Ignored | Not read by ingestion today. OpenRouter fills it in the feed the dashboard generates for you. |
-| `datacenters` | Detection-only | See [Datacenters and deployment region](#6-datacenters-and-deployment-region). |
-| `deployment_region` | Detection-only | See [Datacenters and deployment region](#6-datacenters-and-deployment-region). |
+| `datacenters` | Region of new endpoints for providers with an in-region host; detection-only otherwise | See [Datacenters and deployment region](#6-datacenters-and-deployment-region). |
+| `deployment_region` | Region of new endpoints for providers with an in-region host; detection-only otherwise | See [Datacenters and deployment region](#6-datacenters-and-deployment-region). |
 | `compliance` | Ignored | Retired. See [Retired V2 fields](#retired-v2-fields). |
 
 The validator warnings named above appear in the **Schema validator** tab of your provider dashboard (`https://openrouter.ai/provider/{provider_slug}/dashboard`), which also reports rejected documents and includes a **Generate feed** panel that builds a current-format document from the endpoints OpenRouter already serves for you. The same warnings are logged on every monitor run.
