@@ -54,9 +54,9 @@ The plugin is optional. Add it to configure routing for a request:
 | --- | --- | --- |
 | `id` | string | Required. Must be `"jev-router"`. |
 | `cost_tier` | string | Select `"low"`, `"medium"`, or `"high"`. Omit to use Jev's default routing policy. |
-| `models` | string array | Include preferences within the router's pool. Omitted or empty means no include restriction; a list that matches nothing is ignored. |
-| `allowed_models` | string array | Alias of `models`. Entries from both fields are combined. |
-| `excluded_models` | string array | Remove matching models. Exclusions take precedence over either include field and are never ignored. |
+| `models` | string array | Include preferences with fallback, applied before dynamic pool selection. If they leave no routable candidates, Jev retries without them. Omitted or empty means no include restriction. |
+| `allowed_models` | string array | Alias of `models`, with the same fallback behavior. Entries from both fields are combined. |
+| `excluded_models` | string array | Hard exclusions. Matching models are never selected, including during include fallback. |
 
 All fields except `id` are optional. Unknown fields and invalid values return `400`; for example, `allowed_model` is not accepted as an alias.
 
@@ -160,12 +160,15 @@ Each list takes up to 1,024 patterns, with at most 1,024 characters per pattern 
 
 ### How the lists apply
 
-The lists only narrow the router's pool. They do not add models, and they do not change how Jev ranks the candidates that remain.
+`models` and `allowed_models` are include preferences with fallback, not hard allowlists. Jev first tries to build a routable pool within the combined include set. If that pool is empty, it retries without includes. `excluded_models` is a hard restriction and stays enforced in both attempts.
 
-- **An include list that matches nothing is ignored.** If no pool model matches `models`, the router uses the whole pool, and `excluded_models` still applies. This keeps requests working when an entry is misspelled or names a model outside the pool. The [pipeline stage](#seeing-what-the-router-did) reports `list_fallback: "models_ignored"`.
+For dynamic pools, these filters apply before ranking and the pool cap. This can bring an eligible model into consideration even if it would have missed the global cutoff; excluding a higher-ranked model can free a slot for another eligible model. Includes never bypass model eligibility, endpoint policy, capabilities, or token-budget checks. Explicit operator pools and built-in pools retain their configured membership.
+
+For example, `models: ["anthropic/*"]` prefers Anthropic, but can fall back to another author when it leaves no routable candidates. Do not use an include list to enforce an author restriction.
+
+- **Includes are relaxed only when they leave no routable candidates.** This also covers a matching model with no eligible endpoint. The router rebuilds the pool without the include list, and `excluded_models` still applies before the cap. This keeps requests working when an entry is misspelled or names an ineligible model. The [pipeline stage](#seeing-what-the-router-did) reports `list_fallback: "models_ignored"`.
 - **Exclusions are never ignored.** If `excluded_models` removes every pool model, the request fails with `404` instead of routing to an excluded model.
 - **The lists can lower the capability tier.** When a hard request needs stronger models than the lists leave, the router can lower its capability requirement. The stage reports this as `list_tier_cap`; it is not the `low`/`medium`/`high` cost tier.
-- **The lists can remove the advisor.** For the hardest requests, the router can pair the chosen model with an expert advisor. If your lists remove every advisor, the router uses an eligible model without an advisor, and the stage reports `max_fallback: "deep"`.
 
 If no eligible model remains in the pool, the request fails with `404`. The error names the fields you sent, such as `widen allowed_models` or `remove excluded_models`.
 
@@ -212,3 +215,22 @@ Jev Router is available only in the global data region and only in workspaces th
 - [Jev](/guides/community/jev): the decision model behind the router
 - [Auto Router](/guides/routing/routers/auto-router): a separate router with its own cost-tier behavior
 - [Router metadata](/guides/features/router-metadata): the `openrouter_metadata` response field
+
+
+## Author routers
+
+When available in the catalog, `openai/auto`, `anthropic/auto`, and other `<author>/auto` models run Jev with that author's models. They use the same pool discovery, task policy, reasoning effort, and cost tiers as Jev. Author scope applies before the pool cap, like selecting that author on the Mission Control Jev Router page. The page simulates the selection; using the alias sends a real request.
+
+The scope is the model author, so an OpenAI model may still be served by another provider such as Azure. Provider preferences and account policies continue to apply.
+
+**Author scope is a hard restriction.** Caller `models` and `allowed_models` remain include preferences with fallback; `excluded_models` remains a hard restriction. All three operate within the author's pool. If includes leave no routable candidates, Jev retries without them within the same author; exclusions remain enforced. An author with no eligible model returns `404`. This constrains the alias selection; separately requested fallback models retain their normal behavior. `openrouter/auto` is a separate router and does not use this author-alias behavior.
+
+```json
+{
+  "model": "anthropic/auto",
+  "messages": [{ "role": "user", "content": "Explain this query plan." }],
+  "plugins": [{ "id": "jev-router", "excluded_models": ["~anthropic/claude-opus-latest"] }]
+}
+```
+
+An alias requires its own catalog router row and, if private, access to that row. Availability is controlled by the catalog; the API does not create aliases on request.
