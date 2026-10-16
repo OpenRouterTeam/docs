@@ -252,7 +252,7 @@ _\* Exa: limit applies **per result**_
 
 _\*\* Parallel: limit applies as a **total across all results**_
 
-_\*\*\* Perplexity: `allowed_domains` and `excluded_domains` are mutually exclusive; when both are provided, `allowed_domains` takes precedence_
+_\*\*\* Perplexity: `allowed_domains` and `excluded_domains` are mutually exclusive; when both are provided, the request is rejected with a 400_
 
 </small>
 
@@ -349,7 +349,7 @@ Restrict which domains appear in search results using `allowed_domains` and `exc
 | **Exa** | Yes | Yes | Both can be used simultaneously |
 | **Parallel** | Yes | Yes | Mutually exclusive |
 | **Firecrawl** | Yes | Yes | Mutually exclusive |
-| **Perplexity** | Yes | Yes | Mutually exclusive (when both provided, `allowed_domains` wins) |
+| **Perplexity** | Yes | Yes | Mutually exclusive (when both provided, the request is rejected with a 400) |
 | **Native (Anthropic)** | Yes | Yes | Mutually exclusive |
 | **Native (OpenAI)** | Yes | No | `excluded_domains` ignored (no error) |
 | **Native (Google)** | No | No | Not supported. With `engine: "auto"`, falls back to Exa when filters are set. With `engine: "native"`, returns a 400 error |
