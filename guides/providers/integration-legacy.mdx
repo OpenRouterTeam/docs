@@ -290,7 +290,7 @@ Behavior:
 
 - OpenRouter creates a separate endpoint for each tier entry, using that entry's own pricing, context length, limits, and capabilities.
 - A tier entry is staged only once OpenRouter serves the default tier of the same `id`. List the default entry first, or alongside the tier entries. Tier endpoints then go through the standard staging, baseline test, and unhide flow.
-- Tier endpoints appear to users as [service tier endpoints](/guides/features/service-tiers). They stay out of default routing, except priority and flex endpoints of open-weight models, which compete for default traffic.
+- Tier endpoints appear to users as [service tier endpoints](/guides/features/service-tiers). They stay out of default routing, except priority endpoints of open-weight models, which compete for default traffic.
 - `service_tier` is OpenRouter's vocabulary, not your API's. If your API names a tier differently, still publish it as `flex` or `priority` here. The mapping to your wire format lives in OpenRouter's integration for your API.
 - An entry cannot combine `is_free: true` with `service_tier`.
 

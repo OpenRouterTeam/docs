@@ -69,9 +69,29 @@ One rule applies, and breaking it fails the request with a `400` rather than qui
 
 - **`openrouter:tool_search` itself can never be deferred.** It is what reveals the rest of the library, so deferring it would leave nothing able to load anything. This also guarantees at least one tool is always callable.
 
-Using `defer_loading` *without* `openrouter:tool_search` remains valid. On Anthropic models and Anthropic-compatible endpoints that implement deferral, the provider's gateway expands deferred tools itself, and your own search tool is an ordinary function tool that provider recognizes. On other models OpenRouter may serve the deferral itself (on the Chat Completions and Responses APIs, by adding `openrouter:tool_search` to the request); otherwise it sends deferred tools in full or returns a `400`. With `openrouter:tool_search` in the request, deferral is managed by OpenRouter and works on any model and any provider.
+Using `defer_loading` *without* `openrouter:tool_search` is also valid: your client runs the search. See [Client-side tool search](#client-side-tool-search).
 
 Keep your three to five most frequently used tools loaded. A tool the model needs on almost every request costs more in search round-trips than it saves in tokens.
+
+## Client-Side Tool Search
+
+You can run the search yourself instead of using `openrouter:tool_search`. Keep your own search tool loaded, mark the tools to withhold with `defer_loading`, and reveal a tool when your search finds it. OpenRouter never sends a withheld definition to a provider that cannot defer it, and sends a definition as soon as you reveal it. This works the same way on every API; only the spelling of the flag and the reveal differ.
+
+| API | How to mark a tool deferred | Endpoint that defers natively | Any other endpoint |
+| --- | --- | --- | --- |
+| Chat Completions | `tools[].function.defer_loading: true` | Passed through: the provider withholds and expands the tool itself. | Withheld until you re-send the tool without `defer_loading`. |
+| Responses | `tools[].defer_loading: true` on a function tool | Passed through. | Withheld until you re-send the tool without `defer_loading`, or load it through a client `tool_search_output` input item. |
+| Messages | `tools[].defer_loading: true` | Passed through, including `tool_reference` blocks in tool results. | Withheld until a `tool_reference` block in a tool result names it, or you re-send it without `defer_loading`. The `tool_reference` block reaches the provider as text. |
+
+Endpoints that defer natively are Anthropic models on Anthropic, Vertex, Azure Foundry and Claude Platform on AWS, and Anthropic-compatible gateways that implement deferral. Everywhere else, revealed definitions are appended after your loaded tools in the order they were revealed, so the prompt prefix the provider caches does not move between turns.
+
+A deferred tool nothing could reveal is refused rather than silently sent in full. On an endpoint without native deferral, at least one of your loaded tools must look like a search tool: a name containing `tool_search`, `tool-search`, `toolsearch`, `search_tools` or `find_tools`, or ending in `_search` or `-search`; an Anthropic `tool_search_tool_regex` or `tool_search_tool_bm25` tool; or `openrouter:tool_search`. This is a name check, not a check that the tool searches. Without such a tool, OpenRouter adds `openrouter:tool_search` to a Chat Completions or Responses request where managed search is enabled for it; otherwise the request fails with a `400` that names what was looked for:
+
+> At least one tool must have defer_loading=false and be able to reveal the others. OpenRouter looked for a non-deferred tool named like a search tool …
+
+Endpoints that defer natively keep the provider's own check instead.
+
+Client-side deferral on endpoints without native deferral is rolling out per account. Until an account is admitted, Chat Completions and Responses send deferred tools in full with the flag removed, and Messages routes a deferred request only to endpoints that defer natively, returning a `400` when the model has none.
 
 ## Searching
 
