@@ -85,6 +85,8 @@ Batch requests are typically billed at 50% of the model's standard per-token pri
 
 If you have a [provider key](/guides/overview/auth/byok) configured, batches route through it automatically, the same as sync requests: the provider bills you directly for inference and OpenRouter charges only the BYOK fee (see Pricing above). Completed batches report `usage.is_byok: true` and the provider inference estimate in `usage.cost_details`.
 
+A submit that routes to a provider key containing characters that cannot be sent in an HTTP header, such as a unicode dash or an invisible character left by copy-paste, is rejected synchronously with `400` instead of `202 Accepted`. Fix the key in your [provider key settings](/guides/overview/auth/byok) and resubmit. Google Vertex service-account JSON keys are exempt, since OpenRouter exchanges them for an access token instead of sending them as a header.
+
 Google Vertex uses a bucket in your GCP project for provider input and output. The primary setup is frictionless: omit `bucket` and let OpenRouter create a private, location-compatible bucket on the first batch. You can optionally provide an existing bucket instead. See [Google Vertex API keys](/guides/overview/auth/byok#google-vertex-api-keys) for permissions and storage behavior.
 
 Vertex BYOK also accepts `image_url: { "url": "gs://your-bucket/image.jpg" }`. Your project's Vertex AI service agent must have read access to the image through batch execution; access granted only to the uploaded service-account key is not sufficient. Image names must end in `.png`, `.jpg`, `.jpeg`, `.webp`, `.heic`, or `.heif`. Platform-funded batches do not accept `gs://` images.
@@ -222,6 +224,8 @@ The response is a batch object with an ID you can use to check progress:
   "status": "validating",
   "created_at": 1782097200,
   "finalized_at": null,
+  "provider": "OpenAI",
+  "expires_at": 1782183600,
   "request_counts": {
     "total": 1,
     "completed": 0,
@@ -234,6 +238,12 @@ The response is a batch object with an ID you can use to check progress:
 ```
 
 The only supported completion window is `24h`.
+
+`provider` is the provider OpenRouter assigned to the batch, using the same name as the `provider` field of sync responses. `expires_at` is the Unix timestamp after which that provider no longer completes unfinished requests. It comes from the provider's documented batch window, so it can be later than `created_at` plus `completion_window`. It is `null` when the provider documents no hard expiry. If OpenRouter re-routes the batch to another provider for capacity before it starts, later reads report that provider in `provider` and recompute `expires_at` from its window, still counted from `created_at`.
+
+<Note>
+  Google Vertex batches can take up to 96 hours. Vertex queues a batch for up to 72 hours while it waits for capacity, then processes it for up to 24 hours. Most batches finish sooner, and a batch that stays `validating` or `in_progress` past 24 hours is still healthy. For a Vertex batch, `expires_at` is `created_at` plus 96 hours. Mistral batches expire after 24 hours. Google AI Studio is a separate provider: it expires batches that are still pending or running after 48 hours.
+</Note>
 
 ---
 
@@ -353,6 +363,8 @@ Batches are scoped to the workspace, not the key: every API key in the same work
       "status": "completed",
       "created_at": 1787836000,
       "finalized_at": 1787837000,
+      "provider": "OpenAI",
+      "expires_at": 1787922400,
       "request_counts": { "total": 100, "completed": 100, "failed": 0 },
       "usage": { "prompt_tokens": 51200, "completion_tokens": 20480, "total_tokens": 71680 },
       "results": null,
@@ -474,6 +486,8 @@ A completed batch response looks like this:
   "status": "completed",
   "created_at": 1782097200,
   "finalized_at": 1782100800,
+  "provider": "OpenAI",
+  "expires_at": 1782183600,
   "request_counts": {
     "total": 1,
     "completed": 1,
