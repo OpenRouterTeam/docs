@@ -49,6 +49,8 @@ Multimodal input in batch is URL-only, and support depends on the provider the b
 | Fireworks | Not supported | Not supported |
 | Morph | Not supported | Not supported |
 
+A provider can also turn image URLs off for one model, for example Sail Research's DeepSeek V4.1 Flash. A request with an image URL on that endpoint is rejected with an error saying the provider endpoint does not accept image URLs.
+
 Vertex requires HTTPS for public images and a PNG, JPEG, WebP, HEIC, or HEIF filename extension. Google API, Googleusercontent, and Cloud Storage HTTPS hosts are rejected; public images must remain readable through execution. Vertex BYOK also supports `gs://` images as described below.
 
 **Files.** File parts (Responses `input_file`, Anthropic `document`, chat completions `file`) are accepted only as URL references, only on the providers marked above, and only for models that list file input. Inline file bytes and provider file IDs are rejected. A rejected file URL's error names the check that refused it: the model does not list file input, the provider endpoint does not support multipart content or file URLs, or the provider's batch serializer cannot forward file URLs (OpenAI forwards them only for models served on the Responses wire).
