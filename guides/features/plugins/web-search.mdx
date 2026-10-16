@@ -269,15 +269,7 @@ Or force Exa search even for models that support native search:
 
 ### Firecrawl
 
-Firecrawl is a BYOK (bring your own key) search engine. To use it:
-
-1. Go to your [OpenRouter plugin settings](https://openrouter.ai/settings/plugins) and select Firecrawl as the web search engine
-2. Accept the [Firecrawl Terms of Service](https://www.firecrawl.dev/terms-of-service) — this automatically creates a Firecrawl account linked to your email
-3. Your account starts with **10,000 free credits** (credits expire after 3 months)
-
-Firecrawl is rejected when ZDR is enforced in your account privacy settings or a guardrail. Firecrawl is not available on regional endpoints. See [Privacy and regional availability](/guides/features/server-tools#privacy-and-regional-availability).
-
-Once set up, Firecrawl searches use your Firecrawl credits directly — there is no additional charge from OpenRouter. Each search costs 2 credits per 10 results, plus 5 credits per result scraped (1 base scrape + 4 for [highlights extraction](https://docs.firecrawl.dev/features/scrape#output-formats)). See [Firecrawl pricing](https://www.firecrawl.dev/pricing) for details.
+Firecrawl uses an OpenRouter-managed API key. No Firecrawl account or API key is required. Searches are charged to your OpenRouter credits at $0.005 per search plus $0.0125 per returned result; a search returning 5 results costs $0.0675, in addition to model token usage.
 
 ```json lines
 {
@@ -359,7 +351,7 @@ Each mode includes up to 10 results. Additional results cost \$1 per 1,000 resul
 - **Exa search**: Instant, Fast, and Auto cost \$0.007 per request; Deep Lite and Deep cost \$0.012; Deep Reasoning costs \$0.015. Includes up to 10 results, then \$0.001 per additional result
 - **Parallel search**: Turbo and Fast use OpenRouter credits at \$0.001 per request; Basic and Advanced use \$0.005 per request. Each includes up to 10 results, then \$0.001 per additional result
 - **Perplexity search**: Uses OpenRouter credits at \$0.005 per request
-- **Firecrawl search**: Uses your Firecrawl credits directly (2 credits per 10 results + 5 per result scraped with highlights). Refill at [Firecrawl.dev](https://www.firecrawl.dev)
+- **Firecrawl search**: Uses OpenRouter credits at $0.005 per search plus $0.0125 per returned result.
 
 ## Pricing
 

@@ -227,7 +227,7 @@ The web search server tool supports multiple search engines:
 - **`auto`** (default): Uses native search if the provider supports it, otherwise falls back to Exa
 - **`native`**: Prefers the provider's built-in web search; falls back to Exa if the model doesn't support native search. When a workspace admin has set an engine list on the Server Tools page, the fallback is the first non-native engine in that list instead; a list of only `native` rejects the request with a 403 on models without native search
 - **`exa`**: Uses [Exa](https://exa.ai)'s search API, which combines keyword and embeddings-based search. Returns Exa [highlights](https://docs.exa.ai/reference/contents-retrieval-with-exa-api#highlights) (excerpts drawn from each page that are most relevant to the search query) rather than truncated page text. See the [Exa](#exa) section below.
-- **`firecrawl`**: Uses [Firecrawl](https://firecrawl.dev)'s search API (BYOK: bring your own key)
+- **`firecrawl`**: Uses [Firecrawl](https://firecrawl.dev)'s search API with an OpenRouter-managed key
 - **`parallel`**: Uses [Parallel](https://parallel.ai)'s search API
 - **`perplexity`**: Uses the [Perplexity](https://docs.perplexity.ai/api-reference/search-post) Search API for ranked web results with domain filtering, context size control, and `max_characters` support
 
@@ -301,15 +301,9 @@ Second excerpt drawn from elsewhere in the same page.
 Third excerpt.
 ```
 
-### Firecrawl (BYOK)
+### Firecrawl
 
-Firecrawl uses your own API key. To set it up:
-
-1. Go to your [OpenRouter plugin settings](https://openrouter.ai/settings/plugins) and select Firecrawl as the web search engine
-2. Accept the [Firecrawl Terms of Service](https://www.firecrawl.dev/terms-of-service). This creates a Firecrawl account linked to your email
-3. Your account starts with **10,000 free credits** (credits expire after 3 months)
-
-Firecrawl searches use your Firecrawl credits directly, with no additional charge from OpenRouter. Each search costs 2 credits per 10 results, plus 5 credits per result scraped (1 base scrape + 4 for [highlights extraction](https://docs.firecrawl.dev/features/scrape#output-formats)). For example, a search returning 5 results uses 27 Firecrawl credits (2 search + 5×5 scrape). See [Firecrawl pricing](https://www.firecrawl.dev/pricing) for details.
+Firecrawl uses an OpenRouter-managed API key. No Firecrawl account or API key is required. Searches are charged to your OpenRouter credits at $0.005 per search plus $0.0125 per returned result; a search returning 5 results costs $0.0675, in addition to model token usage.
 
 Firecrawl supports domain filtering (`allowed_domains` / `excluded_domains`), but they are mutually exclusive: you cannot use both in the same request.
 
@@ -488,7 +482,7 @@ The `web_search_requests` field counts the total number of search queries the mo
 | **Exa** | Instant/Fast/Auto: \$0.007 per request; Deep Lite/Deep: \$0.012; Deep Reasoning: \$0.015. Includes up to 10 results, then \$0.001 per additional result |
 | **Parallel** | Turbo or Fast: \$0.001/request; Basic or Advanced: \$0.005/request. Includes up to 10 results, then \$0.001 per additional result |
 | **Perplexity** | \$0.005 per request using OpenRouter credits |
-| **Firecrawl** | Uses your Firecrawl credits directly, with no OpenRouter charge. 2 credits per 10 results (search) + 5 credits per result (1 scrape + 4 highlights). See [Firecrawl pricing](https://www.firecrawl.dev/pricing) |
+| **Firecrawl** | $0.005 per search plus $0.0125 per returned result |
 | **Native** | Passed through from the provider ([OpenAI](https://platform.openai.com/docs/pricing#built-in-tools), [Anthropic](https://docs.claude.com/en/docs/agents-and-tools/tool-use/web-search-tool#usage-and-pricing), [Google](https://ai.google.dev/pricing), [Perplexity](https://docs.perplexity.ai/getting-started/pricing), [SpaceXAI](https://docs.x.ai/developers/pricing#tool-invocation-costs)) |
 
 All pricing is in addition to standard LLM token costs for processing the search result content.
