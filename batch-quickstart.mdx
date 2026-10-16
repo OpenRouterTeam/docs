@@ -41,7 +41,7 @@ Multimodal input in batch is URL-only, and support depends on the provider the b
 | xAI | Supported | Not supported |
 | Mistral | Supported | Supported |
 | Google Vertex | Supported; plus `gs://` references on BYOK | Not supported |
-| Google AI Studio | Not supported | Not supported |
+| Google AI Studio | Supported | Not supported |
 | Together | Supported | Not supported |
 | Parasail | Not supported | Not supported |
 | DeepInfra (`/v1/chat/completions` only) | Supported | Supported |
@@ -55,7 +55,7 @@ Vertex requires HTTPS for public images and a PNG, JPEG, WebP, HEIC, or HEIF fil
 
 **Files.** File parts (Responses `input_file`, Anthropic `document`, chat completions `file`) are accepted only as URL references, only on the providers marked above, and only for models that list file input. Inline file bytes and provider file IDs are rejected. A rejected file URL's error names the check that refused it: the model does not list file input, the provider endpoint does not support multipart content or file URLs, or the provider's batch serializer cannot forward file URLs (OpenAI forwards them only for models served on the Responses wire).
 
-**Audio and video.** Audio and video input parts are rejected on every provider. On `/v1/chat/completions`, requests that ask for non-text output through `modalities`, `audio`, or `image_config` are also rejected. For embeddings, `input` must be strings or token arrays.
+**Audio and video.** Audio input parts are rejected on every provider. Video input parts are rejected on every provider except Google AI Studio, which accepts public YouTube URLs (`video_url` parts) for models that list video input. Direct video file URLs and base64 videos are rejected. Because a video's duration is unknown at submit, the balance check reserves the model's full input limit once for each request that contains a video; usage is billed from the provider-reported tokens. On `/v1/chat/completions`, requests that ask for non-text output through `modalities`, `audio`, or `image_config` are also rejected. For embeddings, `input` must be strings or token arrays.
 
 **Web search.** Provider-native web search tools pass through when the resolved provider runs the search itself, for example OpenAI `web_search` on `/v1/responses` and Anthropic `web_search_20250305` on `/v1/messages`. OpenRouter-orchestrated search is not available in batch. Google Vertex batches reject web search tools, because Vertex batch prediction does not import the `google_search` tool. A submit for an `:online` model variant is rejected synchronously with `422`. Per request, the `web` plugin, `web_search_options` (except on OpenAI models that execute it natively), and web search tools with an `engine` other than `auto` or `native` are rejected.
 
