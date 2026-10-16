@@ -1,12 +1,12 @@
 ---
 publish: true
 title: In-Region Routing
-description: Keep prompts and completions inside the EU or the US
-seoTitle: 'In-Region Routing | Keep AI Requests Inside the EU or the US'
+description: Keep prompts and completions in Europe or the US
+seoTitle: 'In-Region Routing | Keep AI Requests in Europe or the US'
 og:site_name: OpenRouter Documentation
-og:title: 'In-Region Routing - Keep AI Requests Inside the EU or the US'
-og:description: 'Learn how OpenRouter in-region routing keeps prompts and completions inside the EU or the US, which features are available, and how BYOK works with regional routing.'
-og:image: https://openrouter.ai/dynamic-og?title=In-Region%20Routing&description=Keep%20AI%20requests%20inside%20the%20EU%20or%20the%20US
+og:title: 'In-Region Routing - Keep AI Requests in Europe or the US'
+og:description: 'Learn how OpenRouter in-region routing keeps prompts and completions in Europe or the US, which features are available, and how BYOK works with regional routing.'
+og:image: https://openrouter.ai/dynamic-og?title=In-Region%20Routing&description=Keep%20AI%20requests%20in%20Europe%20or%20the%20US
 og:image:width: 1200
 og:image:height: 630
 twitter:card: summary_large_image
@@ -16,9 +16,12 @@ nofollow: false
 icon: map-location-dot
 ---
 
-In-Region Routing (IRR) keeps your AI workloads inside a designated geographic region. When you send a request through a region-specific base URL, the request is decrypted within that region and is only routed to provider endpoints in that region. Prompts and completions are processed entirely in-region and never leave it at any point in the request lifecycle.
+import DpaExhibitA from "/snippets/dpa-exhibit-a.mdx";
+import EuDataBoundary from "/snippets/eu-data-boundary.mdx";
 
-In-region routing is available for the European Union (EU) and United States (US) on the Business and Enterprise plans. There is no setting to turn on: once your account is on one of these plans, you choose the region for each request by sending it to that region's base URL. Organization admins can upgrade to Business in [Settings > Manage plan](https://openrouter.ai/settings/manage-plan). For Enterprise, [contact our enterprise team](https://openrouter.ai/enterprise/form).
+In-Region Routing (IRR) processes the prompts and completions in your requests within a designated region. When you send a request through a region-specific base URL, the request is decrypted within that region and routed only to shared provider endpoints in that region: Europe (the EU/EEA, the UK, and Switzerland) for `eu.openrouter.ai`, and the US for `us.openrouter.ai`. If no endpoint eligible for the region (shared, BYOK, or private) can serve the request, it errors instead of leaving the region. Requests served by your own BYOK key go to your deployment's region, which you control. Account and operational records are handled separately; see [What stays outside the region](#what-stays-outside-the-region).
+
+EU in-region routing (`eu.openrouter.ai`) and US in-region routing (`us.openrouter.ai`) are available on the Business and Enterprise plans. There is no setting to turn on: once your account is on one of these plans, you choose the region for each request by sending it to that region's base URL. Organization admins can upgrade to Business in [Settings > Manage plan](https://openrouter.ai/settings/manage-plan). For Enterprise, [contact our enterprise team](https://openrouter.ai/enterprise/form).
 
 ## Using In-Region Routing
 
@@ -115,6 +118,7 @@ To see which models are available for in-region routing:
 
 - Call [`/api/v1/models`](https://eu.openrouter.ai/api/v1/models) on a regional domain to get the full list programmatically, or pass a `region` query parameter (`eu` or `us`) on the main domain
 - Browse [EU-eligible models](https://openrouter.ai/models?region=eu) or [US-eligible models](https://openrouter.ai/models?region=us) on the models page with the **In-Region Routing** filter
+- See the live EU model list with per-provider prices on [EU in-region routing on Business](https://openrouter.ai/business/eu)
 
 ## Enforcing In-Region Routing with Guardrails
 
@@ -140,6 +144,16 @@ The guardrail value for the EU is `europe`, while the [Models API](/api/api-refe
 
 Data-region guardrails require a Business or Enterprise plan. If your plan stops including in-region routing while a region guardrail is still assigned, the guardrail keeps enforcing its region list, but the regional domains themselves reject requests from accounts without in-region routing. Requests governed by that guardrail are therefore rejected until you upgrade or clear the restriction (any region not in the list stays blocked; `global` in the list keeps `https://openrouter.ai` open).
 
+## What stays outside the region
+
+In-region routing covers the prompts and completions in requests sent to a regional domain and served by shared provider endpoints. Account and operational records, BYOK deployments, and destinations you configure are outside that boundary. For `eu.openrouter.ai`:
+
+<EuDataBoundary />
+
+<DpaExhibitA />
+
+Features that would process data outside the region are rejected on regional domains; see [Feature Availability](#feature-availability). For your own resources, see [Observability with In-Region Routing](#observability-with-in-region-routing) and [BYOK with In-Region Routing](#byok-with-in-region-routing).
+
 ## Feature Availability
 
 Everything on a regional domain must uphold the same residency guarantee as inference itself. Features whose infrastructure or third-party vendors process data outside your region are therefore unavailable on regional domains today, and requests that use them return an error instead of silently processing data out of region.
@@ -148,7 +162,7 @@ A regional request is admitted by its hostname and any guardrail `allowed_data_r
 
 **Not available with in-region routing today:**
 
-- **Web search, except Exa in the US.** The [web search plugin](/guides/features/plugins/web-search) only runs on a regional domain through an engine whose backend is resident in that region. Today that is Exa on `us.openrouter.ai`: Exa serves US requests from in-region indexes, so the query never leaves the region. `engine: "exa"`, `engine: "auto"`, and an omitted engine all run on Exa there; `auto` and an omitted engine skip the provider's native search on regional domains. Every other configuration is rejected. Perplexity, Parallel, and Firecrawl process queries outside your data region, and `engine: "native"` is not covered by the provider's regional inference commitment. No web search plugin engine is available on `eu.openrouter.ai`.
+- **Web search, except Exa in the US.** The [web search plugin](/guides/features/plugins/web-search) only runs on a regional domain through an engine whose backend is resident in that region. Today that is Exa on `us.openrouter.ai`, whose search backend is US-resident. `engine: "exa"`, `engine: "auto"`, and an omitted engine all run on Exa there; `auto` and an omitted engine skip the provider's native search on regional domains. Every other configuration is rejected. Perplexity, Parallel, and Firecrawl process queries outside your data region, and `engine: "native"` is not covered by the provider's regional inference commitment. No web search plugin engine is available on `eu.openrouter.ai`.
 - **Web search and web fetch server tools.** The [`web_search`](/guides/features/server-tools/web-search) server tool follows the same rule as the plugin: `engine: "exa"`, `engine: "auto"`, and an omitted engine run on Exa on `us.openrouter.ai`, and every other configuration is rejected on regional domains. The [`web_fetch`](/guides/features/server-tools/web-fetch) server tool is backed by out-of-region fetch vendors, so it is not available on regional domains.
 - **Other server tools with out-of-region infrastructure**, including [files](/guides/features/server-tools/files), [image generation](/guides/features/server-tools/image-generation), [Fusion](/guides/features/server-tools/fusion), [shell](/guides/features/server-tools/shell), and sandboxed [bash](/guides/features/server-tools/bash) (`engine: "openrouter"`). Server tools that execute entirely in-region ([tool search](/guides/features/server-tools/tool-search), [apply patch](/guides/features/server-tools/apply-patch), [datetime](/guides/features/server-tools/datetime), [advisor](/guides/features/server-tools/advisor), [subagent](/guides/features/server-tools/subagent), [search models](/guides/features/server-tools/search-models), and client-side bash) remain available.
 - **PDF parsing engines other than `native` in the EU.** On `eu.openrouter.ai`, [PDF inputs](/guides/overview/multimodal/pdfs) require the `native` engine. On `us.openrouter.ai`, `native` and `mistral-ocr` are available. `cloudflare-ai` runs on the global endpoint only. An unavailable engine returns a `400` error.
@@ -239,3 +253,13 @@ OpenRouter's in-region guarantee covers everything OpenRouter controls: where yo
 - Organization admins can upgrade to the Business plan in [Settings > Manage plan](https://openrouter.ai/settings/manage-plan). For Enterprise, [contact our enterprise team](https://openrouter.ai/enterprise/form). There is nothing to turn on afterward: send requests to `https://eu.openrouter.ai` or `https://us.openrouter.ai`.
 - Review [Sovereign AI](/guides/features/sovereign-ai) for combining in-region routing with ZDR and data collection controls
 - Configure [BYOK](/guides/overview/auth/byok) keys with region-appropriate deployments as described above
+
+## Frequently asked questions
+
+### Is OpenRouter US-only?
+
+No. OpenRouter Business routes requests sent to `eu.openrouter.ai` only to shared provider endpoints in Europe (the EU/EEA, the UK, and Switzerland), and requests sent to `us.openrouter.ai` only to shared provider endpoints in the US. Requests sent to `openrouter.ai` use global routing. Requests served by your own BYOK key go to your deployment's region, which you control.
+
+### Does EU routing need Enterprise?
+
+No. EU in-region routing is self-serve on Business: no contract, no monthly minimum. Organization admins can upgrade in [Settings > Manage plan](https://openrouter.ai/settings/manage-plan) and then send requests to `https://eu.openrouter.ai`. Enterprise is available if you need a custom agreement.
