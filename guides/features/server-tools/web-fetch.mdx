@@ -152,7 +152,7 @@ The web fetch server tool supports multiple fetch engines:
 - **`native`**: Prefers the provider's built-in web fetch; falls back to the `openrouter` engine if the model doesn't support native fetch. When a workspace admin has set an engine list on the Server Tools page, the fallback is the first non-native engine in that list instead; a list of only `native` rejects the request with a 403 on models without native fetch
 - **`exa`**: Uses [Exa](https://exa.ai)'s Contents API to extract page content (supports BYOK)
 - **`openrouter`**: Uses direct HTTP fetch with content extraction
-- **`firecrawl`**: Uses [Firecrawl](https://firecrawl.dev)'s scrape API (BYOK, bring your own key)
+- **`firecrawl`**: Uses [Firecrawl](https://firecrawl.dev)'s scrape API with an OpenRouter-managed key
 - **`parallel`**: Uses [Parallel](https://parallel.ai)'s extract API for high-quality content extraction
 
 To check whether an endpoint runs web fetch natively, read `native_tools` on the endpoint object. See [Native Execution](/guides/features/server-tools#native-execution).
@@ -170,15 +170,12 @@ See [Privacy and regional availability](/guides/features/server-tools#privacy-an
 |---------|-----|----------|-----------|------------|--------|
 | **Domain filtering** | Yes | Yes | Yes | Yes | Varies |
 | **Token truncation** | Yes | Yes | Yes | Yes | No |
-| **API key** | Server-side or BYOK | Server-side | BYOK (your key) | Server-side | Provider-handled |
+| **API key** | Server-side or BYOK | Server-side | Server-side | Server-side | Provider-handled |
 | **Hard limit** | None | None | None | 50/request | 50/request |
 
-### Firecrawl (BYOK)
+### Firecrawl
 
-Firecrawl uses your own API key. To set it up:
-
-1. Go to your [OpenRouter plugin settings](https://openrouter.ai/settings/plugins) and configure your Firecrawl API key
-2. Your Firecrawl account is billed separately from OpenRouter
+Firecrawl uses an OpenRouter-managed API key and charges $0.0025 per fetched page to your OpenRouter credits. No Firecrawl account or API key is required.
 
 ### Hard Limits
 
@@ -186,7 +183,7 @@ To prevent runaway costs:
 
 - **Exa engine**: No hard limit (billed via API credits)
 - **Parallel engine**: No hard limit (billed via API credits)
-- **Firecrawl engine**: No hard limit (uses your Firecrawl credits)
+- **Firecrawl engine**: No hard limit (billed via OpenRouter credits)
 - **OpenRouter/native engines**: Hard limit of 50 fetches per request
 
 ## Domain Filtering
@@ -314,7 +311,7 @@ In both modes a request with no `engine` (or `engine: "auto"`) runs the workspac
 |--------|---------|
 | **Exa** | \$1 per 1,000 fetches |
 | **Parallel** | \$1 per 1,000 fetches |
-| **Firecrawl** | Uses your Firecrawl credits directly (no OpenRouter charge) |
+| **Firecrawl** | $2.50 per 1,000 fetches |
 | **OpenRouter** | Free |
 | **Native** | Passed through from the provider |
 

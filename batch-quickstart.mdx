@@ -45,6 +45,7 @@ Multimodal input in batch is URL-only, and support depends on the provider the b
 | Together | Supported | Not supported |
 | Parasail | Not supported | Not supported |
 | DeepInfra (`/v1/chat/completions` only) | Supported | Supported |
+| Alibaba (`/v1/chat/completions` only) | Supported | Not supported |
 | Sail Research | Supported | Not supported |
 | Fireworks | Not supported | Not supported |
 | Morph | Not supported | Not supported |
@@ -90,6 +91,8 @@ A submit that routes to a provider key containing characters that cannot be sent
 Google Vertex uses a bucket in your GCP project for provider input and output. The primary setup is frictionless: omit `bucket` and let OpenRouter create a private, location-compatible bucket on the first batch. You can optionally provide an existing bucket instead. See [Google Vertex API keys](/guides/overview/auth/byok#google-vertex-api-keys) for permissions and storage behavior.
 
 Vertex BYOK also accepts `image_url: { "url": "gs://your-bucket/image.jpg" }`. Your project's Vertex AI service agent must have read access to the image through batch execution; access granted only to the uploaded service-account key is not sufficient. Image names must end in `.png`, `.jpg`, `.jpeg`, `.webp`, `.heic`, or `.heif`. Platform-funded batches do not accept `gs://` images.
+
+Alibaba accepts either a bare DashScope key or a key config with an `endpoint_url`. For batches the `endpoint_url` must be a DashScope OpenAI-compatible `/v1` base (for example `https://dashscope.aliyuncs.com/compatible-mode/v1`), the same URL sync requests already use; a key config whose URL does not end in `/v1` is rejected at submit with a `400` before anything reaches the provider.
 
 ---
 
