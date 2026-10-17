@@ -1,0 +1,284 @@
+---
+publish: true
+title: Extract Invoice Fields with ScaleDown Extract
+description: Pull the vendor, invoice number, amounts, and due date out of invoice text with ScaleDown Extract, then check that the amounts add up so only consistent invoices post automatically.
+seoTitle: 'Extract Invoice Fields with ScaleDown Extract | OpenRouter Cookbook'
+og:site_name: OpenRouter Documentation
+og:title: 'Extract Invoice Fields with ScaleDown Extract'
+og:description: 'Describe the invoice fields you want, let ScaleDown Extract find them in the invoice text, and check the totals before anything reaches your ledger.'
+og:image: https://openrouter.ai/dynamic-og?title=Extract%20Invoice%20Fields&description=Invoice%20fields%20from%20text%20with%20ScaleDown%20Extract
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: file-invoice-dollar
+models:
+  - scaledown/extract
+---
+
+To automate accounts payable, you need four things from every invoice: who sent it, its number, the amounts, and the due date. You also need to know when those numbers can't be trusted. This recipe sends the invoice text to [ScaleDown Extract](https://openrouter.ai/scaledown/extract) with a one-line description of each field you want, then checks that the subtotal plus tax equals the total. Invoices that pass post automatically. The rest go to a person for review, tagged with what's wrong, such as a missing tax line or totals that don't add up.
+
+**Goal:** Write an `extractInvoice` function that returns the fields Extract found, and a `triage` function that decides whether each invoice can post.
+
+**Outcome:** Consistent invoices post with every field filled in. An invoice with a missing field or totals that don't add up goes to review with the reason attached. Running the same invoice twice gives the same fields.
+
+<Tip>
+Prerequisites:
+
+- Your existing TypeScript app runs on Node.js 20+ or Bun as an ES module, with `@types/node` or `@types/bun` installed, and has the invoice text as a string.
+- You've configured `OPENROUTER_API_KEY` and installed `zod` 4.
+</Tip>
+
+## 1. Describe the fields
+
+Give each field a name and a one-line description of what to look for. Extract uses the description to find the field and labels what it finds with the name, so pick names that work as keys, like `invoice_number`. The wording matters. "With currency" on the amounts makes Extract include the currency code or symbol, which step 3 needs to compare currencies and to read three-decimal currencies like the Kuwaiti dinar correctly.
+
+```typescript lines
+import { z } from 'zod';
+
+const EXTRACT_MODEL = 'scaledown/extract';
+
+const INVOICE_ENTITIES = {
+  vendor: 'Name of the company issuing the invoice',
+  invoice_number: 'Invoice number or reference',
+  subtotal: 'Subtotal before tax, with currency',
+  vat: 'VAT or sales tax amount, with currency',
+  total: 'Total amount due including tax, with currency',
+  due_date: 'Payment due date',
+} as const satisfies Record<string, string>;
+
+type InvoiceField = keyof typeof INVOICE_ENTITIES;
+const INVOICE_FIELDS = Object.keys(INVOICE_ENTITIES) as InvoiceField[];
+```
+
+## 2. Call Extract
+
+Send the invoice text as the user message. Field descriptions go in `provider.options` (the part of an OpenRouter request that carries provider-specific settings), under `scaledown.entities`. Extract replies with a JSON string in `message.content`. Inside is an `entities` array with one entry per field it found: the field name as `type`, the matching invoice text as `text`, the `start` and `end` character positions of that text in your input, and a `confidence`. The code parses the string and validates it with Zod before using it.
+
+```typescript lines
+const EntitySchema = z.object({
+  type: z.string(),
+  text: z.string(),
+  confidence: z.number(),
+  start: z.number().int(),
+  end: z.number().int(),
+});
+type Entity = z.infer<typeof EntitySchema>;
+const ExtractionSchema = z.object({ entities: z.array(EntitySchema) });
+
+const ChatCompletionSchema = z.object({
+  choices: z.array(z.object({ message: z.object({ content: z.string() }) })).min(1),
+  usage: z.object({ prompt_tokens: z.number(), cost: z.number() }),
+});
+type Usage = z.infer<typeof ChatCompletionSchema>['usage'];
+
+export async function extractInvoice(text: string): Promise<{ entities: Entity[]; usage: Usage }> {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: EXTRACT_MODEL,
+      messages: [{ role: 'user', content: text }],
+      provider: { options: { scaledown: { entities: INVOICE_ENTITIES } } },
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) {
+    throw new Error(`extract ${res.status}: ${await res.text()}`);
+  }
+  const body = ChatCompletionSchema.parse(await res.json());
+  const extraction = ExtractionSchema.parse(JSON.parse(body.choices[0]!.message.content));
+  return { entities: extraction.entities, usage: body.usage };
+}
+```
+
+The invoice below produces the captured output in this step. Use it as your first test input, then replace it with invoices from your own queue.
+
+```typescript lines
+const INVOICE = `INVOICE
+Northwind Traders GmbH
+Invoice No: NW-2026-0417
+Date: 2026-09-30
+Due: 2026-10-30
+
+Consulting (10h)         EUR 1,500.00
+Cloud hosting (Sept)     EUR 320.00
+
+Subtotal                 EUR 1,820.00
+VAT 19%                  EUR 345.80
+Total due                EUR 2,165.80`;
+
+const { entities } = await extractInvoice(INVOICE);
+console.log(JSON.stringify(entities, null, 2));
+```
+
+**Captured output.** The `entities` array Extract returned for this invoice, reordered to match `INVOICE_ENTITIES`. `start` and `end` index into `INVOICE`, so `INVOICE.slice(8, 30)` is the vendor. The response also carries fields this recipe doesn't use, such as `ocr_text` and a `context` snippet for each entity.
+
+```json lines
+[
+  { "type": "vendor", "text": "Northwind Traders GmbH", "confidence": 1, "start": 8, "end": 30 },
+  { "type": "invoice_number", "text": "NW-2026-0417", "confidence": 1, "start": 43, "end": 55 },
+  { "type": "subtotal", "text": "EUR 1,820.00", "confidence": 0.999, "start": 190, "end": 202 },
+  { "type": "vat", "text": "EUR 345.80", "confidence": 1, "start": 228, "end": 238 },
+  { "type": "total", "text": "EUR 2,165.80", "confidence": 1, "start": 264, "end": 276 },
+  { "type": "due_date", "text": "2026-10-30", "confidence": 1, "start": 78, "end": 88 }
+]
+```
+
+A field Extract can't find is left out of `entities`. Read `confidence` as "a match was found", not as the chance the value is right, and don't route invoices on it.
+
+<Warning>
+Each `extractInvoice` call is one paid request billed to your OpenRouter account at the [scaledown/extract](https://openrouter.ai/scaledown/extract) rate. In our runs that came to \$0.012 to \$0.015 per 1,000 invoices.
+</Warning>
+
+## 3. Check the invoice before you post it
+
+`triage` takes the first value Extract found for each field, checks that none are missing, and checks that subtotal plus tax equals the total in one currency. `parseMoney` reads each amount as whole cents (or fils, for three-decimal currencies like the Kuwaiti dinar) and refuses anything it can't read unambiguously, such as a negative amount. Those invoices go to review.
+
+```typescript lines
+type Triage =
+  | { post: true; fields: Record<InvoiceField, string> }
+  | { post: false; problems: string[]; fields: Partial<Record<InvoiceField, string>> };
+
+type Money = { cents: number; currency: string | undefined };
+
+/** Currencies whose minor unit has three digits; every other currency is read with two. */
+const THREE_DECIMAL_CURRENCIES = new Set(['BHD', 'IQD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND']);
+
+/** Whole minor units (cents, or fils for a three-decimal currency) plus the currency code or symbol. Signs and accounting negatives are refused rather than silently dropped. */
+function parseMoney(raw: string): Money | undefined {
+  if (/[-()]/.test(raw)) {
+    return undefined;
+  }
+  const currency = raw.match(/\b[A-Z]{3}\b|[$€£¥]/)?.[0];
+  const decimals = currency !== undefined && THREE_DECIMAL_CURRENCIES.has(currency) ? 3 : 2;
+  const digits = raw.replace(/[^0-9.,]/g, '');
+  if (decimals === 3 && digits.includes(',')) {
+    return undefined;
+  }
+  const isLoneThousandsGroup = decimals === 2 && (digits.match(/[.,]/g) ?? []).length === 1 && /[.,]\d{3}$/.test(digits);
+  const decimalIsComma = digits.lastIndexOf(',') > digits.lastIndexOf('.');
+  const normalized = isLoneThousandsGroup
+    ? digits.replace(/[.,]/g, '')
+    : decimalIsComma
+      ? digits.replace(/\./g, '').replace(',', '.')
+      : digits.replace(/,/g, '');
+  const cents = Math.round(Number(normalized) * 10 ** decimals);
+  return normalized.length > 0 && Number.isFinite(cents) ? { cents, currency } : undefined;
+}
+
+function isInvoiceField(type: string): type is InvoiceField {
+  return INVOICE_FIELDS.includes(type as InvoiceField);
+}
+
+export function triage(entities: Entity[]): Triage {
+  const fields: Partial<Record<InvoiceField, string>> = {};
+  for (const entity of entities) {
+    if (isInvoiceField(entity.type) && fields[entity.type] === undefined) {
+      fields[entity.type] = entity.text;
+    }
+  }
+  const problems = INVOICE_FIELDS.filter((field) => fields[field] === undefined).map((field) => `missing_${field}`);
+  if (fields.subtotal !== undefined && fields.vat !== undefined && fields.total !== undefined) {
+    const [subtotal, vat, total] = [fields.subtotal, fields.vat, fields.total].map(parseMoney);
+    if (subtotal === undefined || vat === undefined || total === undefined) {
+      problems.push('unparsed_amount');
+    } else if (new Set([subtotal, vat, total].flatMap((money) => money.currency ?? [])).size > 1) {
+      problems.push('currency_mismatch');
+    } else if (subtotal.cents + vat.cents !== total.cents) {
+      problems.push('totals_mismatch');
+    }
+  }
+  if (problems.length > 0) {
+    return { post: false, problems, fields };
+  }
+  return { post: true, fields: fields as Record<InvoiceField, string> };
+}
+```
+
+An invoice with an empty `problems` list can post. Anything else goes to review, with `problems` naming what failed. Dates come back exactly as printed (`2026-10-30`, `October 15, 2026`, `31.10.2026`, and `20 Oct 2026` in our runs), so convert `due_date` with your date library before it reaches the ledger.
+
+## Worked example
+
+The six made-up invoices below cover the layouts an accounts-payable queue sees: the table from step 2, a prose paragraph, a German-English mix with `12.400,00 EUR` amounts, a one-line statement with fields separated by pipes, an invoice whose printed total is \$10 too high, and a freight invoice with no tax line. Save steps 1 to 3 and this block as one file and run it with `bun run invoices.ts`. Step 2's own call runs first and prints the Northwind `entities` array; the loop then prints one line per invoice.
+
+```typescript expandable lines
+const INVOICES: Record<string, string> = {
+  table: INVOICE,
+  paragraph: `Acme Supplies Ltd hereby invoices Contoso Inc for the September order (reference ACM-88213). The goods total $4,200.00 before tax; sales tax of $336.00 applies, bringing the amount due to $4,536.00. Payment is due by October 15, 2026. Thank you for your business.`,
+  german_mix: `Rechnung / Invoice
+Lieferant: Müller Maschinenbau AG
+Rechnungsnummer: RE-2026-1193
+Rechnungsdatum: 01.10.2026   Fällig am: 31.10.2026
+Nettobetrag: 12.400,00 EUR
+MwSt. 19 %: 2.356,00 EUR
+Gesamtbetrag: 14.756,00 EUR`,
+  one_line: `Globex Corporation | Invoice GX-5531 | Subtotal USD 980.00 | Tax USD 78.40 | Total USD 1,058.40 | Due 2026-11-05`,
+  wrong_total: `INVOICE
+Initech LLC
+Invoice #: IN-7720
+Due date: 2026-10-20
+Subtotal: $2,000.00
+VAT (10%): $200.00
+Total: $2,210.00`,
+  missing_vat: `Umbrella Logistics
+Invoice UL-30091
+Due: 20 Oct 2026
+Freight services ...................... $750.00
+Amount due ............................ $750.00`,
+};
+
+for (const [name, text] of Object.entries(INVOICES)) {
+  const started = Date.now();
+  const { entities, usage } = await extractInvoice(text);
+  console.log(JSON.stringify({ name, ...triage(entities), usage, latency_ms: Date.now() - started }));
+}
+```
+
+**Captured output.** One run of the loop above, one line per invoice:
+
+```text lines
+{"name":"table","post":true,"fields":{"vendor":"Northwind Traders GmbH","invoice_number":"NW-2026-0417","subtotal":"EUR 1,820.00","vat":"EUR 345.80","total":"EUR 2,165.80","due_date":"2026-10-30"},"usage":{"prompt_tokens":384,"cost":0.00001536},"latency_ms":6873}
+{"name":"paragraph","post":true,"fields":{"vendor":"Acme Supplies Ltd","invoice_number":"ACM-88213","subtotal":"$4,200.00","vat":"$336.00","total":"$4,536.00","due_date":"October 15, 2026"},"usage":{"prompt_tokens":341,"cost":0.00001364},"latency_ms":6212}
+{"name":"german_mix","post":true,"fields":{"vendor":"Müller Maschinenbau AG","invoice_number":"RE-2026-1193","subtotal":"12.400,00 EUR","vat":"2.356,00 EUR","total":"14.756,00 EUR","due_date":"31.10.2026"},"usage":{"prompt_tokens":373,"cost":0.00001492},"latency_ms":2377}
+{"name":"one_line","post":true,"fields":{"vendor":"Globex Corporation","invoice_number":"GX-5531","subtotal":"USD 980.00","vat":"USD 78.40","total":"USD 1,058.40","due_date":"2026-11-05"},"usage":{"prompt_tokens":311,"cost":0.00001244},"latency_ms":6776}
+{"name":"wrong_total","post":false,"problems":["totals_mismatch"],"fields":{"vendor":"Initech LLC","invoice_number":"IN-7720","subtotal":"$2,000.00","vat":"$200.00","total":"$2,210.00","due_date":"2026-10-20"},"usage":{"prompt_tokens":325,"cost":0.000013},"latency_ms":15522}
+{"name":"missing_vat","post":false,"problems":["missing_vat"],"fields":{"vendor":"Umbrella Logistics","invoice_number":"UL-30091","subtotal":"$750.00","total":"$750.00","due_date":"20 Oct 2026"},"usage":{"prompt_tokens":306,"cost":0.00001224},"latency_ms":7374}
+```
+
+| Measure | Result |
+|---|---|
+| Fields found and matching the invoice text | 35 of 35 present fields, all six invoices |
+| Posted automatically | 4 of 6, the four consistent invoices |
+| Sent to review | 2 of 6, with `totals_mismatch` and `missing_vat` |
+| Wrong value posted | 0 |
+| Same invoice, 5 repeated runs | identical `fields` every time |
+| Latency | 0.5 to 7 seconds per invoice in most of our runs, with outliers past 15 seconds; a request that hits the 60-second `AbortSignal.timeout` throws out of the loop, so catch it and retry in a real queue |
+| Cost per invoice | \$0.0000122 to \$0.0000154 from `usage.cost` |
+
+## Check your work
+
+- **Request.** The request body carries `provider.options.scaledown.entities` with one description per field.
+- **Response.** `message.content` parses as JSON with an `entities` array. Each entry has `type`, `text`, `confidence`, `start`, and `end`. Each `text` equals `invoice.slice(start, end)`.
+- **Clean invoice.** Every field in `INVOICE_FIELDS` is present and `triage` returns `post: true`.
+- **One cent off.** Change the total by one cent, on a small invoice and on a large one. Both return `totals_mismatch`.
+- **No cents.** `$1,000` / `$80` / `$1,080` posts, with the comma read as a thousands separator.
+- **Three-decimal currency.** `KWD 1.250` / `KWD 0.100` / `KWD 1.350` posts, and so does `KWD 1.250` / `KWD 0.25` / `KWD 1.500` (1,250 + 250 = 1,500 fils). A total of `KWD 1.351` returns `totals_mismatch`, and `KWD 3,000` anywhere returns `unparsed_amount`.
+- **Mixed currencies.** Print the tax as `EUR 20.00` on a `USD` invoice. `problems` contains `currency_mismatch`.
+- **Negative amount.** Make the subtotal `-$100.00` or `($100.00)`. `problems` contains `unparsed_amount`.
+- **Missing field.** Remove the tax line. `problems` contains `missing_vat` and `post` is `false`.
+- **Stable.** Run one invoice five times. `fields` is identical every time.
+
+## Variations
+
+Change `INVOICE_ENTITIES` and the same code pulls fields out of other documents: renewal terms, notice periods, and liability caps from contracts, guidance and segment revenue from filings, or error codes and product versions from support tickets. Whenever two extracted values must agree, keep a check like step 3.
+
+## Next steps
+
+- [Detect Stuck and Looping Agents with ScaleDown Classify](/cookbook/building-agents/detect-agent-loops-with-scaledown) to ask a model typed questions about an agent's transcript
+- [Compact Long Agent Sessions with ScaleDown Summarize](/cookbook/building-agents/compact-agent-sessions-with-scaledown) to summarize long agent histories

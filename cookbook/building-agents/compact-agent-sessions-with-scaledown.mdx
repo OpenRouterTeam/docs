@@ -1,0 +1,365 @@
+---
+publish: true
+title: Compact Long Agent Sessions with ScaleDown Summarize
+description: Keep a long-running agent inside its context window. Summarize the old part of its history with ScaleDown Summarize, keep the recent turns as they are, and hold on to the decisions and facts the agent still needs.
+seoTitle: 'Compact Long Agent Sessions with ScaleDown Summarize | OpenRouter Cookbook'
+og:site_name: OpenRouter Documentation
+og:title: 'Compact Long Agent Sessions with ScaleDown Summarize'
+og:description: 'Replace the old part of an agent history with a ScaleDown Summarize summary, carry that summary forward across compactions, and check that the important facts survive.'
+og:image: https://openrouter.ai/dynamic-og?title=Compact%20Agent%20Sessions&description=Summarize%20old%20turns%2C%20keep%20recent%20ones%20verbatim
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: compress
+models:
+  - scaledown/summarize
+---
+
+A long coding or research session fills the context window with old tool calls. Drop them and the agent forgets what it learned: which files it read, which approaches failed, which facts it confirmed. This recipe replaces the old part of the history with a summary from [ScaleDown Summarize](https://openrouter.ai/scaledown/summarize) and keeps the recent turns word for word, so the agent remembers what it learned in a fraction of the tokens.
+
+Summarize does one job: it reads one block of text and returns a summary. One call over a whole history drops facts, so a long history gets summarized in chunks.
+
+**Goal:** Write a `maybeCompact` function. While the history is under budget, it returns it unchanged. Once it's over, it returns the system prompt, one summary message, and the most recent turns.
+
+**Outcome:** The history stays under budget however many times it's compacted. Facts from the summarized turns can still be recalled afterwards. The kept turns never start with an orphaned tool result, so the next model call isn't rejected, and a failed summarize call leaves the history as it was.
+
+<Tip>
+Prerequisites:
+
+- Your existing TypeScript agent loop runs on Node.js 20+ or Bun as an ES module, with `@types/node` or `@types/bun` installed, and keeps its message history in an array you can rewrite between steps.
+- You've configured `OPENROUTER_API_KEY` and installed `zod` 4.
+</Tip>
+
+## 1. Call Summarize
+
+`summarize` sends your instructions as the system message and the text as the user message, and returns the plain-text summary with its `usage`. The instructions tell the model what to keep: the goal, the decisions made and why, the files and commands the agent touched, the approaches that failed, and the facts it confirmed. They also tell it to copy names exactly, such as file paths, table names, and ticket IDs, because our summaries lost many of them otherwise. Longer histories get split into chunks before they reach `summarize`, so each summary stays short and focused.
+
+```typescript lines
+import { z } from 'zod';
+
+const SUMMARIZE_MODEL = 'scaledown/summarize';
+
+const COMPACTION_INSTRUCTIONS = `You are compacting an AI agent's working history so it can continue the task.
+Keep: the goal, decisions made and why, files and functions touched, commands that worked,
+approaches that failed and why, and facts confirmed. Drop pleasantries and raw tool output
+unless a specific value is needed later. Quote identifiers verbatim: ticket IDs, file paths, branch names,
+table names, commands, environment variables, numbers and names. Use short bullet points.`;
+
+const ChatCompletionSchema = z.object({
+  choices: z.array(z.object({ message: z.object({ content: z.string() }) })).min(1),
+  usage: z.object({ prompt_tokens: z.number(), completion_tokens: z.number(), cost: z.number() }),
+});
+type Usage = z.infer<typeof ChatCompletionSchema>['usage'];
+
+async function summarize(text: string): Promise<{ summary: string; usage: Usage }> {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: SUMMARIZE_MODEL,
+      messages: [
+        { role: 'system', content: COMPACTION_INSTRUCTIONS },
+        { role: 'user', content: text },
+      ],
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) {
+    throw new Error(`summarize ${res.status}: ${await res.text()}`);
+  }
+  const body = ChatCompletionSchema.parse(await res.json());
+  return { summary: body.choices[0]!.message.content, usage: body.usage };
+}
+```
+
+<Warning>
+Each `summarize` call is one paid request billed to your OpenRouter account at the [scaledown/summarize](https://openrouter.ai/scaledown/summarize) rate. In our run, compacting an 82k-character history took six calls and cost \$0.00087.
+</Warning>
+
+## 2. Turn old messages into text
+
+Summarize reads one block of text and rejects `tool` messages with a `400`, so turn the old messages into text first. Keep the tool calls and their results, since that's where most of what the agent learned lives. The message type below is the OpenAI chat format; swap in your own.
+
+```typescript lines
+type ToolCall = { id: string; function: { name: string; arguments: string } };
+type HistoryMessage =
+  | { role: 'system' | 'user'; content: string }
+  | { role: 'assistant'; content: string | null; tool_calls?: ToolCall[] }
+  | { role: 'tool'; tool_call_id: string; content: string };
+
+function renderMessage(message: HistoryMessage): string {
+  switch (message.role) {
+    case 'system':
+    case 'user':
+      return `[${message.role}]\n${message.content}`;
+    case 'assistant': {
+      const calls = (message.tool_calls ?? []).map(
+        (call) => `[tool_call ${call.function.name}] ${call.function.arguments}`,
+      );
+      return [`[assistant]\n${message.content ?? ''}`, ...calls].join('\n');
+    }
+    case 'tool':
+      return `[tool_result ${message.tool_call_id}]\n${message.content}`;
+    default:
+      return message satisfies never;
+  }
+}
+
+const renderHistory = (messages: HistoryMessage[]): string => messages.map(renderMessage).join('\n\n');
+```
+
+## 3. Summarize in chunks
+
+One call can't hold everything in a long history, so it drops facts. Split the old turns into chunks of about 16k characters (4k to 5k tokens), summarize each chunk, and join the results. Each chunk gets its own summary, and the calls run in parallel.
+
+```typescript lines
+/** One call over a long history drops facts, so histories are compacted in windows of 4k to 5k tokens each. */
+const CHUNK_CHARS = 16_000;
+
+function historySize(history: HistoryMessage[]): number {
+  return history.reduce((total, message) => total + JSON.stringify(message).length, 0);
+}
+
+function chunkMessages(messages: HistoryMessage[]): HistoryMessage[][] {
+  const chunks: HistoryMessage[][] = [[]];
+  for (const message of messages) {
+    const current = chunks[chunks.length - 1]!;
+    if (current.length > 0 && historySize(current) + JSON.stringify(message).length > CHUNK_CHARS) {
+      chunks.push([message]);
+    } else {
+      current.push(message);
+    }
+  }
+  return chunks;
+}
+
+async function summarizeHistory(messages: HistoryMessage[]): Promise<{ summary: string; usage: Usage[] }> {
+  const chunks = chunkMessages(messages);
+  const results = await Promise.all(chunks.map((chunk) => summarize(renderHistory(chunk))));
+  const summary = results
+    .map(({ summary }, index) => (chunks.length > 1 ? `Part ${index + 1} of ${chunks.length}:\n${summary}` : summary))
+    .join('\n\n');
+  return { summary, usage: results.map(({ usage }) => usage) };
+}
+```
+
+## 4. Compact when the history gets big
+
+`maybeCompact` keeps the system prompt and the last `KEEP_RECENT` turns, and replaces everything in between with one summary message. Three details keep it safe over a long run:
+
+- **Cut between whole turns.** If the kept turns started with a tool result whose tool call had been summarized away, the next model call would be rejected. So `turnBoundary` moves the cut back until the kept turns start with a user or assistant message. If that reaches the first turn, which happens when one assistant turn made more than `KEEP_RECENT` tool calls, it moves forward instead, so that whole batch gets summarized.
+- **Carry the summary forward.** On the next compaction, the earlier summary is kept and the new one is added after it. Once the combined summary passes `SUMMARY_MAX_CHARS`, it's summarized again in `FOLD_WINDOW_CHARS` chunks. One call over the whole summary would drop facts the same way one call over the whole history does.
+- **Keep the full history if a call fails.** On any error, `maybeCompact` logs it and returns the history unchanged. The run carries on with a bigger context instead of a gap in its memory.
+
+```typescript lines
+const KEEP_RECENT = 8;
+const COMPACT_AT_CHARS = 50_000;
+/** A carried-forward summary is only re-summarized once it grows past this, so facts survive repeated compactions. */
+const SUMMARY_MAX_CHARS = 12_000;
+/** A fold re-summarizes the carried summary in windows this big, so no single call has to compress all of it. */
+const FOLD_WINDOW_CHARS = 4_000;
+const SUMMARY_PREFIX = 'Summary of earlier work in this session:\n\n';
+
+/** Splits text on blank lines into windows of about `maxChars`, so a long summary is folded part by part rather than in one lossy call. */
+function chunkText(text: string, maxChars: number): string[] {
+  const chunks: string[] = [];
+  let current = '';
+  for (const paragraph of text.split('\n\n')) {
+    if (current.length > 0 && current.length + paragraph.length > maxChars) {
+      chunks.push(current);
+      current = '';
+    }
+    current = current.length === 0 ? paragraph : `${current}\n\n${paragraph}`;
+  }
+  return current.length > 0 ? [...chunks, current] : chunks;
+}
+
+async function foldSummary(summary: string): Promise<{ summary: string; usage: Usage[] }> {
+  const results = await Promise.all(chunkText(summary, FOLD_WINDOW_CHARS).map((part) => summarize(part)));
+  return { summary: results.map(({ summary }) => summary).join('\n\n'), usage: results.map(({ usage }) => usage) };
+}
+
+/** Moves the cut so `recent` starts on a user or assistant turn, never on an orphaned tool result. Walks back first; if that reaches the first turn, walks forward instead so an oversized tool batch still gets summarized. */
+function turnBoundary(messages: HistoryMessage[], cut: number): number {
+  let index = cut;
+  while (index > 0 && messages[index]?.role === 'tool') {
+    index -= 1;
+  }
+  if (index > 0) {
+    return index;
+  }
+  index = cut;
+  while (index < messages.length && messages[index]?.role === 'tool') {
+    index += 1;
+  }
+  return index;
+}
+
+function isSummaryMessage(message: HistoryMessage | undefined): message is { role: 'user'; content: string } {
+  return message?.role === 'user' && message.content.startsWith(SUMMARY_PREFIX);
+}
+
+export async function maybeCompact(history: HistoryMessage[]): Promise<HistoryMessage[]> {
+  if (historySize(history) < COMPACT_AT_CHARS || history.length <= KEEP_RECENT + 1) {
+    return history;
+  }
+  const [system, ...rest] = history;
+  if (system === undefined || system.role !== 'system') {
+    throw new Error('history must start with the system prompt');
+  }
+  const carried = isSummaryMessage(rest[0]) ? rest[0].content.slice(SUMMARY_PREFIX.length) : undefined;
+  const turns = carried === undefined ? rest : rest.slice(1);
+  const cut = turnBoundary(turns, turns.length - KEEP_RECENT);
+  const old = turns.slice(0, cut);
+  const recent = turns.slice(cut);
+  if (old.length === 0) {
+    return history;
+  }
+  try {
+    const fresh = await summarizeHistory(old);
+    let summary = carried === undefined ? fresh.summary : `${carried}\n\n${fresh.summary}`;
+    let usage = fresh.usage;
+    if (summary.length > SUMMARY_MAX_CHARS) {
+      const folded = await foldSummary(summary);
+      summary = folded.summary;
+      usage = [...usage, ...folded.usage];
+    }
+    console.log(JSON.stringify({ compacted_messages: old.length, old_chars: historySize(old), carried_chars: carried?.length ?? 0, summary_chars: summary.length, calls: usage.length, cost: usage.reduce((n, u) => n + u.cost, 0), prompt_tokens: usage.reduce((n, u) => n + u.prompt_tokens, 0) }));
+    return [system, { role: 'user', content: `${SUMMARY_PREFIX}${summary}` }, ...recent];
+  } catch (error) {
+    console.error('compaction failed, keeping full history', error);
+    return history;
+  }
+}
+```
+
+Call it at the start of each loop step. This sketch isn't part of the runnable file below; `agentStep` stands for your own loop body:
+
+```typescript lines
+let history: HistoryMessage[] = [{ role: 'system', content: SYSTEM_PROMPT }];
+for (let step = 0; step < MAX_STEPS; step++) {
+  history = await maybeCompact(history);
+  history.push(await agentStep(history));
+}
+```
+
+Put anything the agent must never lose, like the user's original task and its constraints, in the system prompt. The system prompt is never summarized.
+
+## Worked example
+
+The session below is made up, but it's the one the captured output came from, so you can run it yourself. `syntheticSession` builds a 100-step coding session (202 messages, 86k characters) in which the agent reads one file per step, with ten facts planted along the way to check what survives: a config path, a failed approach, a rate limit, a table name, a ticket ID, a branch name, a test command, the root cause, a reviewer, and an environment variable. Save steps 1 to 4, without the loop sketch, and these two blocks as one file and run it with `bun run compact.ts`.
+
+```typescript expandable lines
+const FACTS = {
+  config_path: 'config/billing/invoice-clock.yaml',
+  failed_approach: 'jest.spyOn',
+  rate_limit: '120 req',
+  table_name: 'billing_invoice_runs',
+  ticket: 'BILL-482',
+  branch: 'fix/invoice-clock-injection',
+  test_command: 'bun test packages/billing',
+  root_cause: 'caches `Date.now()` at import',
+  reviewer: '@mara',
+  env_var: 'INVOICE_CLOCK',
+} as const;
+
+/** The step at which each fact appears: what the agent said and what the tool returned. */
+const PLANTED: Record<number, { said: string; result: string }> = {
+  7: { said: `The clock settings live in ${FACTS.config_path}. Reading it.`, result: 'clock:\n  source: system\n  timezone: UTC' },
+  15: { said: `Trying to mock the clock with ${FACTS.failed_approach}.`, result: `FAIL: the mock has no effect because ${FACTS.root_cause}.` },
+  23: { said: 'Checking the provider rate limit in the docs.', result: `Rate limit for the invoice API: ${FACTS.rate_limit}.` },
+  31: { said: 'Looking up the table that records invoice runs.', result: `Table: ${FACTS.table_name} (columns: run_id, invoiced_at, status)` },
+  44: { said: `Creating branch ${FACTS.branch}.`, result: `Switched to a new branch '${FACTS.branch}'` },
+  58: { said: `Injecting the clock through the ${FACTS.env_var} environment variable instead of mocking.`, result: `Updated invoice.ts to read ${FACTS.env_var} when set.` },
+  66: { said: `Running ${FACTS.test_command}.`, result: 'bun test v1.4.2\n 42 pass\n 0 fail\nRan 42 tests across 6 files.' },
+};
+
+/** A made-up coding session: `steps` assistant turns, each with one tool call and its result. `offset` shifts the step numbers so a later batch continues an earlier one. */
+function syntheticSession(steps: number, offset = 0): HistoryMessage[] {
+  const history: HistoryMessage[] = [
+    { role: 'system', content: 'You are a coding agent working in the openrouter-web monorepo. Use tools to read files and run commands.' },
+    { role: 'user', content: `Fix the flaky test in packages/billing/invoice.test.ts. Ticket ${FACTS.ticket}. Reviewer is ${FACTS.reviewer}.` },
+  ];
+  for (let i = 0; i < steps; i++) {
+    const n = i + offset;
+    const file = `lib/module-${n}.ts`;
+    const planted = PLANTED[n];
+    const said = planted?.said ?? `Step ${n}: reading ${file} to understand how the invoice date flows through the code.`;
+    const result = planted?.result ?? `export function helper${n}(x: number): number {\n  return x * ${n};\n}\n// ${'lorem ipsum dolor sit amet '.repeat(20)}`;
+    const id = `call_${n}`;
+    history.push({ role: 'assistant', content: said, tool_calls: [{ id, function: { name: n % 3 === 0 ? 'run_command' : 'read_file', arguments: JSON.stringify({ target: file }) } }] });
+    history.push({ role: 'tool', tool_call_id: id, content: result });
+  }
+  return history;
+}
+```
+
+```typescript lines
+const compacted = await maybeCompact(syntheticSession(100));
+const summary = compacted[1];
+if (isSummaryMessage(summary)) {
+  const kept = Object.values(FACTS).filter((fact) => summary.content.toLowerCase().includes(fact.toLowerCase()));
+  console.log(JSON.stringify({ after_chars: historySize(compacted), facts_kept: `${kept.length} of ${Object.keys(FACTS).length}` }));
+  console.log(summary.content);
+}
+```
+
+**Captured output.** The first compaction's log line from `maybeCompact`, and the first two of the six parts of its summary:
+
+```text lines
+{"compacted_messages":193,"old_chars":82444,"carried_chars":0,"summary_chars":3256,"calls":6,"cost":0.00072568,"prompt_tokens":18142}
+```
+
+```text lines
+Summary of earlier work in this session:
+
+Part 1 of 6:
+*   Goal: Fix flaky test in `packages/billing/invoice.test.ts` (Ticket BILL-482, Reviewer @mara).
+*   Investigated invoice date flow by reading files: `lib/module-0.ts` through `lib/module-18.ts`.
+*   Read config file `config/billing/invoice-clock.yaml`; found settings: `clock.source: system`, `clock.timezone: UTC`.
+*   Attempted to mock clock with `jest.spyOn`; result: FAIL because mock has no effect due to caching `Date.now()` at import.
+
+Part 2 of 6:
+- Goal: Understand how the invoice date flows through the code.
+- Confirmed provider rate limit for the invoice API: 120 req.
+- Confirmed table recording invoice runs: `billing_invoice_runs` (columns: run_id, invoiced_at, status).
+- Read files: `lib/module-19.ts`, `lib/module-20.ts`, `lib/module-22.ts`, `lib/module-23.ts`, `lib/module-25.ts`, `lib/module-26.ts`, `lib/module-28.ts`, `lib/module-29.ts`, `lib/module-32.ts`, `lib/module-34.ts`, `lib/module-35.ts`, `lib/module-37.ts`.
+- Ran commands on targets: `lib/module-21.ts`, `lib/module-24.ts`, `lib/module-27.ts`, `lib/module-30.ts`, `lib/module-33.ts`, `lib/module-36.ts`.
+```
+
+If your summaries stop mid-sentence, lower `CHUNK_CHARS`.
+
+We then appended `syntheticSession(80, 200).slice(2)`, 80 more steps, and compacted again, then once more after another 80 (`syntheticSession(80, 400).slice(2)`). The second compaction carried the first summary forward and grew it to 11.8k characters, just under `SUMMARY_MAX_CHARS`. The third crossed the limit, so the carried summary was folded as well: 11 calls instead of 5, and the summary came back at 10.5k to 10.8k characters, since each 4k window returned about 1.7k. Facts after the third compaction: 8 of 10 in one run, 10 of 10 in the other. Folding re-summarizes a summary, which is where facts go missing, so keep the limit as high as your context allows. With `SUMMARY_MAX_CHARS` lowered to `6_000`, the fold ran on both the second and third compaction (8 and 9 calls), the summary stayed between 2.8k and 4.8k characters, and 10 of 10 facts survived in that run, so a fold is a risk, not a certain loss.
+
+| Measure | Result |
+|---|---|
+| First compaction | 82,444 characters of old turns became a 3.3k to 4.2k-character summary; history went from 86k to 7.1k to 8.2k characters |
+| Hidden facts kept after the first compaction | 9 or 10 of 10 across 7 runs |
+| After the second and third compaction | summary grew to 11.8k characters, then folded to 10.5k to 10.8k; facts 9 then 8 of 10 in one run, 10 then 10 in the other |
+| Calls and cost per compaction | 5 to 6 calls and 16.3k to 18.1k prompt tokens without a fold, \$0.00065 to \$0.00073 from `usage.cost`; 11 calls, 24.6k to 24.8k tokens and \$0.00099 with one |
+| Latency per compaction, chunks in parallel | 2 to 33 seconds; a fold adds a second round of calls after the chunk calls, and one run in testing hit the 60-second timeout and kept the full history |
+| Kept turns after every compaction | started on an `assistant` message |
+
+## Check your work
+
+- **Shape.** After compaction, the history is your system prompt, then a `user` message starting with `SUMMARY_PREFIX`, then a `user` or `assistant` message, never a `tool` result.
+- **Budget.** `historySize` after compaction is well under `COMPACT_AT_CHARS`: 7k against 50k in our run.
+- **Memory.** Ask the agent about something that only appears in the summarized turns, like a file it read or an approach that failed. It should answer correctly. Our summaries kept 9 or 10 of the 10 hidden facts, so expect to lose one now and then. Keep anything that must never be lost in your own state, not in the summary.
+- **Repeat.** Compact twice more and check which early facts survive. Ours kept 8 to 10 of 10 after the third compaction, the one that folds the summary.
+- **Fail safe.** Break the API key. `maybeCompact` logs the error and returns the history unchanged.
+
+## Variations
+
+With different instructions and no chunking, the same `summarize` call can turn a meeting transcript into decisions and open questions, condense a support ticket's history before an agent picks it up, or boil a long email thread down to one paragraph. Once the input is longer than a few thousand tokens, chunk it as in step 3.
+
+## Next steps
+
+- [Detect Stuck and Looping Agents with ScaleDown Classify](/cookbook/building-agents/detect-agent-loops-with-scaledown) to check the same transcript for loops every few steps
+- [Build a Long-Horizon Agent](/cookbook/building-agents/long-horizon-agents) for the cost limits, saved state, and streaming around this compaction
+- [Extract Invoice Fields with ScaleDown Extract](/cookbook/evaluate-and-optimize/extract-invoice-fields-with-scaledown) to pull named fields out of documents
