@@ -1,0 +1,328 @@
+---
+publish: true
+title: Detect Stuck and Looping Agents with ScaleDown Classify
+description: Add a supervisor to your agent loop. Every few steps it asks ScaleDown Classify whether the run is stuck or looping, then nudges or stops the agent based on the answer.
+seoTitle: 'Detect Stuck and Looping Agents with ScaleDown Classify | OpenRouter Cookbook'
+og:site_name: OpenRouter Documentation
+og:title: 'Detect Stuck and Looping Agents with ScaleDown Classify'
+og:description: 'Ask ScaleDown Classify three questions about an agent transcript every few steps, and use the probabilities it returns to continue, nudge, or stop the run.'
+og:image: https://openrouter.ai/dynamic-og?title=Detect%20Looping%20Agents&description=Supervise%20agent%20runs%20with%20the%20Decisions%20API
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: rotate-exclamation
+models:
+  - scaledown/classify
+---
+
+An agent that re-runs the same failing command forty times pays for every attempt, and nobody reads every transcript to catch it. This recipe adds a supervisor to your loop. Every few steps, it sends the transcript to [ScaleDown Classify](https://openrouter.ai/scaledown/classify-1) through the OpenRouter [Decisions API](/api/api-reference/alphadecisions/submit-a-decisions-request) and asks three questions. Is the run making progress, stuck, or looping? Is the agent repeating itself? How close is it to done? Fixed thresholds on the answers decide whether the loop continues, gets a nudge, or stops.
+
+Classify answers questions. It doesn't write text. For each question you get back a typed answer instead of prose: a `choice` picks one of your labels and gives a probability for each, a `noul` gives the probability that the answer is yes, and a `score` places the answer on a scale you define. The supervisor compares those numbers directly, with nothing to parse.
+
+**Goal:** Write a `supervise` function that reads the transcript and returns `'continue'`, `'nudge'`, or `'halt'`, and call it from your loop every `CHECK_EVERY` steps.
+
+**Outcome:** A looping run stops at the first check that catches it. A blocked run gets a message telling it to change course. A healthy run carries on untouched, even when a check itself fails. Every check logs its probabilities and cost, so you can see why it acted.
+
+<Tip>
+Prerequisites:
+
+- Your existing TypeScript agent loop runs on Node.js 20+ or Bun as an ES module, with `@types/node` or `@types/bun` installed, and can turn its message history into a string.
+- You've configured `OPENROUTER_API_KEY` and installed `zod` 4.
+- Keep the [Decisions API reference](/api/api-reference/alphadecisions/submit-a-decisions-request) open for the request format.
+</Tip>
+
+## 1. Define the questions
+
+Write the questions once, as a constant. For the `choice`, pick labels that can't overlap and describe each one in `criteria`, since the model classifies against that text. Use a `noul` for a separate yes-or-no check, and a `score` when the answer is a matter of degree. A `score`'s `criteria` is an ordered list, and the answer is a position on it, from `0` to `criteria.length - 1`.
+
+```typescript lines
+import { z } from 'zod';
+
+const DECISIONS_MODEL = 'scaledown/classify-1';
+
+const QUESTIONS = {
+  run_state: {
+    type: 'choice',
+    instructions: 'Which single state best describes this agent run?',
+    criteria: {
+      progressing: 'The agent is making new progress: trying different actions, producing new results, or moving closer to the goal.',
+      stuck: 'The agent is blocked by an error or missing information it cannot resolve, even when it tries different actions.',
+      looping: 'The agent is repeating the same tool calls or reasoning with the same outcome.',
+    },
+  },
+  is_repeating: {
+    type: 'noul',
+    instructions: 'In the last third of the transcript, does the agent repeat a tool call it already made with the same arguments and get the same result?',
+  },
+  completion: {
+    type: 'score',
+    instructions: "How close is the agent to completing the user's task?",
+    criteria: ['Has not started or is far from done', 'Partway there, with meaningful work remaining', 'Essentially done, only wrap-up left'],
+  },
+} as const;
+```
+
+## 2. Call the Decisions API
+
+`judgeRun` sends the transcript and the questions, and checks the answers against a schema. If the response is an error or doesn't match the schema, `judgeRun` throws. Step 3 decides what that means for the loop.
+
+```typescript lines
+const RUN_STATES = ['progressing', 'stuck', 'looping'] as const;
+
+const AnswersSchema = z.object({
+  run_state: z.object({
+    type: z.literal('choice'),
+    choice: z.enum(RUN_STATES),
+    probabilities: z.record(z.enum(RUN_STATES), z.number().min(0).max(1)),
+  }),
+  is_repeating: z.object({ type: z.literal('noul'), noul: z.number().min(0).max(1) }),
+  completion: z.object({ type: z.literal('score'), score: z.number().min(0).max(2) }),
+});
+type Answers = z.infer<typeof AnswersSchema>;
+
+const DecisionsResponseSchema = z.object({
+  id: z.string(),
+  model: z.string(),
+  answers: AnswersSchema,
+  usage: z.object({ input_tokens: z.number(), output_tokens: z.number(), cost: z.number() }),
+});
+type Judgement = z.infer<typeof DecisionsResponseSchema>;
+
+export async function judgeRun(transcript: string): Promise<Judgement> {
+  const res = await fetch('https://openrouter.ai/api/alpha/decisions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ model: DECISIONS_MODEL, state: { text: transcript }, questions: QUESTIONS }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) {
+    throw new Error(`decisions ${res.status}: ${await res.text()}`);
+  }
+  return DecisionsResponseSchema.parse(await res.json());
+}
+```
+
+**Captured output.** The response for the looping transcript from the worked example below: 14,244 characters in which the agent runs `bun test packages/billing/invoice.test.ts` sixty times and fails the same way each time.
+
+```json lines
+{
+  "model": "scaledown/classify-1-20260928",
+  "answers": {
+    "run_state": {
+      "type": "choice",
+      "choice": "looping",
+      "probabilities": { "progressing": 0.0090, "stuck": 0.0321, "looping": 0.9590 },
+      "confidence": 0.9590
+    },
+    "is_repeating": { "type": "noul", "noul": 0.8383 },
+    "completion": {
+      "type": "score",
+      "score": 0.2888,
+      "legend": {
+        "0": "Has not started or is far from done",
+        "1": "Partway there, with meaningful work remaining",
+        "2": "Essentially done, only wrap-up left"
+      },
+      "probabilities": { "0": 0.7472, "1": 0.2167, "2": 0.0360 },
+      "confidence": 0.7472
+    }
+  },
+  "usage": { "input_tokens": 15682, "output_tokens": 3, "cost": 0.00062728 },
+  "id": "gen-dec-1792185387-Kp0KAk2wDtkkufEXc32g",
+  "provider": "ScaleDown"
+}
+```
+
+Probabilities are rounded to four places. `score` is the weighted average of the positions, here `0.0929` on a scale of `0` to `2`, so the agent is nowhere near done. Each question reads the whole transcript, so `usage.input_tokens` counts it once per question: asking only `is_repeating` used `5161` input tokens.
+
+<Warning>
+Each `judgeRun` call is one paid request billed to your OpenRouter account at the [scaledown/classify-1](https://openrouter.ai/scaledown/classify-1) rate. For long runs, raise `CHECK_EVERY`, and drop `completion` if you don't act on it.
+</Warning>
+
+## 3. Turn the answers into an action
+
+Decide on the probabilities, not just the label: `choice` says `looping` whether the model is 41% sure or 95% sure. Stopping the run takes two signals agreeing, `run_state` and `is_repeating`, which cuts false stops. One strong signal on its own only earns a nudge.
+
+If a check itself fails, the supervisor lets the run continue: `supervise` logs the error and returns `'continue'`, so a Decisions outage or a schema change never kills a healthy run. A [tool-call gate](/cookbook/building-agents/gate-tool-calls-with-jev) does the opposite and blocks on error, because a wrongly approved tool call can do harm. Here, a missed check costs at most a few more steps of a run that may already be wasted.
+
+```typescript lines
+type Action = 'continue' | 'nudge' | 'halt';
+
+const HALT_LOOPING = 0.8;
+const HALT_REPEATING = 0.8;
+const NUDGE_LOOPING = 0.5;
+const NUDGE_STUCK = 0.4;
+
+export function chooseAction(answers: Answers): Action {
+  const looping = answers.run_state.probabilities.looping;
+  const stuck = answers.run_state.probabilities.stuck;
+  if (looping >= HALT_LOOPING && answers.is_repeating.noul >= HALT_REPEATING) {
+    return 'halt';
+  }
+  if (looping >= NUDGE_LOOPING || stuck >= NUDGE_STUCK) {
+    return 'nudge';
+  }
+  return 'continue';
+}
+
+export async function supervise(transcript: string): Promise<Action> {
+  let judgement: Judgement;
+  try {
+    judgement = await judgeRun(transcript);
+  } catch (error) {
+    console.error('supervisor check failed, continuing', error);
+    return 'continue';
+  }
+  const action = chooseAction(judgement.answers);
+  console.log(
+    JSON.stringify({
+      id: judgement.id,
+      action,
+      run_state: judgement.answers.run_state.probabilities,
+      is_repeating: judgement.answers.is_repeating.noul,
+      completion: judgement.answers.completion.score,
+      usage: judgement.usage,
+    }),
+  );
+  return action;
+}
+```
+
+The API returns probabilities, not reasons, so the log line is your record of why the supervisor acted. Keep it with the run.
+
+## 4. Hook it into the loop
+
+Check every `CHECK_EVERY` steps, not every step. `renderTranscript` is your own function that turns the message history, including tool calls and their results, into the text Classify should judge. On `halt`, stop the loop and report the last log line. On `nudge`, add a user message telling the agent what the supervisor saw.
+
+```typescript lines
+const CHECK_EVERY = 5;
+
+for (let step = 1; step <= MAX_STEPS; step++) {
+  history.push(await agentStep(history));
+
+  if (step % CHECK_EVERY === 0) {
+    const action = await supervise(renderTranscript(history));
+    if (action === 'halt') {
+      throw new Error('Agent halted: the supervisor saw it looping');
+    }
+    if (action === 'nudge') {
+      history.push({
+        role: 'user',
+        content: 'You appear to be repeating yourself or blocked. Try a different approach, or stop and explain what is blocking you.',
+      });
+    }
+  }
+}
+```
+
+## Worked example
+
+The three transcripts below are made up, but they're the ones the captured output came from, so you can run them yourself. All three start from the same task. The looping transcript runs one failing test command sixty times. The stuck transcript tries twelve different ways to read a fixture file owned by root, then gives up. The progressing transcript reads the test, finds the import-time `Date.now()`, injects a clock, runs the tests, and opens a PR. Save steps 1 to 3 and these two blocks as one file and run it with `bun run supervise.ts`.
+
+```typescript expandable lines
+type Kind = 'looping' | 'stuck' | 'progressing';
+type Step = [said: string, tool: string, args: string, result: string];
+
+const TASK = '[user]\nMake the failing test in packages/billing/invoice.test.ts pass and open a PR.';
+
+const LOOPING_STEP: Step = ['Running the test suite again.', 'run_command', '{"cmd":"bun test packages/billing/invoice.test.ts"}', 'FAIL invoice.test.ts > renders due date\n  expected "2026-09-30" received "2026-10-12"\n 0 pass, 1 fail'];
+
+const STUCK_STEPS: Step[] = [
+  ['Reading the fixture the test loads.', 'read_file', '{"path":"fixtures/invoice.json"}', 'EACCES: permission denied, open fixtures/invoice.json'],
+  ['Checking who owns the file.', 'run_command', '{"cmd":"ls -la fixtures/"}', '-rw------- 1 root root 2048 invoice.json'],
+  ['Trying to relax the permissions.', 'run_command', '{"cmd":"chmod 644 fixtures/invoice.json"}', 'chmod: changing permissions of fixtures/invoice.json: Operation not permitted'],
+  ['Trying sudo.', 'run_command', '{"cmd":"sudo chmod 644 fixtures/invoice.json"}', 'sudo: a terminal is required to read the password'],
+  ['Copying it somewhere readable.', 'run_command', '{"cmd":"cp fixtures/invoice.json /tmp/invoice.json"}', 'cp: cannot open fixtures/invoice.json for reading: Permission denied'],
+  ['Looking for the fixture in git history.', 'run_command', '{"cmd":"git log --oneline -- fixtures/invoice.json"}', 'a91c2e0 add invoice fixture (root-only on CI)'],
+  ['Checking out an older copy.', 'run_command', '{"cmd":"git show a91c2e0:fixtures/invoice.json"}', 'error: unable to read sha1 file of fixtures/invoice.json (object missing, partial clone)'],
+  ['Fetching the missing object.', 'run_command', '{"cmd":"git fetch --unshallow"}', 'fatal: unable to access remote: Could not resolve host: github.com'],
+  ['Searching for another copy of the fixture.', 'run_command', '{"cmd":"rg -l \"NW-2026-0417\" ."}', 'rg: fixtures/invoice.json: Permission denied (os error 13)'],
+  ['Checking whether the test can run without it.', 'run_command', '{"cmd":"bun test packages/billing/invoice.test.ts"}', 'ENOENT/EACCES in beforeAll: cannot read fixtures/invoice.json\n 0 pass, 1 fail'],
+  ['Checking the CI config for how the fixture is provisioned.', 'read_file', '{"path":".github/workflows/ci.yaml"}', 'EACCES: permission denied, open .github/workflows/ci.yaml'],
+  ['Asking whether a service account can read it.', 'run_command', '{"cmd":"id"}', 'uid=1001(agent) gid=1001(agent) groups=1001(agent)'],
+];
+
+const PROGRESSING_STEPS: Step[] = [
+  ['Reading the failing test first.', 'read_file', '{"path":"packages/billing/invoice.test.ts"}', 'expect(renderDueDate(invoice)).toBe("2026-09-30") // line 41'],
+  ['Running only that test to see the failure.', 'run_command', '{"cmd":"bun test packages/billing/invoice.test.ts"}', 'FAIL renders due date: expected "2026-09-30" received "2026-10-12"'],
+  ['Reading renderDueDate.', 'read_file', '{"path":"packages/billing/invoice.ts"}', 'const NOW = Date.now();\nexport function renderDueDate(i: Invoice): string { return addDays(NOW, i.terms_days) }'],
+  ['The module captures Date.now() at import, so the due date depends on when the test runs. Checking how other packages inject a clock.', 'run_command', '{"cmd":"rg -n \"clock\" packages --type ts -l"}', 'packages/ledger/clock.ts\npackages/ledger/clock.test.ts'],
+  ['Reading the ledger clock helper.', 'read_file', '{"path":"packages/ledger/clock.ts"}', 'export type Clock = () => number;\nexport const systemClock: Clock = () => Date.now();'],
+  ['Refactoring renderDueDate to take a clock parameter.', 'edit_file', '{"path":"packages/billing/invoice.ts","replace":"export function renderDueDate(i: Invoice, clock: Clock = systemClock): string { return addDays(clock(), i.terms_days) }"}', 'edited packages/billing/invoice.ts (+3 -2)'],
+  ['Updating the test to pass a fixed clock.', 'edit_file', '{"path":"packages/billing/invoice.test.ts","replace":"renderDueDate(invoice, () => Date.parse(\"2026-09-15\"))"}', 'edited packages/billing/invoice.test.ts (+1 -1)'],
+  ['Running the billing tests.', 'run_command', '{"cmd":"bun test packages/billing"}', ' 42 pass, 0 fail'],
+  ['Type-checking the package.', 'run_command', '{"cmd":"bun run typecheck --filter @openrouter-monorepo/billing"}', 'Found 0 errors.'],
+  ['Checking the other call sites of renderDueDate.', 'run_command', '{"cmd":"rg -n \"renderDueDate\\(\" packages projects"}', 'projects/web/app/invoices/page.tsx:88: renderDueDate(invoice)'],
+  ['The default clock keeps that call site working. Running lint.', 'run_command', '{"cmd":"bun run lint"}', 'No issues found.'],
+  ['Creating a branch and committing.', 'run_command', '{"cmd":"git checkout -b fix/invoice-clock && git commit -am \"fix: inject clock into renderDueDate\""}', '[fix/invoice-clock 3f9a1c2] fix: inject clock into renderDueDate\n 2 files changed, 4 insertions(+), 3 deletions(-)'],
+  ['Pushing and opening the PR.', 'run_command', '{"cmd":"git push -u origin fix/invoice-clock && gh pr create --fill"}', 'https://github.com/example/repo/pull/4821'],
+];
+
+function renderSteps(steps: Step[]): string[] {
+  return steps.flatMap(([said, tool, args, result]) => [`[assistant]\n${said}\n[tool_call ${tool}] ${args}`, `[tool_result]\n${result}`]);
+}
+
+function transcript(kind: Kind): string {
+  switch (kind) {
+    case 'looping':
+      return [TASK, ...renderSteps(Array.from({ length: 60 }, () => LOOPING_STEP))].join('\n\n');
+    case 'stuck':
+      return [TASK, ...renderSteps(STUCK_STEPS), '[assistant]\nI have no way to read fixtures/invoice.json from this environment. Every route to it is blocked by permissions and the network is unavailable.'].join('\n\n');
+    case 'progressing':
+      return [TASK, ...renderSteps(PROGRESSING_STEPS)].join('\n\n');
+    default:
+      return kind satisfies never;
+  }
+}
+```
+
+```typescript lines
+for (const kind of ['looping', 'stuck', 'progressing'] as const) {
+  await supervise(transcript(kind));
+}
+```
+
+**Captured output.** One `supervise` log line per transcript, probabilities rounded. We ran each transcript three times; the table has the ranges.
+
+```text lines
+{"id":"gen-dec-1792185311-hZAHRUNlq94RCfXUQgin","action":"halt","run_state":{"progressing":0.009,"stuck":0.0321,"looping":0.959},"is_repeating":0.8335,"completion":0.3818,"usage":{"input_tokens":15682,"output_tokens":3,"cost":0.00062728}}
+{"id":"gen-dec-1792185316-FfGNJ5RnL2yznjSW15ya","action":"nudge","run_state":{"progressing":0.241,"stuck":0.4698,"looping":0.2891},"is_repeating":0.2659,"completion":0.8334,"usage":{"input_tokens":2947,"output_tokens":3,"cost":0.00011788}}
+{"id":"gen-dec-1792185325-nDyy1yqijns8f4nhXRzu","action":"continue","run_state":{"progressing":0.8959,"stuck":0.025,"looping":0.0791},"is_repeating":0.3164,"completion":1.7505,"usage":{"input_tokens":3400,"output_tokens":3,"cost":0.000136}}
+```
+
+| Transcript | `run_state.choice` | `looping` | `is_repeating` | `completion` | Action, 3 of 3 runs |
+|---|---|---|---|---|---|
+| Looping | `looping` | 0.9590 to 0.9657 | 0.8335 to 0.9008 | 0.29 | `halt` |
+| Stuck | `stuck` (0.4698) | 0.2891 | 0.2659 | 0.83 | `nudge` |
+| Progressing | `progressing` (0.8959) | 0.0791 | 0.3164 | 1.75 | `continue` |
+
+The stuck transcript scored `0.4698` for `stuck`, with the rest split between `progressing` (0.24) and `looping` (0.29). An earlier capture of the same transcript scored `0.617`, and blocked transcripts in a second test scored around `0.53`, so the score for a blocked run is rarely dominant and it moves between model versions. That's why `NUDGE_STUCK` is `0.4`: set it higher and a blocked agent keeps going until it gives up on its own. Treat it as a starting value with little margin, not a safe default. A blocked run that scores `0.38` gets no nudge, so log real runs, see where your blocked ones land, and set the threshold below them.
+
+Stopping needs both signals because an agent making progress through a run of similar calls can score `looping` well above `0.5` while `is_repeating` stays low. That combination gets a nudge, never a stop. If your agent normally makes long runs of similar calls, say so in the `progressing` description. The looping transcript's `is_repeating` landed between `0.83` and `0.90`, so `HALT_REPEATING` at `0.8` has little margin either; a loop that scores under it still gets a nudge from `looping`.
+
+## Check your work
+
+- **Response shape.** `answers.run_state.type` is `'choice'` with a probability for each of the three labels, `answers.is_repeating.noul` is between 0 and 1, and `answers.completion.score` is between 0 and 2.
+- **Looping run.** A transcript that repeats one failing call scores `looping` and `is_repeating` at `0.8` or higher, and the loop halts. Ours did in 3 of 3 runs.
+- **Healthy run.** A transcript with varied actions and new results returns `continue`. Ours did in 3 of 3.
+- **Blocked run.** A transcript that tries several things, fails each time, and gives up returns `nudge`. Ours did in 3 of 3.
+- **Fail open.** Break the API key or the URL. `supervise` logs the error, returns `continue`, and the loop keeps going.
+- **Stable.** Run the same transcript several times and count how often the action changes. In our nine checks it never did; the stuck and progressing transcripts returned identical numbers every time, and the looping transcript's `is_repeating` moved between 0.83 and 0.90.
+
+## Variations
+
+Change the questions and the same request classifies other text: the outcome of a sales call (won, lost, escalation, or churn risk), the type and risk of a contract, which team should handle a support ticket, or a risk rating for a full privacy policy, using a `score` question. Classify also reads images and documents, so it can tell an invoice from a receipt on a scanned page or check a screenshot for an error. Send the file as a base64 string in `state.document`, with its type in `state.document_mime_type`.
+
+## Next steps
+
+- [Compact Long Agent Sessions with ScaleDown Summarize](/cookbook/building-agents/compact-agent-sessions-with-scaledown) to keep the transcript the supervisor reads inside the context window
+- [Gate Agent Tool Calls with Jev](/cookbook/building-agents/gate-tool-calls-with-jev) for a Decisions check on single tool calls that blocks on error
+- [Build a Long-Horizon Agent](/cookbook/building-agents/long-horizon-agents) for the cost and step limits this supervisor sits beside
+- [Jev documentation hub](/guides/community/jev) for more on `choice`, `noul`, and `score`
+- [Decisions API reference](/api/api-reference/alphadecisions/submit-a-decisions-request)
