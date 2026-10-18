@@ -1069,6 +1069,17 @@ curl -X POST https://openrouter.ai/api/v1/providers/my-provider/endpoints/$ENDPO
   -d '{ "capabilities": ["tools"] }'
 ```
 
+#### Video input
+
+`PATCH /api/v1/providers/{provider_slug}/endpoints/{endpoint_id}/video-input` turns video URLs (`supports_video_urls`), base64 video (`supports_base64_video_input`), or both off for a chat endpoint whose model accepts video but whose deployment does not. Video-generation endpoints are not eligible. OpenRouter routes requests using a disabled source to other providers and skips that source's baseline tests. Image and audio input stay required. Omitted fields stay unchanged, and only `false` is accepted. To turn a source back on, use the endpoint page of the provider dashboard: it runs that source's video test against the endpoint first and turns the source on only if the test passes, so a live endpoint never advertises video input that failed its test. The same off switches are on that page.
+
+```bash
+curl -X PATCH https://openrouter.ai/api/v1/providers/my-provider/endpoints/$ENDPOINT_ID/video-input \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "supports_video_urls": false }'
+```
+
 #### Provider page links
 
 `PATCH /api/v1/providers/{provider_slug}` updates the links shown on your public provider page: `terms_of_service_url`, `privacy_policy_url`, and `status_page_url`. Omitted fields stay unchanged, and `null` or an empty string clears a link. Only `http(s)` URLs are accepted.

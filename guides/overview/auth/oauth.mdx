@@ -1,7 +1,7 @@
 ---
 publish: true
 title: OAuth PKCE
-description: Connect your users to OpenRouter
+description: Let users bring their own OpenRouter API key and pay for their own inference
 seoTitle: 'OAuth PKCE | Secure Authentication for OpenRouter'
 og:site_name: OpenRouter Documentation
 og:title: 'OAuth PKCE - Secure User Authentication'
@@ -17,7 +17,9 @@ icon: shield-check
 sidebarTitle: OAuth
 ---
 
-Users can connect to OpenRouter in one click using [Proof Key for Code Exchange (PKCE)](https://oauth.net/2/pkce/).
+Use OAuth to let your users bring their own OpenRouter API key to your app. Each user signs in to OpenRouter and authorizes your app, and your app receives an API key tied to their account. Their requests are billed to their own OpenRouter credits, so you don't pay for their inference or manage keys on their behalf.
+
+The flow uses [Proof Key for Code Exchange (PKCE)](https://oauth.net/2/pkce/), so users connect in one click and your app never handles their OpenRouter password.
 
 Here's a step-by-step guide:
 
