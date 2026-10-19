@@ -86,6 +86,8 @@ Batch requests are typically billed at 50% of the model's standard per-token pri
 
 If you have a [provider key](/guides/overview/auth/byok) configured, batches route through it automatically, the same as sync requests: the provider bills you directly for inference and OpenRouter charges only the BYOK fee (see Pricing above). Completed batches report `usage.is_byok: true` and the provider inference estimate in `usage.cost_details`.
 
+An Anthropic key declared for the US [data region](/guides/overview/auth/byok) sends `inference_geo: "us"` on Claude 4.6 and later models, the same as sync requests.
+
 A submit that routes to a provider key containing characters that cannot be sent in an HTTP header, such as a unicode dash or an invisible character left by copy-paste, is rejected synchronously with `400` instead of `202 Accepted`. Fix the key in your [provider key settings](/guides/overview/auth/byok) and resubmit. Google Vertex service-account JSON keys are exempt, since OpenRouter exchanges them for an access token instead of sending them as a header.
 
 Google Vertex uses a bucket in your GCP project for provider input and output. The primary setup is frictionless: omit `bucket` and let OpenRouter create a private, location-compatible bucket on the first batch. You can optionally provide an existing bucket instead. See [Google Vertex API keys](/guides/overview/auth/byok#google-vertex-api-keys) for permissions and storage behavior.
