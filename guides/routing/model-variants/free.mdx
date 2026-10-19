@@ -15,6 +15,7 @@ noindex: false
 nofollow: false
 icon: circle-dollar
 sidebarTitle: Free
+models: []
 ---
 
 The `:free` variant allows you to access free versions of models on OpenRouter.
@@ -32,6 +33,12 @@ Append `:free` to the ID of a model that has a free entry. `:free` is a [catalog
 ## Details
 
 Free variants provide access to models without cost, but may have different rate limits or availability compared to paid versions.
+
+<Warning>
+**Fallbacks to paid models are billed**
+
+If you list a `:free` model in a [`models` fallback array](/guides/routing/model-fallbacks), OpenRouter tries the next model in the array when the free model is rate-limited, unavailable, or has no endpoint that supports your request. Each model is billed at its own price, so a fallback to a paid model incurs charges even though the first model was `:free`. To keep a request free, list only `:free` models in `models`, or use the [Free Models Router](/guides/routing/routers/free-router) (`openrouter/free`) on its own, which falls back only to other free models.
+</Warning>
 
 ## Related Resources
 
