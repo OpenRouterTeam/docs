@@ -85,6 +85,12 @@ For more details on the Free Models Router API, see the [API Quickstart](https:/
 
 Free models may have different rate limits and availability compared to paid models. They are ideal for experimentation, learning, and low-volume use cases. For production workloads with higher reliability requirements, consider using paid models.
 
+<Warning>
+**Fallbacks to paid models are billed**
+
+On its own, the Free Models Router falls back only to other free models. If you add paid models to a [`models` fallback array](/guides/routing/model-fallbacks) alongside `openrouter/free` or a `:free` model, OpenRouter uses those paid models when the free models can't serve the request, and bills them at their own price. To keep a request free, list only `openrouter/free` or `:free` models in `models`.
+</Warning>
+
 ## Related Resources
 
 - [Free Variant Documentation](/guides/routing/model-variants/free) - Learn about the `:free` variant suffix
