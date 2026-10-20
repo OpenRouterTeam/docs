@@ -32,7 +32,7 @@ A batch runs on one provider. By default OpenRouter picks the cheapest eligible 
 
 ## Limitations
 
-Multimodal input in batch is URL-only, and support depends on the provider the batch routes to.
+Multimodal input in batch is URL-only (except account-enabled inline PDFs, described under **Files** below), and support depends on the provider the batch routes to.
 
 | Provider | Public image URLs | Public file URLs |
 |----------|-------------------|------------------|
@@ -54,7 +54,7 @@ A provider can also turn image URLs off for one model, for example Sail Research
 
 Vertex requires HTTPS for public images and a PNG, JPEG, WebP, HEIC, or HEIF filename extension. Google API, Googleusercontent, and Cloud Storage HTTPS hosts are rejected; public images must remain readable through execution. Vertex BYOK also supports `gs://` images as described below.
 
-**Files.** File parts (Responses `input_file`, Anthropic `document`, chat completions `file`) are accepted only as URL references, only on the providers marked above, and only for models that list file input. Inline file bytes and provider file IDs are rejected. A rejected file URL's error names the check that refused it: the model does not list file input, the provider endpoint does not support multipart content or file URLs, or the provider's batch serializer cannot forward file URLs (OpenAI forwards them only for models served on the Responses wire).
+**Files.** File parts (Responses `input_file`, Anthropic `document`, chat completions `file`) are accepted only as URL references, only on the providers marked above, and only for models that list file input. Accounts enabled for inline batch files (ask support) can also send PDFs inline as base64 data URIs (`data:application/pdf;base64,...`) on Anthropic and DeepInfra, up to 20 MiB decoded per file and per request line. Inline file bytes are rejected for every other account, provider, and file type, and provider file IDs are rejected everywhere. A rejected file URL's error names the check that refused it: the model does not list file input, the provider endpoint does not support multipart content or file URLs, or the provider's batch serializer cannot forward file URLs (OpenAI forwards them only for models served on the Responses wire).
 
 **Audio and video.** Audio input parts are rejected on every provider. Video input parts are rejected on every provider except Google AI Studio, which accepts public YouTube URLs (`video_url` parts) for models that list video input. Direct video file URLs and base64 videos are rejected. Because a video's duration is unknown at submit, the balance check reserves the model's full input limit once for each request that contains a video; usage is billed from the provider-reported tokens. On `/v1/chat/completions`, requests that ask for non-text output through `modalities`, `audio`, or `image_config` are also rejected. For embeddings, `input` must be strings or token arrays.
 
@@ -114,15 +114,16 @@ The request body has three required top-level fields:
 | `model` | An OpenRouter model slug, such as `openai/gpt-4o`. This batch-level model is applied to every request. |
 | `requests` | A non-empty array of `{ custom_id, body }` items. `custom_id` must be unique within the batch, and `body` follows the shape of the selected `endpoint`. |
 
-Two optional top-level fields:
+Three optional top-level fields:
 
 | Field | Description |
 |-------|-------------|
 | `provider` | `{ "only": ["<provider-slug>"] }` to pin the batch to specific providers. See [Provider routing](#provider-routing). |
 | `completion_window` | Defaults to `24h`, which is the only accepted value. |
+| `callback_url` | A public HTTPS URL that gets a webhook when the batch reaches a terminal status. See [Get notified with webhooks](#get-notified-with-webhooks). |
 
 <Warning>
-  Serialize `endpoint`, `model`, and any `provider` or `completion_window` before `requests` in the JSON body. The API stream-parses the request so it can accept very large `requests` arrays without buffering, and it returns a `400` if `requests` appears first. Every example on this page already uses this order.
+  Serialize `endpoint`, `model`, and any `provider`, `completion_window`, or `callback_url` before `requests` in the JSON body. The API stream-parses the request so it can accept very large `requests` arrays without buffering, and it returns a `400` if `requests` appears first. Every example on this page already uses this order.
 </Warning>
 
 The batch-level `model` applies to every request. A request body can omit `model` to inherit the batch-level value. If a request body sets its own `model`, it must match the batch-level `model` or the submission is rejected.
@@ -435,7 +436,7 @@ The status normally progresses through:
 validating → in_progress → finalizing → completed
 ```
 
-Other possible statuses are `failed`, `expired`, `cancelling`, and `cancelled`. The terminal statuses are `completed`, `failed`, `expired`, and `cancelled`. Poll until the batch reaches a terminal status.
+Other possible statuses are `failed`, `expired`, `cancelling`, and `cancelled`. The terminal statuses are `completed`, `failed`, `expired`, and `cancelled`. Poll until the batch reaches a terminal status, or [get notified with webhooks](#get-notified-with-webhooks).
 
 `request_counts` contains the total number of requests and the number that completed or failed:
 
@@ -535,6 +536,97 @@ A completed batch response looks like this:
   "error": null
 }
 ```
+
+### Get notified with webhooks
+
+Polling is one way to know when a batch is done. As an alternative, set a `callback_url`. OpenRouter then sends an HTTP `POST` to that URL when the batch reaches a terminal status. Your receiver then retrieves the batch with the `GET` request above. You can also use both methods together.
+
+#### Set the callback URL
+
+Add `callback_url` to the submit request body. Put it before `requests`, because OpenRouter reads `requests` as a stream.
+
+```json title="Batch with callback_url" lines
+{
+  "endpoint": "/v1/chat/completions",
+  "model": "openai/gpt-4o",
+  "callback_url": "https://example.com/webhooks/openrouter-batch",
+  "requests": [
+    {
+      "custom_id": "req-0001",
+      "body": {
+        "messages": [{ "role": "user", "content": "Say hello." }]
+      }
+    }
+  ]
+}
+```
+
+Use a public HTTPS URL. If the URL points to a private or internal address, the submit request fails with `400` and OpenRouter does not create the batch.
+
+To use one URL for every batch in a workspace, set **Default batch webhook URL** in your workspace settings. A `callback_url` in the request body overrides the workspace default.
+
+#### Events
+
+OpenRouter sends one event when the batch reaches a terminal status. It sends no event for `validating`, `in_progress`, `finalizing`, or `cancelling`.
+
+| Event | Batch status |
+|-------|--------------|
+| `batch.completed` | `completed` |
+| `batch.failed` | `failed` |
+| `batch.cancelled` | `cancelled` |
+| `batch.expired` | `expired` |
+
+The event body contains only the batch ID in `data.id`. It does not contain `results`. To read `status`, `request_counts`, and `results`, retrieve the batch with `GET https://openrouter.ai/api/v1/batches/:id`.
+
+```json title="Webhook body" lines
+{
+  "id": "evt_51504673caddb4daeaed47e7de1dde8e",
+  "object": "event",
+  "type": "batch.completed",
+  "created_at": 1792445705,
+  "data": {
+    "id": "batch-1792445621-tOBPREqUAze2PBxi8r3m"
+  }
+}
+```
+
+The event `id` depends only on the batch ID and the event type. A repeated delivery of one event has the same `id`.
+
+The webhook request has these headers:
+
+| Header | Value |
+|--------|-------|
+| `X-OpenRouter-Signature` | `t=<unix seconds>,v1=<hex HMAC-SHA256>`. OpenRouter adds this header only when the workspace has a webhook signing secret. |
+| `X-OpenRouter-Idempotency-Key` | `<batch id>-<status>`, for example `batch-1792445621-tOBPREqUAze2PBxi8r3m-completed`. |
+
+#### Verify the signature
+
+To get a signing secret, open your workspace settings and select **Generate signing secret** under **Webhook signing secret**. Video generation webhooks use the same secret.
+
+1. Read the raw request body before you parse the JSON.
+2. Split `X-OpenRouter-Signature` into the `t` value and the `v1` value.
+3. Compute the HMAC-SHA256 hex digest of `<t>,<raw body>` with your signing secret.
+4. Compare the digest with `v1` in constant time. If they are not equal, reject the request.
+5. If `t` is more than 5 minutes old, reject the request.
+
+[Get Video Results with Webhooks](/cookbook/video-generation/video-generation-webhooks#step-1-implement-a-webhook-receiver) has a full Express receiver that does these steps.
+
+#### Handle the event
+
+1. Verify the signature.
+2. If you already processed the `X-OpenRouter-Idempotency-Key` value, return `2xx` and stop.
+3. Store the event in a durable queue, then return `2xx`.
+4. From the queue, retrieve the batch with `GET https://openrouter.ai/api/v1/batches/:id`.
+5. If `status` does not yet match the event, wait a few seconds and retry the `GET` request.
+6. Read `results` and match each result to its input with `custom_id`.
+
+A `2xx` response tells OpenRouter that the delivery succeeded. If the `GET` request fails after that, retry it from your queue.
+
+The webhook can arrive a short time before or after `GET` shows the terminal status. If you also poll, process the batch once and ignore the second signal.
+
+<Tip>
+  To see a real delivery before you write a receiver, set `callback_url` to a temporary [Webhook.site](https://webhook.site) URL. Webhook.site shows the body and headers. It does not verify the signature.
+</Tip>
 
 ---
 
