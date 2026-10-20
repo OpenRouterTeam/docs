@@ -238,6 +238,16 @@ OpenAI serves a project with data residency only on its regional API host. To us
 
 See [Declaring a Data Region on a Key](/guides/overview/auth/byok#declaring-a-data-region-on-a-key) for how the declaration interacts with key priority, fallback keys, and guardrails.
 
+### Anthropic
+
+Anthropic serves one global API host, so residency comes from the request rather than a regional endpoint. Declare **United States** on the Anthropic key under **Provider agreement → Data region**.
+
+- **Claude 4.6 and later.** OpenRouter adds `inference_geo: "us"` to requests made with that key on `openrouter.ai` and `us.openrouter.ai`. Anthropic processes them in the US and bills them to your account at its US-only rate.
+- **Claude 4.5 and earlier.** These models reject the parameter. On `openrouter.ai` the key runs them without a US pin; on `us.openrouter.ai` a request for them fails unless another provider eligible for the request serves that model in the US.
+- **Batch API.** Batches follow the same rule as sync requests.
+- **No EU option.** Anthropic has no European inference geo, so an Anthropic key cannot be declared for `eu.openrouter.ai`, and a US-declared key is not used there.
+- **Files stay global.** The [Files API](/guides/features/files-api) works on `openrouter.ai` only.
+
 ### Baseten
 
 To use Baseten under in-region routing, create a [regional Dedicated Deployment](https://docs.baseten.co/deployment/regional-deployments) in Baseten and add its URL as a [private endpoint](/guides/routing/private-endpoints) on OpenRouter. OpenRouter derives the region from the `model-{model_id}-region-{us|eu}.api.baseten.co` hostname: a `region-eu` deployment is eligible on `eu.openrouter.ai`, a `region-us` deployment on `us.openrouter.ai`.
