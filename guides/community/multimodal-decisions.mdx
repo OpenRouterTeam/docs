@@ -113,7 +113,7 @@ An image is an item of the `state` array with this shape, the same image part Ch
 
 - `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Jev accepts only `image/png` and `image/jpeg`. Remote `http(s)` URLs are not fetched.
 - `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, Clef Omni, and Mercury Decide ignore it.
-- Put image parts directly in the top-level `state` array. Images nested inside other objects in `state` are not read as images, except by Jev, which also reads image parts at any depth in `state` and in a question's `instructions` and `criteria`. A Score answer whose `legend` names an image returns your original image part.
+- Put image parts directly in the top-level `state` array. Images nested inside other objects in `state` are not read as images, except by Jev, which reads them in more places (see [Image positions on Jev](#image-positions-on-jev)).
 - Send at most 4 images per request to Clef, Clef Flash, and Clef Omni, at most 16 to Mercury Decide, and at most 128 to GPT-6 Luna Decisions.
 - Text items in the array are plain strings, not `{ "type": "text" }` parts.
 - Jev 1.14 and [`~typesafe/jev-latest`](https://openrouter.ai/~typesafe/jev-latest) also answer [Box](/guides/community/jev#box-questions) questions about images.
@@ -123,6 +123,31 @@ These shapes are not image inputs:
 - A top-level `images` field. The API rejects it with a `400`.
 - The Responses API `input_image` part (`{ "type": "input_image", "image_url": "data:..." }`).
 - A raw base64 string without the `data:image/...;base64,` prefix.
+- A top-level `assets` map with named references, as in TypeSafe's own API. OpenRouter currently ignores it and Jev does not see those images. Put an image part where the reference would go instead. This behavior is current, not guaranteed: `assets` may later be rejected or supported.
+
+## Image positions on Jev
+
+Jev ([`typesafe/jev-1.14`](https://openrouter.ai/typesafe/jev-1.14), [`typesafe/jev-1.13`](https://openrouter.ai/typesafe/jev-1.13), and [`~typesafe/jev-latest`](https://openrouter.ai/~typesafe/jev-latest)) reads an image part in any of these places:
+
+- The top-level `state` array, or `state` itself when it is one image part.
+- Any depth inside objects and arrays in `state`, such as `{ "door": { "frames": [<image part>] } }`. Object keys are never read as images.
+- A question's `instructions`, when `instructions` is an array or object that holds the image part.
+- Criteria: a Noul question's `true` and `false` criteria, the value of a Choice option, and a Score level.
+
+To refer to an image inside longer text, write the text as an array and put the image part between the strings, in reading order:
+
+```json
+{
+  "type": "noul",
+  "instructions": ["Compare", { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }, "with the badge in `state`."]
+}
+```
+
+An image part inside a string is not an image: a string such as `"compare <image:a> with the badge"` reaches Jev as plain text.
+
+Each image part counts as its own image, so repeating the same part sends the image again and counts toward the [size limits](#limits) again. A Score answer whose `legend` names an image returns your original image part.
+
+TypeSafe marks image input as an early feature whose request format, answers, and limits can change between Jev releases. The positions above are what OpenRouter sends to Jev today; other Decisions models read images only in the top-level `state` array.
 
 ## Audio and video parts (Clef Omni)
 
