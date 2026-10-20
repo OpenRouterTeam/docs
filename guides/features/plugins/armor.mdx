@@ -369,7 +369,9 @@ In `enforce` mode you rarely need to read it. If you want to know what was block
 
 A call is reported `unavailable` when the decision model times out, returns an error, or the request is too large for it. `on_error` decides what happens to that call. `block` (the default) blocks it and tells the model it could not be evaluated. `log` releases it. Under `claude_code_compatibility` an `unavailable` call is always released with its verdict visible.
 
-Armor evaluation is not yet supported for requests under HIPAA, Zero Data Retention or a data-region restriction. A plugin-armed request in one of those contexts that enables Armor is rejected with a 403. A Claude Code request is not rejected: the call is released with an `unavailable` verdict and Claude Code falls back to its own local auto-mode evaluation, as it does when Anthropic's classifier is unavailable.
+Armor evaluation is not yet supported for requests under HIPAA or a data-region restriction. A plugin-armed request in one of those contexts that enables Armor is rejected with a 403. A Claude Code request on the Messages API is not rejected: the call is released with an `unavailable` verdict and Claude Code falls back to its own local auto-mode evaluation, as it does when Anthropic's classifier is unavailable. Zero Data Retention is supported: the evaluator runs on a zero-retention tenancy, so a ZDR workspace or a request with `provider.zdr` is evaluated normally.
+
+A `safeguards` entry is Anthropic's field and is read only on the Messages API. On Chat Completions or Responses it does not arm Armor; a proxy that forwards a Claude Code request onto those APIs (LiteLLM does) gets no evaluation and no error. To use Armor there, send `plugins: [{ "id": "armor" }]`.
 
 ## All the options
 

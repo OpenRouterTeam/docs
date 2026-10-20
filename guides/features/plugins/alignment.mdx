@@ -202,12 +202,10 @@ The entry below sets every field to its default value, apart from `rules`, which
 
 Send at most one `alignment` entry in `plugins`, and put every rule in it. OpenRouter answers a request that has two entries, an unknown field, or a value outside its range with a `400` error.
 
-OpenRouter rejects a request with the plugin in five cases, in both modes. The error message names the case and the change that lets the request through.
+OpenRouter rejects a request with the plugin in three cases, in both modes. The error message names the case and the change that lets the request through. A request with `provider.zdr: true`, or from a workspace with [zero data retention](/guides/features/zdr) enforced, is evaluated normally: the evaluator runs on a zero-retention tenancy.
 
 | Case | Error | What to change |
 |------|-------|----------------|
-| The request has `provider.zdr: true` | `400` | Remove `provider.zdr`, or remove the `alignment` entry. |
-| The workspace has [zero data retention](/guides/features/zdr) enforced | `400` | Remove the `alignment` entry. |
 | The request goes to a regional hostname ([In-Region Routing](/guides/features/in-region-routing)) | `400` | Send the request to `openrouter.ai`, or remove the `alignment` entry. |
 | The workspace is not admitted to the beta | `400` | Remove the `alignment` entry. |
 | The workspace has HIPAA enabled, or its HIPAA status is unknown | `403` | Remove the `alignment` entry. |
