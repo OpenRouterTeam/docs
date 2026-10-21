@@ -1,0 +1,136 @@
+---
+publish: true
+title: Batch API
+sidebarTitle: Overview
+description: Run thousands of requests at about half the sync price, with results within 24 hours
+seoTitle: 'Batch API | OpenRouter Documentation'
+og:site_name: OpenRouter Documentation
+og:title: 'Batch API - Half-Price Asynchronous Inference'
+og:description: 'Send thousands of requests in one call, get results asynchronously, and typically pay half the sync price.'
+og:image: https://openrouter.ai/dynamic-og?title=Batch%20API&description=Half-price%20asynchronous%20inference
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: boxes-stacked
+---
+
+The Batch API takes up to 5,000 requests in one call, runs them in the background, and returns every result in one response. Use it for work where nobody waits for the answer, such as evals, classification, data labeling, summarizing a backlog, or embedding a corpus.
+
+<CardGroup cols={2}>
+  <Card title="Use batch when" icon="check">
+    Nobody is waiting for the response, and cost matters more than speed.
+  </Card>
+  <Card title="Use the sync API when" icon="bolt">
+    A user waits for the answer, or you need image or audio output, OpenRouter web search, or Zero Data Retention.
+  </Card>
+</CardGroup>
+
+## Key facts
+
+| Item | Details |
+|------|---------|
+| Price | Typically 50% of the sync per-token price. Each model page shows its batch price. |
+| Models | Models with a batch variant. [Browse batch models](https://openrouter.ai/models?variant=batch). |
+| Endpoints | `/v1/chat/completions`, `/v1/responses`, `/v1/messages`, `/v1/embeddings` |
+| Size | Up to 5,000 requests and 200 MB per batch. One model and one endpoint per batch. |
+| Turnaround | Within 24 hours on most providers. Google Vertex can take up to 96 hours. Most batches finish in minutes. |
+| Input | Requests go inline in the JSON body. There is no JSONL file to upload. |
+| Results | Returned inline by `GET /api/v1/batches/{id}`. Match each result to its request with `custom_id`. |
+| Notifications | Optional signed webhook when the batch finishes. |
+| Data | Deleted 30 days after you submit, or when you delete the batch. Batch endpoints do not train on your data. |
+
+## How it works
+
+1. **Submit the batch.** `POST /api/v1/batches` with a `model`, an `endpoint`, and your `requests`. The response is `202` with `status: "validating"`.
+2. **Wait for it to finish.** Set `callback_url` to receive a webhook, or poll `GET /api/v1/batches/{id}`.
+3. **Read the results.** When `status` is `completed`, `results` holds one entry per request.
+
+```shell title="Shell" lines
+curl https://openrouter.ai/api/v1/batches \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "endpoint": "/v1/chat/completions",
+    "model": "anthropic/claude-haiku-5.5",
+    "requests": [
+      {
+        "custom_id": "review-1",
+        "body": {
+          "messages": [{ "role": "user", "content": "Classify: The fit is perfect." }]
+        }
+      }
+    ]
+  }'
+```
+
+<Warning>
+  A `202` means OpenRouter stored the batch, not that the batch is valid. OpenRouter checks each request after it accepts the batch. If a check fails, the batch moves to `failed` and `error.message` says why.
+</Warning>
+
+The [Batch quickstart](/batch-quickstart) walks through every step, with webhooks, polling, images and files, and deletion.
+
+## Batch status
+
+```text title="Status progression" lines
+validating → in_progress → finalizing → completed
+```
+
+| Status | Meaning |
+|--------|---------|
+| `completed` | The batch finished. Some requests in it can still have errors. |
+| `failed` | A check failed, or the provider rejected the batch. `error.message` says why. |
+| `expired` | The provider did not finish before `expires_at`. |
+| `cancelled` | The provider cancelled the batch. |
+
+<Note>
+  A completed batch can contain failed requests. Each result has either a `response` or an `error`. Check `request_counts.failed` before you assume every request worked.
+</Note>
+
+## Pricing
+
+Batch requests are typically billed at 50% of the model's standard per-token price. Some components are not discounted: web search calls bill at standard rates, and prompt caching rates vary by model. The price on each model page is the source of truth. For a completed batch, `usage.cost` reports the amount OpenRouter charged.
+
+Before OpenRouter accepts a batch, it estimates the cost. If the estimate is more than your balance, the submit returns `402`. With a [provider key (BYOK)](/guides/overview/auth/byok), the provider bills you for inference and OpenRouter charges only the BYOK fee.
+
+## Limitations
+
+| Not supported | What to do instead |
+|---------------|--------------------|
+| Cancel a batch | Wait for the batch to finish, then [delete it](/batch-quickstart#delete-the-batch). |
+| Image or audio output | Use the sync API. Batch returns text and embeddings. |
+| Base64 images, audio input, and video other than YouTube | Send public image URLs, or use the sync API. See [Images and files](/batch-quickstart#add-images-and-files). |
+| OpenRouter web search (`:online`, the `web` plugin) | Use the provider's own search tool on a model that supports it. |
+| Zero Data Retention | Use the sync API. Batch keeps data for 30 days, so it cannot run when your privacy settings require ZDR for the model's provider. |
+| Provider `order` and `sort` | Use `provider.only` to choose providers. See [Choose a provider](/batch-quickstart#choose-a-provider). |
+| Regional data residency | Use the global endpoint at `openrouter.ai`. Batch runs on US-based infrastructure. |
+
+## Limits
+
+| Limit | Default |
+|-------|---------|
+| Requests per batch | 5,000 |
+| Request body size | 200 MB |
+| Batches in progress per account | 1,000 |
+| Requests in progress per account | 200,000 |
+
+A batch over the size limits returns `413`. A submit over the in-progress limits returns `429`. Wait for running batches to finish, then retry.
+
+## Frequently asked questions
+
+<AccordionGroup>
+  <Accordion title="Which provider runs my batch?">
+    OpenRouter picks the cheapest provider that serves the model in batch mode. If that provider has no capacity, OpenRouter moves the batch to the next one at a similar price. The `provider` field on the batch shows which provider ran it. See [Choose a provider](/batch-quickstart#choose-a-provider).
+  </Accordion>
+  <Accordion title="Are results in the same order as my requests?">
+    No. Match each result to its request with `custom_id`.
+  </Accordion>
+  <Accordion title="How long are results kept?">
+    30 days after you submit. After that, `GET` returns `410 Gone`. Save the results you need, or delete the batch sooner.
+  </Accordion>
+  <Accordion title="Where can I see my batches?">
+    In the **Batches** tab of your [logs](https://openrouter.ai/logs), or with `GET /api/v1/batches`.
+  </Accordion>
+</AccordionGroup>
