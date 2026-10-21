@@ -150,10 +150,11 @@ Prompt caching with OpenAI is automated and does not require any additional conf
 
 Caching price changes:
 
-- **Cache writes**: charged at 1.25x the price of the original input pricing (same rate as automatic cache writes on GPT-5.6 and later)
-- **Cache reads**: charged at the model's discounted cache read rate, same as automatic caching
+- **Cache writes (30-minute TTL, default)**: charged at 1.25x the price of the original input pricing (same rate as automatic cache writes on GPT-5.6 and later)
+- **Cache writes (12-hour TTL)**: charged at 2.5x the price of the original input pricing
+- **Cache reads**: charged at the model's discounted cache read rate, same as automatic caching, regardless of TTL
 
-Explicit prompt caching works on both the [Chat Completions](/api/api-reference/chat/create-a-chat-completion) and [Responses](/api/api-reference/responses/create-a-response) APIs, and gives you direct control over cache boundaries instead of relying on OpenAI's automatic breakpoint placement. Cached prefixes have a minimum 30-minute TTL. See [OpenAI's explicit prompt caching docs](https://developers.openai.com/api/docs/guides/prompt-caching?prompt-cache-api=chat-completions#prompt-cache-breakpoints) for upstream details.
+Explicit prompt caching works on both the [Chat Completions](/api/api-reference/chat/create-a-chat-completion) and [Responses](/api/api-reference/responses/create-a-response) APIs, and gives you direct control over cache boundaries instead of relying on OpenAI's automatic breakpoint placement. Cached prefixes have a minimum 30-minute TTL by default, or 12 hours with `"ttl": "12h"`. See [OpenAI's explicit prompt caching docs](https://developers.openai.com/api/docs/guides/prompt-caching?prompt-cache-api=chat-completions#prompt-cache-breakpoints) for upstream details.
 
 <Info>
 OpenAI explicit prompt caching is only supported by OpenAI GPT-5.6 and newer.
@@ -162,7 +163,7 @@ OpenAI explicit prompt caching is only supported by OpenAI GPT-5.6 and newer.
 There are two controls:
 
 - `prompt_cache_breakpoint`: placed on an individual text content block (`input_text` in Responses, `text` in Chat Completions) to mark the end of a reusable prefix. Everything through that block becomes the candidate cached prefix. Automatic caching remains enabled.
-- `prompt_cache_options`: placed at the request root. Setting `mode` to `"explicit"` disables OpenAI-managed breakpoints so only blocks marked with `prompt_cache_breakpoint` participate in caching. Use `ttl` to request a cache duration (e.g. `"30m"`).
+- `prompt_cache_options`: placed at the request root. Setting `mode` to `"explicit"` disables OpenAI-managed breakpoints so only blocks marked with `prompt_cache_breakpoint` participate in caching. Use `ttl` to set the minimum cache lifetime for every breakpoint the request writes: `"30m"` (default) or `"12h"`. A `prompt_cache_breakpoint` can carry its own `ttl` to override the request-level value for that boundary, so a long-lived system prompt can be cached for 12 hours while the rest of the conversation keeps the 30-minute default.
 
 Responses API:
 
@@ -226,8 +227,49 @@ Chat Completions API:
 }
 ```
 
+12-hour TTL for a long-lived system prompt, with the rest of the conversation on the 30-minute default (Chat Completions shown; the Responses API takes the same fields on `input_text` blocks):
+
+```json
+{
+  "model": "openai/...",
+  "prompt_cache_options": {
+    "mode": "explicit",
+    "ttl": "30m"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": [
+        {
+          "type": "text",
+          "text": "<SHARED_INSTRUCTIONS_AND_TOOLS>",
+          "prompt_cache_breakpoint": {
+            "mode": "explicit",
+            "ttl": "12h"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "<CONVERSATION_SO_FAR>",
+          "prompt_cache_breakpoint": {
+            "mode": "explicit"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+Tokens written with a 12-hour TTL are billed at the 12-hour cache-write rate; the rest of the write is billed at the 30-minute rate. Both are included in `cache_write_tokens` in the response usage.
+
 <Note>
-The block-level markers are interchangeable: a text block marked with Anthropic-style `cache_control` gets a `prompt_cache_breakpoint` when routed to a supporting OpenAI model, and a block marked with `prompt_cache_breakpoint` gets a default (5-minute) `cache_control` when routed to Anthropic or Google. TTLs are not translated — a `cache_control` `ttl` is dropped toward OpenAI, and the request-level `prompt_cache_options` stays OpenAI-only.
+The block-level markers are interchangeable: a text block marked with Anthropic-style `cache_control` gets a `prompt_cache_breakpoint` when routed to a supporting OpenAI model, and a block marked with `prompt_cache_breakpoint` gets a default (5-minute) `cache_control` when routed to Anthropic or Google. TTLs are not translated — a `cache_control` `ttl` is dropped toward OpenAI, a `prompt_cache_breakpoint` `ttl` is dropped toward Anthropic or Google, and the request-level `prompt_cache_options` stays OpenAI-only.
 </Note>
 
 Cache activity is reported in `usage.input_tokens_details` (Responses) and `usage.prompt_tokens_details` (Chat Completions): `cache_write_tokens` counts prompt tokens written to the cache, and `cached_tokens` counts prompt tokens read from it.
