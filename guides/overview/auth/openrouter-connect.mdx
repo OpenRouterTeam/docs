@@ -156,7 +156,7 @@ Authenticate with the customer management key to call the [Management API](/guid
 - **API keys.** [Create API keys](/api/api-reference/api-keys/create-a-new-api-key) for the customer organization to use for inference. The plaintext key is returned only in the creation response, so store it securely. Set the optional [`external`](/api/api-reference/api-keys/create-a-new-api-key#body-external) object to associate the key with one of your end users. `external.user` is your identifier for the end user, used for attribution. `external.api_key` is an optional key you supply, at least 32 characters long, that OpenRouter stores only as a SHA-256 hash and never returns.
 
 <Note>
-Coming soon. API routes to register and manage your customers' end users are in development. Each end user will be able to have their own guardrails and budgets. Until these routes ship, identify end users with `external.user` on API keys and `user` on inference requests.
+Use the [External Users API](/api/api-reference/external-users/register-an-external-user) to register and manage your customers' tracking identifiers. Registration records lifecycle state only; it does not create per-user guardrails or budgets and does not block inference. Registration does not attribute requests; keep identifying end users with `external.user` on API keys and `user` on inference requests.
 </Note>
 
 ### Create a customer organization API key
