@@ -554,7 +554,7 @@ Deleting a batch does not refund it. Billing, generation, and audit records stay
 
 ## Choose a provider
 
-A batch runs on one provider. By default, OpenRouter picks the cheapest provider that serves the model in batch mode, after your account's provider allowlist, data policy, and BYOK keys apply. Providers at the same price share traffic, and a BYOK key is preferred over cheaper platform providers. If the chosen provider has no capacity, OpenRouter moves the batch to the next cheapest allowed provider and bills that provider's price.
+A batch runs on one provider. By default, OpenRouter picks the cheapest provider that serves the model in batch mode, after your account's provider allowlist, data policy, [guardrails](/guides/features/guardrails), and BYOK keys apply. Guardrail model lists match a batch model by its base model, so allowing `openai/gpt-5-nano` also allows `openai/gpt-5-nano:batch`. Providers at the same price share traffic, and a BYOK key is preferred over cheaper platform providers. If the chosen provider has no capacity, OpenRouter moves the batch to the next cheapest allowed provider and bills that provider's price.
 
 | Option | Batch | What it does |
 |--------|-------|--------------|
@@ -697,7 +697,7 @@ If you have a [provider key](/guides/overview/auth/byok), batches route through 
 |--------|-------|-----|
 | `400` | Bad input, `requests` before other fields, a private `callback_url`, or a model with no batch variant. | Read `error.message`. Pick a model from the [batch models list](https://openrouter.ai/models?variant=batch). |
 | `402` | The estimated cost is more than your balance. | Add credits, or split the batch. |
-| `404` | No provider in `provider.only` or your account's allowlist serves the model in batch mode. | Change `provider.only` or your provider settings. |
+| `404` | No provider in `provider.only`, your account's allowlist, or your guardrails serves the model in batch mode. | Change `provider.only`, your provider settings, or the guardrail on your key. |
 | `409` | You tried to delete a batch that is still running. | Wait until it finishes. |
 | `410` | The batch is older than 30 days, so its results were deleted. | Results cannot be recovered. |
 | `413` | The batch has more requests than the [per-batch limit](/guides/features/batch-api#limits), or is larger than 200 MB. `error.message` states the limit. | Split the batch, or use file URLs instead of inline PDFs. |
