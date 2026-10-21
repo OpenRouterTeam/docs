@@ -700,6 +700,6 @@ If you have a [provider key](/guides/overview/auth/byok), batches route through 
 | `404` | No provider in `provider.only` or your account's allowlist serves the model in batch mode. | Change `provider.only` or your provider settings. |
 | `409` | You tried to delete a batch that is still running. | Wait until it finishes. |
 | `410` | The batch is older than 30 days, so its results were deleted. | Results cannot be recovered. |
-| `413` | The batch has more than 5,000 requests or is larger than 200 MB. | Split the batch, or use file URLs instead of inline PDFs. |
+| `413` | The batch has more requests than the [per-batch limit](/guides/features/batch-api#limits), or is larger than 200 MB. `error.message` states the limit. | Split the batch, or use file URLs instead of inline PDFs. |
 | `422` | The model targets the `:online` variant, or the batch uses a feature batch rejects at submit. | Remove it, or use the sync API. |
 | `429` | Too many submits, or too many batches or requests in progress. | Wait for running batches to finish, then retry. |

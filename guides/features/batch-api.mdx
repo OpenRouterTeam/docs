@@ -17,7 +17,7 @@ nofollow: false
 icon: boxes-stacked
 ---
 
-The Batch API takes up to 5,000 requests in one call, runs them in the background, and returns every result in one response. Use it for work where nobody waits for the answer, such as evals, classification, data labeling, summarizing a backlog, or embedding a corpus.
+The Batch API takes thousands of requests in one call, runs them in the background, and returns every result in one response. Use it for work where nobody waits for the answer, such as evals, classification, data labeling, summarizing a backlog, or embedding a corpus.
 
 <CardGroup cols={2}>
   <Card title="Use batch when" icon="check">
@@ -35,7 +35,7 @@ The Batch API takes up to 5,000 requests in one call, runs them in the backgroun
 | Price | Typically 50% of the sync per-token price. Each model page shows its batch price. |
 | Models | Models with a batch variant. [Browse batch models](https://openrouter.ai/models?variant=batch). |
 | Endpoints | `/v1/chat/completions`, `/v1/responses`, `/v1/messages`, `/v1/embeddings` |
-| Size | Up to 5,000 requests and 200 MB per batch. One model and one endpoint per batch. |
+| Size | Up to 200 MB per batch, with a cap on the number of requests. See [Limits](#limits). One model and one endpoint per batch. |
 | Turnaround | Within 24 hours on most providers. Google Vertex can take up to 96 hours. Most batches finish in minutes. |
 | Input | Requests go inline in the JSON body. There is no JSONL file to upload. |
 | Results | Returned inline by `GET /api/v1/batches/{id}`. Match each result to its request with `custom_id`. |
@@ -109,14 +109,17 @@ Before OpenRouter accepts a batch, it estimates the cost. If the estimate is mor
 
 ## Limits
 
-| Limit | Default |
-|-------|---------|
-| Requests per batch | 5,000 |
-| Request body size | 200 MB |
-| Batches in progress per account | 1,000 |
-| Requests in progress per account | 200,000 |
+Batch limits generally follow the batch limits of the upstream providers. OpenRouter adjusts them over time, and they can differ between accounts, so this page does not list fixed numbers. When a submit hits a limit, `error.message` states the current value.
 
-A batch over the size limits returns `413`. A submit over the in-progress limits returns `429`. Wait for running batches to finish, then retry.
+| Limit | Status when exceeded |
+|-------|----------------------|
+| Requests per batch | `413` |
+| Request body size (200 MB) | `413` |
+| Batches in progress per account | `429` |
+| Requests in progress per account | `429` |
+| Requests submitted per minute per account | `429` |
+
+For a `413`, split the batch. For a `429` from an in-progress limit, wait for running batches to finish, then retry. For a `429` from the per-minute limit, wait a minute, then retry.
 
 ## Frequently asked questions
 
