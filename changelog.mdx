@@ -16,7 +16,23 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="October 22, 2026" tags={["BYOK","Observability","SCIM"]} rss="14 new response codes.">
+<Update label="October 22, 2026" tags={["BYOK","Generations","Interns","Observability","SCIM"]} rss="13 modified endpoints, 15 new response codes, 1 modified schema.">
+
+## Modified endpoints
+
+- [`GET /interns`](/api/api-reference/interns/list-interns): description updated
+- [`POST /interns`](/api/api-reference/interns/create-an-intern): description updated; response schema updated
+- [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern): description updated; response schema updated
+- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): description updated
+- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): description updated; response schema updated
+- [`GET /interns/{internId}/connections`](/api/api-reference/interns/list-an-interns-connections): description updated
+- [`GET /interns/{internId}/daemon`](/api/api-reference/interns/get-an-interns-daemon-access): description updated
+- [`GET /interns/{internId}/daemon-access`](/api/api-reference/interns/get-an-interns-daemon-access-deprecated-alias): description updated
+- [`POST /interns/{internId}/daemon-access/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity-deprecated-alias): description updated
+- [`POST /interns/{internId}/daemon/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity): description updated
+- [`GET /interns/{internId}/icon`](/api/api-reference/interns/get-an-interns-icon): description updated
+- [`POST /interns/{internId}/provision`](/api/api-reference/interns/provision-an-intern): description updated; response schema updated
+- [`POST /interns/{internId}/suspend`](/api/api-reference/interns/suspend-an-intern): description updated; response schema updated
 
 ## New response codes
 
@@ -34,6 +50,18 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 - [`GET /scim/groups`](/api/api-reference/scim/list-scim-groups): now returns `403`
 - [`POST /scim/sync-jobs`](/api/api-reference/scim/start-a-scim-directory-sync): now returns `403`
 - [`GET /scim/sync-jobs/{id}`](/api/api-reference/scim/get-scim-directory-sync-status): now returns `403`
+- [`POST /generation/feedback`](/api/api-reference/generations/submit-feedback-for-a-generation): now returns `409`
+
+## Modified schemas
+
+- `PrivateEndpointPricing`: description updated
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /private-endpoints/{id}`](/api/api-reference/private-endpoints/get-a-private-endpoint)
+    - [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-draft-private-endpoint)
+    - [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
+    - [`PUT /private-endpoints/{id}/pricing`](/api/api-reference/private-endpoints/set-private-endpoint-pricing)
+  </Expandable>
 
 </Update>
 
