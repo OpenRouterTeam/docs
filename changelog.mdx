@@ -28,19 +28,19 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## Modified endpoints
 
-- [`GET /interns`](/api/api-reference/interns/list-interns): description updated
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): description updated; response schema updated
-- [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern): description updated; response schema updated
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): description updated
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): description updated; response schema updated
-- [`GET /interns/{internId}/connections`](/api/api-reference/interns/list-an-interns-connections): description updated
-- [`GET /interns/{internId}/daemon`](/api/api-reference/interns/get-an-interns-daemon-access): description updated
-- [`GET /interns/{internId}/daemon-access`](/api/api-reference/interns/get-an-interns-daemon-access-deprecated-alias): description updated
-- [`POST /interns/{internId}/daemon-access/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity-deprecated-alias): description updated
-- [`POST /interns/{internId}/daemon/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity): description updated
-- [`GET /interns/{internId}/icon`](/api/api-reference/interns/get-an-interns-icon): description updated
-- [`POST /interns/{internId}/provision`](/api/api-reference/interns/provision-an-intern): description updated; response schema updated
-- [`POST /interns/{internId}/suspend`](/api/api-reference/interns/suspend-an-intern): description updated; response schema updated
+- `GET /interns`: description updated
+- `POST /interns`: description updated; response schema updated
+- `DELETE /interns/{internId}`: description updated; response schema updated
+- `GET /interns/{internId}`: description updated
+- `PATCH /interns/{internId}`: description updated; response schema updated
+- `GET /interns/{internId}/connections`: description updated
+- `GET /interns/{internId}/daemon`: description updated
+- `GET /interns/{internId}/daemon-access`: description updated
+- `POST /interns/{internId}/daemon-access/sign`: description updated
+- `POST /interns/{internId}/daemon/sign`: description updated
+- `GET /interns/{internId}/icon`: description updated
+- `POST /interns/{internId}/provision`: description updated; response schema updated
+- `POST /interns/{internId}/suspend`: description updated; response schema updated
 
 ## New response codes
 
@@ -97,9 +97,9 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - Requests to `/end-users` continue to work and are forwarded to [`/external-users`](/api/api-reference/external-users/list-registered-external-users), so HTTP callers need no change. In the Python SDK (`openrouter` 1.3.70 and later), switch `client.end_users` to `client.external_users`; the old namespace was removed. In the TypeScript SDK (`@openrouter/sdk` 1.5.0 and later), use `externalUsers` for new code; `endUsers` remains available as a compatibility alias. Method names (`list`, `create`, `get`, `update`, `delete`) are unchanged.
 - `/end-users/{user}`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Requests to `/end-users/{user}` continue to work and are forwarded to [`/external-users/{user}`](/api/api-reference/external-users/get-a-registered-external-user), so HTTP callers need no change. Python SDK users switch to `external_users`; TypeScript SDK users can migrate to `externalUsers` while `endUsers` remains available as a compatibility alias, as described on the `/end-users` entry above.
-- [`GET /interns/{internId}/icon`](/api/api-reference/interns/get-an-interns-icon): content `image/jpeg` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}/icon`: content `image/jpeg` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
   - The response is now declared as `image/*`. The bytes served and their `Content-Type` headers are unchanged.
-- [`GET /interns/{internId}/icon`](/api/api-reference/interns/get-an-interns-icon): content `image/png` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}/icon`: content `image/png` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
   - The response is now declared as `image/*`. The bytes served and their `Content-Type` headers are unchanged.
 - $.tags: End Users object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
   - Documentation tag renamed to External Users. No API change.
@@ -112,7 +112,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - Requests with more than 500 member user IDs now return `400`; previously they were accepted. Split larger lists into batches of 500 or fewer, matching the existing limit on the key assignment endpoints.
   - Used by [`POST /guardrails/{id}/assignments/members/remove`](/api/api-reference/guardrails/bulk-unassign-members-from-a-guardrail)
 - `InternDaemonAccess`: required `viewer` property added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
-  - Used by [`GET /interns/{internId}/daemon`](/api/api-reference/interns/get-an-interns-daemon-access), [`GET /interns/{internId}/daemon-access`](/api/api-reference/interns/get-an-interns-daemon-access-deprecated-alias)
+  - Used by `GET /interns/{internId}/daemon`, `GET /interns/{internId}/daemon-access`
 
 ## New endpoints
 
@@ -121,15 +121,15 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 - [`GET /external-users/{user}`](/api/api-reference/external-users/get-a-registered-external-user): Get a registered external user
 - [`PATCH /external-users/{user}`](/api/api-reference/external-users/update-a-registered-external-user): Update a registered external user
 - [`DELETE /external-users/{user}`](/api/api-reference/external-users/deactivate-a-registered-external-user): Deactivate a registered external user
-- [`GET /interns/{internId}/connections`](/api/api-reference/interns/list-an-interns-connections): List an intern's connections
+- `GET /interns/{internId}/connections`: List an intern's connections
 
 ## Modified endpoints
 
-- [`GET /interns/{internId}/icon`](/api/api-reference/interns/get-an-interns-icon): response schema updated
-- [`GET /interns`](/api/api-reference/interns/list-interns): response schema updated
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): response schema updated
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): response schema updated
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): response schema updated
+- `GET /interns/{internId}/icon`: response schema updated
+- `GET /interns`: response schema updated
+- `POST /interns`: response schema updated
+- `GET /interns/{internId}`: response schema updated
+- `PATCH /interns/{internId}`: response schema updated
 - [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials): parameter `provider` updated
 - [`PUT /private-endpoints/{id}/pricing`](/api/api-reference/private-endpoints/set-private-endpoint-pricing): description updated
 - [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail): description updated
@@ -177,22 +177,22 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 - `UpdateExternalUserRequest`
   - Used by [`PATCH /external-users/{user}`](/api/api-reference/external-users/update-a-registered-external-user)
 - `InternConnection`
-  - Used by [`GET /interns/{internId}/connections`](/api/api-reference/interns/list-an-interns-connections)
+  - Used by `GET /interns/{internId}/connections`
 - `InternConnectionList`
-  - Used by [`GET /interns/{internId}/connections`](/api/api-reference/interns/list-an-interns-connections)
+  - Used by `GET /interns/{internId}/connections`
 
 ## Modified schemas
 
 - `Intern`: example modified; new property `can_edit`
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `InternListResponse`: example modified
-  - Used by [`GET /interns`](/api/api-reference/interns/list-interns)
+  - Used by `GET /interns`
 - `PromptCacheBreakpoint`: description updated; example modified; new property `ttl`
 
   <Expandable title="6 endpoints using this schema">
@@ -275,7 +275,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - Added `Recursive` to the `provider_name` enum.
   - Used by [`GET /generation`](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation)
 - `InternDaemonAccess`: description updated; example modified; new property `viewer`
-  - Used by [`GET /interns/{internId}/daemon`](/api/api-reference/interns/get-an-interns-daemon-access), [`GET /interns/{internId}/daemon-access`](/api/api-reference/interns/get-an-interns-daemon-access-deprecated-alias)
+  - Used by `GET /interns/{internId}/daemon`, `GET /interns/{internId}/daemon-access`
 
 </Update>
 
@@ -345,27 +345,27 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## New endpoints
 
-- [`GET /interns/{internId}/icon`](/api/api-reference/interns/get-an-interns-icon): Get an intern's icon
+- `GET /interns/{internId}/icon`: Get an intern's icon
 
 ## Modified endpoints
 
-- [`GET /interns`](/api/api-reference/interns/list-interns): response schema updated
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): response schema updated
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): response schema updated
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): response schema updated
+- `GET /interns`: response schema updated
+- `POST /interns`: response schema updated
+- `GET /interns/{internId}`: response schema updated
+- `PATCH /interns/{internId}`: response schema updated
 
 ## Modified schemas
 
 - `Intern`: example modified; new property `created_by_you`; new property `icon_sha256`
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `InternListResponse`: example modified
-  - Used by [`GET /interns`](/api/api-reference/interns/list-interns)
+  - Used by `GET /interns`
 - `BYOKKey`: description updated
 
   <Expandable title="4 endpoints using this schema">
@@ -389,14 +389,14 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## Modified endpoints
 
-- [`GET /interns/{internId}/daemon`](/api/api-reference/interns/get-an-interns-daemon-access): description updated
+- `GET /interns/{internId}/daemon`: description updated
 
 ## Modified schemas
 
 - `SignInternDaemonRequest`: new property `route`
-  - Used by [`POST /interns/{internId}/daemon-access/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity-deprecated-alias), [`POST /interns/{internId}/daemon/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity)
+  - Used by `POST /interns/{internId}/daemon-access/sign`, `POST /interns/{internId}/daemon/sign`
 - `SignInternDaemonResponse`: new property `x-ori-invoke-nonce`; new property `x-ori-invoke-signature-v2`
-  - Used by [`POST /interns/{internId}/daemon-access/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity-deprecated-alias), [`POST /interns/{internId}/daemon/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity)
+  - Used by `POST /interns/{internId}/daemon-access/sign`, `POST /interns/{internId}/daemon/sign`
 
 </Update>
 
@@ -1235,7 +1235,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 - [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail): description updated
 - [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail): description updated
 - [`POST /guardrails/{id}/assignments/keys`](/api/api-reference/guardrails/bulk-assign-keys-to-a-guardrail): description updated
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): description updated
+- `POST /interns`: description updated
 - [`PATCH /keys/{hash}`](/api/api-reference/api-keys/update-an-api-key): description updated
 
 ## New response codes
@@ -1273,7 +1273,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 ## Modified endpoints
 
 - [`GET /keys`](/api/api-reference/api-keys/list-api-keys): new parameter `include_expired`
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): description updated; response schema updated
+- `POST /interns`: description updated; response schema updated
 
 ## Modified schemas
 
@@ -1300,8 +1300,8 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## New endpoints
 
-- [`POST /interns/{internId}/daemon-access/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity-deprecated-alias): Sign a daemon request with the caller's identity (deprecated alias)
-- [`POST /interns/{internId}/daemon/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity): Sign a daemon request with the caller's identity
+- `POST /interns/{internId}/daemon-access/sign`: Sign a daemon request with the caller's identity (deprecated alias)
+- `POST /interns/{internId}/daemon/sign`: Sign a daemon request with the caller's identity
 
 ## New schemas
 
@@ -1310,9 +1310,9 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 - `ToolSearchOutputItem`
   - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
 - `SignInternDaemonRequest`
-  - Used by [`POST /interns/{internId}/daemon-access/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity-deprecated-alias), [`POST /interns/{internId}/daemon/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity)
+  - Used by `POST /interns/{internId}/daemon-access/sign`, `POST /interns/{internId}/daemon/sign`
 - `SignInternDaemonResponse`
-  - Used by [`POST /interns/{internId}/daemon-access/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity-deprecated-alias), [`POST /interns/{internId}/daemon/sign`](/api/api-reference/interns/sign-a-daemon-request-with-the-callers-identity)
+  - Used by `POST /interns/{internId}/daemon-access/sign`, `POST /interns/{internId}/daemon/sign`
 - `OutputToolSearchCallItem`
   - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
 
@@ -1674,15 +1674,15 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## Modified endpoints
 
-- [`GET /interns`](/api/api-reference/interns/list-interns): description updated
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): description updated
-- [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern): description updated
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): description updated
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): description updated
-- [`GET /interns/{internId}/daemon`](/api/api-reference/interns/get-an-interns-daemon-access): description updated
-- [`GET /interns/{internId}/daemon-access`](/api/api-reference/interns/get-an-interns-daemon-access-deprecated-alias): description updated
-- [`POST /interns/{internId}/provision`](/api/api-reference/interns/provision-an-intern): description updated
-- [`POST /interns/{internId}/suspend`](/api/api-reference/interns/suspend-an-intern): description updated
+- `GET /interns`: description updated
+- `POST /interns`: description updated
+- `DELETE /interns/{internId}`: description updated
+- `GET /interns/{internId}`: description updated
+- `PATCH /interns/{internId}`: description updated
+- `GET /interns/{internId}/daemon`: description updated
+- `GET /interns/{internId}/daemon-access`: description updated
+- `POST /interns/{internId}/provision`: description updated
+- `POST /interns/{internId}/suspend`: description updated
 - [`GET /vault/interns/{internId}/secrets`](/api/api-reference/vault/list-intern-secrets): description updated
 - [`POST /vault/interns/{internId}/secrets/copy`](/api/api-reference/vault/copy-workspace-secrets-to-an-intern): description updated
 - [`DELETE /vault/interns/{internId}/secrets/{name}`](/api/api-reference/vault/delete-an-intern-secret): description updated
@@ -1854,7 +1854,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## New endpoints
 
-- [`GET /interns/{internId}/daemon`](/api/api-reference/interns/get-an-interns-daemon-access): Get an intern's daemon access
+- `GET /interns/{internId}/daemon`: Get an intern's daemon access
 - [`GET /private-endpoints`](/api/api-reference/private-endpoints/list-private-endpoints): List private endpoints
 - [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint): Create a private endpoint
 - [`GET /private-endpoints/{id}`](/api/api-reference/private-endpoints/get-a-private-endpoint): Get a private endpoint
@@ -1870,7 +1870,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 - [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints): response schema updated
 - [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model): response schema updated
-- [`GET /interns/{internId}/daemon-access`](/api/api-reference/interns/get-an-interns-daemon-access-deprecated-alias): deprecated property_added; description updated
+- `GET /interns/{internId}/daemon-access`: deprecated property_added; description updated
 
 ## New schemas
 
@@ -1984,7 +1984,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## Breaking changes
 
-- [`GET /interns/{internId}/daemon-access`](/api/api-reference/interns/get-an-interns-daemon-access): codes `429` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}/daemon-access`: codes `429` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 - `SpeechInputReferenceAudioInput`: required `data` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
   - Used by [`POST /audio/speech`](/api/api-reference/tts/create-speech)
 
@@ -1997,7 +1997,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## Modified endpoints
 
-- [`GET /interns/{internId}/daemon-access`](/api/api-reference/interns/get-an-interns-daemon-access): description updated
+- `GET /interns/{internId}/daemon-access`: description updated
 - [`POST /audio/speech`](/api/api-reference/tts/create-speech): description updated
 - [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints): response schema updated
 - [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials): parameter `provider` updated
@@ -2112,7 +2112,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## New endpoints
 
-- [`GET /interns/{internId}/daemon-access`](/api/api-reference/interns/get-an-interns-daemon-access): Get an intern's daemon access
+- `GET /interns/{internId}/daemon-access`: Get an intern's daemon access
 
 ## Modified endpoints
 
@@ -2122,7 +2122,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 ## New schemas
 
 - `InternDaemonAccess`
-  - Used by [`GET /interns/{internId}/daemon-access`](/api/api-reference/interns/get-an-interns-daemon-access)
+  - Used by `GET /interns/{internId}/daemon-access`
 
 ## Modified schemas
 
@@ -2224,14 +2224,14 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## New endpoints
 
-- [`POST /interns/{internId}/invoke`](/api/api-reference/interns/start-an-intern-run-without-waiting-for-it): Start an intern run without waiting for it
+- `POST /interns/{internId}/invoke`: Start an intern run without waiting for it
 
 ## New schemas
 
 - `InternInvokeAcceptedResponse`
-  - Used by [`POST /interns/{internId}/invoke`](/api/api-reference/interns/start-an-intern-run-without-waiting-for-it)
+  - Used by `POST /interns/{internId}/invoke`
 - `InternInvokeRequest`
-  - Used by [`POST /interns/{internId}/invoke`](/api/api-reference/interns/start-an-intern-run-without-waiting-for-it)
+  - Used by `POST /interns/{internId}/invoke`
 
 ## Modified schemas
 
@@ -2271,10 +2271,10 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 - [`GET /workspaces/{id}`](/api/api-reference/workspaces/get-a-workspace): response schema updated
 - [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace): response schema updated
 - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request): description updated
-- [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern): description updated
-- [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern): description updated; response schema updated
-- [`POST /interns/{internId}/provision`](/api/api-reference/interns/provision-an-intern): description updated; response schema updated
-- [`POST /interns/{internId}/suspend`](/api/api-reference/interns/suspend-an-intern): description updated; response schema updated
+- `POST /interns/{internId}/chat/completions`: description updated
+- `DELETE /interns/{internId}`: description updated; response schema updated
+- `POST /interns/{internId}/provision`: description updated; response schema updated
+- `POST /interns/{internId}/suspend`: description updated; response schema updated
 
 ## New schemas
 
@@ -2335,7 +2335,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 ## Breaking changes
 
 - `InternChatErrorMetadata`: required `retryable` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `BYOKKey`: required `declared_zdr` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
@@ -2347,37 +2347,37 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## Modified endpoints
 
-- [`GET /interns`](/api/api-reference/interns/list-interns): description updated; parameter `status` updated; response schema updated
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): description updated; parameter `Idempotency-Key` updated; response schema updated
-- [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern): response schema updated; description updated
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): response schema updated; description updated
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): response schema updated; description updated
-- [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern): response schema updated; description updated
-- [`POST /interns/{internId}/provision`](/api/api-reference/interns/provision-an-intern): description updated; response schema updated
-- [`POST /interns/{internId}/suspend`](/api/api-reference/interns/suspend-an-intern): description updated; response schema updated
+- `GET /interns`: description updated; parameter `status` updated; response schema updated
+- `POST /interns`: description updated; parameter `Idempotency-Key` updated; response schema updated
+- `DELETE /interns/{internId}`: response schema updated; description updated
+- `GET /interns/{internId}`: response schema updated; description updated
+- `PATCH /interns/{internId}`: response schema updated; description updated
+- `POST /interns/{internId}/chat/completions`: response schema updated; description updated
+- `POST /interns/{internId}/provision`: description updated; response schema updated
+- `POST /interns/{internId}/suspend`: description updated; response schema updated
 - [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials): response schema updated
 - [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential): response schema updated
 - [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential): response schema updated
 - [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential): response schema updated
-- [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern): description updated
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): description updated
-- [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern): description updated
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): description updated
+- `POST /interns/{internId}/chat/completions`: description updated
+- `POST /interns`: description updated
+- `DELETE /interns/{internId}`: description updated
+- `PATCH /interns/{internId}`: description updated
 
 ## New response codes
 
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): now returns `409`
-- [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern): now returns `408`
-- [`POST /interns/{internId}/provision`](/api/api-reference/interns/provision-an-intern): now returns `400`
-- [`POST /interns/{internId}/provision`](/api/api-reference/interns/provision-an-intern): now returns `413`
-- [`POST /interns/{internId}/suspend`](/api/api-reference/interns/suspend-an-intern): now returns `400`
-- [`POST /interns/{internId}/suspend`](/api/api-reference/interns/suspend-an-intern): now returns `413`
-- [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern): now returns `202`
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): now returns `415`
-- [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern): now returns `415`
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): now returns `415`
-- [`POST /interns/{internId}/provision`](/api/api-reference/interns/provision-an-intern): now returns `415`
-- [`POST /interns/{internId}/suspend`](/api/api-reference/interns/suspend-an-intern): now returns `415`
+- `PATCH /interns/{internId}`: now returns `409`
+- `POST /interns/{internId}/chat/completions`: now returns `408`
+- `POST /interns/{internId}/provision`: now returns `400`
+- `POST /interns/{internId}/provision`: now returns `413`
+- `POST /interns/{internId}/suspend`: now returns `400`
+- `POST /interns/{internId}/suspend`: now returns `413`
+- `POST /interns/{internId}/chat/completions`: now returns `202`
+- `POST /interns`: now returns `415`
+- `DELETE /interns/{internId}`: now returns `415`
+- `PATCH /interns/{internId}`: now returns `415`
+- `POST /interns/{internId}/provision`: now returns `415`
+- `POST /interns/{internId}/suspend`: now returns `415`
 
 ## New schemas
 
@@ -2392,28 +2392,28 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
     - [`POST /responses`](/api/api-reference/responses/create-a-response)
   </Expandable>
 - `InternChatSteeredResponse`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 
 ## Modified schemas
 
 - `InternChatError`: example modified
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatErrorMetadata`: example modified; new property `retryable`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatErrorResponse`: example modified
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatStreamError`: example modified
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternLifecycleError`: example modified; new property `metadata`
 
   <Expandable title="7 endpoints using this schema">
-    - [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern)
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
-    - [`POST /interns/{internId}/provision`](/api/api-reference/interns/provision-an-intern)
-    - [`POST /interns/{internId}/suspend`](/api/api-reference/interns/suspend-an-intern)
+    - `DELETE /interns/{internId}`
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
+    - `POST /interns/{internId}/provision`
+    - `POST /interns/{internId}/suspend`
   </Expandable>
 - `VideoGenerationRequest`: enum property_added
   - Used by [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
@@ -2496,46 +2496,46 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 - [`GET /key`](/api/api-reference/api-keys/get-current-api-key): required `organization_id` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 - [`GET /key`](/api/api-reference/api-keys/get-current-api-key): required `workspace_id` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 - `CreateInternRequest`: required `workspace_id` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-  - Used by [`POST /interns`](/api/api-reference/interns/create-an-intern)
+  - Used by `POST /interns`
 - `InternChatAssistantMessage`: required `content` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
-- [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern): requestBody `requestBody` property added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by `POST /interns/{internId}/chat/completions`
+- `DELETE /interns/{internId}`: requestBody `requestBody` property added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Regenerated SDK clients: pass `{}` when no acknowledgement is needed, or `{ acknowledge_workspace_loss: true }` when deleting the intern also requires acknowledging workspace loss. Raw HTTP clients may continue to omit the body.
 
 ## Modified endpoints
 
 - [`GET /key`](/api/api-reference/api-keys/get-current-api-key): response schema updated
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): description updated; response schema updated
-- [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern): description updated
-- [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern): description updated
-- [`GET /interns`](/api/api-reference/interns/list-interns): new parameter `starting_after`
+- `POST /interns`: description updated; response schema updated
+- `POST /interns/{internId}/chat/completions`: description updated
+- `DELETE /interns/{internId}`: description updated
+- `GET /interns`: new parameter `starting_after`
 - [`PATCH /observability/destinations/{id}`](/api/api-reference/observability/update-an-observability-destination): description updated; response schema updated
 
 ## New response codes
 
-- [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern): now returns `400`
-- [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern): now returns `413`
+- `DELETE /interns/{internId}`: now returns `400`
+- `DELETE /interns/{internId}`: now returns `413`
 - [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential): now returns `403`
 
 ## New schemas
 
 - `DeleteInternRequest`
-  - Used by [`DELETE /interns/{internId}`](/api/api-reference/interns/delete-an-intern)
+  - Used by `DELETE /interns/{internId}`
 
 ## Modified schemas
 
 - `InternChatCompletionRequest`: description updated
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `CreateInternRequest`: description updated
-  - Used by [`POST /interns`](/api/api-reference/interns/create-an-intern)
+  - Used by `POST /interns`
 - `TokenExchangeRequest`: pattern property_added
   - Used by [`POST /oauth/token`](/api/api-reference/oauth/exchange-a-workload-identity-token)
 - `InternChatCompletionChunk`: description updated
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `UpdateInternRequest`: description updated; minLength property_added; pattern property_added
-  - Used by [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
+  - Used by `PATCH /interns/{internId}`
 - `InternListResponse`: new property `next_cursor`
-  - Used by [`GET /interns`](/api/api-reference/interns/list-interns)
+  - Used by `GET /interns`
 
 </Update>
 
@@ -2549,270 +2549,270 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - Update response parsing from `createdAt` to `created_at`.
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: properties `lastFailureMessage` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `lastFailureMessage` to `last_failure_message`.
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: properties `updatedAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `updatedAt` to `updated_at`.
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: properties `workspaceId` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `workspaceId` to `workspace_id`.
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `created_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `last_failure_message` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `updated_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `workspace_id` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `createdAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `lastFailureMessage` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `updatedAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `workspaceId` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: properties `stepLabel` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `stepLabel` to `step_label`.
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: properties `stepNumber` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `stepNumber` to `step_number`.
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: properties `totalSteps` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `totalSteps` to `total_steps`.
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `step_label` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `step_number` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `total_steps` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `stepLabel` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `stepNumber` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `Intern`: required `totalSteps` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): properties `createdAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `POST /interns`: properties `createdAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `createdAt` to `created_at`.
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): properties `lastFailureMessage` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `POST /interns`: properties `lastFailureMessage` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `lastFailureMessage` to `last_failure_message`.
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): properties `updatedAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `POST /interns`: properties `updatedAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `updatedAt` to `updated_at`.
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): properties `workspaceId` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `POST /interns`: properties `workspaceId` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `workspaceId` to `workspace_id`.
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `created_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `last_failure_message` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `updated_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `workspace_id` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `createdAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `lastFailureMessage` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `updatedAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `workspaceId` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): properties `stepLabel` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `POST /interns`: required `created_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: required `last_failure_message` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: required `updated_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: required `workspace_id` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: required `createdAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: required `lastFailureMessage` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: required `updatedAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: required `workspaceId` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: properties `stepLabel` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `stepLabel` to `step_label`.
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): properties `stepNumber` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `POST /interns`: properties `stepNumber` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `stepNumber` to `step_number`.
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): properties `totalSteps` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `POST /interns`: properties `totalSteps` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `totalSteps` to `total_steps`.
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `step_label` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `step_number` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `total_steps` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `stepLabel` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `stepNumber` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): required `totalSteps` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): properties `createdAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `POST /interns`: required `step_label` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: required `step_number` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: required `total_steps` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: required `stepLabel` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: required `stepNumber` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `POST /interns`: required `totalSteps` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: properties `createdAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `createdAt` to `created_at`.
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): properties `lastFailureMessage` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `GET /interns/{internId}`: properties `lastFailureMessage` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `lastFailureMessage` to `last_failure_message`.
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): properties `updatedAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `GET /interns/{internId}`: properties `updatedAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `updatedAt` to `updated_at`.
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): properties `workspaceId` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `GET /interns/{internId}`: properties `workspaceId` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `workspaceId` to `workspace_id`.
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `created_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `last_failure_message` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `updated_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `workspace_id` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `createdAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `lastFailureMessage` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `updatedAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `workspaceId` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): properties `stepLabel` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `GET /interns/{internId}`: required `created_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: required `last_failure_message` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: required `updated_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: required `workspace_id` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: required `createdAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: required `lastFailureMessage` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: required `updatedAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: required `workspaceId` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: properties `stepLabel` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `stepLabel` to `step_label`.
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): properties `stepNumber` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `GET /interns/{internId}`: properties `stepNumber` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `stepNumber` to `step_number`.
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): properties `totalSteps` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `GET /interns/{internId}`: properties `totalSteps` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `totalSteps` to `total_steps`.
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `step_label` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `step_number` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `total_steps` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `stepLabel` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `stepNumber` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): required `totalSteps` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): properties `createdAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `GET /interns/{internId}`: required `step_label` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: required `step_number` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: required `total_steps` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: required `stepLabel` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: required `stepNumber` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `GET /interns/{internId}`: required `totalSteps` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: properties `createdAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `createdAt` to `created_at`.
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): properties `lastFailureMessage` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `PATCH /interns/{internId}`: properties `lastFailureMessage` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `lastFailureMessage` to `last_failure_message`.
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): properties `updatedAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `PATCH /interns/{internId}`: properties `updatedAt` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `updatedAt` to `updated_at`.
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): properties `workspaceId` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `PATCH /interns/{internId}`: properties `workspaceId` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `workspaceId` to `workspace_id`.
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `created_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `last_failure_message` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `updated_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `workspace_id` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `createdAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `lastFailureMessage` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `updatedAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `workspaceId` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): properties `stepLabel` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `PATCH /interns/{internId}`: required `created_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `last_failure_message` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `updated_at` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `workspace_id` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `createdAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `lastFailureMessage` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `updatedAt` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `workspaceId` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: properties `stepLabel` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `stepLabel` to `step_label`.
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): properties `stepNumber` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `PATCH /interns/{internId}`: properties `stepNumber` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `stepNumber` to `step_number`.
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): properties `totalSteps` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `PATCH /interns/{internId}`: properties `totalSteps` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Update response parsing from `totalSteps` to `total_steps`.
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `step_label` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `step_number` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `total_steps` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `stepLabel` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `stepNumber` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): required `totalSteps` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `step_label` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `step_number` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `total_steps` property added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `stepLabel` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `stepNumber` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `PATCH /interns/{internId}`: required `totalSteps` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
 
 ## Modified endpoints
 
 - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-questions-and-answers-request): tags property_added
 - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-questions-and-answers-request): request schema updated; response schema updated
-- [`GET /interns`](/api/api-reference/interns/list-interns): response schema updated
-- [`POST /interns`](/api/api-reference/interns/create-an-intern): response schema updated
-- [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern): response schema updated
-- [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern): response schema updated
+- `GET /interns`: response schema updated
+- `POST /interns`: response schema updated
+- `GET /interns/{internId}`: response schema updated
+- `PATCH /interns/{internId}`: response schema updated
 
 ## Modified schemas
 
@@ -2844,13 +2844,13 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - new property `total_steps`
 
   <Expandable title="4 endpoints using this schema">
-    - [`GET /interns`](/api/api-reference/interns/list-interns)
-    - [`GET /interns/{internId}`](/api/api-reference/interns/get-an-intern)
-    - [`PATCH /interns/{internId}`](/api/api-reference/interns/update-an-intern)
-    - [`POST /interns`](/api/api-reference/interns/create-an-intern)
+    - `GET /interns`
+    - `GET /interns/{internId}`
+    - `PATCH /interns/{internId}`
+    - `POST /interns`
   </Expandable>
 - `InternListResponse`: example modified
-  - Used by [`GET /interns`](/api/api-reference/interns/list-interns)
+  - Used by `GET /interns`
 - `VaultSecret`: description updated
 
   <Expandable title="5 endpoints using this schema">
@@ -2867,7 +2867,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 ## New endpoints
 
-- [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern): Stream a chat completion with an intern
+- `POST /interns/{internId}/chat/completions`: Stream a chat completion with an intern
 - [`POST /api/alpha/decisions`](/api/api-reference/decisions/submit-a-decisions-questions-and-answers-request): Submit a Decisions (questions and answers) request
 
 ## Modified endpoints
@@ -2884,53 +2884,53 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 ## New schemas
 
 - `InternApprovalMode`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatAssistantMessage`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatChoice`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatCompletionChunk`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatCompletionRequest`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatDelta`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatDeveloperMessage`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatEchoedToolCall`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatEchoedToolCallFunction`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatError`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatErrorMetadata`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatErrorResponse`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatMessage`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatMessageContent`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatPromptTokensDetails`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatStreamError`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatStreamingResponse`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatSystemMessage`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatTextPart`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatToolCall`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatToolCallFunction`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatToolMessage`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatUsage`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `InternChatUserMessage`
-  - Used by [`POST /interns/{internId}/chat/completions`](/api/api-reference/interns/stream-a-chat-completion-with-an-intern)
+  - Used by `POST /interns/{internId}/chat/completions`
 - `DecisionsChoiceAnswer`
   - Used by [`POST /api/alpha/decisions`](/api/api-reference/decisions/submit-a-decisions-questions-and-answers-request)
 - `DecisionsChoiceQuestion`
