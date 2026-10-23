@@ -16,7 +16,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="October 22, 2026" tags={["BYOK","Generations","Interns","Observability","SCIM"]} rss="13 modified endpoints, 15 new response codes, 1 modified schema.">
+<Update label="October 22, 2026" tags={["BYOK","External Users","Generations","Interns","Observability","Presets","SCIM"]} rss="13 modified endpoints, 21 new response codes, 1 modified schema.">
 
 ## Modified endpoints
 
@@ -51,6 +51,12 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 - [`POST /scim/sync-jobs`](/api/api-reference/scim/start-a-scim-directory-sync): now returns `403`
 - [`GET /scim/sync-jobs/{id}`](/api/api-reference/scim/get-scim-directory-sync-status): now returns `403`
 - [`POST /generation/feedback`](/api/api-reference/generations/submit-feedback-for-a-generation): now returns `409`
+- [`GET /external-users`](/api/api-reference/external-users/list-registered-external-users): now returns `403`
+- [`GET /external-users/{user}`](/api/api-reference/external-users/get-a-registered-external-user): now returns `403`
+- [`GET /presets`](/api/api-reference/presets/list-presets): now returns `403`
+- [`GET /presets/{slug}`](/api/api-reference/presets/get-a-preset): now returns `403`
+- [`GET /presets/{slug}/versions`](/api/api-reference/presets/list-versions-of-a-preset): now returns `403`
+- [`GET /presets/{slug}/versions/{version}`](/api/api-reference/presets/get-a-specific-version-of-a-preset): now returns `403`
 
 ## Modified schemas
 
