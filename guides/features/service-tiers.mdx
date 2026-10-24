@@ -58,10 +58,12 @@ See [Nitro](/guides/routing/model-variants/nitro) and [Floor](/guides/routing/mo
 
 To pin a tier explicitly, pass `service_tier` as a top-level parameter in your request body. Supported values:
 
-- `default`: the standard tier.
+- `default`: the standard tier. Pinning it also keeps priority endpoints of open-weight models out of the pool, so a `provider.sort: "throughput"` or `provider.only` request is served at the standard rate.
 - `flex`: lower price, lower processing priority.
 - `priority` or `fast`: priority processing, higher price.
 - `ultrafast`: see [Ultrafast](#ultrafast).
+
+These values work the same for every provider that sells more than one tier; the examples on this page use OpenAI models, but nothing about the parameter is OpenAI-specific.
 
 The example below requests the `flex` tier from OpenAI's `gpt-5`; the flex endpoint's pricing is listed on the [model page](https://openrouter.ai/openai/gpt-5).
 
@@ -194,6 +196,18 @@ curl https://openrouter.ai/api/v1/messages \
   }'
 ```
 
+### Workspace Default Service Tier
+
+To apply a tier to every request without sending `service_tier` each time, set a default service tier in your workspace's [Routing settings](https://openrouter.ai/workspaces/default/routing). It fills in `service_tier` for requests routed under that workspace that set none themselves.
+
+The more specific setting always wins, in this order:
+
+1. `service_tier` in the request body (or the equivalent `speed: "fast"`).
+2. `service_tier` in a [preset](/guides/features/presets) the request references.
+3. The workspace default.
+
+A workspace default behaves exactly like the same value sent on the request, including `default`, which pins the standard tier and turns off `:nitro`/`:floor` tier admission for that workspace's requests.
+
 ### Fast mode
 
 Three spellings request the priority tier. They are fully interchangeable on all APIs and providers:
@@ -254,6 +268,7 @@ Non-default tier endpoints (`flex`, `priority`, `ultrafast`) are only considered
 
 #### 2. The `service_tier` parameter
 
+- A [workspace default service tier](#workspace-default-service-tier) fills in this parameter for requests that set none, so it follows the same rules.
 - **`priority`**: matching endpoints are tried first, with fallback to other endpoints if none succeed. Within each group, endpoints are sorted by throughput by default, and setting `provider.order` or `provider.sort` replaces that default with your ordering. Billing always follows the endpoint actually used, so a priority request that falls back off-tier is charged at that endpoint's standard rate, not the tier rate.
 - **`ultrafast`**: works like `priority` with one more group in front: ultrafast endpoints, then priority endpoints, then default endpoints. See [Ultrafast](#ultrafast).
 - **`flex`**: flex endpoints are tried first, sorted by price. Fallback is bounded by price: the request only falls back to endpoints whose input and output prices are both at or below a flex endpoint's, so you never pay more than the flex rate you asked for, whatever your input/output mix. Where the flex endpoint is the cheapest option for its model, as with a single provider's flex tier, nothing qualifies and a flex capacity error surfaces, the same as when you call that provider directly.
