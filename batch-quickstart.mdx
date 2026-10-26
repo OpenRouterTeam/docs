@@ -133,7 +133,7 @@ On Google Vertex, image URLs must use HTTPS, end in `.png`, `.jpg`, `.jpeg`, `.w
 | Not supported | What to do instead |
 |---------------|--------------------|
 | Base64 or data-URI images | Host the image and send a public `https` URL. |
-| Inline file bytes and provider file IDs | Send a public file URL. Accounts with inline files enabled, either individually or through a rollout to all accounts, can send inline PDFs (`data:application/pdf;base64,...`) on Anthropic, DeepInfra, and Google AI Studio, up to 20 MiB each. |
+| Inline file bytes and provider file IDs | Send a public file URL. Inline PDFs (`data:application/pdf;base64,...`, up to 20 MiB each) work on Anthropic, DeepInfra, Google AI Studio, and OpenAI for accounts with inline files enabled, either individually or through a rollout to all accounts; other accounts get `Inline base64 files are not enabled for this account in batch`. |
 | Audio input, and video other than YouTube | Use the sync API. A YouTube video on Google AI Studio holds the model's full input limit against your balance at submit, because its length is unknown. You are billed for the tokens the provider reports. |
 | Image or audio output (`modalities`, `audio`, `image_config`) | Use the sync API. |
 | OpenRouter web search (`:online`, the `web` plugin, `web_search_options`) | Use the provider's own search tool, for example OpenAI `web_search` on `/v1/responses` or Anthropic `web_search_20250305` on `/v1/messages`. Google Vertex rejects web search tools. |
