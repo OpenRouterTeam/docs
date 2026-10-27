@@ -16,7 +16,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="October 27, 2026" tags={["Breaking","Endpoints","Generations","Models","Presets","Schemas"]} rss="2 breaking changes, 10 new response codes, 1 modified schema.">
+<Update label="October 27, 2026" tags={["Breaking","Endpoints","Generations","Models","Presets","Private Endpoints","Schemas"]} rss="2 breaking changes, 1 new endpoint, 1 modified endpoint, 10 new response codes, 3 new schemas, 5 modified schemas.">
 
 ## Breaking changes
 
@@ -40,6 +40,14 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
     - [`POST /observability/destinations`](/api/api-reference/observability/create-an-observability-destination)
   </Expandable>
 
+## New endpoints
+
+- [`PUT /private-endpoints/{id}/parameters`](/api/api-reference/private-endpoints/set-private-endpoint-supported-parameters): Set private endpoint supported parameters
+
+## Modified endpoints
+
+- [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint): description updated
+
 ## New response codes
 
 - [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints): now returns `503`
@@ -52,6 +60,15 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 - [`GET /presets/{slug}`](/api/api-reference/presets/get-a-preset): now returns `503`
 - [`GET /presets/{slug}/versions`](/api/api-reference/presets/list-versions-of-a-preset): now returns `503`
 - [`GET /presets/{slug}/versions/{version}`](/api/api-reference/presets/get-a-specific-version-of-a-preset): now returns `503`
+
+## New schemas
+
+- `PrivateEndpointDeclaredParameter`
+  - Used by [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint), [`PUT /private-endpoints/{id}/parameters`](/api/api-reference/private-endpoints/set-private-endpoint-supported-parameters)
+- `PrivateEndpointParameterCheck`
+  - Used by [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint), [`POST /private-endpoints/{id}/validate`](/api/api-reference/private-endpoints/validate-a-draft-private-endpoint)
+- `UpdatePrivateEndpointParametersRequest`
+  - Used by [`PUT /private-endpoints/{id}/parameters`](/api/api-reference/private-endpoints/set-private-endpoint-supported-parameters)
 
 ## Modified schemas
 
@@ -68,6 +85,24 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
     - [`PATCH /observability/destinations/{id}`](/api/api-reference/observability/update-an-observability-destination)
     - [`POST /observability/destinations`](/api/api-reference/observability/create-an-observability-destination)
   </Expandable>
+- `CreatePrivateEndpointRequest`: new property `declared_parameters`; new property `max_completion_tokens`
+  - Used by [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
+- `PrivateEndpoint`:
+  - example modified
+  - new property `declared_parameters` (always present)
+  - new property `max_completion_tokens`
+  - new property `tested_parameters` (always present)
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /private-endpoints/{id}`](/api/api-reference/private-endpoints/get-a-private-endpoint)
+    - [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-draft-private-endpoint)
+    - [`PUT /private-endpoints/{id}/parameters`](/api/api-reference/private-endpoints/set-private-endpoint-supported-parameters)
+    - [`PUT /private-endpoints/{id}/pricing`](/api/api-reference/private-endpoints/set-private-endpoint-pricing)
+  </Expandable>
+- `PrivateEndpointValidation`: new property `parameters`
+  - Used by [`POST /private-endpoints/{id}/validate`](/api/api-reference/private-endpoints/validate-a-draft-private-endpoint)
+- `PrivateEndpointValidationNullable`: new property `parameters`
+  - Used by [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
 
 </Update>
 
