@@ -16,11 +16,147 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="October 23, 2026" tags={["Generations"]} rss="1 new response code.">
+<Update label="October 27, 2026" tags={["Breaking","Schemas"]} rss="2 breaking changes, 1 modified schema.">
+
+## Breaking changes
+
+- `ObservabilityS3Destination.config`: required `accessKeyId` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - **Migration: no action for existing destinations.** S3 destinations now support IAM role authentication (`authMode: "iam_role"` with `provider: "aws"`, `roleArn`, and `region`), where OpenRouter assumes a role in your AWS account instead of storing access keys. `accessKeyId` and `secretAccessKey` are now optional in the schema because IAM role destinations have none. `authMode` defaults to `access_keys`, and in that mode both keys are still required on create and update, so existing requests and destinations behave exactly as before.
+  - **Migration for clients that read destinations:** if your code or a generated SDK type assumes `config.accessKeyId` and `config.secretAccessKey` are always present in `GET /observability/destinations` responses, handle them as optional; they are absent on IAM role destinations. Check `config.authMode` to tell the two apart.
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /observability/destinations`](/api/api-reference/observability/list-observability-destinations)
+    - [`GET /observability/destinations/{id}`](/api/api-reference/observability/get-an-observability-destination)
+    - [`PATCH /observability/destinations/{id}`](/api/api-reference/observability/update-an-observability-destination)
+    - [`POST /observability/destinations`](/api/api-reference/observability/create-an-observability-destination)
+  </Expandable>
+- `ObservabilityS3Destination.config`: required `secretAccessKey` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Same change as above: required only when `authMode` is `access_keys` (the default).
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /observability/destinations`](/api/api-reference/observability/list-observability-destinations)
+    - [`GET /observability/destinations/{id}`](/api/api-reference/observability/get-an-observability-destination)
+    - [`PATCH /observability/destinations/{id}`](/api/api-reference/observability/update-an-observability-destination)
+    - [`POST /observability/destinations`](/api/api-reference/observability/create-an-observability-destination)
+  </Expandable>
+
+## Modified schemas
+
+- `ObservabilityS3Destination`:
+  - new property `config.authMode`
+  - new property `config.externalId`
+  - new property `config.provider`
+  - new property `config.roleArn`
+  - property `region` updated
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /observability/destinations`](/api/api-reference/observability/list-observability-destinations)
+    - [`GET /observability/destinations/{id}`](/api/api-reference/observability/get-an-observability-destination)
+    - [`PATCH /observability/destinations/{id}`](/api/api-reference/observability/update-an-observability-destination)
+    - [`POST /observability/destinations`](/api/api-reference/observability/create-an-observability-destination)
+  </Expandable>
+
+</Update>
+
+<Update label="October 26, 2026" tags={["Schemas"]} rss="1 new schema, 2 modified schemas.">
+
+## New schemas
+
+- `AnthropicToolUnion`
+  - Used by [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message), [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+
+## Modified schemas
+
+- `VideoModel`: enum property_added
+  - Used by [`GET /videos/models`](/api/api-reference/video-generation/list-all-video-generation-models)
+- `MessagesToolAdditionBlock`: description updated; new union variant added
+  - Used by [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message), [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+
+</Update>
+
+<Update label="October 23, 2026" tags={["Analytics","Breaking","Generations","Interns"]} rss="54 breaking changes, 1 modified endpoint, 1 new response code, 4 modified schemas.">
+
+## Breaking changes
+
+- `CreateInternRequest`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `DeleteInternRequest`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `DeleteInternResponse`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `Intern`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternApprovalMode`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatAssistantMessage`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatChoice`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatCompletionChunk`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatCompletionRequest`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatDelta`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatDeveloperMessage`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatEchoedToolCall`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatEchoedToolCallFunction`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatError`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatErrorMetadata`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatErrorResponse`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatMessage`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatMessageContent`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatPromptTokensDetails`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatSteeredResponse`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatStreamError`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatStreamingResponse`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatSystemMessage`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatTextPart`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatToolCall`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatToolCallFunction`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatToolMessage`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatUsage`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternChatUserMessage`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternConnection`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternConnectionList`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternDaemonAccess`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternInvokeAcceptedResponse`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternInvokeRequest`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternLifecycleError`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `InternListResponse`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `ProvisionInternResponse`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `SignInternDaemonRequest`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `SignInternDaemonResponse`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `SuspendInternResponse`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `UpdateInternRequest`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `/interns`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `/interns/{internId}`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `/interns/{internId}/chat/completions`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `/interns/{internId}/connections`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `/interns/{internId}/daemon`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `/interns/{internId}/daemon-access`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `/interns/{internId}/daemon-access/sign`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `/interns/{internId}/daemon/sign`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `/interns/{internId}/icon`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `/interns/{internId}/invoke`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `/interns/{internId}/provision`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- `/interns/{internId}/suspend`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+- $.tags: Interns object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+
+## Modified endpoints
+
+- [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data): response schema updated
 
 ## New response codes
 
 - [`GET /generation`](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation): now returns `403`
+
+## Modified schemas
+
+- `ChatStreamChunk`: property `metadata` updated
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+- `MessagesRequest`: title property_added
+  - Used by [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message), [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+- `ObservabilityWebhookDestination`: property `method` updated
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /observability/destinations`](/api/api-reference/observability/list-observability-destinations)
+    - [`GET /observability/destinations/{id}`](/api/api-reference/observability/get-an-observability-destination)
+    - [`PATCH /observability/destinations/{id}`](/api/api-reference/observability/update-an-observability-destination)
+    - [`POST /observability/destinations`](/api/api-reference/observability/create-an-observability-destination)
+  </Expandable>
+- `OpenResponsesErrorField`: title property_added
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
 
 </Update>
 

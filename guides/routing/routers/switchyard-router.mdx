@@ -1,12 +1,12 @@
 ---
 publish: true
 title: Switchyard Router
-description: Switch between multiple models of your choice to optimize the cost of the request
-seoTitle: 'Switchyard Router | Cost-Aware Model Selection with OpenRouter'
+description: Automate model selection across a model pool you choose to balance accuracy, cost, and speed
+seoTitle: 'Switchyard Router | Model Routing Powered by NVIDIA NeMo Switchyard'
 og:site_name: OpenRouter Documentation
 og:title: 'Switchyard Router - nvidia/switchyard'
-og:description: "Use the nvidia/switchyard model slug to route each request across your own shortlist of models with NVIDIA Switchyard's routing algorithms."
-og:image: https://openrouter.ai/dynamic-og?title=Switchyard%20Router&description=Cost-aware%20model%20selection
+og:description: "Use the nvidia/switchyard model-routing plugin, powered by NVIDIA NeMo Switchyard, to automate model selection across a model pool you choose and balance accuracy, cost, and speed."
+og:image: https://openrouter.ai/dynamic-og?title=Switchyard%20Router&description=Model%20routing%20powered%20by%20NVIDIA%20NeMo%20Switchyard
 og:image:width: 1200
 og:image:height: 630
 twitter:card: summary_large_image
@@ -19,9 +19,13 @@ models:
 import { API_KEY_REF } from '/snippets/exports/constants.mdx';
 import { Template } from "/snippets/exports/Template.jsx";
 
-The [Switchyard Router](https://openrouter.ai/nvidia/switchyard) (`nvidia/switchyard`) is an open-source model router that switches between multiple models to optimize the cost of requests. It uses the routing algorithms from [NVIDIA Switchyard](https://github.com/NVIDIA-NeMo/Switchyard). By default, it uses OpenRouter market data to select the most popular low-cost and high-cost models. You can also name up to three candidate models in `models`; the router picks the one that handles each request, and the others serve as fallbacks.
+The [Switchyard Router](https://openrouter.ai/nvidia/switchyard) (`nvidia/switchyard`) is OpenRouter’s model-routing plugin powered by [NVIDIA NeMo Switchyard](https://github.com/NVIDIA-NeMo/Switchyard), an open-source library that uses configurable routing algorithms to automate model selection across a chosen model pool and balance accuracy, cost, and speed.
 
-Choose an algorithm for how the router picks between the low-cost (efficient) and high-cost (capable) models:
+If you don't specify `models`, OpenRouter will use market data to select the most popular low-cost and high-cost models from the past 7 days. The plugin allows you to name up to three candidate models in `models`. OpenRouter uses pricing data to map these to the capable and efficient model inputs in Switchyard, and optionally uses the third as a fallback.
+
+NeMo Switchyard enables developers to control and tune routing decisions for your workloads. Because no routing strategy or model pool performs best for every task, OpenRouter’s [Model Routing Benchmarks](https://openrouter.ai/benchmarks/routers#all-benchmarks) show how different configurations perform across public evaluations. They can help you think about potential combinations that could be well-suited to your needs.
+
+Choose the Switchyard algorithm that decides between the low-cost (efficient) and high-cost (capable) models:
 
 - **`stage` (default):** Scores the tool results already in the conversation, such as errors, repeated failures, and edits that landed. This scoring doesn't call a classifier or decision model, so a decisive score routes the request quickly, with no extra model call before the main model starts. When the score isn't decisive, including on a fresh request with no tool results, `stage` falls back to the judge, a small, fast model that rates the task.
 - **`capability`:** Asks the judge on every human turn whether the efficient model can solve the task, and reuses that choice for the turn's tool calls.
@@ -31,16 +35,16 @@ Other algorithms skip the judge entirely, pick at random as an A/B baseline, or 
 
 ## How it works
 
-1. You send a request with `model: "nvidia/switchyard"` and one to three concrete models in `models`, or no `models` to use the default pair (see [Choose your candidates](#choose-your-candidates)). The router needs at least two eligible candidates to make a choice; with one, it serves that model.
+1. You send a request with `model: "nvidia/switchyard"` and one to three concrete models in `models`, or no `models` to use the default pair (see [Choose your candidates](#choose-your-candidates)). Switchyard needs at least two eligible candidates to make a choice; with one, OpenRouter serves that model.
 2. OpenRouter applies your usual routing constraints to each candidate: [provider preferences](/guides/routing/provider-selection), price limits, data-collection and ZDR requirements, [BYOK](/guides/overview/auth/byok) keys, and account model restrictions. Candidates with no eligible endpoint drop out.
-3. The router sorts the remaining candidates by price and labels the cheapest the **efficient** tier and the most expensive the **capable** tier. See [How candidates become tiers](#how-candidates-become-tiers).
-4. The request runs on the chosen model. If that model fails, OpenRouter falls back to the next model in the router's order, the same as [model fallbacks](/guides/routing/model-fallbacks).
+3. OpenRouter sorts the remaining candidates by price and passes the cheapest to Switchyard as the **efficient** tier and the most expensive as the **capable** tier. See [How candidates become tiers](#how-candidates-become-tiers).
+4. Switchyard's algorithm picks a tier, and OpenRouter runs the request on that model. If that model fails, OpenRouter falls back to the next model in the plugin's order, the same as [model fallbacks](/guides/routing/model-fallbacks).
 
 The response's `model` field names the model that answered. The response shape is the same as a request to that model directly.
 
 ## How candidates become tiers
 
-The algorithms do not know your models by name. They choose between two roles, **efficient** and **capable**, and OpenRouter assigns those roles from price on every request:
+Switchyard's algorithms do not know your models by name. They choose between two roles, **efficient** and **capable**, and OpenRouter assigns those roles from price on every request:
 
 1. For each candidate, take its lowest-priced endpoint among the endpoints your request is allowed to use.
 2. Price that endpoint as prompt price plus completion price, per token.
@@ -55,11 +59,11 @@ For example, with `models: ["deepseek/deepseek-v3.2", "anthropic/claude-sonnet-4
 
 The order you list them in does not change the tiers; swapping the two entries above gives the same result. Prices are the endpoint prices at request time, so a provider price change or a [provider preference](/guides/routing/provider-selection) that removes a candidate's cheapest endpoint can change which model is which tier.
 
-With three candidates, the middle-priced one is neither tier. The tier-based algorithms (`capability`, `stage`, `auto`, `composite`) never choose it first; it follows both tiers in the fallback order. `random` can pick any candidate, and `passthrough` keeps your order. Two candidates at the same price still get tiers when a third is priced differently, because only the cheapest and the most expensive candidate are compared. When every eligible candidate has the same price, or only one candidate is eligible, there is no cheap-versus-strong split, and the router serves your `models` order; `random` is the exception and still picks at random among equally priced candidates.
+With three candidates, the middle-priced one is neither tier. The tier-based algorithms (`capability`, `stage`, `auto`, `composite`) never choose it first; it follows both tiers in the fallback order. `random` can pick any candidate, and `passthrough` keeps your order. Two candidates at the same price still get tiers when a third is priced differently, because only the cheapest and the most expensive candidate are compared. When every eligible candidate has the same price, or only one candidate is eligible, there is no cheap-versus-strong split, and OpenRouter serves your `models` order; `random` is the exception and still picks at random among equally priced candidates.
 
 ## Choose your candidates
 
-If you send `model: "nvidia/switchyard"` without `models`, the router picks two candidates for you from the 20 models with the most spend on OpenRouter over the previous seven days, limited to the models your request can use: your provider, price, and data policy settings apply, and so do the request's own needs (image or file input, tools, context length, requested parameters). Among those, the highest-spend model in the cheapest fifth by average cost per request becomes the efficient tier, and the highest-spend model in the 60th to 80th percentile of that cost becomes the capable tier. The pair stands in for your `models` list in spend-rank order, higher-spend model first, which is the order `passthrough` and `caller_order` serve it in. The ranking is refreshed hourly, and no classifier or judge call is made to pick the pair. The pair changes as usage changes, so name your own `models` when you need a fixed pair. The request returns `400` if none of the ranked models is usable for your request, and also if the ranking cannot be loaded: the lookup gives up after two seconds on a freshly started server, and a ranking or model catalog error leaves no pool. Sending your own `models` avoids both.
+If you send `model: "nvidia/switchyard"` without `models`, OpenRouter selects two candidates for you from the 20 models with the most spend on OpenRouter over the previous seven days, limited to the models your request can use: your provider, price, and data policy settings apply, and so do the request's own needs (image or file input, tools, context length, requested parameters). Among those, the highest-spend model in the cheapest fifth by average cost per request becomes the efficient tier, and the highest-spend model in the 60th to 80th percentile of that cost becomes the capable tier. The pair stands in for your `models` list in spend-rank order, higher-spend model first, which is the order `passthrough` and `caller_order` serve it in. The ranking is refreshed hourly, and no classifier or judge call is made to pick the pair. The pair changes as usage changes, so name your own `models` when you need a fixed pair. The request returns `400` if none of the ranked models is usable for your request, and also if the ranking cannot be loaded: the lookup gives up after two seconds on a freshly started server, and a ranking or model catalog error leaves no pool. Sending your own `models` avoids both.
 
 When you name your own candidates, pick a pair that gives the judge a real decision:
 
@@ -171,7 +175,7 @@ print("Model used:", completion["model"])
 </CodeGroup>
 </Template>
 
-The order of `models` matters in these cases: `passthrough` serves it as is; the candidates an algorithm did not rank follow the ranked ones in your order, including the fallbacks behind a `random` pick; and when every eligible candidate has the same price (except under `random`, which still picks at random and reports `strategy: "random"`), or only one candidate is eligible, or the router is unavailable, OpenRouter serves your order directly (`strategy` is `caller_order`). A slug-only request has no caller order; the default pair takes its place, higher-spend model first (see [Choose your candidates](#choose-your-candidates)).
+The order of `models` matters in these cases: `passthrough` serves it as is; the candidates an algorithm did not rank follow the ranked ones in your order, including the fallbacks behind a `random` pick; and when every eligible candidate has the same price (except under `random`, which still picks at random and reports `strategy: "random"`), or only one candidate is eligible, or the routing service is unavailable, OpenRouter serves your order directly (`strategy` is `caller_order`). A slug-only request has no caller order; the default pair takes its place, higher-spend model first (see [Choose your candidates](#choose-your-candidates)).
 
 ## Algorithms
 
@@ -197,7 +201,7 @@ Choose an algorithm per request with the `switchyard-router` plugin. Omit the pl
 
 An `algorithm` value outside this list returns `400`.
 
-Every algorithm that uses the judge decides **before** the request runs: the judge reads the prompt and predicts which tier is needed (NVIDIA Switchyard calls this the LLM classifier in `capability` mode). No algorithm runs the efficient model first and then re-runs the request on the capable model if the answer looks poor; NVIDIA Switchyard's `escalation` mode, which works that way, is not available on OpenRouter.
+Every algorithm that uses the judge decides **before** the request runs: the judge reads the prompt and predicts which tier is needed (NeMo Switchyard calls this the LLM classifier in `capability` mode). No algorithm runs the efficient model first and then re-runs the request on the capable model if the answer looks poor; NeMo Switchyard's `escalation` mode, which works that way, is not available on OpenRouter.
 
 ### `capability`
 
@@ -214,11 +218,11 @@ Use `capability` for independent requests, chat, and agents where each human tur
 }
 ```
 
-The judge rates this prompt as demanding, so the router serves `anthropic/claude-sonnet-4.5` with `deepseek/deepseek-v3.2` as the fallback. A prompt such as `"Reply with the capital of France."` goes the other way. With [metadata](#inspect-decisions) enabled, `strategy` is `capability` and `judge_ms` is present on human turns; a tool-result turn that reuses the pinned model reports `session_pin` and no `judge_ms`.
+The judge rates this prompt as demanding, so OpenRouter serves `anthropic/claude-sonnet-4.5` with `deepseek/deepseek-v3.2` as the fallback. A prompt such as `"Reply with the capital of France."` goes the other way. With [metadata](#inspect-decisions) enabled, `strategy` is `capability` and `judge_ms` is present on human turns; a tool-result turn that reuses the pinned model reports `session_pin` and no `judge_ms`.
 
 ### `stage`
 
-Use `stage` for coding and tool-using agents that send the whole conversation back on every turn. The router scores the tool results in `messages`: errors, repeated failures without progress, and long exploration push toward the capable tier; edits and writes that landed push toward the efficient tier. When the score is decisive, no judge call is made. When it is not, the judge decides as in `capability`.
+Use `stage` for coding and tool-using agents that send the whole conversation back on every turn. The plugin scores the tool results in `messages`: errors, repeated failures without progress, and long exploration push toward the capable tier; edits and writes that landed push toward the efficient tier. When the score is decisive, no judge call is made. When it is not, the judge decides as in `capability`.
 
 ```json
 {
@@ -240,7 +244,7 @@ Use `stage` for coding and tool-using agents that send the whole conversation ba
 }
 ```
 
-The failing assertion is a signal toward the capable tier. One signal on its own does not cross the router's confidence threshold, so the judge decides a turn like this one. Repeating the same error does not add up: the router scores the strongest error in the last few tool results, so the same failure on the next turn is also sent to the judge. A turn skips the judge when the signals corroborate each other, for example an error while the agent is deep in a task with no edits landing goes to `anthropic/claude-sonnet-4.5`, and tests passing right after an edit with no recent errors goes to `deepseek/deepseek-v3.2`. A critical error such as out of memory goes to `anthropic/claude-sonnet-4.5` on its own. The first turn of a conversation has no tool results, so it goes to the judge. `strategy` is `stage`; `judge_ms` is present only on turns the judge decided.
+The failing assertion is a signal toward the capable tier. One signal on its own does not cross the plugin's confidence threshold, so the judge decides a turn like this one. Repeating the same error does not add up: the plugin scores the strongest error in the last few tool results, so the same failure on the next turn is also sent to the judge. A turn skips the judge when the signals corroborate each other, for example an error while the agent is deep in a task with no edits landing goes to `anthropic/claude-sonnet-4.5`, and tests passing right after an edit with no recent errors goes to `deepseek/deepseek-v3.2`. A critical error such as out of memory goes to `anthropic/claude-sonnet-4.5` on its own. The first turn of a conversation has no tool results, so it goes to the judge. `strategy` is `stage`; `judge_ms` is present only on turns the judge decided.
 
 ### `auto`
 
@@ -262,7 +266,7 @@ Use `auto` when you want `stage` routing without paying for judge calls. Turns t
 
 ### `composite`
 
-Use `composite` for long agent tasks where the tier chosen at the start of a task should hold through its tool turns unless the tool results say otherwise. A human turn runs `stage`: tool results already in `messages` can decide the tier on their own, and the judge is asked only when they do not. The router remembers the tier for the conversation. On tool-result turns with a remembered tier, that tier is the default and the `stage` signals move individual turns off it, with no judge call. A tool-result turn with no remembered tier runs judge-backed `stage` like a human turn.
+Use `composite` for long agent tasks where the tier chosen at the start of a task should hold through its tool turns unless the tool results say otherwise. A human turn runs `stage`: tool results already in `messages` can decide the tier on their own, and the judge is asked only when they do not. The plugin remembers the tier for the conversation. On tool-result turns with a remembered tier, that tier is the default and the `stage` signals move individual turns off it, with no judge call. A tool-result turn with no remembered tier runs judge-backed `stage` like a human turn.
 
 ```json
 {
@@ -284,7 +288,7 @@ Use `composite` for long agent tasks where the tier chosen at the start of a tas
 }
 ```
 
-If the human turn landed on the capable tier, this read-only tool turn stays on `anthropic/claude-sonnet-4.5`; a run of successful edits later in the task can drop turns to `deepseek/deepseek-v3.2`. `strategy` is `composite`. Send a `session_id` so the router can find the remembered tier.
+If the human turn landed on the capable tier, this read-only tool turn stays on `anthropic/claude-sonnet-4.5`; a run of successful edits later in the task can drop turns to `deepseek/deepseek-v3.2`. `strategy` is `composite`. Send a `session_id` so the plugin can find the remembered tier.
 
 ### `random`
 
@@ -322,7 +326,7 @@ Use `passthrough` to run the candidates through the same eligibility checks as t
 
 ### The judge
 
-The judge is a small, fast model (`google/gemini-3.5-flash-lite`) that estimates whether the efficient tier can solve your task. Switchyard is open source, so everything below can be checked against the [NVIDIA-NeMo/Switchyard](https://github.com/NVIDIA-NeMo/Switchyard) source; the capability classifier lives in the [`crates/libsy`](https://github.com/NVIDIA-NeMo/Switchyard/tree/main/crates/libsy) directory.
+The judge is a small, fast model (`google/gemini-3.5-flash-lite`) that estimates whether the efficient tier can solve your task. NeMo Switchyard is open source, so everything below can be checked against the [NVIDIA-NeMo/Switchyard](https://github.com/NVIDIA-NeMo/Switchyard) source; the capability classifier lives in the [`crates/libsy`](https://github.com/NVIDIA-NeMo/Switchyard/tree/main/crates/libsy) directory.
 
 **Choose the judge.** To run the judge on a different model, set `judge_model` on the plugin:
 
@@ -333,12 +337,12 @@ The judge is a small, fast model (`google/gemini-3.5-flash-lite`) that estimates
 }
 ```
 
-Switchyard uses the model that you name only if the model meets both of the following conditions:
+OpenRouter uses the model that you name only if the model meets both of the following conditions:
 
 - It's in the model catalog.
 - It has at least one endpoint that supports structured outputs and that your account settings and the request's `provider` settings allow.
 
-Otherwise, the request still runs with the default judge, and the pipeline data reports `judge_model_requested` and `judge_model_fallback`. If the default judge doesn't meet those conditions either, for example because your `provider` settings exclude Google, Switchyard uses `openai/gpt-4o-mini` as the judge. If neither fits, the judge call fails and the request goes to the capable tier. The fallback reason is `not_in_catalog`, `no_structured_outputs`, `no_eligible_endpoint`, or `catalog_unavailable`.
+Otherwise, the request still runs with the default judge, and the pipeline data reports `judge_model_requested` and `judge_model_fallback`. If the default judge doesn't meet those conditions either, for example because your `provider` settings exclude Google, OpenRouter uses `openai/gpt-4o-mini` as the judge. If neither fits, the judge call fails and the request goes to the capable tier. The fallback reason is `not_in_catalog`, `no_structured_outputs`, `no_eligible_endpoint`, or `catalog_unavailable`.
 
 The 2.5-second time budget and the fall-open behavior described later on this page apply to whichever judge runs, so a slow judge model can send more requests to the capable tier. The `auto`, `random`, and `passthrough` algorithms don't call the judge, so they ignore `judge_model`.
 
@@ -357,11 +361,11 @@ The 2.5-second time budget and the fall-open behavior described later on this pa
 }
 ```
 
-**How the verdict is validated.** The router rejects the verdict, and treats the call as failed, unless `p_solve` is between 0 and 1, `crux` is non-empty, no extra fields are present, and `primary_rule` matches `capability_boundary`: `SUP-*` with `supported`, `UNC-*` with `uncertain`, `LIM-*` with `unsupported`, or `none` with `unmatched`.
+**How the verdict is validated.** The plugin rejects the verdict, and treats the call as failed, unless `p_solve` is between 0 and 1, `crux` is non-empty, no extra fields are present, and `primary_rule` matches `capability_boundary`: `SUP-*` with `supported`, `UNC-*` with `uncertain`, `LIM-*` with `unsupported`, or `none` with `unmatched`.
 
 **How the verdict becomes a tier.** The efficient tier wins when `p_solve` is at or above a threshold set by the boundary: `0.60` for `supported`, `0.75` for `uncertain` and `unmatched`, `0.90` for `unsupported`. Otherwise the capable tier wins. The other tier becomes the first fallback. In the example above, `0.22` is below `0.90`, so the capable tier serves the request.
 
-**Time budget and fall-open.** The judge call is cut off after 2.5 seconds, inside the 3-second budget OpenRouter gives the whole routing step. If the judge times out, returns an error, or returns a verdict that fails validation, the router picks the capable tier and the request still completes; `judge_failure` in the pipeline data names the reason (see [Inspect decisions](#inspect-decisions)).
+**Time budget and fall-open.** The judge call is cut off after 2.5 seconds, inside the 3-second budget OpenRouter gives the whole routing step. If the judge times out, returns an error, or returns a verdict that fails validation, the plugin selects the capable tier and the request still completes; `judge_failure` in the pipeline data names the reason (see [Inspect decisions](#inspect-decisions)).
 
 **Billing.** Judge calls run under your account and appear in your [activity](https://openrouter.ai/activity) as separate generations. A judge call costs a fraction of a cent for a typical prompt and usually adds less than a second before the main model starts.
 
@@ -369,15 +373,15 @@ Because the judge is billed to you, algorithms that can call it (`capability`, `
 
 ### Session pins
 
-In an agent loop, the same conversation returns many times with tool results appended. Under `capability` and `random`, the router remembers the model that served the previous request in the conversation and reuses it for tool-result turns, so the judge is paid once per human turn rather than once per tool call. The pin is the model that produced the response, so if the router's first choice failed and a fallback candidate served the request, the fallback is what later turns reuse.
+In an agent loop, the same conversation returns many times with tool results appended. Under `capability` and `random`, the plugin remembers the model that served the previous request in the conversation and reuses it for tool-result turns, so the judge is paid once per human turn rather than once per tool call. The pin is the model that produced the response, so if the plugin's first choice failed and a fallback candidate served the request, the fallback is what later turns reuse.
 
-`stage` and `auto` re-read the tool history every turn and do not use the pin. `composite` does not read it either: it keeps its own baseline, the model that served the last human turn, saved only after that turn returns output (a refusal does not count) without an error. A human turn the router served in your `models` order because it could not decide (`strategy` is `caller_order`) sets no baseline, so the next tool turn runs judge-backed `stage`. Tool turns start from that baseline's tier and the `stage` signals move individual turns off it.
+`stage` and `auto` re-read the tool history every turn and do not use the pin. `composite` does not read it either: it keeps its own baseline, the model that served the last human turn, saved only after that turn returns output (a refusal does not count) without an error. A human turn the plugin served in your `models` order because it could not decide (`strategy` is `caller_order`) sets no baseline, so the next tool turn runs judge-backed `stage`. Tool turns start from that baseline's tier and the `stage` signals move individual turns off it.
 
 OpenRouter identifies the conversation from an explicit `session_id`, or from a hash of the first system message and the first non-system message in your request if you don't send one. We recommend sending a `session_id` for agents whose message history changes between turns.
 
 ## Inspect decisions
 
-Send the `X-OpenRouter-Metadata: enabled` header to see what the router did. The response gains an `openrouter_metadata.pipeline` entry named `switchyard-router`:
+Send the `X-OpenRouter-Metadata: enabled` header to see what the plugin did. The response gains an `openrouter_metadata.pipeline` entry named `switchyard-router`:
 
 ```json
 {
@@ -393,9 +397,9 @@ Send the `X-OpenRouter-Metadata: enabled` header to see what the router did. The
 }
 ```
 
-- `strategy` names how the model was chosen: the algorithm that ran (`capability`, `stage`, `auto`, `composite`, `random`, or `passthrough`), `session_pin` when a remembered choice was reused, or `caller_order` when OpenRouter served your `models` order instead of a router decision. `caller_order` covers one eligible candidate, every eligible candidate at the same price, and the router being unavailable. Requests still succeed in that case.
+- `strategy` names how the model was chosen: the algorithm that ran (`capability`, `stage`, `auto`, `composite`, `random`, or `passthrough`), `session_pin` when a remembered choice was reused, or `caller_order` when OpenRouter served your `models` order instead of a routing decision. `caller_order` covers one eligible candidate, every eligible candidate at the same price, and the routing service being unavailable. Requests still succeed in that case.
 - `judge_ms` is the wall time of the judge call. It is absent when no judge call was made.
-- `route_ms` is the wall time of the whole routing decision inside the router, from the moment it receives the request to the moment it returns a choice. It includes the judge call, so it is at least `judge_ms` and usually a little more.
+- `route_ms` is the wall time of the whole routing decision inside the plugin, from the moment it receives the request to the moment it returns a choice. It includes the judge call, so it is at least `judge_ms` and usually a little more.
 - `judge_model_requested` is the `judge_model` value that you sent, and is absent when you don't set `judge_model`.
 - `judge_model_fallback` names the reason that the default judge ran instead of your `judge_model`, and is absent otherwise.
 - `judge_failure` names the reason when the judge could not be used (for example `timeout`), and is absent otherwise.
@@ -409,12 +413,12 @@ Requests to `nvidia/switchyard` are billed at the rate of the model that answere
 
 ## Limitations
 
-- `models`, when present, must contain at least one concrete model and at most three; without it, the router uses the default pair described in [Choose your candidates](#choose-your-candidates). Other router slugs (`openrouter/auto`, `openrouter/fusion`, `~latest` aliases) are not accepted as candidates.
-- Tiers are derived from price. With one eligible candidate, or every eligible candidate at the same price, there is no cheap-versus-strong split to judge, and the router serves your `models` order (`random` still picks at random).
+- `models`, when present, must contain at least one concrete model and at most three; without it, OpenRouter uses the default pair described in [Choose your candidates](#choose-your-candidates). Other router slugs (`openrouter/auto`, `openrouter/fusion`, `~latest` aliases) are not accepted as candidates.
+- Tiers are derived from price. With one eligible candidate, or every eligible candidate at the same price, there is no cheap-versus-strong split to judge, and OpenRouter serves your `models` order (`random` still picks at random).
 - `capability`, `stage`, and `composite` send part of your prompt to the judge model, `google/gemini-3.5-flash-lite`, or `openai/gpt-4o-mini` when your settings exclude the default judge (see [The judge](#the-judge)). Choose `auto`, `random`, or `passthrough` if no part of the prompt may leave your candidate list.
 - The judge receives a compact projection of your prompt (message text truncated, binary parts replaced with markers). Requests with a [ZDR](/guides/features/zdr) requirement or provider restrictions pass those same restrictions to the judge call.
 - The judge reads text that your end users wrote, so an end user can word a request to steer it toward the efficient or the capable tier. Set a [price limit](/guides/routing/provider-selection) or choose the candidates with that in mind.
-- The router runs only on the global API endpoint (`openrouter.ai`). Regional endpoints return `400`.
+- The plugin runs only on the global API endpoint (`openrouter.ai`). Regional endpoints return `400`.
 
 ## Related
 
