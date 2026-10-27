@@ -16,7 +16,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="October 27, 2026" tags={["Breaking","Schemas"]} rss="2 breaking changes, 1 modified schema.">
+<Update label="October 27, 2026" tags={["Breaking","Endpoints","Generations","Models","Presets","Schemas"]} rss="2 breaking changes, 10 new response codes, 1 modified schema.">
 
 ## Breaking changes
 
@@ -39,6 +39,19 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
     - [`PATCH /observability/destinations/{id}`](/api/api-reference/observability/update-an-observability-destination)
     - [`POST /observability/destinations`](/api/api-reference/observability/create-an-observability-destination)
   </Expandable>
+
+## New response codes
+
+- [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints): now returns `503`
+- [`POST /generation/feedback`](/api/api-reference/generations/submit-feedback-for-a-generation): now returns `403`
+- [`POST /generation/feedback`](/api/api-reference/generations/submit-feedback-for-a-generation): now returns `503`
+- [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties): now returns `503`
+- [`GET /models/user`](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails): now returns `503`
+- [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model): now returns `503`
+- [`GET /presets`](/api/api-reference/presets/list-presets): now returns `503`
+- [`GET /presets/{slug}`](/api/api-reference/presets/get-a-preset): now returns `503`
+- [`GET /presets/{slug}/versions`](/api/api-reference/presets/list-versions-of-a-preset): now returns `503`
+- [`GET /presets/{slug}/versions/{version}`](/api/api-reference/presets/get-a-specific-version-of-a-preset): now returns `503`
 
 ## Modified schemas
 
