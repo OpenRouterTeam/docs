@@ -717,6 +717,7 @@ The operational fields control model availability and routing:
 | `is_ready` | Launch control. See [Controlling Launch with `is_ready`](#controlling-launch-with-is_ready) |
 | `is_free` | Free variant marker. See [Free Model Variants with `is_free`](#free-model-variants-with-is_free) |
 | `service_tier` | Service tier of this entry. See [Service tiers](#service-tiers) |
+| `variant` | `batch` for the batch endpoint of this `id`. See [Batch endpoints](#batch-endpoints) |
 | `discount_to_user` | Fractional user-facing discount. See [Discounts with `discount_to_user`](#discounts-with-discount_to_user) |
 | `openrouter.slug` | The OpenRouter slug this model maps to |
 
@@ -813,6 +814,106 @@ Behavior:
 
 Do not combine the two options for one tier. OpenRouter reads `service_tier` first: a document with a tier-suffixed `id` that also carries `service_tier` is treated as a wire-selected tier of that suffixed `id`, so it needs a default-tier document for the suffixed `id` and the suffix is not recognized as the tier. The `passthrough_parameters` example above describes a request parameter you accept, which is unrelated to this field.
 
+#### Batch endpoints
+
+If you serve a model through a batch API, declare its batch endpoint with a second document that repeats the standard document's `id` and sets `"variant": "batch"`. The batch document is a full, independent endpoint declaration: its own pricing, input and output modalities, supported input sources (for example whether image URLs are accepted), context and output limits, streaming, supported parameters, capacity, and the other fields on this page. Nothing is inherited from the standard document, so declare only what your batch API supports.
+
+Batch endpoints need setup on OpenRouter's side, and your feed does not create them. Contact us to enable batch for a model.
+
+The example below publishes a standard and a batch document for Kimi K3. The batch numbers are illustrative.
+
+```json lines
+{
+  "data": [
+    {
+      "schema_version": "2.4",
+      "id": "moonshotai/Kimi-K3",
+      "name": "Kimi K3",
+      "input_modalities": [
+        {
+          "type": "text",
+          "supported_inputs": { "max_context_length": { "value": 1048576, "unit": "token" } },
+          "pricing": [{ "type": "prompt", "unit": "token", "cost_usd": "0.0000012" }]
+        },
+        {
+          "type": "image",
+          "supported_inputs": { "sources": { "type": "enum", "values": ["url"] } }
+        }
+      ],
+      "output_modalities": [
+        {
+          "type": "text",
+          "max_length": { "value": 1048576, "unit": "token" },
+          "streaming": true,
+          "supported_parameters": {},
+          "pricing": [{ "type": "completion", "unit": "token", "cost_usd": "0.0000055" }]
+        }
+      ]
+    },
+    {
+      "schema_version": "2.4",
+      "id": "moonshotai/Kimi-K3",
+      "variant": "batch",
+      "name": "Kimi K3 Batch",
+      "input_modalities": [
+        {
+          "type": "text",
+          "supported_inputs": { "max_context_length": { "value": 262144, "unit": "token" } },
+          "pricing": [{ "type": "prompt", "unit": "token", "cost_usd": "0.0000006" }]
+        }
+      ],
+      "output_modalities": [
+        {
+          "type": "text",
+          "max_length": { "value": 65536, "unit": "token" },
+          "streaming": false,
+          "supported_parameters": {
+            "max_tokens": { "type": "integer", "min": 1, "max": 65536, "unit": "token" },
+            "tools": { "type": "boolean" }
+          },
+          "pricing": [{ "type": "completion", "unit": "token", "cost_usd": "0.00000275" }]
+        }
+      ]
+    }
+  ]
+}
+```
+
+What the batch document declares differently:
+
+- Text-only input: it declares no image modality, so OpenRouter turns off image input on the batch endpoint while the standard endpoint keeps accepting image URLs. Like any input-source change on an existing endpoint, this waits for review.
+- A 262,144-token context, a 65,536-token output limit, and `streaming: false`. OpenRouter does not apply `streaming` from your feed yet, and batch results are never streamed.
+- Its own supported parameters (`max_tokens` up to 65,536, and `tools`) and its own prompt and completion prices. Only plain sampling parameters apply from your feed: `tools` and the other capability-tested parameters stay off until OpenRouter's tests pass on the batch endpoint.
+
+Rules:
+
+- A batch document needs a standard document for the same `id`: the default-tier, paid one. A batch document beside only a free or tiered document is dropped.
+- A document cannot combine `"variant": "batch"` with `is_free: true` or with `service_tier`. Batch is its own variant, not a service tier.
+- Publish one batch document per `id`. An omitted `variant` means the standard endpoint.
+- A document that breaks these rules is invalid and dropped. The **Schema validator** tab of your provider dashboard reports it.
+
+Behavior:
+
+- OpenRouter applies a batch document only to a batch endpoint it has already enabled for that model. A batch document for a model without one changes nothing.
+- Prices and metadata from the batch document refresh with the regular feed sync, under the same review rules as the standard endpoint (see [Field reference and compatibility](#field-reference-and-compatibility)). The standard document never changes the batch endpoint, and the batch document never changes the standard endpoint.
+- If your feed has never published a batch document for an `id`, OpenRouter does not change that model's batch endpoint.
+- `is_ready: false` on the batch document hides only the batch endpoint.
+- Once your feed has updated a batch endpoint, removing its batch document from an otherwise valid feed hides that batch endpoint. A feed that fails to load never hides anything.
+
+If you serve the [legacy OpenAI-compatible format](/guides/providers/integration-legacy), you can add an optional `batch` object inside `pricing` with `prompt`, `completion`, and `input_cache_read`. It prices the batch endpoint only: it never changes the batch endpoint's other fields, and `is_ready` never hides it. Once your feed has priced a batch endpoint, removing `pricing.batch` from an otherwise valid feed hides that endpoint, as removing a batch document does. To declare different capabilities for the batch endpoint, publish current-format documents instead.
+
+```json lines
+{
+  "id": "your-org/your-model",
+  "pricing": {
+    "prompt": "0.0000012",
+    "completion": "0.0000055",
+    "input_cache_read": "0.0000003",
+    "batch": { "prompt": "0.0000006", "completion": "0.00000275", "input_cache_read": "0.00000015" }
+  }
+}
+```
+
 #### Discounts with `discount_to_user`
 
 To offer a discount on the prices users see and pay, include the optional `discount_to_user` field. It's a decimal fraction that OpenRouter applies to your displayed pricing:
@@ -875,7 +976,7 @@ OpenRouter polls your feed on every monitor run, but it does not act on every fi
 | `input_modalities[].streaming` | Ignored | |
 | `output_modalities[].max_length` | Applied | Text output only. Becomes the endpoint's maximum completion length. Held if set manually. Non-token units are ignored with validator warning `unsupported_limit_unit`. |
 | `output_modalities[].supported_parameters` | Applied | Text output only. Plain sampling parameters are applied; parameters OpenRouter verifies by test (`tools`, `tool_choice`, `response_format`, `structured_outputs`, `logprobs`, and the rest of the capability suite) are never enabled from the feed, only by the capability tests passing. Held if set manually. On non-text outputs the list is not ingested yet. |
-| `pricing`, `input_modalities[].pricing`, `output_modalities[].pricing` | Applied, reviewed | Token and request priced entries, cache entries, and the documented `overrides` are read. A price change to an entry OpenRouter already prices and a first-time price for an unpriced endpoint apply automatically, and cache-discount entries are added or removed automatically when they look like a discount; any other new or removed entry waits for review, and pricing changes on `:free` and batch variants always wait for review. Entries OpenRouter cannot represent yet (for example search pricing, TTL cache tiers, or non-token units) are ignored with validator warnings `unsupported_pricing_entry`, `unsupported_cache_qualifier`, or `unsupported_override`. |
+| `pricing`, `input_modalities[].pricing`, `output_modalities[].pricing` | Applied, reviewed | Token and request priced entries, cache entries, and the documented `overrides` are read. A price change to an entry OpenRouter already prices and a first-time price for an unpriced endpoint apply automatically, and cache-discount entries are added or removed automatically when they look like a discount; any other new or removed entry waits for review, pricing changes on `:free` variants always wait for review, and a batch endpoint's prices apply automatically only from your batch document or `pricing.batch` object. Entries OpenRouter cannot represent yet (for example search pricing, TTL cache tiers, or non-token units) are ignored with validator warnings `unsupported_pricing_entry`, `unsupported_cache_qualifier`, or `unsupported_override`. |
 | `input_modalities[].capacity` | Applied | Text input only, and only `type: prompt`, `unit: token`, `per: minute`, which becomes the endpoint's tokens-per-minute capacity. Held if set manually. Every other entry is ignored with validator warning `unsupported_capacity_entry`. |
 | `capacity`, `output_modalities[].capacity` | Ignored | Validator warning `unsupported_capacity_entry`. |
 | `passthrough_parameters`, `input_modalities[].passthrough_parameters`, `output_modalities[].passthrough_parameters` | Reviewed | All three levels are merged into one list; applied directly when a new endpoint is staged, held for review on an existing endpoint. |
@@ -883,6 +984,7 @@ OpenRouter polls your feed on every monitor run, but it does not act on every fi
 | `is_ready` | Applied | `false` hides the endpoint on that poll; see [Controlling launch with `is_ready`](#controlling-launch-with-is_ready). |
 | `is_free` | Applied | |
 | `service_tier` | Applied | |
+| `variant` | Applied | `batch` marks the batch endpoint of this `id`. See [Batch endpoints](#batch-endpoints). |
 | `discount_to_user` | Applied | Held if set manually. |
 | `openrouter.slug` | Ignored | Not read by ingestion today. OpenRouter fills it in the feed the dashboard generates for you. |
 | `datacenters` | Region of new endpoints for providers with an in-region host; detection-only otherwise | See [Datacenters and deployment region](#6-datacenters-and-deployment-region). |
