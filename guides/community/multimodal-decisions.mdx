@@ -113,7 +113,7 @@ An image is an item of the `state` array with this shape, the same image part Ch
 
 - `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Jev accepts only `image/png` and `image/jpeg`. Remote `http(s)` URLs are not fetched.
 - `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, Clef Omni, and Mercury Decide ignore it.
-- Put image parts directly in the top-level `state` array. Images nested inside other objects in `state` are not read as images, except by Jev, which reads them in more places (see [Image positions on Jev](#image-positions-on-jev)).
+- Put image parts directly in the top-level `state` array. Only Jev reads image parts in other places (see [Image positions on Jev](#image-positions-on-jev)); on every other Decisions model, an image part nested inside a `state` object or placed in a question's `instructions` or `criteria` fails with a `400` rather than being sent to the model as text.
 - Send at most 4 images per request to Clef, Clef Flash, and Clef Omni, at most 16 to Mercury Decide, and at most 128 to GPT-6 Luna Decisions.
 - Text items in the array are plain strings, not `{ "type": "text" }` parts.
 - Jev 1.14 and [`~typesafe/jev-latest`](https://openrouter.ai/~typesafe/jev-latest) also answer [Box](/guides/community/jev#box-questions) questions about images.
@@ -123,7 +123,36 @@ These shapes are not image inputs:
 - A top-level `images` field. The API rejects it with a `400`.
 - The Responses API `input_image` part (`{ "type": "input_image", "image_url": "data:..." }`).
 - A raw base64 string without the `data:image/...;base64,` prefix.
-- A top-level `assets` map with named references, as in TypeSafe's own API. OpenRouter currently ignores it and Jev does not see those images. Put an image part where the reference would go instead. This behavior is current, not guaranteed: `assets` may later be rejected or supported.
+
+TypeSafe's own request shape, a top-level `assets` map with reference strings, is also accepted; see [Asset references](#asset-references).
+
+## Asset references
+
+Instead of placing image parts inline, list each image once in a top-level `assets` map and write its key, the reference, wherever the image belongs. This is the shape TypeSafe's own API and SDKs produce, so a request written for `api.typesafe.ai` works on OpenRouter as-is:
+
+```json
+{
+  "model": "typesafe/jev-1.14",
+  "state": { "photo": "a3f1c2e8-found" },
+  "assets": {
+    "a3f1c2e8-found": { "type": "image", "format": "jpg", "data_base64": "/9j/4AAQSkZJRg..." },
+    "77b0d4a1-poster": { "type": "image", "format": "jpg", "data_base64": "/9j/4AAQSkZJRg..." }
+  },
+  "questions": {
+    "same_dog": {
+      "type": "noul",
+      "instructions": "Is the dog in `photo` the same dog as in this picture: 77b0d4a1-poster?"
+    }
+  }
+}
+```
+
+- Each asset is `{ "type": "image", "format": "png" | "jpg" | "jpeg", "data_base64": "..." }`. `type` is optional; `data_base64` is the file in standard base64 with no `data:` prefix. The multipart `part` field is not accepted.
+- Every asset must be referenced somewhere in `state`, `instructions`, or `criteria`, or the request fails with a `400` naming the unused reference. Object keys (a `state` field name, a Choice option, a question ID) are never read as references.
+- On Jev, `assets` and references are sent to TypeSafe as written: a reference matches as a whole string value or inside longer text, and each occurrence adds the image again. A Score `legend` that echoes a criterion written as a reference returns the reference. Pick references that cannot occur in your text by accident, such as a UUID per image.
+- On every other Decisions model, a string that is exactly a reference is read as the `image_url` part for that asset, with the same limits as an inline image part, and only as a top-level `state` item: those models read images nowhere else. A reference nested inside a `state` object, placed in `instructions` or `criteria`, or written inside longer text fails with a `400` instead of sending the image to the model as text.
+
+`image_url` parts and `assets` can be mixed in one request.
 
 ## Image positions on Jev
 
@@ -143,11 +172,11 @@ To refer to an image inside longer text, write the text as an array and put the 
 }
 ```
 
-An image part inside a string is not an image: a string such as `"compare <image:a> with the badge"` reaches Jev as plain text.
+An `image_url` part cannot sit inside a string. To name an image mid-sentence, use an [asset reference](#asset-references) instead: `"compare a3f1c2e8-badge with the badge"` with `a3f1c2e8-badge` listed in `assets`.
 
 Each image part counts as its own image, so repeating the same part sends the image again and counts toward the [size limits](#limits) again. A Score answer whose `legend` names an image returns your original image part.
 
-TypeSafe marks image input as an early feature whose request format, answers, and limits can change between Jev releases. The positions above are what OpenRouter sends to Jev today; other Decisions models read images only in the top-level `state` array.
+TypeSafe marks image input as an early feature whose request format, answers, and limits can change between Jev releases. The positions above are what OpenRouter sends to Jev today, for inline image parts and for asset references alike; other Decisions models read images only in the top-level `state` array.
 
 ## Audio and video parts (Clef Omni)
 
