@@ -133,7 +133,7 @@ On Google Vertex, image URLs must use HTTPS, end in `.png`, `.jpg`, `.jpeg`, `.w
 | Not supported | What to do instead |
 |---------------|--------------------|
 | Base64 or data-URI images | Host the image and send a public `https` URL. |
-| Inline file bytes and provider file IDs | Send a public file URL. Inline PDFs (`data:application/pdf;base64,...`) work on Anthropic, DeepInfra, Google AI Studio, Google Vertex, Mistral, and OpenAI (up to 20 MiB each) and on xAI (up to 17 MiB each) for accounts with inline files enabled, either individually or through a rollout to all accounts; other accounts get `Inline base64 files are not enabled for this account in batch`. On Vertex, inline PDFs are verified against the sync `generateContent` API only. |
+| Inline file bytes and provider file IDs | Send a public file URL. Inline PDFs (`data:application/pdf;base64,...`) work on Anthropic, DeepInfra, Google AI Studio, Google Vertex, Mistral, and OpenAI (up to 20 MiB each) and on xAI (up to 17 MiB each) for accounts with inline files enabled, either individually or through a rollout to all accounts; other accounts get `Inline base64 files are not enabled for this account in batch`. On Vertex, inline PDFs are verified against the sync `generateContent` API only. If the provider chosen at submit can't take inline PDFs, the batch moves to another provider for the model that can, within your `provider` settings; with `allow_fallbacks: false` or no such provider, it fails and asks for a public file URL. |
 | Audio input, and video other than YouTube | Use the sync API. A YouTube video on Google AI Studio holds the model's full input limit against your balance at submit, because its length is unknown. You are billed for the tokens the provider reports. |
 | Image or audio output (`modalities`, `audio`, `image_config`) | Use the sync API. |
 | OpenRouter web search (`:online`, the `web` plugin, `web_search_options`) | Use the provider's own search tool, for example OpenAI `web_search` on `/v1/responses` or Anthropic `web_search_20250305` on `/v1/messages`. Google Vertex rejects web search tools. |
@@ -559,7 +559,7 @@ A batch runs on one provider. By default, OpenRouter picks the cheapest provider
 | Option | Batch | What it does |
 |--------|-------|--------------|
 | `provider.only` | Supported | Use only these [provider slugs](/guides/routing/provider-selection), for example `["google-vertex"]`. |
-| `provider.allow_fallbacks` | Supported | Set to `false` to keep the batch on the provider chosen at submit. If that provider has no capacity, the batch fails. |
+| `provider.allow_fallbacks` | Supported | Set to `false` to keep the batch on the provider chosen at submit. If that provider has no capacity, or can't take the batch's inline PDFs, the batch fails. |
 | `provider.order` | Rejected | Put only the provider you want in `only`. |
 | `provider.sort` | Rejected | Batch always picks the lowest price first. |
 | Other sync preferences | Rejected | Remove them. |
