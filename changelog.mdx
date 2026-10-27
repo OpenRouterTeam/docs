@@ -16,7 +16,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="October 27, 2026" tags={["Breaking","Endpoints","Generations","Models","Presets","Private Endpoints","Schemas"]} rss="2 breaking changes, 1 new endpoint, 1 modified endpoint, 10 new response codes, 3 new schemas, 5 modified schemas.">
+<Update label="October 27, 2026" tags={["Breaking","Endpoints","Generations","Models","Presets","Private Endpoints","Schemas"]} rss="2 breaking changes, 1 new endpoint, 1 modified endpoint, 10 new response codes, 4 new schemas, 6 modified schemas.">
 
 ## Breaking changes
 
@@ -69,6 +69,8 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - Used by [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint), [`POST /private-endpoints/{id}/validate`](/api/api-reference/private-endpoints/validate-a-draft-private-endpoint)
 - `UpdatePrivateEndpointParametersRequest`
   - Used by [`PUT /private-endpoints/{id}/parameters`](/api/api-reference/private-endpoints/set-private-endpoint-supported-parameters)
+- `DecisionsImageAsset`
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
 
 ## Modified schemas
 
@@ -103,6 +105,8 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - Used by [`POST /private-endpoints/{id}/validate`](/api/api-reference/private-endpoints/validate-a-draft-private-endpoint)
 - `PrivateEndpointValidationNullable`: new property `parameters`
   - Used by [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
+- `DecisionsRequest`: new property `assets`
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
 
 </Update>
 
