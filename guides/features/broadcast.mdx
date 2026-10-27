@@ -77,6 +77,7 @@ Each broadcast trace includes comprehensive information about your API request:
 - **Cost Information**: The total cost of the request
 - **Timing**: Request start time, end time, and latency metrics
 - **Model Information**: The model slug and provider name used for the request
+- **Model Parameters**: The sampling parameters the request set (`temperature`, `top_p`, `top_k`, `frequency_penalty`, `presence_penalty`, `repetition_penalty`, `min_p`, `top_a`, `seed`, `max_completion_tokens`, `max_tokens` or `max_output_tokens` as `max_tokens`, and `stop` as `stop_sequences`). OpenTelemetry destinations export them as `gen_ai.request.*` attributes. Privacy Mode keeps them, including `stop`, which is text you wrote and can come from your prompt.
 - **Tool Usage**: Whether tools were included in the request and if tool calls were made
 
 ### Token and cost fields
@@ -435,7 +436,7 @@ Each destination can optionally enable **Privacy Mode** to exclude prompt and co
 - **Input messages** (prompts sent to the model)
 - **Output choices** (completions returned by the model)
 
-All other trace data (including token counts, costs, timing, model information, and custom metadata) is still sent normally.
+All other trace data (including token counts, costs, timing, model information, model parameters, and custom metadata) is still sent normally. Model parameters include the request's `stop` sequences, which are caller-supplied text.
 
 This is useful when you want to monitor LLM usage metrics and costs without exposing the actual content of conversations, for example to comply with data privacy regulations or internal policies.
 
