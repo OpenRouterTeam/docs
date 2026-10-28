@@ -29,7 +29,7 @@ Below the cards, the Overview tab lists recommendations for the keys that need a
 - **Remove unused keys**: confirm with each owner, then archive the keys.
 - **Set a spend limit**: cap what a leaked key can spend.
 - **Review keys without expiration**: replace them with expiring keys, or remove the ones you no longer need.
-- **Enforce a maximum key lifetime**: set a maximum API key lifetime in [privacy settings](https://openrouter.ai/settings/privacy). OpenRouter rejects requests from keys that never expire or that exceed the maximum lifetime, including existing keys. Before you add the first entry, include the address of every server, office network, and CI runner that calls the API, or those requests start failing. To turn the restriction off, remove every entry.
+- **Enforce a maximum key lifetime**: set a maximum API key lifetime in [privacy settings](https://openrouter.ai/settings/privacy). OpenRouter rejects requests from keys that never expire or that exceed the maximum lifetime, including existing keys. The policy also covers keys issued through OAuth consent, such as OpenRouter MCP keys, which are capped at 7 days on their own and get the shorter lifetime when the policy is stricter. Choose **No expiration** to allow any lifetime.
 
 If you are an admin, you can select **Copy owner list** to copy a CSV of key owners and key names. Give the CSV to your agent or your team to coordinate cleanup with each owner.
 
