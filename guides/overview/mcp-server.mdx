@@ -90,7 +90,7 @@ Use this MCP while you build. It lets your coding assistant pull live OpenRouter
   </Tab>
 </Tabs>
 
-Not all clients pop up the auth automatically; some need a one-time login step after you add the server. When you trigger it, an OpenRouter consent page opens in your browser where you approve a **dedicated key just for this connection**, separate from your other keys. The key expires after 7 days and starts with a `$10` spend cap (editable on the approval screen). You can disconnect anytime.
+Not all clients pop up the auth automatically; some need a one-time login step after you add the server. When you trigger it, an OpenRouter consent page opens in your browser where you approve a **dedicated key just for this connection**, separate from your other keys. The key expires within 7 days and starts with a `$10` spend cap (editable on the approval screen). You can disconnect anytime. If your personal account or organization sets a maximum API key lifetime in [privacy settings](https://openrouter.ai/settings/privacy), the MCP key gets the shorter of that value and 7 days, so the same policy that caps your other keys can shorten this one.
 
 ## What you can do
 
@@ -153,7 +153,7 @@ By benchmark and provider:
 ## How it works
 
 1. **Discovery & auth.** An unauthenticated request returns a `401` that points your client to OpenRouter's OAuth authorization server. The client registers, you approve the consent page, and a token is issued via PKCE.
-2. **Dedicated key.** The issued token is a standard OpenRouter API key labeled `OpenRouter MCP: <app name>`, minted with a 7-day expiry and a `$10` default spend limit so you can find and revoke it from your [dashboard](https://openrouter.ai/settings/keys).
+2. **Dedicated key.** The issued token is a standard OpenRouter API key labeled `OpenRouter MCP: <app name>`, minted with a 7-day expiry and a `$10` default spend limit so you can find and revoke it from your [dashboard](https://openrouter.ai/settings/keys). The 7-day ceiling is fixed and enforced by OpenRouter, and an expiry requested by the client is ignored, so a key that leaks stops working on its own.
 3. **Live data, no local state.** Tools proxy the public OpenRouter API with your key. Nothing is installed locally, and no source code is sent anywhere unless you call `send-message`, `generate-image`, or `send-feedback`.
 
 ## Troubleshooting
