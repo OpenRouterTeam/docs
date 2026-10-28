@@ -68,6 +68,15 @@ After connecting, add the models you want to use. In the **Models** section, cli
 
 Open the model picker in the chat or agent panel and select one of the models you added. Your requests will now route through OpenRouter.
 
+## Reasoning Effort
+
+Cursor doesn't send a reasoning effort for models added through the OpenAI base URL override, so each request runs at the model's default effort (`medium` for most reasoning models). To pick a different effort, use a [preset](/guides/features/presets):
+
+1. [Create a preset](https://openrouter.ai/settings/presets/new) with the reasoning effort you want (for example, `high`, `xhigh`, or `max`). See [Reasoning Effort Level](/guides/best-practices/reasoning-tokens#reasoning-effort-level) for the supported values.
+2. In Cursor, click **+ Add model** and enter the preset reference instead of a model ID. If the preset selects a model, enter `@preset/sol-max`. If it doesn't, put the model ID in front of the reference: `~openai/gpt-sol-latest@preset/sol-max`.
+
+Add one model entry per effort level you use, such as `@preset/sol-high` and `@preset/sol-max`, and switch between them in the model picker. Create the preset in the same organization or workspace as the API key you pasted into Cursor.
+
 ## How It Works
 
 OpenRouter exposes a dedicated Cursor endpoint at `/api/v1/cursor` that normalizes Cursor's request format into the standard OpenAI Chat Completions format before routing.
