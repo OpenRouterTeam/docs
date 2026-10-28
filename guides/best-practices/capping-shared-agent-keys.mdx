@@ -55,7 +55,7 @@ Create the agent keys inside that workspace as workspace-owned keys:
 
 ## Step 2: A Workspace Budget That Counts BYOK Spend
 
-Set a [workspace budget](/guides/features/workspaces/workspace-budgets) on the team's workspace. Any combination of daily, weekly, monthly, and lifetime limits is allowed, and OpenRouter returns `403 Forbidden` on the next request once any configured limit is reached. Workspace budgets are an Enterprise plan feature and only organization admins can change them.
+Set a [workspace budget](/guides/features/workspaces/workspace-budgets) on the team's workspace. Any combination of daily, weekly, monthly, and lifetime limits is allowed, and OpenRouter returns `403 Forbidden` on the next request once any configured limit is reached. Workspace budgets are available on every plan, and only organization administrators can change them.
 
 By default a workspace budget counts only OpenRouter credit spend. If your agents run on [BYOK](/guides/overview/auth/byok) provider keys, turn on **Include BYOK spend** in the workspace's Budgets settings, or set `include_byok_in_budgets` to `true` on the budget endpoint. Otherwise BYOK traffic passes the budget check no matter how much it costs you.
 
