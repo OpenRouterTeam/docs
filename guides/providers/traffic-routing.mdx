@@ -145,6 +145,6 @@ Routing watches how your 429 rate changes as your load goes up, and learns the l
 
 Routing only chooses between providers when the user leaves that choice to OpenRouter. It's skipped, and the request goes where the user asked, when the user:
 
-- Names specific providers
+- Sets a provider order, or an allow or ignore list that leaves only one provider
 - Brings their own provider key
 - Sorts by price, throughput or latency
