@@ -16,6 +16,253 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
+<Update label="October 29, 2026" tags={["Breaking","Private Endpoints","Private Providers","Schemas"]} rss="1 breaking change, 5 new endpoints, 3 modified endpoints, 8 new schemas, 7 modified schemas.">
+
+## Breaking changes
+
+- `UpdatePrivateEndpointRequest`: required `upstream_model_id` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
+  - **Migration: no action.** `PATCH /private-endpoints/{id}` is now a merge patch over every field an owner controls (`pricing`, `declared_parameters`, `settings`, and the draft-only upstream fields), so no single field is required and only the keys you send change. A request that still sends `upstream_model_id` is accepted on a draft endpoint; on an active endpoint it returns 409 `already_active`, as before. `PUT /private-endpoints/{id}/pricing` and `PUT /private-endpoints/{id}/parameters` keep working as deprecated aliases of this route.
+
+## New endpoints
+
+- [`GET /private-providers`](/api/api-reference/private-providers/list-private-providers): List private providers
+- [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider): Create a private provider
+- [`GET /private-providers/{slug}`](/api/api-reference/private-providers/get-a-private-provider): Get a private provider
+- [`PATCH /private-providers/{slug}`](/api/api-reference/private-providers/update-a-private-provider): Update a private provider
+- [`DELETE /private-providers/{slug}`](/api/api-reference/private-providers/delete-a-private-provider): Delete a private provider
+
+## Modified endpoints
+
+- [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint): description updated
+- [`PUT /private-endpoints/{id}/parameters`](/api/api-reference/private-endpoints/set-private-endpoint-supported-parameters-deprecated): deprecated property_added; description updated
+- [`PUT /private-endpoints/{id}/pricing`](/api/api-reference/private-endpoints/set-private-endpoint-pricing-deprecated): deprecated property_added; description updated
+
+## New schemas
+
+- `CreatePrivateProviderRequest`
+  - Used by [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider)
+- `PrivateEndpointQuantization`
+
+  <Expandable title="5 endpoints using this schema">
+    - [`GET /private-endpoints/{id}`](/api/api-reference/private-endpoints/get-a-private-endpoint)
+    - [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
+    - [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
+    - [`PUT /private-endpoints/{id}/parameters`](/api/api-reference/private-endpoints/set-private-endpoint-supported-parameters-deprecated)
+    - [`PUT /private-endpoints/{id}/pricing`](/api/api-reference/private-endpoints/set-private-endpoint-pricing-deprecated)
+  </Expandable>
+- `PrivateEndpointReasoningReturnMechanism`
+
+  <Expandable title="5 endpoints using this schema">
+    - [`GET /private-endpoints/{id}`](/api/api-reference/private-endpoints/get-a-private-endpoint)
+    - [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
+    - [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
+    - [`PUT /private-endpoints/{id}/parameters`](/api/api-reference/private-endpoints/set-private-endpoint-supported-parameters-deprecated)
+    - [`PUT /private-endpoints/{id}/pricing`](/api/api-reference/private-endpoints/set-private-endpoint-pricing-deprecated)
+  </Expandable>
+- `PrivateEndpointSettings`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /private-endpoints/{id}`](/api/api-reference/private-endpoints/get-a-private-endpoint)
+    - [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
+    - [`PUT /private-endpoints/{id}/parameters`](/api/api-reference/private-endpoints/set-private-endpoint-supported-parameters-deprecated)
+    - [`PUT /private-endpoints/{id}/pricing`](/api/api-reference/private-endpoints/set-private-endpoint-pricing-deprecated)
+  </Expandable>
+- `PrivateProvider`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /private-providers`](/api/api-reference/private-providers/list-private-providers)
+    - [`GET /private-providers/{slug}`](/api/api-reference/private-providers/get-a-private-provider)
+    - [`PATCH /private-providers/{slug}`](/api/api-reference/private-providers/update-a-private-provider)
+    - [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider)
+  </Expandable>
+- `PrivateProviderDataPolicy`
+  - Used by [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider)
+- `UpdatePrivateEndpointSettingsRequest`
+  - Used by [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint), [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
+- `UpdatePrivateProviderRequest`
+  - Used by [`PATCH /private-providers/{slug}`](/api/api-reference/private-providers/update-a-private-provider)
+
+## Modified schemas
+
+- `CreatePrivateEndpointRequest`: new property `settings`
+  - Used by [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
+- `PrivateEndpoint`: example modified; new property `settings` (always present)
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /private-endpoints/{id}`](/api/api-reference/private-endpoints/get-a-private-endpoint)
+    - [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
+    - [`PUT /private-endpoints/{id}/parameters`](/api/api-reference/private-endpoints/set-private-endpoint-supported-parameters-deprecated)
+    - [`PUT /private-endpoints/{id}/pricing`](/api/api-reference/private-endpoints/set-private-endpoint-pricing-deprecated)
+  </Expandable>
+- `UpdatePrivateEndpointRequest`:
+  - description updated
+  - example property_added
+  - new property `declared_parameters`
+  - new property `pricing`
+  - new property `settings`
+  - Used by [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
+- `CreatePrivateProviderRequest`: minLength property_added; maxLength property_added; pattern property_added
+  - Used by [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider)
+- `PrivateProvider`: minLength property_added; property `prompt_retention_days` updated; description updated
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /private-providers`](/api/api-reference/private-providers/list-private-providers)
+    - [`GET /private-providers/{slug}`](/api/api-reference/private-providers/get-a-private-provider)
+    - [`PATCH /private-providers/{slug}`](/api/api-reference/private-providers/update-a-private-provider)
+    - [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider)
+  </Expandable>
+- `PrivateProviderDataPolicy`: maximum property_added; minimum property_added
+  - Used by [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider)
+- `UpdatePrivateProviderRequest`: minLength property_added; property `prompt_retention_days` updated; maxLength property_added
+  - Used by [`PATCH /private-providers/{slug}`](/api/api-reference/private-providers/update-a-private-provider)
+
+</Update>
+
+<Update label="October 28, 2026" tags={["API Keys","BYOK","Breaking","MCP","Models","Observability","Private Endpoints","Vault"]} rss="7 breaking changes, 5 modified endpoints, 8 new response codes, 2 new schemas, 13 modified schemas.">
+
+## Breaking changes
+
+- `ObservabilityS3Destination.config.roleArn`: pattern narrowed from `^arn:aws(?:-[a-z]+)*:iam::\d{12}:role\/[\w+=,.@/-]{1,512}$` to `^arn:aws:iam::\d{12}:role\/[\w+=,.@/-]{1,512}$`<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - **Migration: `roleArn` accepts only roles in the commercial AWS partition (`arn:aws:iam::`).** OpenRouter assumes your role from the commercial partition, which cannot assume roles in AWS GovCloud (`arn:aws-us-gov`) or China (`arn:aws-cn`), so destinations with those ARNs never delivered traces. `POST` and `PATCH` requests with such an ARN now fail validation; recreate the destination with a role in the commercial partition.
+  - **Migration: the role's trust policy must require the destination's external ID.** In the same release, IAM role destinations started verifying that the trust policy carries an `sts:ExternalId` condition. Test Connection, Send Trace, and live delivery return 403 for a role that accepts any external ID; add the condition to the trust policy and the role is accepted within 5 minutes.
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /observability/destinations`](/api/api-reference/observability/list-observability-destinations)
+    - [`GET /observability/destinations/{id}`](/api/api-reference/observability/get-an-observability-destination)
+    - [`PATCH /observability/destinations/{id}`](/api/api-reference/observability/update-an-observability-destination)
+    - [`POST /observability/destinations`](/api/api-reference/observability/create-an-observability-destination)
+  </Expandable>
+- `ChatDeveloperMessage.configuration_update`: additionalProperties `false` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion), [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+  - **Migration: no action.** `configuration_update` on `ChatDeveloperMessage` is now a reference to the named `ConfigurationUpdate` schema instead of an inline object. The accepted value is unchanged: omit it, send `null`, or send an object with `reasoning`. Only generated SDK type names move; raw HTTP requests are unaffected.
+- `ChatDeveloperMessage.configuration_update`: properties `reasoning` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion), [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+  - **Migration: no action.** `configuration_update` on `ChatDeveloperMessage` is now a reference to the named `ConfigurationUpdate` schema instead of an inline object. The accepted value is unchanged: omit it, send `null`, or send an object with `reasoning`. Only generated SDK type names move; raw HTTP requests are unaffected.
+- `ChatDeveloperMessage.configuration_update`: required `reasoning` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion), [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+  - **Migration: no action.** `configuration_update` on `ChatDeveloperMessage` is now a reference to the named `ConfigurationUpdate` schema instead of an inline object. The accepted value is unchanged: omit it, send `null`, or send an object with `reasoning`. Only generated SDK type names move; raw HTTP requests are unaffected.
+- `ChatSystemMessage.configuration_update`: additionalProperties `false` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion), [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+  - **Migration: no action.** `configuration_update` on `ChatSystemMessage` is now a reference to the named `ConfigurationUpdate` schema instead of an inline object. The accepted value is unchanged: omit it, send `null`, or send an object with `reasoning`. Only generated SDK type names move; raw HTTP requests are unaffected.
+- `ChatSystemMessage.configuration_update`: properties `reasoning` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion), [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+  - **Migration: no action.** `configuration_update` on `ChatSystemMessage` is now a reference to the named `ConfigurationUpdate` schema instead of an inline object. The accepted value is unchanged: omit it, send `null`, or send an object with `reasoning`. Only generated SDK type names move; raw HTTP requests are unaffected.
+- `ChatSystemMessage.configuration_update`: required `reasoning` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion), [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+  - **Migration: no action.** `configuration_update` on `ChatSystemMessage` is now a reference to the named `ConfigurationUpdate` schema instead of an inline object. The accepted value is unchanged: omit it, send `null`, or send an object with `reasoning`. Only generated SDK type names move; raw HTTP requests are unaffected.
+
+## Modified endpoints
+
+- [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint): now returns 400 `parameters_invalid` when `declared_parameters` includes `tool_choice` without `tools`, matching `PUT /private-endpoints/{id}/parameters`; the create response does not echo `declared_parameters` or `tested_parameters`, read them back from `GET /private-endpoints/{id}`
+- [`POST /keys`](/api/api-reference/api-keys/create-a-new-api-key): request schema updated
+- [`PATCH /keys/{hash}`](/api/api-reference/api-keys/update-an-api-key): request schema updated
+- [`GET /vault/interns/{internId}/connections`](/api/api-reference/vault/list-the-connections-an-intern-can-use):
+  - description updated
+  - response schema updated
+  - response now always includes `routing`
+  - response now always includes `routing_text`
+- [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials): parameter `provider` updated
+
+## New response codes
+
+- [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties): now returns `401`
+- [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties): now returns `404`
+- [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties): now returns `408`
+- [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties): now returns `409`
+- [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties): now returns `429`
+- [`GET /models/user`](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails): now returns `408`
+- [`GET /models/user`](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails): now returns `409`
+- [`GET /models/user`](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails): now returns `429`
+
+## New schemas
+
+- `ConfigurationUpdate`
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion), [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+- `VaultRoutingTable`
+  - Used by [`GET /vault/interns/{internId}/connections`](/api/api-reference/vault/list-the-connections-an-intern-can-use)
+
+## Modified schemas
+
+- `ChatDeveloperMessage`: new union variant added; type property_removed
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion), [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+- `ChatSystemMessage`: new union variant added; type property_removed
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion), [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+- `WebSearchStatus`: enum property_added
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `BYOKProviderSlug`: enum property_added
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials)
+    - [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential)
+    - [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+    - [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+  </Expandable>
+- `MessagesStartEvent`: property `provider` updated
+  - Used by [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+- `ProviderName`: enum property_added
+
+  <Expandable title="14 endpoints using this schema">
+    - [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints)
+    - [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model)
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+  </Expandable>
+- `ProviderOptions`: new property `particle-ai`
+
+  <Expandable title="14 endpoints using this schema">
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+    - [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+    - [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+  </Expandable>
+- `ProviderResponse`: enum property_added
+  - Used by [`GET /generation`](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation)
+- `CreateGuardrailRequest`: new property `enforce_first_party_harness_models`
+  - Used by [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail)
+- `Guardrail`: new property `enforce_first_party_harness_models`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /guardrails`](/api/api-reference/guardrails/list-guardrails)
+    - [`GET /guardrails/{id}`](/api/api-reference/guardrails/get-a-guardrail)
+    - [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail)
+    - [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail)
+  </Expandable>
+- `OrganizationSettings`: description updated
+  - Used by [`GET /organization/settings`](/api/api-reference/organization/get-organization-settings), [`PATCH /organization/settings`](/api/api-reference/organization/update-organization-settings)
+- `UpdateGuardrailRequest`: new property `enforce_first_party_harness_models`
+  - Used by [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail)
+- `UpdateOrganizationSettingsRequest`: description updated
+  - Used by [`PATCH /organization/settings`](/api/api-reference/organization/update-organization-settings)
+
+</Update>
+
 <Update label="October 27, 2026" tags={["Breaking","Endpoints","Generations","Models","Presets","Private Endpoints","Schemas"]} rss="2 breaking changes, 1 new endpoint, 1 modified endpoint, 10 new response codes, 4 new schemas, 10 modified schemas.">
 
 ## Breaking changes
