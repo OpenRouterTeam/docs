@@ -29,6 +29,9 @@ models:
   - liquid/d1
   - liquid/d1-ultra
   - respan/span-02
+  - baseten/elephant-1
+  - baseten/mammoth-1
+  - baseten/joey-1
 ---
 
 Decisions models answer typed questions about content you send in `state`. Some of them also read media parts in `state`: images, and on some models audio and video. Text-only Decisions requests work the same as before.
@@ -112,9 +115,9 @@ An image is an item of the `state` array with this shape, the same image part Ch
 ```
 
 - `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Jev accepts only `image/png` and `image/jpeg`. Remote `http(s)` URLs are not fetched.
-- `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, Clef Omni, and Mercury Decide ignore it.
+- `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, Clef Omni, Mercury Decide, and the Baseten decision models (Elephant 1, Mammoth 1, Joey 1) ignore it.
 - Put image parts directly in the top-level `state` array. Only Jev reads image parts in other places (see [Image positions on Jev](#image-positions-on-jev)); on every other Decisions model, an image part nested inside a `state` object or placed in a question's `instructions` or `criteria` fails with a `400` rather than being sent to the model as text.
-- Send at most 4 images per request to Clef, Clef Flash, and Clef Omni, at most 16 to Mercury Decide, and at most 128 to GPT-6 Luna Decisions.
+- Send at most 4 images per request to Clef, Clef Flash, and Clef Omni, at most 16 to Mercury Decide and the Baseten decision models, and at most 128 to GPT-6 Luna Decisions.
 - Text items in the array are plain strings, not `{ "type": "text" }` parts.
 - Jev 1.14 and [`~typesafe/jev-latest`](https://openrouter.ai/~typesafe/jev-latest) also answer [Box](/guides/community/jev#box-questions) questions about images.
 
