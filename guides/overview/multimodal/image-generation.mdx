@@ -272,7 +272,7 @@ Control output dimensions with `resolution`, `aspect_ratio`, or the convenience 
 
 - `resolution`: normalized tier (`512`, `768`, `1K`, `1.5K`, `2K`, `4K`). Concrete pixel dimensions are derived per-provider.
 - `aspect_ratio`: normalized ratio. Pass `auto` to let the provider choose. Common values include `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`, `4:5`, `5:4`, and extended ratios like `1:2`, `2:1`, `1:4`, `4:1`, `1:8`, `8:1`, `9:21`, `21:9`. Providers clamp to their supported subset. Check the model's `supported_parameters` for accepted values.
-- `size`: convenience shorthand. Pass a tier (`"2K"`) or explicit pixels (`"2048x2048"`) and it gets normalized for the provider. A tier size is equivalent to setting `resolution` and combines with `aspect_ratio`. An explicit pixel size is authoritative. A mismatched `resolution` or `aspect_ratio` alongside it is rejected with a 400.
+- `size`: convenience shorthand. Pass a tier (`"2K"`) or explicit pixels (`"2048x2048"`). A tier size is equivalent to setting `resolution` and combines with `aspect_ratio`. Explicit pixel sizes are provider-dependent: providers that accept them treat the value as authoritative and reject a mismatched `resolution` or `aspect_ratio` alongside it with a 400. xAI and Sourceful V2/V2.5 reject explicit pixel sizes (use `resolution` and `aspect_ratio` there); Sourceful V2.6 supports them within its dimension limits and does not allow combining them with `resolution` or `aspect_ratio`.
 
 Check the model's `supported_parameters` to see which values each endpoint accepts.
 
@@ -506,7 +506,7 @@ For streaming requests, any partial preview images delivered before the stream e
 | `n` | integer | No | Upper bound on images to generate (1-10); providers may return fewer, and single-image providers reject `n > 1` |
 | `resolution` | string | No | Resolution tier (`512`, `768`, `1K`, `1.5K`, `2K`, `4K`) |
 | `aspect_ratio` | string | No | Aspect ratio (`1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `1:4`, `4:1`, etc.) |
-| `size` | string | No | Convenience shorthand &mdash; a tier or explicit pixels (`"2048x2048"`) |
+| `size` | string | No | Convenience shorthand &mdash; a tier, or explicit pixels (`"2048x2048"`) where the provider accepts them (xAI and Sourceful V2/V2.5 reject pixel sizes with a 400; Sourceful V2.6 accepts them within its dimension limits) |
 | `quality` | string | No | `auto`, `low`, `medium`, or `high` |
 | `output_format` | string | No | `png`, `jpeg`, `webp`, or `svg`. When omitted, the provider default applies. |
 | `background` | string | No | `auto`, `transparent`, or `opaque` |
