@@ -45,11 +45,11 @@ Each iteration yields a small chunk of text (typically a few characters or a wor
 
 ### getReasoningStream()
 
-For models that support reasoning (like o1 or Claude with thinking), stream the reasoning process:
+For models that support reasoning (like o3 or Claude with thinking), stream the reasoning process:
 
 ```typescript lines
 const result = openrouter.callModel({
-  model: 'openai/o1-preview',
+  model: 'openai/o3',
   input: 'Solve this step by step: If x + 5 = 12, what is x?',
 });
 
@@ -73,7 +73,7 @@ Stream complete items as they update. This is the **recommended way** to handle 
 import type { StreamableOutputItem } from '@openrouter/agent';
 
 const result = openrouter.callModel({
-  model: 'anthropic/claude-sonnet-4',
+  model: '~anthropic/claude-sonnet-latest',
   input: 'Hello!',
   tools: [myTool],
 });

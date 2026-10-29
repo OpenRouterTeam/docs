@@ -100,6 +100,24 @@ Actual output from the model-list call:
 
 ```text lines
 [
+  "x-ai/grok-imagine-video-1.5-lite",
+  "heygen/heygen-video-1",
+  "black-forest-labs/flux-video-edit",
+  "minimax/hailuo-3-max",
+  "alibaba/wan-3.0-prime",
+  "alibaba/wan-3.0",
+  "heygen/avatar-iv",
+  "black-forest-labs/flux-video-upscale",
+  "bytedance/seedance-2.0-mini",
+  "bytedance/seedance-2.5",
+  "black-forest-labs/flux-3-video",
+  "minimax/hailuo-3",
+  "runway/aleph-2",
+  "runway/gen-4.5",
+  "x-ai/grok-imagine-video-1.5",
+  "alibaba/happyhorse-1.1",
+  "alibaba/happyhorse-1.0",
+  "x-ai/grok-imagine-video",
   "kwaivgi/kling-v3.0-pro",
   "kwaivgi/kling-v3.0-std",
   "google/veo-3.1-fast",
@@ -107,11 +125,10 @@ Actual output from the model-list call:
   "kwaivgi/kling-video-o1",
   "minimax/hailuo-2.3",
   "bytedance/seedance-2.0",
-  "bytedance/seedance-2.0-fast",
   "alibaba/wan-2.7",
+  "bytedance/seedance-2.0-fast",
   "alibaba/wan-2.6",
   "bytedance/seedance-1-5-pro",
-  "openai/sora-2-pro",
   "google/veo-3.1"
 ]
 ```
@@ -174,20 +191,44 @@ Example output:
     "lowest_advertised_price": 0.0000012
   },
   {
-    "id": "bytedance/seedance-2.0-fast",
-    "lowest_advertised_price": 0.0000056
+    "id": "bytedance/seedance-2.0-mini",
+    "lowest_advertised_price": 0.0000021
   },
   {
     "id": "bytedance/seedance-2.0",
-    "lowest_advertised_price": 0.000007
+    "lowest_advertised_price": 0.0000024
+  },
+  {
+    "id": "bytedance/seedance-2.0-fast",
+    "lowest_advertised_price": 0.000002475
+  },
+  {
+    "id": "bytedance/seedance-2.5",
+    "lowest_advertised_price": 0.0000064
   },
   {
     "id": "alibaba/wan-2.6",
     "lowest_advertised_price": 0.04
   },
   {
+    "id": "alibaba/wan-3.0",
+    "lowest_advertised_price": 0.05
+  },
+  {
+    "id": "alibaba/wan-3.0-prime",
+    "lowest_advertised_price": 0.068
+  },
+  {
     "id": "kwaivgi/kling-v3.0-std",
     "lowest_advertised_price": 0.084
+  },
+  {
+    "id": "alibaba/happyhorse-1.1",
+    "lowest_advertised_price": 0.0988
+  },
+  {
+    "id": "alibaba/happyhorse-1.0",
+    "lowest_advertised_price": 0.0988
   },
   {
     "id": "alibaba/wan-2.7",
@@ -200,6 +241,26 @@ Example output:
   {
     "id": "kwaivgi/kling-video-o1",
     "lowest_advertised_price": 0.112
+  },
+  {
+    "id": "x-ai/grok-imagine-video",
+    "lowest_advertised_price": 0.2
+  },
+  {
+    "id": "x-ai/grok-imagine-video-1.5-lite",
+    "lowest_advertised_price": 1
+  },
+  {
+    "id": "x-ai/grok-imagine-video-1.5",
+    "lowest_advertised_price": 1
+  },
+  {
+    "id": "runway/gen-4.5",
+    "lowest_advertised_price": 12
+  },
+  {
+    "id": "black-forest-labs/flux-3-video",
+    "lowest_advertised_price": 17
   }
 ]
 ```
@@ -338,34 +399,34 @@ Actual output from the scoring helper:
   "fast_and_cheap": [
     {
       "id": "bytedance/seedance-2.0-fast",
-      "score": 0.967,
-      "lowest_advertised_price": 0.0000056,
+      "score": 0.95,
+      "lowest_advertised_price": 0.000002475,
       "speed_score": 1,
       "cost_score": 1,
-      "quality_score": 0.667
+      "quality_score": 0.5
+    },
+    {
+      "id": "x-ai/grok-imagine-video-1.5-lite",
+      "score": 0.844,
+      "lowest_advertised_price": 1,
+      "speed_score": 0.8,
+      "cost_score": 0.941,
+      "quality_score": 0.75
+    },
+    {
+      "id": "kwaivgi/kling-v3.0-std",
+      "score": 0.838,
+      "lowest_advertised_price": 0.084,
+      "speed_score": 0.8,
+      "cost_score": 0.995,
+      "quality_score": 0.5
     },
     {
       "id": "bytedance/seedance-2.0",
       "score": 0.752,
-      "lowest_advertised_price": 0.000007,
+      "lowest_advertised_price": 0.0000024,
       "speed_score": 0.55,
       "cost_score": 1,
-      "quality_score": 1
-    },
-    {
-      "id": "bytedance/seedance-1-5-pro",
-      "score": 0.642,
-      "lowest_advertised_price": 0.0000012,
-      "speed_score": 0.35,
-      "cost_score": 1,
-      "quality_score": 1
-    },
-    {
-      "id": "alibaba/wan-2.6",
-      "score": 0.628,
-      "lowest_advertised_price": 0.04,
-      "speed_score": 0.55,
-      "cost_score": 0.643,
       "quality_score": 1
     }
   ],
@@ -373,34 +434,34 @@ Actual output from the scoring helper:
     {
       "id": "bytedance/seedance-2.0",
       "score": 0.932,
-      "lowest_advertised_price": 0.000007,
+      "lowest_advertised_price": 0.0000024,
       "speed_score": 0.55,
       "cost_score": 1,
       "quality_score": 1
     },
     {
-      "id": "bytedance/seedance-1-5-pro",
-      "score": 0.903,
-      "lowest_advertised_price": 0.0000012,
-      "speed_score": 0.35,
-      "cost_score": 1,
-      "quality_score": 1
+      "id": "x-ai/grok-imagine-video-1.5-lite",
+      "score": 0.815,
+      "lowest_advertised_price": 1,
+      "speed_score": 0.8,
+      "cost_score": 0.941,
+      "quality_score": 0.75
     },
     {
       "id": "alibaba/wan-2.6",
-      "score": 0.825,
+      "score": 0.794,
       "lowest_advertised_price": 0.04,
       "speed_score": 0.55,
-      "cost_score": 0.643,
-      "quality_score": 1
+      "cost_score": 0.998,
+      "quality_score": 0.75
     },
     {
-      "id": "bytedance/seedance-2.0-fast",
-      "score": 0.817,
-      "lowest_advertised_price": 0.0000056,
-      "speed_score": 1,
-      "cost_score": 1,
-      "quality_score": 0.667
+      "id": "alibaba/wan-3.0",
+      "score": 0.794,
+      "lowest_advertised_price": 0.05,
+      "speed_score": 0.55,
+      "cost_score": 0.997,
+      "quality_score": 0.75
     }
   ]
 }

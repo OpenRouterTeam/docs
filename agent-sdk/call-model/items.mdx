@@ -115,7 +115,7 @@ function Chat() {
 
   async function handleSubmit(input: string) {
     const result = client.callModel({
-      model: 'anthropic/claude-sonnet-4',
+      model: '~anthropic/claude-sonnet-latest',
       input,
     });
 

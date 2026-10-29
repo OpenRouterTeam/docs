@@ -100,11 +100,19 @@ ori harness setup codex
 ori harness reset codex
 ```
 
-Each harness has its own page, with the setup steps, what works, and what isn't available yet:
+`ori harness setup` works only for the harnesses in this list. It doesn't configure any other app or IDE:
 
-- [Ori Codex](/guides/ori/codex): the Codex CLI and Codex Desktop.
+| Harness | Command | What it sets up |
+| --- | --- | --- |
+| Codex | `ori harness setup codex` | The Codex CLI and Codex Desktop. See [Ori Codex](/guides/ori/codex). |
+| Claude | `ori harness setup claude` | Claude Desktop on macOS, and Claude Code on macOS and Linux. On Windows, use `ori claude` instead. |
+| Cursor | `ori harness setup cursor` | The Cursor desktop app (IDE). See [Ori Cursor](/guides/ori/cursor). |
+| Factory Droid | `ori harness setup droid` | The Droid CLI and the Factory desktop app, on macOS and Linux. |
+| Pi | `ori harness setup pi` | The Pi CLI and other integrations that load the same Pi agent directory. |
 
-Setup for Claude Desktop and Claude Code through `ori harness setup claude` isn't available yet. To use Claude Desktop with OpenRouter today, see the [Claude Desktop integration guide](/cookbook/coding-agents/claude-desktop-integration).
+Each setup needs a saved login from `ori login`. A key that's set only in your shell doesn't work, because the agent's app reads its settings later, outside your shell.
+
+Setup covers the harnesses in the table above and no other app or IDE. If your organization manages Claude settings, setup stops and names the file; use `ori claude` instead.
 
 ## Sign in instead of managing keys
 

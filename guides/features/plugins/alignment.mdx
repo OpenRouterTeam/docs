@@ -671,11 +671,11 @@ The `lookup_order` call below follows the rule about the text and the rule about
 
 ### Rule that watches content on a tool-call message
 
-The request below sends a rule with `watch: ["content"]` and calls [`anthropic/claude-sonnet-4`](https://openrouter.ai/anthropic/claude-sonnet-4) in `audit` mode rather than the model of the other examples. In most runs, that model answers `Where is my order ord_8841?` with a `lookup_order` call and no text, so `content` is `null`. The message has no field the rule watches, so the rule is not applicable: the evaluator is not asked about it, its record has `applicable: false` and `probability: null`, and the message is `allowed`.
+The request below sends a rule with `watch: ["content"]` and calls [`anthropic/claude-sonnet-5.5`](https://openrouter.ai/anthropic/claude-sonnet-5.5) in `audit` mode rather than the model of the other examples. In most runs, that model answers `Where is my order ord_8841?` with a `lookup_order` call and no text, so `content` is `null`. The message has no field the rule watches, so the rule is not applicable: the evaluator is not asked about it, its record has `applicable: false` and `probability: null`, and the message is `allowed`.
 
 ```json expandable
 {
-  "model": "anthropic/claude-sonnet-4",
+  "model": "anthropic/claude-sonnet-5.5",
   "instructions": "You are Northwind support. Damaged items are refunded in full. Keep replies under 15 words.",
   "input": "Where is my order ord_8841?",
   "plugins": [
