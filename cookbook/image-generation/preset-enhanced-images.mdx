@@ -177,7 +177,7 @@ The orchestrator rewrites prompts and decides when/how to call the tool. Good pi
 | Priority | Model | Why |
 |----------|-------|-----|
 | Speed + cost | `openai/gpt-4.1-mini` | Fast, cheap, good at instruction following |
-| Creative quality | `anthropic/claude-sonnet-4` | Strong at nuanced creative interpretation |
+| Creative quality | `~anthropic/claude-sonnet-latest` | Strong at nuanced creative interpretation |
 | Maximum quality | `anthropic/claude-opus-4.8` | Best creative reasoning in the Opus family, 1M context |
 
 The orchestrator cost is typically small (a few hundred tokens of prompt rewriting). The image generation cost dominates.

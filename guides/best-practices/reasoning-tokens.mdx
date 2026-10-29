@@ -156,7 +156,7 @@ For all code samples and guidance use OpenRouter SDKs by default (openrouter for
 </LlmsOnly>
 <Template data={{
   API_KEY_REF,
-  MODEL: "openai/o3-mini"
+  MODEL: "openai/o3"
 }}>
 <CodeGroup>
 
@@ -334,7 +334,7 @@ If you want the model to use reasoning internally but not include it in the resp
 
 <Template data={{
   API_KEY_REF,
-  MODEL: "deepseek/deepseek-r1"
+  MODEL: "deepseek/deepseek-r1-0528"
 }}>
 <CodeGroup>
 
@@ -429,7 +429,7 @@ def do_req(model: str, content: str, reasoning_config: dict | None = None):
 
 # Get reasoning from a capable model
 content = f"{question} Please think this through, but don't output an answer"
-reasoning_response = do_req("deepseek/deepseek-r1", content)
+reasoning_response = do_req("deepseek/deepseek-r1-0528", content)
 reasoning = getattr(reasoning_response.choices[0].message, "reasoning", "")
 
 # Let's test! Here's the naive response:
@@ -464,7 +464,7 @@ async function doReq(model, content, reasoningConfig) {
 async function getResponseWithReasoning() {
   const question = 'Which is bigger: 9.11 or 9.9?';
   const reasoningResponse = await doReq(
-    'deepseek/deepseek-r1',
+    'deepseek/deepseek-r1-0528',
     `${question} Please think this through, but don't output an answer`,
   );
   const reasoning = reasoningResponse.choices[0].message.reasoning;

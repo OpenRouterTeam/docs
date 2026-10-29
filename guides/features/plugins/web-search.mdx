@@ -162,7 +162,7 @@ X search is opt-in. With native web search enabled on a SpaceXAI model, OpenRout
 
 ```json lines
 {
-  "model": "x-ai/grok-4.1-fast",
+  "model": "~x-ai/grok-latest",
   "messages": [
     {
       "role": "user",
@@ -193,7 +193,7 @@ The same object is accepted as `parameters.x_search` on the [`openrouter:web_sea
 
   ```json lines
   {
-    "model": "x-ai/grok-4.1-fast",
+    "model": "~x-ai/grok-latest",
     "messages": [{ "role": "user", "content": "..." }],
     "plugins": [{ "id": "web" }],
     "x_search_filter": { "allowed_x_handles": ["OpenRouterAI"] }

@@ -102,6 +102,31 @@ resource "openrouter_private_endpoint" "gpt4o" {
 
 `terraform apply` creates, validates, and activates the endpoint. Changing `pricing` updates it in place, while changing the model, provider, base URL, upstream model ID, declarations, or `activate` workspace replaces it. `terraform destroy` disables and deletes it, and `terraform import openrouter_private_endpoint.gpt4o <endpoint-id>` adopts an endpoint that already exists.
 
+## Private providers
+
+`provider_slug` names the provider an endpoint runs under. For a deployment hosted by a provider in the OpenRouter catalog, use that provider's slug (`openai`, `anthropic`, and so on). For a deployment you host yourself, or one with no public provider, create a private provider first and use its slug.
+
+A private provider records a name, a slug, an OpenAI-compatible HTTPS `base_url`, and a `data_policy`. Endpoints under it default to that base URL and data policy, so you only repeat them on an endpoint that differs. The provider is visible only to your organization. Other organizations can use the same name for their own private providers without seeing yours.
+
+Organization admins can add private providers from [Settings > Private Endpoints](https://openrouter.ai/settings/private-endpoints), or with the [Private Providers API](/api/api-reference/private-providers/list-private-providers) using the same organization Management API key:
+
+```bash
+curl https://openrouter.ai/api/v1/private-providers \
+  -H "Authorization: Bearer $OPENROUTER_MANAGEMENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Acme",
+    "slug": "acme",
+    "display_name": "Acme",
+    "base_url": "https://inference.example.com/v1",
+    "data_policy": { "training": false, "retains_prompts": false, "prompt_retention_days": null }
+  }'
+```
+
+Then create endpoints with `"provider_slug": "acme"`. The same slug works wherever a provider slug is accepted: BYOK keys, and `provider.order`, `only`, and `ignore` on a request.
+
+`GET`, `PATCH`, and `DELETE /api/v1/private-providers/{slug}` read, edit, and remove a provider. The name and slug are fixed at creation and may not match a public provider. `display_name` and `base_url` can be changed at any time; a `data_policy` change is refused (409) once OpenRouter pins the declared policy on one of the provider's endpoints. Deleting a provider returns `409 provider_has_endpoints` while any endpoint still runs under it, so delete the endpoints first. Each organization can have up to 5 private providers.
+
 ## Endpoint limit
 
 Each organization can have up to 10 private endpoints by default. Every endpoint you have created counts toward the limit, including endpoints that are still hidden because setup is not finished.
@@ -123,4 +148,4 @@ A private endpoint may be eligible for in-region routing when OpenRouter is able
 
 ## Requesting access
 
-Private Endpoints is an add-on to the Enterprise Plan. To enable it for your organization, reach out to your account representative. Once it is enabled, organization admins can add and manage endpoints from [Settings > Private Endpoints](https://openrouter.ai/settings/private-endpoints).
+Private Endpoints is an add-on to the Enterprise Plan. To enable it for your organization, reach out to your account representative. Once it is enabled, organization admins can add and manage endpoints from [Settings > Private Endpoints](https://openrouter.ai/settings/private-endpoints). Private providers are a separate add-on that is enabled the same way; without it, endpoints can only run under providers in the OpenRouter catalog.
