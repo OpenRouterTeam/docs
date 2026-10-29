@@ -133,7 +133,7 @@ On Google Vertex, image URLs must use HTTPS, end in `.png`, `.jpg`, `.jpeg`, `.w
 | Not supported | What to do instead |
 |---------------|--------------------|
 | Base64 or data-URI images | Host the image and send a public `https` URL. |
-| Inline file bytes and provider file IDs | Send a public file URL. Inline PDFs (`data:application/pdf;base64,...`) work on Anthropic, DeepInfra, Google AI Studio, Google Vertex, Mistral, and OpenAI (up to 20 MiB each) and on xAI (up to 17 MiB each) for accounts with inline files enabled, either individually or through a rollout to all accounts; other accounts get `Inline base64 files are not enabled for this account in batch`. On Vertex, inline PDFs are verified against the sync `generateContent` API only. If the provider chosen at submit can't take inline PDFs, the batch moves to another provider for the model that can, within your `provider` settings; with `allow_fallbacks: false` or no such provider, it fails and asks for a public file URL. |
+| Inline file bytes and provider file IDs | Send a public file URL, or an inline base64 data URI (`data:<media type>;base64,...`) of a type the provider's batch API has been verified to read. For accounts with inline files enabled, either individually or through a rollout to all accounts: PDFs work on Anthropic, DeepInfra, Google AI Studio, Google Vertex, Mistral, and OpenAI (up to 20 MiB decoded per file and per request) and on xAI (up to 17 MiB decoded per file and per request), so two 12 MiB files in one request fail admission even though each fits on its own; plain text, CSV, Markdown, and HTML also work on Google AI Studio and on OpenAI models served on the Responses wire; JSON also works on OpenAI models served on the Responses wire. OpenAI models still served on Chat Completions (for example `gpt-audio`) take PDFs only. Images, audio, and video stay rejected as inline bytes. Each file must be what its media type says: a PDF starts with `%PDF-`, text types are valid UTF-8, and JSON parses. A type the chosen provider can't take fails the batch with the provider's name and its accepted types. Other accounts get `Inline base64 files are not enabled for this account in batch`. If the provider chosen at submit can't take inline files at all, the batch moves to another provider for the model that can (unless `provider.allow_fallbacks` is `false`); a type the chosen provider can't take is not re-routed. Inline bytes count toward the request size and are reserved against your balance as text at submit, so a large text file reserves more than its final token cost until the batch finalizes. |
 | Audio input, and video other than YouTube | Use the sync API. A YouTube video on Google AI Studio holds the model's full input limit against your balance at submit, because its length is unknown. You are billed for the tokens the provider reports. |
 | Image or audio output (`modalities`, `audio`, `image_config`) | Use the sync API. |
 | OpenRouter web search (`:online`, the `web` plugin, `web_search_options`) | Use the provider's own search tool, for example OpenAI `web_search` on `/v1/responses` or Anthropic `web_search_20250305` on `/v1/messages`. Google Vertex rejects web search tools. |
@@ -559,7 +559,7 @@ A batch runs on one provider. By default, OpenRouter picks the cheapest provider
 | Option | Batch | What it does |
 |--------|-------|--------------|
 | `provider.only` | Supported | Use only these [provider slugs](/guides/routing/provider-selection), for example `["google-vertex"]`. |
-| `provider.allow_fallbacks` | Supported | Set to `false` to keep the batch on the provider chosen at submit. If that provider has no capacity, or can't take the batch's inline PDFs, the batch fails. |
+| `provider.allow_fallbacks` | Supported | Set to `false` to keep the batch on the provider chosen at submit. If that provider has no capacity, or can't take the batch's inline files, the batch fails. |
 | `provider.order` | Rejected | Put only the provider you want in `only`. |
 | `provider.sort` | Rejected | Batch always picks the lowest price first. |
 | Other sync preferences | Rejected | Remove them. |
@@ -579,6 +579,8 @@ A batch runs on one provider. By default, OpenRouter picks the cheapest provider
   ]
 }
 ```
+
+Set `provider` at the top level of the batch, next to `model`. It applies to every request. A `provider` field inside a request `body` does not pin the batch, so a chat batch with `provider` only in its bodies runs on the default provider.
 
 If none of the providers in `only` serves the model in batch mode, the submit returns `404`. Embeddings batches do not accept `provider`.
 
@@ -706,6 +708,6 @@ When the BYOK-only switch is on for your account or workspace, batches run only 
 | `404` | No provider in `provider.only`, your account's allowlist, or your guardrails serves the model in batch mode, or every batch endpoint for the model requires your own [provider key](/guides/overview/auth/byok) and no eligible key is configured (the error names those providers). | Change `provider.only`, your provider settings, or the guardrail on your key; add a provider key; or pick a model with a platform-billed batch endpoint. |
 | `409` | You tried to delete a batch that is still running. | Wait until it finishes. |
 | `410` | The batch is older than 30 days, so its results were deleted. | Results cannot be recovered. |
-| `413` | The batch has more requests than the [per-batch limit](/guides/features/batch-api#limits), or is larger than 200 MB. `error.message` states the limit. | Split the batch, or use file URLs instead of inline PDFs. |
+| `413` | The batch has more requests than the [per-batch limit](/guides/features/batch-api#limits), or is larger than 200 MB. `error.message` states the limit. | Split the batch, or use file URLs instead of inline files. |
 | `422` | The model targets the `:online` variant, or the batch uses a feature batch rejects at submit. | Remove it, or use the sync API. |
 | `429` | Too many submits, or too many batches or requests in progress. | Wait for running batches to finish, then retry. |
