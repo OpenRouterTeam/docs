@@ -147,18 +147,18 @@ Declaring ZDR keeps the private endpoint in your organization's ZDR routing pool
 
 ### Declared non-ZDR
 
-Declaring non-ZDR records an explicit attestation that the upstream retains data. Under a ZDR requirement it routes the same way as **Not declared** today. The difference is the fact preserved for your audit trail: **Declared non-ZDR** is known and attested, **Not declared** is unknown.
+Declaring non-ZDR records an explicit attestation that the upstream retains data. Under a ZDR requirement it routes the same way as **Not declared**. The difference is what your audit trail records: **Declared non-ZDR** is known and attested, **Not declared** is unknown.
 
 ### Existing private endpoints
 
-Existing private endpoints keep their current classification. Introducing this setting did not bulk-migrate them, so a private endpoint created before the setting existed behaves exactly as it did. Editing its declaration applies the rules above, subject to the override precedence below.
+A private endpoint created before this setting existed keeps its current classification and behaves as it did. Editing its declaration applies the rules above, subject to the override precedence below.
 
 <Note>
 **Overrides and attestations**
 
 An explicit OpenRouter data-policy override set by our team remains authoritative over your declaration. If OpenRouter has assigned a specific data policy to your private endpoint, that policy decides eligibility regardless of what you declared.
 
-A declaration is your attestation about your agreement with the upstream. OpenRouter records it and routes on it. It is not independent verification by OpenRouter of the upstream's contractual behavior.
+A declaration is your attestation about your agreement with the upstream. OpenRouter records it and routes on it, and does not independently verify the upstream's contractual behavior.
 </Note>
 
 ## OpenRouter's Retention Policy
