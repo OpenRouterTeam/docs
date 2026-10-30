@@ -57,7 +57,7 @@ The five model group scopes are:
 | --- | --- |
 | **Anthropic** | Removes first-party Anthropic endpoints (Bedrock and Vertex remain available) |
 | **OpenAI** | Removes first-party OpenAI endpoints (Azure remains available) |
-| **Google** | Removes AI Studio endpoints (Vertex remains available) |
+| **Google** | Removes AI Studio endpoints. Vertex endpoints that use Safety Retention remain available only if Safety Retention is allowed (see [Google Safety Retention](#google-safety-retention)) |
 | **SpaceXAI** | Removes non-ZDR SpaceXAI endpoints (the ZDR SpaceXAI endpoint remains available) |
 | **All other models** | Removes all other non-ZDR endpoints |
 
@@ -89,6 +89,21 @@ In the API, these are represented as separate fields on the guardrail object:
 The legacy `enforce_zdr` field is deprecated. When provided, its value is copied into any per-model-group fields that are not explicitly set on the request. Use the per-model-group fields directly for new integrations.
 </Note>
 
+## Google Safety Retention
+
+Starting October 18, 2026, Google requires Safety Retention for Google models served through Vertex. With Safety Retention, Google doesn't retain prompts by default, but it may retain prompts that its safety classifiers flag, for up to 90 days, for abuse monitoring. Google doesn't use retained prompts for training. These endpoints don't meet a strict Zero Data Retention requirement.
+
+When you enforce ZDR for Google models, you choose how OpenRouter treats these endpoints in your [privacy settings](https://openrouter.ai/settings/privacy) or on a guardrail:
+
+| Choice | Effect |
+| --- | --- |
+| **Zero retention only** | Excludes endpoints that use Safety Retention. Most Google models become unavailable. |
+| **Safety retention allowed** | Lets ZDR-enforced requests use endpoints that use Safety Retention. |
+
+If you don't choose, enterprise accounts default to **Zero retention only** and all other accounts default to **Safety retention allowed**. On guardrails, use `allow_safety_retention_google` for Google models and `allow_safety_retention_other` for other models that use Safety Retention, such as open-weight models on Vertex. A guardrail can't allow Safety Retention when your account setting is **Zero retention only**.
+
+On a model page, the provider details for an endpoint that uses Safety Retention show **ZDR compatible: Only with Safety Retention allowed**.
+
 ## Per-Request ZDR Enforcement
 
 In addition to account-level and guardrail-level settings, you can enforce Zero Data Retention on a per-request basis using the `zdr` parameter in your API calls.
@@ -111,7 +126,7 @@ Include the `zdr` parameter in your provider preferences:
 }
 ```
 
-When `zdr` is set to `true`, the request will only be routed to endpoints that have a Zero Data Retention policy. When `zdr` is `false` or not provided, ZDR enforcement still applies if enabled in your account or guardrail settings.
+When `zdr` is set to `true`, the request is routed only to endpoints that have a Zero Data Retention policy. Endpoints that use Safety Retention are included only if Safety Retention is allowed for your account or guardrail (see [Google Safety Retention](#google-safety-retention)). When `zdr` is `false` or not provided, ZDR enforcement still applies if enabled in your account or guardrail settings.
 
 ## ZDR with BYOK Keys
 
