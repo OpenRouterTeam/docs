@@ -17,38 +17,38 @@ icon: lock
 ---
 
 <Note>
-Private Endpoints are available for Enterprise Plan customers. Talk to your OpenRouter account representative, or visit [openrouter.ai/enterprise/form](https://openrouter.ai/enterprise/form) to learn about upgrading to Enterprise.
+Private Endpoints are an add-on to the Enterprise Plan. To enable them for your organization, talk to your OpenRouter account representative or visit [openrouter.ai/enterprise/form](https://openrouter.ai/enterprise/form). Once enabled, organization admins add and manage endpoints from [Settings > Private Endpoints](https://openrouter.ai/settings/private-endpoints). Private providers are a separate add-on enabled the same way; without it, endpoints can only run under providers in the OpenRouter catalog.
 </Note>
 
-Private Endpoints let you route to your own dedicated or fine-tuned deployment of a catalog model through OpenRouter, alongside the public models you already use. OpenRouter adds your deployment to that model's provider list instead of creating a new model, so your team calls it with the same slug and API.
+A private endpoint routes a catalog model to your own dedicated or fine-tuned deployment of it, alongside the public providers you already use. OpenRouter adds your deployment to that model's provider list rather than creating a new model, so your team keeps calling the same slug through the same API.
 
-Your private endpoints are only visible to the users and organizations you approve, and they will never show up in public model lists, rankings, search, charts, and benchmarks.
+Only the users and organizations you approve can see or call a private endpoint. It does not appear in public model lists, rankings, search, charts, or benchmarks.
 
 ## How it works
 
-Once your private endpoint is active:
+Once a private endpoint is active:
 
-- Approved users and organizations call it through the standard OpenRouter API, the same endpoints they use for public models (chat completions and responses).
-- The model slug behaves like any other OpenRouter model. It can be used with [Model Fallbacks](/guides/routing/model-fallbacks), [Provider Selection](/guides/routing/provider-selection), and other routing features.
-- Approved private endpoints are prioritized for callers with access, while public fallback candidates remain available if you list them.
+- Approved users and organizations call it through the standard OpenRouter API (chat completions and responses), the same way they call public models.
+- The model slug works with [Model Fallbacks](/guides/routing/model-fallbacks), [Provider Selection](/guides/routing/provider-selection), and the other routing features.
+- For callers with access, OpenRouter prefers the private endpoint. Public providers for the model stay available as fallbacks if you list them.
 
 ## Adding a private endpoint
 
 A private endpoint must meet two requirements:
 
 - It is hosted by a provider that OpenRouter supports for [BYOK](/guides/overview/auth/byok), since requests are authenticated with your own provider key.
-- It serves a model that already exists in the OpenRouter catalog, with the same request and response shape and the same behaviors as that model. The private endpoint inherits the model's slug and capabilities.
+- It serves a model that already exists in the OpenRouter catalog, with the same request and response shape and the same behavior as that model. The endpoint inherits the model's slug and capabilities.
 
-Organization admins on the Enterprise Plan can add private endpoints themselves from [Settings > Private Endpoints](https://openrouter.ai/settings/private-endpoints). Each endpoint goes through four steps:
+Organization admins on the Enterprise Plan add private endpoints from [Settings > Private Endpoints](https://openrouter.ai/settings/private-endpoints). Each endpoint goes through four steps:
 
-1. **Blueprint.** Select the model from the catalog that your endpoint is providing, and the BYOK provider that hosts your capacity.
+1. **Blueprint.** Pick the catalog model your endpoint serves and the BYOK provider that hosts it.
 2. **Connect.** Enter the HTTPS base URL of your endpoint and the upstream model or deployment ID it serves. You can also set pricing for cost reporting and declare whether the endpoint retains prompts (see [ZDR](/guides/features/zdr)).
-3. **Test.** OpenRouter sends a request to your endpoint using the provider key saved in one of your workspaces under [BYOK](/guides/overview/auth/byok). The checks confirm the key is accepted, the response is OpenAI-compatible, streaming works, usage fields are returned, and the served model ID matches what you entered.
-4. **Activate.** Once the checks pass, activation makes the model callable by workspaces in your organization.
+3. **Test.** OpenRouter sends requests to your endpoint using the provider key saved under [BYOK](/guides/overview/auth/byok) in one of your workspaces. The checks confirm that the key is accepted, the response is OpenAI-compatible, streaming works, usage fields come back, and the served model ID matches what you entered.
+4. **Activate.** Once the checks pass, activation makes the endpoint routable for workspaces in your organization.
 
-Until it is activated, an endpoint stays hidden and is not routable. You can leave the wizard and resume setup later from the Private Endpoints list.
+Until it is activated, an endpoint is a draft: hidden from your workspaces and not routable. You can leave the wizard and finish setup later from the Private Endpoints list.
 
-Requests to a private endpoint are authenticated with your own provider key, so BYOK keys must be configured in each workspace that calls it.
+Requests to a private endpoint are authenticated with your own provider key, so each workspace that calls it needs a BYOK key for that provider.
 
 ## Manage endpoints with the API or Terraform
 
@@ -56,9 +56,9 @@ You can also manage private endpoints programmatically, which helps when you run
 
 Requests are authenticated with an organization [Management API key](/guides/overview/auth/management-api-keys). Keys created on a personal account are rejected, and the organization must have Private Endpoints enabled.
 
-The steps map to these calls:
+The wizard steps map to these calls:
 
-1. `POST /api/v1/private-endpoints` creates a hidden draft from `model_permaslug`, `provider_slug`, `upstream_model_id`, and, for providers that need it, `base_url`. You can also set `pricing`, `declared_zdr`, and `declared_region`.
+1. `POST /api/v1/private-endpoints` creates a draft from `model_permaslug`, `provider_slug`, `upstream_model_id`, and, for providers that need it, `base_url`. You can also set `pricing`, `declared_zdr`, and `declared_region`.
 2. `POST /api/v1/private-endpoints/{id}/validate` runs the Test checks with the BYOK key saved in the workspace you pass as `workspace_id`. The workspace must belong to your organization and have a key for the endpoint's provider.
 3. `POST /api/v1/private-endpoints/{id}/activate` makes a validated draft routable.
 
@@ -79,11 +79,11 @@ curl https://openrouter.ai/api/v1/private-endpoints \
   }'
 ```
 
-If validation fails, the draft is kept and returned with the failed checks. Fix it with `PATCH /api/v1/private-endpoints/{id}` (only drafts can be edited), then call `/validate` and `/activate` instead of creating it again.
+If validation fails, the draft is kept and returned with the failed checks. Fix it with `PATCH /api/v1/private-endpoints/{id}` (only drafts can be edited), then call `/validate` and `/activate` again instead of creating a new endpoint.
 
-Send an `Idempotency-Key` header to make create retry-safe. Repeating a request with the same key returns the endpoint the first request created, and reusing the key with a different body returns `422 idempotency_key_reused`.
+Send an `Idempotency-Key` header to make create retry-safe. Repeating a request with the same key returns the endpoint the first request created; reusing the key with a different body returns `422 idempotency_key_reused`.
 
-After activation, `PUT /api/v1/private-endpoints/{id}/pricing` updates the reported rates, and `/disable` and `/enable` stop or resume routing. `DELETE /api/v1/private-endpoints/{id}` removes an endpoint and stops routing to it. Pass `draft_only=true` to refuse the delete (409) if the endpoint has been activated.
+After activation, `PUT /api/v1/private-endpoints/{id}/pricing` updates the reported rates, and `/disable` and `/enable` stop or resume routing. `DELETE /api/v1/private-endpoints/{id}` removes an endpoint and stops routing to it. Pass `draft_only=true` to refuse the delete (409) if the endpoint has ever been activated.
 
 ### Terraform
 
@@ -100,15 +100,15 @@ resource "openrouter_private_endpoint" "gpt4o" {
 }
 ```
 
-`terraform apply` creates, validates, and activates the endpoint. Changing `pricing` updates it in place, while changing the model, provider, base URL, upstream model ID, declarations, or `activate` workspace replaces it. `terraform destroy` disables and deletes it, and `terraform import openrouter_private_endpoint.gpt4o <endpoint-id>` adopts an endpoint that already exists.
+`terraform apply` creates, validates, and activates the endpoint. Changing `pricing` updates it in place; changing the model, provider, base URL, upstream model ID, declarations, or `activate` workspace replaces it. `terraform destroy` disables and deletes it, and `terraform import openrouter_private_endpoint.gpt4o <endpoint-id>` adopts an endpoint that already exists.
 
 ## Private providers
 
 `provider_slug` names the provider an endpoint runs under. For a deployment hosted by a provider in the OpenRouter catalog, use that provider's slug (`openai`, `anthropic`, and so on). For a deployment you host yourself, or one with no public provider, create a private provider first and use its slug.
 
-A private provider records a name, a slug, an OpenAI-compatible HTTPS `base_url`, and a `data_policy`. Endpoints under it default to that base URL and data policy, so you only repeat them on an endpoint that differs. The provider is visible only to your organization. Other organizations can use the same name for their own private providers without seeing yours.
+A private provider records a name, a slug, an OpenAI-compatible HTTPS `base_url`, and a `data_policy`. New endpoints under it start with that base URL and data policy, so you only set them on an endpoint that differs. The provider is visible only to your organization, and other organizations can use the same name for their own private providers without seeing yours.
 
-Organization admins can add private providers from [Settings > Private Endpoints](https://openrouter.ai/settings/private-endpoints), or with the [Private Providers API](/api/api-reference/private-providers/list-private-providers) using the same organization Management API key:
+Organization admins add private providers from [Settings > Private Endpoints](https://openrouter.ai/settings/private-endpoints), or with the [Private Providers API](/api/api-reference/private-providers/list-private-providers) using the same organization Management API key:
 
 ```bash
 curl https://openrouter.ai/api/v1/private-providers \
@@ -123,29 +123,16 @@ curl https://openrouter.ai/api/v1/private-providers \
   }'
 ```
 
-Then create endpoints with `"provider_slug": "acme"`. The same slug works wherever a provider slug is accepted: BYOK keys, and `provider.order`, `only`, and `ignore` on a request.
+Then create endpoints with `"provider_slug": "acme"`. The slug works wherever a provider slug is accepted: BYOK keys, and `provider.order`, `only`, and `ignore` on a request.
 
-`GET`, `PATCH`, and `DELETE /api/v1/private-providers/{slug}` read, edit, and remove a provider. The name and slug are fixed at creation and may not match a public provider. `display_name` and `base_url` can be changed at any time; a `data_policy` change is refused (409) once OpenRouter pins the declared policy on one of the provider's endpoints. Deleting a provider returns `409 provider_has_endpoints` while any endpoint still runs under it, so delete the endpoints first. Each organization can have up to 5 private providers.
+`GET`, `PATCH`, and `DELETE /api/v1/private-providers/{slug}` read, edit, and remove a provider. The name and slug are fixed at creation and may not match a public provider. `display_name` and `base_url` can be changed at any time, and a new `base_url` applies only to endpoints created after the change; a `data_policy` change is refused (409) once OpenRouter pins the declared policy on one of the provider's endpoints. Deleting a provider returns `409 provider_has_endpoints` while any endpoint still runs under it, so delete the endpoints first. Each organization can have up to 5 private providers.
 
 ## Endpoint limit
 
-Each organization can have up to 10 private endpoints by default. Every endpoint you have created counts toward the limit, including endpoints that are still hidden because setup is not finished.
+Each organization can have up to 10 private endpoints by default. Every endpoint you have created counts toward the limit, including drafts.
 
-If you think you will need more than 10 private endpoints, talk to your OpenRouter account representative about raising the limit for your organization.
-
-## Who it's for
-
-Private Endpoints are a good fit if:
-
-- You have a dedicated or fine-tuned deployment of a model in the OpenRouter catalog that you want to route through OpenRouter.
-- Your endpoint is OpenAI-compatible, or close enough that we can integrate it quickly.
-- You want your team or organization to access these models through OpenRouter without exposing them publicly.
-- You're on the Enterprise Plan.
+If you need more than 10, talk to your OpenRouter account representative about raising the limit for your organization.
 
 ## In-Region Routing
 
-A private endpoint may be eligible for in-region routing when OpenRouter is able to derive a region from its base URL, or when you declare a data region during private-endpoint setup. Endpoints with neither are routed on the global `openrouter.ai` domain. See the [In-Region Routing guide](/guides/features/in-region-routing#byok-with-in-region-routing) for supported providers.
-
-## Requesting access
-
-Private Endpoints is an add-on to the Enterprise Plan. To enable it for your organization, reach out to your account representative. Once it is enabled, organization admins can add and manage endpoints from [Settings > Private Endpoints](https://openrouter.ai/settings/private-endpoints). Private providers are a separate add-on that is enabled the same way; without it, endpoints can only run under providers in the OpenRouter catalog.
+A private endpoint is eligible for in-region routing when OpenRouter can derive a region from its base URL, or when you declare a data region during setup. Endpoints with neither route on the global `openrouter.ai` domain. See the [In-Region Routing guide](/guides/features/in-region-routing#byok-with-in-region-routing) for supported providers.

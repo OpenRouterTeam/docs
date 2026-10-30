@@ -33,7 +33,7 @@ This is the index for every Jev resource on OpenRouter, and your entry point to 
   <Card title="Jev model page" icon="cube" href="https://openrouter.ai/typesafe/jev-1.14">
     Current pricing, context length, provider, and data policy.
   </Card>
-  <Card title="Decisions API reference" icon="code" href="/api/api-reference/alphadecisions/submit-a-decisions-questions-and-answers-request">
+  <Card title="Decisions API reference" icon="code" href="/api/api-reference/alphadecisions/submit-a-decisions-request">
     Full request and response schema for `POST /api/alpha/decisions`.
   </Card>
   <Card title="Jev SDK for TypeScript and Python" icon="puzzle-piece" href="/guides/community/typesafe-sdk">
@@ -112,7 +112,7 @@ Jev is exposed via two OpenRouter API surfaces, the Decisions API and the System
 | Decisions API | `POST https://openrouter.ai/api/alpha/decisions` | You are calling Jev from any language with plain HTTP, or through the OpenRouter [TypeScript](/client-sdks/typescript/sdks/decisions/README), [Python](/client-sdks/python/sdks/decisions/README), or [Go](/client-sdks/go/sdks/decisions/README) SDK |
 | System One API | `POST https://openrouter.ai/api/v1/systemone` | You already use the TypeSafe JavaScript or Python SDK and want to switch it to OpenRouter by changing the base URL |
 
-The [Jev SDK guide](/guides/community/typesafe-sdk) documents the System One path. The [Decisions API reference](/api/api-reference/alphadecisions/submit-a-decisions-questions-and-answers-request) covers the Decisions path.
+The [Jev SDK guide](/guides/community/typesafe-sdk) documents the System One path. The [Decisions API reference](/api/api-reference/alphadecisions/submit-a-decisions-request) covers the Decisions path.
 
 ### Cookbooks
 
@@ -127,6 +127,8 @@ Step-by-step recipes with runnable code:
 ### Interactive demos
 
 [Jev Lab](https://openrouter.ai/labs/jev) runs Jev live in the browser across several patterns, including [ticket triage](https://openrouter.ai/labs/jev/triage), [agent oversight](https://openrouter.ai/labs/jev/overseer), and [structured extraction](https://openrouter.ai/labs/jev/extract). Each demo shows you the state, the questions, and the raw probabilities Jev returns.
+
+[Decisions Lab](https://openrouter.ai/labs/decisions) runs Jev head to head with other models. In the [platform race](https://openrouter.ai/labs/decisions/race), two models each pick the next hop for their dog on a shared tower, and a scoreboard compares how they did.
 
 ### TypeSafe documentation
 
