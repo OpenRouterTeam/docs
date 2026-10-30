@@ -33,7 +33,9 @@ Management keys cannot be used to make API calls to OpenRouter's completion endp
 
 ### Scope and Permissions
 
-Management API keys operate at the account level and, for organizations, can only be created by **Organization Admins**. They are unscoped: one key covers administrative actions across all of the account's workspaces.
+Organization-scoped management API keys operate at the account level and, for organizations, can only be created by **Organization Admins**. One organization-scoped key covers administrative actions across all of the account's workspaces.
+
+Organizations can also create a **workspace-scoped** management key from a workspace's Keys page (Workspace Admins can issue them). A workspace-scoped key acts only inside its workspace: on the key management API (`/api/v1/keys`) it lists, creates, updates and deletes that workspace's API keys, and an omitted `workspace_id` means its own workspace. A request that names another workspace, or an organization-level endpoint, is refused with `403 Forbidden`. A read-only key of either scope can list and read but not write.
 
 - **Programmatic Management:** Endpoints for managing workspace members (`POST /api/v1/workspaces/{id}/members/add`), keys, and budgets require a Management API key. Members added via the API automatically inherit their organization role (Org Admins become Workspace Admins; Org Members become Workspace Members).
 - **Dashboard UI:** Within the OpenRouter dashboard, **Workspace Admins** can add members on the workspace Members page without requiring a Management API key. Assigning workspace roles there additionally requires a Pro or Enterprise plan.
