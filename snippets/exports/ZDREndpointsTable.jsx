@@ -38,6 +38,7 @@ export const ZDREndpointsTable = () => {
           <th>Model</th>
           <th>Provider</th>
           <th>Implicit Caching</th>
+          <th>Safety Retention</th>
         </tr>
       </thead>
       <tbody>
@@ -46,6 +47,7 @@ export const ZDREndpointsTable = () => {
             <td>{endpoint.model_name}</td>
             <td>{endpoint.provider_name}</td>
             <td>{endpoint.supports_implicit_caching ? "Yes" : "No"}</td>
+            <td>{endpoint.safety_retention === undefined ? "—" : endpoint.safety_retention ? "Yes" : "No"}</td>
           </tr>
         ))}
       </tbody>
