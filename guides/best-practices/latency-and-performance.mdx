@@ -51,10 +51,13 @@ When using [model routing](/guides/routing/routers/auto-router) or [provider rou
 When building interactive developer tools, coding agents, or low-latency conversational apps, total perceived latency is governed by two separate phases:
 
 * **Time to First Token (TTFT):** Network transit + provider queue wait time + prompt prefill.
-* **Token Throughput (TPS):** Decode and generation streaming speed.
+* **Streaming time:** The time from the first token to the last, set by the provider's decode speed.
 
-```
-Total Latency = TTFT (Network + Queue + Prefill) + (Output Tokens / Generation TPS)
+OpenRouter's **throughput (TPS)** metric includes time to first token. For an individual request, it is output tokens divided by the time from sending the request to the provider until the response ends. Holding decode speed and other conditions constant, a slow first token lowers TPS, and shorter outputs have lower per-request TPS. Model pages, `sort: "throughput"`, and `preferred_min_throughput` use aggregated throughput statistics from eligible completions; very short completions are excluded from those aggregates. The formula below describes an individual request, not a latency prediction obtained by dividing your output length by a displayed provider percentile.
+
+```text
+TPS ≈ Output Tokens / (TTFT + Streaming Time)
+Total Latency ≈ TTFT + Streaming Time ≈ Output Tokens / TPS
 ```
 
 Below are drop-in request configurations for common developer experience (DX) optimization scenarios. See the [provider routing guide](/guides/routing/provider-selection) for the full API reference on `sort`, `partition`, `preferred_max_latency`, and `preferred_min_throughput`.
