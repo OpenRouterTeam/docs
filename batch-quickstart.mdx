@@ -138,6 +138,7 @@ On Google Vertex, image URLs must use HTTPS, end in `.png`, `.jpg`, `.jpeg`, `.w
 | Image or audio output (`modalities`, `audio`, `image_config`) | Use the sync API. |
 | OpenRouter web search (`:online`, the `web` plugin, `web_search_options`) | Use the provider's own search tool, for example OpenAI `web_search` on `/v1/responses` or Anthropic `web_search_20250305` on `/v1/messages`. Google Vertex rejects web search tools. |
 | `stream: true`, `speed`, `deferred_tools`, Anthropic beta features | Remove them, or use the sync API. |
+| `access_programs.cyber` other than `standard` (OpenAI Daybreak programs) | Supported only on BYOK OpenAI requests served on the Responses API, using your own OpenAI key enrolled in that program. Remove the field on every other batch; the line is rejected before anything reaches the provider. |
 | A request with no input, or a max output token cap below 1 | Fix the request. |
 | A web search tool with an `engine` other than `auto` or `native` | Remove `engine`, or set it to `native`. |
 
