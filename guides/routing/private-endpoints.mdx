@@ -106,7 +106,7 @@ resource "openrouter_private_endpoint" "gpt4o" {
 
 `provider_slug` names the provider an endpoint runs under. For a deployment hosted by a provider in the OpenRouter catalog, use that provider's slug (`openai`, `anthropic`, and so on). For a deployment you host yourself, or one with no public provider, create a private provider first and use its slug.
 
-A private provider records a name, a slug, an OpenAI-compatible HTTPS `base_url`, and a `data_policy`. New endpoints under it start with that base URL and data policy, so you only set them on an endpoint that differs. The provider is visible only to your organization, and other organizations can use the same name for their own private providers without seeing yours.
+A private provider records a name, a slug, and an OpenAI-compatible HTTPS `base_url`. New endpoints under it start with that base URL, so you only set one on an endpoint that differs. The provider is visible only to your organization, and other organizations can use the same name for their own private providers without seeing yours. Because only your organization can route to it, OpenRouter records a newly created private provider as retaining no prompts, training on none, and publishing none, so its endpoints stay eligible under every data-policy setting and guardrail your organization applies; OpenRouter does not verify the upstream's actual data handling. A private provider created before this policy existed keeps the policy it was created with, and the dashboard and management API no longer edit it; ask OpenRouter support to change it. An explicit OpenRouter override on an endpoint always wins, and video endpoints are classified as retaining.
 
 Organization admins add private providers from [Settings > Private Endpoints](https://openrouter.ai/settings/private-endpoints), or with the [Private Providers API](/api/api-reference/private-providers/list-private-providers) using the same organization Management API key:
 
@@ -118,14 +118,13 @@ curl https://openrouter.ai/api/v1/private-providers \
     "name": "Acme",
     "slug": "acme",
     "display_name": "Acme",
-    "base_url": "https://inference.example.com/v1",
-    "data_policy": { "training": false, "retains_prompts": false, "prompt_retention_days": null }
+    "base_url": "https://inference.example.com/v1"
   }'
 ```
 
 Then create endpoints with `"provider_slug": "acme"`. The slug works wherever a provider slug is accepted: BYOK keys, and `provider.order`, `only`, and `ignore` on a request.
 
-`GET`, `PATCH`, and `DELETE /api/v1/private-providers/{slug}` read, edit, and remove a provider. The name and slug are fixed at creation and may not match a public provider. `display_name` and `base_url` can be changed at any time, and a new `base_url` applies only to endpoints created after the change; a `data_policy` change is refused (409) once OpenRouter pins the declared policy on one of the provider's endpoints. Deleting a provider returns `409 provider_has_endpoints` while any endpoint still runs under it, so delete the endpoints first. Each organization can have up to 5 private providers.
+`GET`, `PATCH`, and `DELETE /api/v1/private-providers/{slug}` read, edit, and remove a provider. The name and slug are fixed at creation and may not match a public provider. `display_name` and `base_url` can be changed at any time, and a new `base_url` applies only to endpoints created after the change. Deleting a provider returns `409 provider_has_endpoints` while any endpoint still runs under it, so delete the endpoints first. Each organization can have up to 5 private providers.
 
 ## Endpoint limit
 
