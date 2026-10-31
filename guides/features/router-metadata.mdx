@@ -31,18 +31,18 @@ Opt in by sending the `X-OpenRouter-Metadata` request header with the value `ena
 <CodeGroup>
 
 ```bash title="cURL" lines
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer {{API_KEY_REF}}" \
   -H "Content-Type: application/json" \
   -H "X-OpenRouter-Metadata: enabled" \
   -d '{
     "model": "openai/gpt-4o-mini",
-    "messages": [{ "role": "user", "content": "Hello" }]
+    "input": "Hello"
   }'
 ```
 
 ```typescript title="TypeScript" lines
-const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     Authorization: `Bearer {{API_KEY_REF}}`,
@@ -51,7 +51,7 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
   },
   body: JSON.stringify({
     model: 'openai/gpt-4o-mini',
-    messages: [{ role: 'user', content: 'Hello' }],
+    input: 'Hello',
   }),
 });
 ```
@@ -60,7 +60,7 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 import requests
 
 response = requests.post(
-    'https://openrouter.ai/api/v1/chat/completions',
+    'https://openrouter.ai/api/v1/responses',
     headers={
         'Authorization': f'Bearer {{API_KEY_REF}}',
         'Content-Type': 'application/json',
@@ -68,7 +68,7 @@ response = requests.post(
     },
     json={
         'model': 'openai/gpt-4o-mini',
-        'messages': [{'role': 'user', 'content': 'Hello'}],
+        'input': 'Hello',
     },
 )
 ```
@@ -105,8 +105,10 @@ When opted in, successful responses include an `openrouter_metadata` object alon
 ```json expandable lines
 {
   "id": "gen-...",
+  "object": "response",
   "model": "openai/gpt-4o-mini",
-  "choices": [...],
+  "status": "completed",
+  "output": [...],
   "usage": {...},
   "openrouter_metadata": {
     "requested": "openai/gpt-4o-mini",

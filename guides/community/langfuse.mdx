@@ -77,18 +77,16 @@ client = openai.OpenAI(
     }
 )
 
-# Make a chat completion request
-response = client.chat.completions.create(
+# Make a Responses API request
+response = client.responses.create(
     model="anthropic/claude-sonnet-4.6",
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Tell me a fun fact about space."}
-    ],
+    instructions="You are a helpful assistant.",
+    input="Tell me a fun fact about space.",
     name="fun-fact-request"  # Optional: Name of the generation in Langfuse
 )
 
 # Print the assistant's reply
-print(response.choices[0].message.content)
+print(response.output_text)
 ```
 
 </CodeGroup>
@@ -112,11 +110,11 @@ client = openai.OpenAI(
 def analyze_text(text: str):
     # First LLM call: Summarize the text
     summary_response = summarize_text(text)
-    summary = summary_response.choices[0].message.content
+    summary = summary_response.output_text
 
     # Second LLM call: Analyze the sentiment of the summary
     sentiment_response = analyze_sentiment(summary)
-    sentiment = sentiment_response.choices[0].message.content
+    sentiment = sentiment_response.output_text
 
     return {
         "summary": summary,
@@ -125,23 +123,19 @@ def analyze_text(text: str):
 
 @observe()  # Nested function to be traced
 def summarize_text(text: str):
-    return client.chat.completions.create(
+    return client.responses.create(
         model="openai/gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You summarize texts in a concise manner."},
-            {"role": "user", "content": f"Summarize the following text:\n{text}"}
-        ],
+        instructions="You summarize texts in a concise manner.",
+        input=f"Summarize the following text:\n{text}",
         name="summarize-text"
     )
 
 @observe()  # Nested function to be traced
 def analyze_sentiment(summary: str):
-    return client.chat.completions.create(
+    return client.responses.create(
         model="openai/gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You analyze the sentiment of texts."},
-            {"role": "user", "content": f"Analyze the sentiment of the following summary:\n{summary}"}
-        ],
+        instructions="You analyze the sentiment of texts.",
+        input=f"Analyze the sentiment of the following summary:\n{summary}",
         name="analyze-sentiment"
     )
 

@@ -32,7 +32,7 @@ On the 50-question benchmark in the worked example below, the cascade shipped th
 Prerequisites:
 
 - Your existing TypeScript app runs on Node.js or Bun.
-- Your code makes OpenRouter chat completions using retrieved context.
+- Your code makes OpenRouter [Responses API](/api_reference/responses/overview) requests using retrieved context.
 - You've configured `OPENROUTER_API_KEY`.
 - You have `@openrouter/sdk` installed.
 - You've typed `process.env` through your runtime's type definitions.
@@ -43,7 +43,7 @@ Prerequisites:
 
 Your existing OpenRouter client, system prompt, and retrieval are reused, but the system prompt must now explicitly instruct the model to answer only from the excerpts and to say so when they don't cover the question. The client and Northwind prompt below are shown so the snippets run as-is. Define `DRAFT_MODEL` as `~openai/gpt-luna-latest` and `ESCALATION_MODEL` as `~openai/gpt-astra-latest`. The `~` model IDs are OpenRouter aliases that resolve to a concrete model at request time.
 
-The `draftAnswer` flow sends a chat request with the system prompt and a user message that includes the help center excerpts formatted as numbered `[i]` entries, followed by the customer question. It awaits the response and throws if the response is a stream, since Jev needs the complete answer text in step 2. Otherwise it extracts `result.choices[0]?.message.content` and verifies it's a string. Hold on to the same `excerpts` array, because Jev reads it in step 2.
+The `draftAnswer` flow sends a Responses request with the system prompt as `instructions` and an `input` that includes the help center excerpts formatted as numbered `[i]` entries, followed by the customer question. It awaits the response and throws if the response is a stream or did not complete, since Jev needs the complete answer text in step 2. Otherwise it extracts the `output_text` part of the `message` item in `result.output` and verifies it's a string. Hold on to the same `excerpts` array, because Jev reads it in step 2.
 
 ```typescript lines
 import { OpenRouter } from '@openrouter/sdk';
@@ -57,22 +57,22 @@ const SYSTEM_PROMPT =
   'You are the support assistant for Northwind. Answer only from the help center excerpts provided. If they do not cover the question, say so and offer to connect the customer with support.';
 
 async function draftAnswer(model: string, question: string, excerpts: string[]): Promise<string> {
-  const result = await openrouter.chat.send({
-    chatRequest: {
+  const result = await openrouter.responses.send({
+    responsesRequest: {
       model,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        {
-          role: 'user',
-          content: `Help center excerpts:\n${excerpts.map((text, i) => `[${i + 1}] ${text}`).join('\n')}\n\nCustomer question: ${question}`,
-        },
-      ],
+      instructions: SYSTEM_PROMPT,
+      input: `Help center excerpts:\n${excerpts.map((text, i) => `[${i + 1}] ${text}`).join('\n')}\n\nCustomer question: ${question}`,
     },
   });
-  if (result instanceof ReadableStream) {
+  if (!('output' in result)) {
     throw new Error('Expected a non-streaming response');
   }
-  const content = result.choices[0]?.message.content;
+  if (result.status !== 'completed') {
+    throw new Error(result.error?.message ?? `Draft response ended as ${result.status}`);
+  }
+  const content = result.output
+    .find((item) => item.type === 'message')
+    ?.content.find((part) => part.type === 'output_text')?.text;
   if (typeof content !== 'string') {
     throw new Error('Expected text content');
   }
@@ -88,7 +88,7 @@ Every tier is paid. The cost per question is your cheap draft plus one Jev check
 
 The state object has three fields: `help_center_excerpts`, `customer_question`, and `assistant_answer`. The one choice question has three labels. `supported` means the draft addresses the question and every fact, number, and policy in it appears in the excerpts. `unsupported` means the draft states something the excerpts don't contain or contradict, or answers a different question. `declined` means the draft says the excerpts don't cover the question and adds no facts of its own.
 
-The Decisions API is at `https://openrouter.ai/api/alpha/decisions`, outside the `/api/v1` prefix the chat client uses. Use a separate OpenRouter instance with `serverURL` set to `https://openrouter.ai`, since the default SDK base URL doesn't work for this path. `verifyAnswer` returns a verdict: the chosen label, a confidence number, and an object with a probability per label.
+The Decisions API is at `https://openrouter.ai/api/alpha/decisions`, outside the `/api/v1` prefix the Responses client uses. Use a separate OpenRouter instance with `serverURL` set to `https://openrouter.ai`, since the default SDK base URL doesn't work for this path. `verifyAnswer` returns a verdict: the chosen label, a confidence number, and an object with a probability per label.
 
 ```typescript lines
 const decisions = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY, serverURL: 'https://openrouter.ai' });
@@ -139,7 +139,7 @@ The acceptance threshold is `ACCEPT_CONFIDENCE = 0.8`. The `CascadeResult` objec
 
 `answerWithCascade` loops over `[DRAFT_MODEL, ESCALATION_MODEL]`. Each iteration runs `draftAnswer` then `verifyAnswer` and appends the verdict. Send if the verdict is `supported` and confidence is at or above `ACCEPT_CONFIDENCE`: `route` is `send`, `model` is the current tier, and `verdicts` has one entry from the draft tier. Hand off immediately if the verdict is `declined`: `route` is `handoff`, there's no frontier call, and `answer` keeps the draft's wording for human reuse. Any other verdict gets one escalation. If the frontier answer fails too, `route` is `handoff` with the frontier model, its rejected answer, and both verdicts.
 
-Call `answerWithCascade` where your app currently calls the chat completion. On `send`, reply with `answer`. On `handoff`, create a ticket or queue item and attach `answer` and `verdicts` for human handling.
+Call `answerWithCascade` where your app currently calls the model. On `send`, reply with `answer`. On `handoff`, create a ticket or queue item and attach `answer` and `verdicts` for human handling.
 
 ```typescript lines
 const ACCEPT_CONFIDENCE = 0.8;

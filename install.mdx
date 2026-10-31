@@ -24,14 +24,14 @@ I want you to install OpenRouter for me. Execute all the steps below autonomousl
 
 OBJECTIVE: Install the OpenRouter SDK and verify it works by making an API call to an AI model.
 
-DONE WHEN: You have successfully made a chat completion request and received a response from an AI model through OpenRouter.
+DONE WHEN: You have successfully made a request to the [Responses API](https://openrouter.ai/docs/api_reference/responses/overview) and received a response from an AI model through OpenRouter.
 
 ## TODO
 
 - [ ] Get an OpenRouter API key
 - [ ] Install the OpenRouter SDK (TypeScript or Python)
 - [ ] Set up the API key as an environment variable
-- [ ] Create a test script that makes a chat completion request
+- [ ] Create a test script that makes a Responses API request
 - [ ] Run the script and verify a response is returned
 
 ## Get an API key
@@ -96,7 +96,7 @@ set OPENROUTER_API_KEY=sk-or-v1-YOUR-API-KEY
 
 ## Create a test script
 
-Your task is to create a test script that makes a chat completion request and outputs the result.
+Your task is to create a test script that makes a Responses API request and outputs the result.
 
 **TypeScript - create `test_openrouter.ts`:**
 
@@ -108,24 +108,20 @@ const openRouter = new OpenRouter({
 });
 
 async function main() {
-  const completion = await openRouter.chat.send({
-    chatRequest: {
+  const response = await openRouter.responses.send({
+    responsesRequest: {
       model: 'openai/gpt-4o-mini',
-      messages: [
-        {
-          role: 'user',
-          content: 'Say "Hello from OpenRouter!" and nothing else.',
-        },
-      ],
+      input: 'Say "Hello from OpenRouter!" and nothing else.',
       stream: false,
     },
   });
 
-  if (completion instanceof ReadableStream) {
+  if (!('output' in response)) {
     throw new Error('Expected a non-streaming response');
   }
 
-  console.log(completion.choices[0].message.content);
+  const message = response.output.find((item) => item.type === 'message');
+  console.log(message?.content.find((part) => part.type === 'output_text')?.text);
 }
 
 main();
@@ -139,17 +135,13 @@ from openrouter import OpenRouter
 
 client = OpenRouter(api_key=os.environ.get("OPENROUTER_API_KEY"))
 
-completion = client.chat.send(
+response = client.responses.send(
     model="openai/gpt-4o-mini",
-    messages=[
-        {
-            "role": "user",
-            "content": "Say 'Hello from OpenRouter!' and nothing else."
-        }
-    ]
+    input="Say 'Hello from OpenRouter!' and nothing else.",
 )
 
-print(completion.choices[0].message.content)
+message = next(item for item in response.output if item.type == "message")
+print(next(part.text for part in message.content if part.type == "output_text"))
 ```
 
 ## Run the test
@@ -189,17 +181,12 @@ const openai = new OpenAI({
 });
 
 async function main() {
-  const completion = await openai.chat.completions.create({
+  const response = await openai.responses.create({
     model: 'openai/gpt-4o-mini',
-    messages: [
-      {
-        role: 'user',
-        content: 'Say "Hello from OpenRouter!" and nothing else.',
-      },
-    ],
+    input: 'Say "Hello from OpenRouter!" and nothing else.',
   });
 
-  console.log(completion.choices[0].message.content);
+  console.log(response.output_text);
 }
 
 main();
@@ -220,17 +207,12 @@ client = OpenAI(
     api_key=os.environ.get("OPENROUTER_API_KEY"),
 )
 
-completion = client.chat.completions.create(
+response = client.responses.create(
     model="openai/gpt-4o-mini",
-    messages=[
-        {
-            "role": "user",
-            "content": "Say 'Hello from OpenRouter!' and nothing else."
-        }
-    ]
+    input="Say 'Hello from OpenRouter!' and nothing else.",
 )
 
-print(completion.choices[0].message.content)
+print(response.output_text)
 ```
 
 ## Alternative: Using curl
@@ -238,17 +220,12 @@ print(completion.choices[0].message.content)
 You can also test the API directly with curl:
 
 ```bash lines
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -d '{
   "model": "openai/gpt-4o-mini",
-  "messages": [
-    {
-      "role": "user",
-      "content": "Say Hello from OpenRouter! and nothing else."
-    }
-  ]
+  "input": "Say Hello from OpenRouter! and nothing else."
 }'
 ```
 
@@ -266,7 +243,7 @@ Once installation is verified, you can explore these additional capabilities:
 
 For full documentation, visit https://openrouter.ai/docs
 
-EXECUTE NOW: Complete the above TODO list to achieve: Successfully made a chat completion request and received a response from an AI model through OpenRouter.
+EXECUTE NOW: Complete the above TODO list to achieve: Successfully made a Responses API request and received a response from an AI model through OpenRouter.
 
 ---
 

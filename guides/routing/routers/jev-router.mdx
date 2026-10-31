@@ -33,14 +33,12 @@ The available models and routing policies can change over time. A cost tier is a
 Set `model` to `typesafe/jev-router`. No plugin is required:
 
 ```bash title="cURL" lines
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "typesafe/jev-router",
-    "messages": [
-      {"role": "user", "content": "Explain the difference between a mutex and a semaphore."}
-    ]
+    "input": "Explain the difference between a mutex and a semaphore."
   }'
 ```
 
@@ -63,7 +61,7 @@ All fields except `id` are optional. Unknown fields and invalid values return `4
 <CodeGroup>
 
 ```typescript title="TypeScript (fetch)" expandable lines
-const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -77,16 +75,16 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         cost_tier: 'medium',
       },
     ],
-    messages: [{ role: 'user', content: 'Summarize this incident report.' }],
+    input: 'Summarize this incident report.',
   }),
 });
 
-const completion = await response.json();
-console.log('Model used:', completion.model);
+const data = await response.json();
+console.log('Model used:', data.model);
 ```
 
 ```bash title="cURL" lines
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -97,9 +95,7 @@ curl https://openrouter.ai/api/v1/chat/completions \
         "cost_tier": "medium"
       }
     ],
-    "messages": [
-      {"role": "user", "content": "Summarize this incident report."}
-    ]
+    "input": "Summarize this incident report."
   }'
 ```
 
@@ -130,11 +126,11 @@ The router normally chooses reasoning effort. You can supply the standard top-le
   "model": "typesafe/jev-router",
   "plugins": [{"id": "jev-router", "cost_tier": "medium"}],
   "reasoning": {"effort": "high"},
-  "messages": [{"role": "user", "content": "Analyze the tradeoffs in this design."}]
+  "input": "Analyze the tradeoffs in this design."
 }
 ```
 
-The legacy top-level `reasoning_effort` field is also accepted. The router can select a different effort or adapt it across turns, so a hint is not a guarantee of the setting sent to the final model. `reasoning.max_tokens` and `reasoning.mode: "pro"` are not supported and return `400`. See [Reasoning tokens](/guides/best-practices/reasoning-tokens) for the standard reasoning fields.
+On Chat Completions, the legacy top-level `reasoning_effort` field is also accepted. The router can select a different effort or adapt it across turns, so a hint is not a guarantee of the setting sent to the final model. `reasoning.max_tokens` and `reasoning.mode: "pro"` are not supported and return `400`. See [Reasoning tokens](/guides/best-practices/reasoning-tokens) for the standard reasoning fields.
 
 ## Model preferences
 
@@ -190,14 +186,14 @@ The response's `model` field identifies the model that served the request. Send 
 | `max_fallback` | `"deep"` when a request that would get an advisor was served without one. |
 
 ```bash title="cURL" lines
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -H "X-OpenRouter-Metadata: enabled" \
   -d '{
     "model": "typesafe/jev-router",
     "plugins": [{"id": "jev-router", "cost_tier": "medium"}],
-    "messages": [{"role": "user", "content": "Reply with ok"}]
+    "input": "Reply with ok"
   }' | jq '.openrouter_metadata.pipeline[] | select(.name == "jev-router") | .data | {resolved_models, candidates, reason, pipeline, advisor_model}'
 ```
 
@@ -229,7 +225,7 @@ The scope is the model author, so an OpenAI model may still be served by another
 ```json
 {
   "model": "anthropic/auto",
-  "messages": [{ "role": "user", "content": "Explain this query plan." }],
+  "input": "Explain this query plan.",
   "plugins": [{ "id": "jev-router", "excluded_models": ["~anthropic/claude-opus-latest"] }]
 }
 ```

@@ -42,14 +42,12 @@ const openai = new OpenAI({
 })
 
 async function main() {
-  const completion = await openai.chat.completions.create({
+  const response = await openai.responses.create({
     model: "openai/gpt-4o",
-    messages: [
-      { role: "user", content: "Say this is a test" }
-    ],
+    input: "Say this is a test",
   })
 
-  console.log(completion.choices[0].message)
+  console.log(response.output_text)
 }
 main();
 ```
@@ -64,7 +62,7 @@ client = OpenAI(
   api_key=getenv("OPENROUTER_API_KEY"),
 )
 
-completion = client.chat.completions.create(
+response = client.responses.create(
   model="openai/gpt-4o",
   extra_headers={
     "HTTP-Referer": "<YOUR_SITE_URL>", # Optional. Site URL for rankings on openrouter.ai.
@@ -77,14 +75,9 @@ completion = client.chat.completions.create(
     #   "mistralai/mixtral-8x22b-instruct"
     # ]
   # },
-  messages=[
-    {
-      "role": "user",
-      "content": "Say this is a test",
-    },
-  ],
+  input="Say this is a test",
 )
-print(completion.choices[0].message.content)
+print(response.output_text)
 ```
 
 </CodeGroup>

@@ -86,12 +86,12 @@ After adding OpenRouter, confirm everything is working:
 stripe projects status
 
 # Test the API key
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -d '{
     "model": "~openai/gpt-mini-latest",
-    "messages": [{"role": "user", "content": "Hello!"}]
+    "input": "Hello!"
   }'
 ```
 

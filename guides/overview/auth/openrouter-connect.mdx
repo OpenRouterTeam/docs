@@ -201,13 +201,13 @@ Pass `workspace_id` to create the key in a specific workspace you created for th
 Send inference requests with an API key that belongs to the customer organization. Set `user` to your identifier for the customer's end user. OpenRouter applies the customer organization's controls, routes the request, and reports the cost in the response for both BYOK and non-BYOK requests.
 
 ```bash
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $CUSTOMER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "openai/gpt-5-mini",
     "user": "acme_employee_1042",
-    "messages": [{ "role": "user", "content": "Hello" }]
+    "input": "Hello"
   }'
 ```
 

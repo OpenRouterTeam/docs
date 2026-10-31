@@ -17,7 +17,9 @@ icon: book-open
 sidebarTitle: Overview
 ---
 
-OpenRouter's request and response schemas are very similar to the OpenAI Chat API, with a few small differences. At a high level, **OpenRouter normalizes the schema across models and providers** so you only need to learn one.
+OpenRouter's request and response schemas are very similar to OpenAI's APIs, with a few small differences. At a high level, **OpenRouter normalizes the schema across models and providers** so you only need to learn one.
+
+OpenRouter supports two request shapes: the [Responses API](/api_reference/responses/overview) (`POST /api/v1/responses`) and the Chat Completions API (`POST /api/v1/chat/completions`). Where this page shows both, the Responses API comes first. The TypeScript schemas below describe Chat Completions; the Responses API schema is in the [Responses API reference](/api_reference/responses/overview).
 
 ## OpenAPI specification
 
@@ -30,9 +32,22 @@ These specifications can be used with tools like [Swagger UI](https://swagger.io
 
 ## Requests
 
+### Responses API request format
+
+A Responses API request takes `input` (a string or an array of input items), optional `instructions`, and the same routing fields as Chat Completions (`models`, `provider`, `plugins`, `user`). The full request schema is in the [Responses API reference](/api_reference/responses/overview) and the [OpenAPI specification](#openapi-specification).
+
+```json lines
+{
+  "model": "openai/gpt-5.2",
+  "instructions": "Answer in one sentence.",
+  "input": "What is the meaning of life?",
+  "max_output_tokens": 256
+}
+```
+
 ### Completions request format
 
-Here is the request schema as a TypeScript type. This will be the body of your `POST` request to the `/api/v1/chat/completions` endpoint (see the [quick start](/quickstart) above for an example).
+Here is the Chat Completions request schema as a TypeScript type. This will be the body of your `POST` request to the `/api/v1/chat/completions` endpoint. The Responses API request format is above.
 
 For a complete list of parameters, see the [Parameters](/api_reference/parameters).
 
@@ -212,7 +227,23 @@ OpenRouter allows you to specify some optional headers to identify your app and 
 
 <CodeGroup>
 
-```typescript title="TypeScript" lines
+```typescript title="Responses API" lines
+fetch('https://openrouter.ai/api/v1/responses', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <OPENROUTER_API_KEY>',
+    'HTTP-Referer': '<YOUR_SITE_URL>', // Optional. Site URL for rankings on openrouter.ai.
+    'X-OpenRouter-Title': '<YOUR_SITE_NAME>', // Optional. Site title for rankings on openrouter.ai.
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'openai/gpt-5.2',
+    input: 'What is the meaning of life?',
+  }),
+});
+```
+
+```typescript title="Chat Completions" lines
 fetch('https://openrouter.ai/api/v1/chat/completions', {
   method: 'POST',
   headers: {
@@ -257,11 +288,28 @@ fetch('https://openrouter.ai/api/v1/chat/completions', {
 
 OpenRouter supports asking models to complete a partial response. This can be useful for guiding models to respond in a certain way.
 
-To use this features, simply include a message with `role: "assistant"` at the end of your `messages` array.
+To use this feature, simply include a message with `role: "assistant"` at the end of your `input` array (Responses API) or `messages` array (Chat Completions).
 
 <CodeGroup>
 
-```typescript title="TypeScript" lines
+```typescript title="Responses API" lines
+fetch('https://openrouter.ai/api/v1/responses', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <OPENROUTER_API_KEY>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'openai/gpt-5.2',
+    input: [
+      { role: 'user', content: 'What is the meaning of life?' },
+      { role: 'assistant', content: "I'm not sure, but my best guess is" },
+    ],
+  }),
+});
+```
+
+```typescript title="Chat Completions" lines
 fetch('https://openrouter.ai/api/v1/chat/completions', {
   method: 'POST',
   headers: {
@@ -281,6 +329,30 @@ fetch('https://openrouter.ai/api/v1/chat/completions', {
 </CodeGroup>
 
 ## Responses
+
+### Responses API response format
+
+A Responses API response carries the generated content as items in the `output` array: `message` items hold `output_text` content parts, and `reasoning`, `function_call`, and server-tool items (such as `openrouter:web_search`) appear as their own entries. Token counts are in `usage.input_tokens`, `usage.output_tokens`, and `usage.total_tokens`. The full schema is in the [Responses API reference](/api_reference/responses/basic-usage#response-format).
+
+```json lines
+{
+  "id": "resp_1234567890",
+  "object": "response",
+  "created_at": 1234567890,
+  "model": "openai/gpt-5.2",
+  "status": "completed",
+  "output": [
+    {
+      "type": "message",
+      "id": "msg_abc123",
+      "status": "completed",
+      "role": "assistant",
+      "content": [{ "type": "output_text", "text": "The meaning of life is...", "annotations": [] }]
+    }
+  ],
+  "usage": { "input_tokens": 12, "output_tokens": 45, "total_tokens": 57 }
+}
+```
 
 ### CompletionsResponse format
 
@@ -443,7 +515,7 @@ Some models and providers may have additional finish reasons. The raw finish_rea
 
 ### Querying cost and stats
 
-The token counts returned in the completions API response are calculated using the model's native tokenizer. Credit usage and model pricing are based on these native token counts.
+The token counts returned in the API response are calculated using the model's native tokenizer. Credit usage and model pricing are based on these native token counts.
 
 You can also use the returned `id` to query for the generation stats (including token counts and cost) after the request is complete via the `/api/v1/generation` endpoint. This is useful for auditing historical usage or when you need to fetch stats asynchronously.
 
@@ -462,4 +534,4 @@ const stats = await generation.json();
 
 Please see the [Generation](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation) API reference for the full response shape.
 
-Note that token counts are also available in the `usage` field of the response body for non-streaming completions.
+Note that token counts are also available in the `usage` field of the response body for non-streaming requests.

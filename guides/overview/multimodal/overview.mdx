@@ -67,12 +67,12 @@ Transcribe audio into text using a dedicated endpoint. OpenRouter supports multi
 
 ## Getting Started
 
-Most multimodal inputs use the same `/api/v1/chat/completions` endpoint with the `messages` parameter. Different content types are specified in the message content array:
+Most multimodal inputs use the same [Responses API](/api_reference/responses/overview) endpoint, `/api/v1/responses`, with the `input` parameter. Different content types are specified in the message content array:
 
-- **Images**: Use `image_url` content type
-- **PDFs**: Use `file` content type with PDF data
+- **Images**: Use `input_image` content type
+- **PDFs**: Use `input_file` content type with PDF data
 - **Audio**: Use `input_audio` content type
-- **Video**: Use `video_url` content type
+- **Video**: Use `input_video` content type
 
 You can combine multiple modalities in a single request, and the number of files you can send varies by provider and model.
 
@@ -123,7 +123,7 @@ OpenRouter supports both **direct URLs** and **base64-encoded data** for multimo
     - **Images**: Typically priced per image or as input tokens
     - **PDFs**: Free text extraction, paid OCR processing, or native model pricing
     - **Audio input**: Priced as input tokens based on duration
-    - **Audio output**: Priced as completion tokens
+    - **Audio output**: Priced as output tokens
     - **Video**: Priced as input tokens based on duration and resolution
   </Accordion>
   <Accordion title="Which models support video input?">

@@ -55,7 +55,7 @@ const INVOICE_FIELDS = Object.keys(INVOICE_ENTITIES) as InvoiceField[];
 
 ## 2. Call Extract
 
-Send the invoice text as the user message. Field descriptions go in `provider.options` (the part of an OpenRouter request that carries provider-specific settings), under `scaledown.entities`. Extract replies with a JSON string in `message.content`. Inside is an `entities` array with one entry per field it found: the field name as `type`, the matching invoice text as `text`, the `start` and `end` character positions of that text in your input, and a `confidence`. The code parses the string and validates it with Zod before using it.
+Send the invoice text as the [Responses API](/api_reference/responses/overview) `input`. Field descriptions go in `provider.options` (the part of an OpenRouter request that carries provider-specific settings), under `scaledown.entities`. Extract replies with a JSON string in the `output_text` part of the `message` item in `output`. Inside is an `entities` array with one entry per field it found: the field name as `type`, the matching invoice text as `text`, the `start` and `end` character positions of that text in your input, and a `confidence`. The code parses the string and validates it with Zod before using it.
 
 ```typescript lines
 const EntitySchema = z.object({
@@ -68,14 +68,19 @@ const EntitySchema = z.object({
 type Entity = z.infer<typeof EntitySchema>;
 const ExtractionSchema = z.object({ entities: z.array(EntitySchema) });
 
-const ChatCompletionSchema = z.object({
-  choices: z.array(z.object({ message: z.object({ content: z.string() }) })).min(1),
-  usage: z.object({ prompt_tokens: z.number(), cost: z.number() }),
+const ResponseSchema = z.object({
+  output: z.array(
+    z.object({
+      type: z.string(),
+      content: z.array(z.object({ type: z.string(), text: z.string().optional() })).optional(),
+    }),
+  ),
+  usage: z.object({ input_tokens: z.number(), cost: z.number() }),
 });
-type Usage = z.infer<typeof ChatCompletionSchema>['usage'];
+type Usage = z.infer<typeof ResponseSchema>['usage'];
 
 export async function extractInvoice(text: string): Promise<{ entities: Entity[]; usage: Usage }> {
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const res = await fetch('https://openrouter.ai/api/v1/responses', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -83,7 +88,7 @@ export async function extractInvoice(text: string): Promise<{ entities: Entity[]
     },
     body: JSON.stringify({
       model: EXTRACT_MODEL,
-      messages: [{ role: 'user', content: text }],
+      input: text,
       provider: { options: { scaledown: { entities: INVOICE_ENTITIES } } },
     }),
     signal: AbortSignal.timeout(60_000),
@@ -91,8 +96,15 @@ export async function extractInvoice(text: string): Promise<{ entities: Entity[]
   if (!res.ok) {
     throw new Error(`extract ${res.status}: ${await res.text()}`);
   }
-  const body = ChatCompletionSchema.parse(await res.json());
-  const extraction = ExtractionSchema.parse(JSON.parse(body.choices[0]!.message.content));
+  const body = ResponseSchema.parse(await res.json());
+  const outputText = [...body.output]
+    .reverse()
+    .find((item) => item.type === 'message')
+    ?.content?.find((part) => part.type === 'output_text')?.text;
+  if (outputText === undefined) {
+    throw new Error('extract returned no output_text');
+  }
+  const extraction = ExtractionSchema.parse(JSON.parse(outputText));
   return { entities: extraction.entities, usage: body.usage };
 }
 ```
@@ -243,12 +255,12 @@ for (const [name, text] of Object.entries(INVOICES)) {
 **Captured output.** One run of the loop above, one line per invoice:
 
 ```text lines
-{"name":"table","post":true,"fields":{"vendor":"Northwind Traders GmbH","invoice_number":"NW-2026-0417","subtotal":"EUR 1,820.00","vat":"EUR 345.80","total":"EUR 2,165.80","due_date":"2026-10-30"},"usage":{"prompt_tokens":384,"cost":0.00001536},"latency_ms":6873}
-{"name":"paragraph","post":true,"fields":{"vendor":"Acme Supplies Ltd","invoice_number":"ACM-88213","subtotal":"$4,200.00","vat":"$336.00","total":"$4,536.00","due_date":"October 15, 2026"},"usage":{"prompt_tokens":341,"cost":0.00001364},"latency_ms":6212}
-{"name":"german_mix","post":true,"fields":{"vendor":"Müller Maschinenbau AG","invoice_number":"RE-2026-1193","subtotal":"12.400,00 EUR","vat":"2.356,00 EUR","total":"14.756,00 EUR","due_date":"31.10.2026"},"usage":{"prompt_tokens":373,"cost":0.00001492},"latency_ms":2377}
-{"name":"one_line","post":true,"fields":{"vendor":"Globex Corporation","invoice_number":"GX-5531","subtotal":"USD 980.00","vat":"USD 78.40","total":"USD 1,058.40","due_date":"2026-11-05"},"usage":{"prompt_tokens":311,"cost":0.00001244},"latency_ms":6776}
-{"name":"wrong_total","post":false,"problems":["totals_mismatch"],"fields":{"vendor":"Initech LLC","invoice_number":"IN-7720","subtotal":"$2,000.00","vat":"$200.00","total":"$2,210.00","due_date":"2026-10-20"},"usage":{"prompt_tokens":325,"cost":0.000013},"latency_ms":15522}
-{"name":"missing_vat","post":false,"problems":["missing_vat"],"fields":{"vendor":"Umbrella Logistics","invoice_number":"UL-30091","subtotal":"$750.00","total":"$750.00","due_date":"20 Oct 2026"},"usage":{"prompt_tokens":306,"cost":0.00001224},"latency_ms":7374}
+{"name":"table","post":true,"fields":{"vendor":"Northwind Traders GmbH","invoice_number":"NW-2026-0417","subtotal":"EUR 1,820.00","vat":"EUR 345.80","total":"EUR 2,165.80","due_date":"2026-10-30"},"usage":{"input_tokens":384,"cost":0.00001536},"latency_ms":6873}
+{"name":"paragraph","post":true,"fields":{"vendor":"Acme Supplies Ltd","invoice_number":"ACM-88213","subtotal":"$4,200.00","vat":"$336.00","total":"$4,536.00","due_date":"October 15, 2026"},"usage":{"input_tokens":341,"cost":0.00001364},"latency_ms":6212}
+{"name":"german_mix","post":true,"fields":{"vendor":"Müller Maschinenbau AG","invoice_number":"RE-2026-1193","subtotal":"12.400,00 EUR","vat":"2.356,00 EUR","total":"14.756,00 EUR","due_date":"31.10.2026"},"usage":{"input_tokens":373,"cost":0.00001492},"latency_ms":2377}
+{"name":"one_line","post":true,"fields":{"vendor":"Globex Corporation","invoice_number":"GX-5531","subtotal":"USD 980.00","vat":"USD 78.40","total":"USD 1,058.40","due_date":"2026-11-05"},"usage":{"input_tokens":311,"cost":0.00001244},"latency_ms":6776}
+{"name":"wrong_total","post":false,"problems":["totals_mismatch"],"fields":{"vendor":"Initech LLC","invoice_number":"IN-7720","subtotal":"$2,000.00","vat":"$200.00","total":"$2,210.00","due_date":"2026-10-20"},"usage":{"input_tokens":325,"cost":0.000013},"latency_ms":15522}
+{"name":"missing_vat","post":false,"problems":["missing_vat"],"fields":{"vendor":"Umbrella Logistics","invoice_number":"UL-30091","subtotal":"$750.00","total":"$750.00","due_date":"20 Oct 2026"},"usage":{"input_tokens":306,"cost":0.00001224},"latency_ms":7374}
 ```
 
 | Measure | Result |
@@ -264,7 +276,7 @@ for (const [name, text] of Object.entries(INVOICES)) {
 ## Check your work
 
 - **Request.** The request body carries `provider.options.scaledown.entities` with one description per field.
-- **Response.** `message.content` parses as JSON with an `entities` array. Each entry has `type`, `text`, `confidence`, `start`, and `end`. Each `text` equals `invoice.slice(start, end)`.
+- **Response.** The `output_text` of the `message` output item parses as JSON with an `entities` array. Each entry has `type`, `text`, `confidence`, `start`, and `end`. Each `text` equals `invoice.slice(start, end)`.
 - **Clean invoice.** Every field in `INVOICE_FIELDS` is present and `triage` returns `post: true`.
 - **One cent off.** Change the total by one cent, on a small invoice and on a large one. Both return `totals_mismatch`.
 - **No cents.** `$1,000` / `$80` / `$1,080` posts, with the comma read as a thousands separator.

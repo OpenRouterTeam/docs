@@ -47,7 +47,7 @@ The `openrouter:image_generation` server tool enables any model to generate imag
 <CodeGroup>
 
 ```typescript title="TypeScript" expandable lines
-const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     Authorization: 'Bearer {{API_KEY_REF}}',
@@ -55,12 +55,7 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
   },
   body: JSON.stringify({
     model: '{{MODEL}}',
-    messages: [
-      {
-        role: 'user',
-        content: 'Create an image of a futuristic city at sunset'
-      }
-    ],
+    input: 'Create an image of a futuristic city at sunset',
     tools: [
       { type: 'openrouter:image_generation' }
     ]
@@ -68,26 +63,30 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 });
 
 const data = await response.json();
-console.log(data.choices[0].message.content);
+const message = [...data.output].reverse().find((item: { type: string }) => item.type === 'message');
+console.log(message?.content.find((part: { type: string; text?: string }) => part.type === 'output_text')?.text);
+
+// The generated image is a separate output item, as a data: URL
+const images = data.output.filter(
+  (item: { type: string; result?: string }) => item.type === 'openrouter:image_generation',
+);
+for (const image of images) {
+  if (image.result) console.log(image.result);
+}
 ```
 
 ```python title="Python" expandable lines
 import requests
 
 response = requests.post(
-  "https://openrouter.ai/api/v1/chat/completions",
+  "https://openrouter.ai/api/v1/responses",
   headers={
     "Authorization": f"Bearer {{API_KEY_REF}}",
     "Content-Type": "application/json",
   },
   json={
     "model": "{{MODEL}}",
-    "messages": [
-      {
-        "role": "user",
-        "content": "Create an image of a futuristic city at sunset"
-      }
-    ],
+    "input": "Create an image of a futuristic city at sunset",
     "tools": [
       {"type": "openrouter:image_generation"}
     ]
@@ -95,21 +94,32 @@ response = requests.post(
 )
 
 data = response.json()
-print(data["choices"][0]["message"]["content"])
+message = next((item for item in reversed(data["output"]) if item["type"] == "message"), None)
+text = next(
+  (part["text"] for part in message["content"] if part["type"] == "output_text"),
+  None,
+) if message else None
+if text:
+  print(text)
+
+# The generated image is a separate output item, as a data: URL
+images = [
+  item for item in data["output"] if item["type"] == "openrouter:image_generation"
+]
+for image in images:
+  if image.get("result"):
+    print(image["result"])
+if not text and not any(image.get("result") for image in images):
+  raise RuntimeError("Response contained neither text nor a generated image")
 ```
 
 ```bash title="cURL" lines
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer {{API_KEY_REF}}" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "{{MODEL}}",
-    "messages": [
-      {
-        "role": "user",
-        "content": "Create an image of a futuristic city at sunset"
-      }
-    ],
+    "input": "Create an image of a futuristic city at sunset",
     "tools": [
       {"type": "openrouter:image_generation"}
     ]
@@ -152,12 +162,25 @@ All parameters except `model` are passed directly to the underlying image genera
 
 ## Response
 
+The generated image is returned as its own item in the response `output` array, before the model's `message`:
+
+```json lines
+{
+  "type": "openrouter:image_generation",
+  "id": "ig_abc123",
+  "status": "completed",
+  "result": "data:image/png;base64,...",
+  "imageUrl": "data:image/png;base64,...",
+  "prompt": "A futuristic city at sunset"
+}
+```
+
 When the model calls the image generation tool, it receives a response like:
 
 ```json lines
 {
   "status": "ok",
-  "imageUrl": "https://..."
+  "imageUrl": "data:image/png;base64,..."
 }
 ```
 
@@ -170,9 +193,9 @@ If generation fails, the response includes an error:
 }
 ```
 
-## Works with the Responses API
+## Example with Parameters
 
-The image generation server tool also works with the Responses API:
+Pass `parameters` on the tool entry to configure it:
 
 <Template data={{
   API_KEY_REF,
@@ -200,7 +223,21 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
 });
 
 const data = await response.json();
-console.log(data);
+const message = [...data.output].reverse().find((item: { type: string }) => item.type === 'message');
+const text = message?.content.find(
+  (part: { type: string; text?: string }) => part.type === 'output_text',
+)?.text;
+if (text) console.log(text);
+
+const images = data.output.filter(
+  (item: { type: string; result?: string }) => item.type === 'openrouter:image_generation',
+);
+for (const image of images) {
+  if (image.result) console.log(image.result);
+}
+if (!text && !images.some((image) => image.result)) {
+  throw new Error('Response contained neither text nor a generated image');
+}
 ```
 
 ```python title="Python" expandable lines
@@ -225,7 +262,22 @@ response = requests.post(
 )
 
 data = response.json()
-print(data)
+message = next((item for item in data["output"] if item["type"] == "message"), None)
+text = next(
+  (part["text"] for part in message["content"] if part["type"] == "output_text"),
+  None,
+) if message else None
+if text:
+  print(text)
+
+images = [
+  item for item in data["output"] if item["type"] == "openrouter:image_generation"
+]
+for image in images:
+  if image.get("result"):
+    print(image["result"])
+if not text and not any(image.get("result") for image in images):
+  raise RuntimeError("Response contained neither text nor a generated image")
 ```
 
 </CodeGroup>
