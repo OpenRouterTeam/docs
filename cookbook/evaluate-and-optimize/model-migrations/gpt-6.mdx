@@ -306,7 +306,7 @@ A policy block is an HTTP 403 with `error_type: "refusal"` on every OpenRouter A
 
 On the Responses API the same block is a `response.failed` event with `response.error.code` set to the provider code and `error_type: "refusal"` on the response. On Anthropic Messages the error envelope carries `error.error_type: "refusal"` next to the native `error.type`, and the provider code is not exposed. OpenRouter does not resend a declined prompt to another endpoint serving the same model, and the block does not count against the provider's health. Treat a 403 `refusal` as a prompt problem rather than a transient failure. Retrying the same input returns the same block.
 
-A refusal that the model produces as its own completed output is not an error. The Responses API returns `status: "completed"` with a `refusal` content part, and Chat Completions returns `message.refusal` with `finish_reason: "content_filter"`. See [Errors and Debugging](/api_reference/errors-and-debugging#content-policy) for the full contract.
+A refusal that the model produces as its own completed output is not an error. The Responses API returns `status: "incomplete"` with `incomplete_details.reason: "content_filter"` and a `refusal` content part, and Chat Completions returns `message.refusal` with `finish_reason: "content_filter"`. See [Errors and Debugging](/api_reference/errors-and-debugging#content-policy) for the full contract.
 
 ## Migration Checklist
 
