@@ -43,7 +43,7 @@ This is the same pipeline behind the [`openrouter/fusion` model alias](/guides/r
 <CodeGroup>
 
 ```typescript title="TypeScript" expandable lines
-const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     Authorization: 'Bearer {{API_KEY_REF}}',
@@ -51,12 +51,7 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
   },
   body: JSON.stringify({
     model: '{{MODEL}}',
-    messages: [
-      {
-        role: 'user',
-        content: 'Survey the strongest arguments for and against a carbon tax. Where do experts disagree?',
-      },
-    ],
+    input: 'Survey the strongest arguments for and against a carbon tax. Where do experts disagree?',
     tools: [
       { type: 'openrouter:fusion' },
     ],
@@ -64,39 +59,38 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 });
 
 const data = await response.json();
-console.log(data.choices[0].message.content);
+const message = [...data.output].reverse().find((item: { type: string }) => item.type === 'message');
+console.log(message?.content.find((part: { type: string; text?: string }) => part.type === 'output_text')?.text);
 ```
 
 ```python title="Python" expandable lines
 import requests
 
 response = requests.post(
-  "https://openrouter.ai/api/v1/chat/completions",
+  "https://openrouter.ai/api/v1/responses",
   headers={
     "Authorization": f"Bearer {{API_KEY_REF}}",
     "Content-Type": "application/json",
   },
   json={
     "model": "{{MODEL}}",
-    "messages": [
-      {
-        "role": "user",
-        "content": "Survey the strongest arguments for and against a carbon tax. Where do experts disagree?",
-      },
-    ],
+    "input": "Survey the strongest arguments for and against a carbon tax. Where do experts disagree?",
     "tools": [
       {"type": "openrouter:fusion"},
     ],
   },
 )
-print(response.json()["choices"][0]["message"]["content"])
+
+data = response.json()
+message = next(item for item in reversed(data["output"]) if item["type"] == "message")
+print(next(part["text"] for part in message["content"] if part["type"] == "output_text"))
 ```
 
 </CodeGroup>
 </Template>
 
 <Note title="Chat Completions support is in beta">
-Fusion in the `tools` array works on `/chat/completions` today, but it's slower there than on the [Responses API](/api_reference/responses/overview). For latency-sensitive use, send the same `tools: [{ type: "openrouter:fusion" }]` payload to the Responses API instead.
+Fusion in the `tools` array also works on `/chat/completions`, but it's slower there than on the [Responses API](/api_reference/responses/overview) used in the examples above. For latency-sensitive use, stay on the Responses API.
 </Note>
 
 ## When does the model invoke it?

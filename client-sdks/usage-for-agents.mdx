@@ -64,7 +64,7 @@ The skill works with any AI coding assistant that supports the [Agent Skills](ht
 Once installed, your AI coding assistant will have knowledge of:
 
 - **SDK Installation & Setup** - How to install and configure `@openrouter/sdk` in TypeScript projects
-- **Chat Completions** - Working with the chat API for conversations
+- **Responses API** - Working with the recommended API for model responses
 - **Embeddings** - Generating embeddings for semantic search and RAG
 - **Error Handling** - Proper error handling patterns
 - **Streaming** - Real-time streaming responses
@@ -85,14 +85,17 @@ import { OpenRouter } from '@openrouter/sdk';
 
 const client = new OpenRouter();
 
-const completion = await client.chat.send({
-  chatRequest: {
+const response = await client.responses.send({
+  responsesRequest: {
     model: '~anthropic/claude-sonnet-latest',
-    messages: [
-      { role: 'user', content: 'Hello!' }
-    ]
+    input: 'Hello!',
+    stream: false,
   },
 });
+
+if (!('output' in response)) {
+  throw new Error('Expected a non-streaming response');
+}
 ```
 
 **"Add streaming to my OpenRouter call"**
@@ -104,11 +107,11 @@ import { OpenRouter } from '@openrouter/sdk';
 
 const client = new OpenRouter();
 
-const stream = await client.chat.send({
-  chatRequest: {
+const stream = await client.responses.send({
+  responsesRequest: {
     model: '~anthropic/claude-sonnet-latest',
-    messages: [{ role: 'user', content: 'Tell me a story' }],
-    stream: true
+    input: 'Tell me a story',
+    stream: true,
   },
 });
 
@@ -116,8 +119,10 @@ if (!(stream instanceof ReadableStream)) {
   throw new Error('Expected a streaming response');
 }
 
-for await (const chunk of stream) {
-  process.stdout.write(chunk.choices[0]?.delta?.content ?? '');
+for await (const event of stream) {
+  if (event.type === 'response.output_text.delta') {
+    process.stdout.write(event.delta);
+  }
 }
 ```
 

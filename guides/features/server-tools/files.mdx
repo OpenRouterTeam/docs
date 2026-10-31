@@ -48,7 +48,7 @@ The files it can list, read, write, and edit are the ones in the workspace your 
 <CodeGroup>
 
 ```typescript title="TypeScript" expandable lines
-const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     Authorization: 'Bearer {{API_KEY_REF}}',
@@ -56,12 +56,7 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
   },
   body: JSON.stringify({
     model: '{{MODEL}}',
-    messages: [
-      {
-        role: 'user',
-        content: 'List the files in my workspace and summarize notes.txt.'
-      }
-    ],
+    input: 'List the files in my workspace and summarize notes.txt.',
     tools: [
       { type: 'openrouter:files' }
     ]
@@ -69,26 +64,22 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 });
 
 const data = await response.json();
-console.log(data.choices[0].message.content);
+const message = [...data.output].reverse().find((item: { type: string }) => item.type === 'message');
+console.log(message?.content.find((part: { type: string; text?: string }) => part.type === 'output_text')?.text);
 ```
 
 ```python title="Python" expandable lines
 import requests
 
 response = requests.post(
-  "https://openrouter.ai/api/v1/chat/completions",
+  "https://openrouter.ai/api/v1/responses",
   headers={
     "Authorization": f"Bearer {{API_KEY_REF}}",
     "Content-Type": "application/json",
   },
   json={
     "model": "{{MODEL}}",
-    "messages": [
-      {
-        "role": "user",
-        "content": "List the files in my workspace and summarize notes.txt."
-      }
-    ],
+    "input": "List the files in my workspace and summarize notes.txt.",
     "tools": [
       {"type": "openrouter:files"}
     ]
@@ -96,21 +87,17 @@ response = requests.post(
 )
 
 data = response.json()
-print(data["choices"][0]["message"]["content"])
+message = next(item for item in reversed(data["output"]) if item["type"] == "message")
+print(next(part["text"] for part in message["content"] if part["type"] == "output_text"))
 ```
 
 ```bash title="cURL" lines
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer {{API_KEY_REF}}" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "{{MODEL}}",
-    "messages": [
-      {
-        "role": "user",
-        "content": "List the files in my workspace and summarize notes.txt."
-      }
-    ],
+    "input": "List the files in my workspace and summarize notes.txt.",
     "tools": [
       {"type": "openrouter:files"}
     ]

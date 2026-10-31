@@ -53,13 +53,13 @@ curl https://openrouter.ai/api/v1/batches \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "endpoint": "/v1/chat/completions",
+    "endpoint": "/v1/responses",
     "model": "anthropic/claude-haiku-5.5",
     "requests": [
       {
         "custom_id": "review-1",
         "body": {
-          "messages": [{ "role": "user", "content": "Classify: The fit is perfect." }]
+          "input": "Classify: The fit is perfect."
         }
       }
     ]
@@ -119,7 +119,7 @@ Batch limits generally follow the batch limits of the upstream providers. OpenRo
 | Requests in progress per account | `429` |
 | Requests submitted per minute per account | `429` |
 
-For a `413`, split the batch. For a `429` from an in-progress limit, wait for running batches to finish, then retry. For a `429` from the per-minute limit, wait a minute, then retry.
+For a `413`, split the batch. For a `429`, wait for running batches to finish if you hit an in-progress limit, or one minute if you hit the per-minute limit.
 
 ## Frequently asked questions
 

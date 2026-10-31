@@ -43,20 +43,20 @@ A batch has one model, one endpoint, and a list of requests. Each request `body`
 
 ```json title="batch.json" lines
 {
-  "endpoint": "/v1/chat/completions",
+  "endpoint": "/v1/responses",
   "model": "anthropic/claude-haiku-5.5",
   "callback_url": "https://example.com/webhooks/openrouter-batch",
   "requests": [
     {
       "custom_id": "review-1",
       "body": {
-        "messages": [{ "role": "user", "content": "Classify: The fit is perfect." }]
+        "input": "Classify: The fit is perfect."
       }
     },
     {
       "custom_id": "review-2",
       "body": {
-        "messages": [{ "role": "user", "content": "Classify: It arrived broken." }]
+        "input": "Classify: It arrived broken."
       }
     }
   ]
@@ -85,7 +85,7 @@ Batch accepts text, public image URLs, and some file URLs. It returns text and e
 | Alibaba (`/v1/chat/completions` only) | Yes | No |
 | Fireworks, Parasail, Morph | No | No |
 
-File parts use the endpoint's own type: `file` on `/v1/chat/completions`, `input_file` on `/v1/responses`, and `document` on `/v1/messages`.
+File parts use the endpoint's own type: `input_file` on `/v1/responses`, `file` on `/v1/chat/completions`, and `document` on `/v1/messages`. The entries below use the Responses shape so they drop into the batch above; on a `/v1/chat/completions` batch, send `messages` with `image_url` and `file` parts instead.
 
 On Google Vertex, image URLs must use HTTPS, end in `.png`, `.jpg`, `.jpeg`, `.webp`, `.heic`, or `.heif`, and not point at Google API, Googleusercontent, or Cloud Storage HTTPS hosts. A provider can also turn off image URLs for one model. File URLs work only on models that list file input.
 
@@ -95,12 +95,12 @@ On Google Vertex, image URLs must use HTTPS, end in `.png`, `.jpg`, `.jpeg`, `.w
 {
   "custom_id": "photo-1",
   "body": {
-    "messages": [
+    "input": [
       {
         "role": "user",
         "content": [
-          { "type": "text", "text": "Describe this product photo." },
-          { "type": "image_url", "image_url": { "url": "https://example.com/shoe.jpg" } }
+          { "type": "input_text", "text": "Describe this product photo." },
+          { "type": "input_image", "image_url": "https://example.com/shoe.jpg", "detail": "auto" }
         ]
       }
     ]
@@ -112,15 +112,12 @@ On Google Vertex, image URLs must use HTTPS, end in `.png`, `.jpg`, `.jpeg`, `.w
 {
   "custom_id": "contract-1",
   "body": {
-    "messages": [
+    "input": [
       {
         "role": "user",
         "content": [
-          { "type": "text", "text": "Summarize this contract." },
-          {
-            "type": "file",
-            "file": { "filename": "contract.pdf", "file_data": "https://example.com/contract.pdf" }
-          }
+          { "type": "input_text", "text": "Summarize this contract." },
+          { "type": "input_file", "filename": "contract.pdf", "file_url": "https://example.com/contract.pdf" }
         ]
       }
     ]
@@ -175,12 +172,12 @@ const response = await fetch('https://openrouter.ai/api/v1/batches', {
   method: 'POST',
   headers,
   body: JSON.stringify({
-    endpoint: '/v1/chat/completions',
+    endpoint: '/v1/responses',
     model: 'anthropic/claude-haiku-5.5',
     callback_url: 'https://example.com/webhooks/openrouter-batch',
     requests: reviews.map((review) => ({
       custom_id: review.id,
-      body: { messages: [{ role: 'user', content: `Classify: ${review.text}` }] },
+      body: { input: `Classify: ${review.text}` },
     })),
   }),
 });
@@ -199,13 +196,13 @@ response = requests.post(
     "https://openrouter.ai/api/v1/batches",
     headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
     json={
-        "endpoint": "/v1/chat/completions",
+        "endpoint": "/v1/responses",
         "model": "anthropic/claude-haiku-5.5",
         "callback_url": "https://example.com/webhooks/openrouter-batch",
         "requests": [
             {
                 "custom_id": review["id"],
-                "body": {"messages": [{"role": "user", "content": f"Classify: {review['text']}"}]},
+                "body": {"input": f"Classify: {review['text']}"},
             }
             for review in reviews
         ],
@@ -221,7 +218,7 @@ batch = response.json()
 {
   "id": "batch_123",
   "object": "batch",
-  "endpoint": "/v1/chat/completions",
+  "endpoint": "/v1/responses",
   "model": "anthropic/claude-haiku-5.5",
   "completion_window": "24h",
   "status": "validating",
@@ -254,7 +251,7 @@ Most batches finish in minutes, and nearly all finish within 24 hours. Use a web
 
 ### Option A: Wait with a webhook
 
-Set `callback_url` on the batch, or set **Default batch webhook URL** in your workspace settings. A `callback_url` on the batch overrides the workspace default. The URL must be public HTTPS. A private or internal address makes the submit fail with `400`.
+Set `callback_url` on the batch or **Default batch webhook URL** in your workspace settings. A batch-level URL overrides the workspace default and must use public HTTPS. A private or internal address makes the submit fail with `400`.
 
 OpenRouter sends one `POST` when the batch reaches a final status:
 
@@ -404,7 +401,7 @@ curl 'https://openrouter.ai/api/v1/batches?status=validating&status=in_progress&
 Batches are listed newest first. Every API key in a workspace sees the same batches, including batches submitted with other keys.
 
 <Note>
-  Page with `after` only. There is no offset or `before` parameter. Do not page by timestamp: `created_at` is in whole seconds, but the `created_after` filter keeps subsecond precision. A batch created later in the same second can still match `created_after=<created_at>`.
+  Page with `after` only; offset and `before` are unsupported. Use the ID cursor rather than timestamps: `created_at` has whole-second precision, while `created_after` preserves subsecond precision. A batch created later in the same second can still match `created_after=<created_at>`.
 </Note>
 
 ---
@@ -425,7 +422,21 @@ for (const result of batch.results) {
     retry.push(result.custom_id);
     continue;
   }
-  save(result.custom_id, result.response.body.choices[0].message.content);
+  if (result.response.body.status !== 'completed') {
+    retry.push(result.custom_id);
+    continue;
+  }
+  const message = result.response.body.output.find(
+    (item: { type: string }) => item.type === 'message',
+  );
+  const text = message?.content.find(
+    (part: { type: string; text?: string }) => part.type === 'output_text',
+  )?.text;
+  if (text === undefined) {
+    retry.push(result.custom_id);
+    continue;
+  }
+  save(result.custom_id, text);
 }
 console.log(`Cost $${batch.usage.cost}. ${retry.length} requests to retry.`);
 ```
@@ -455,13 +466,16 @@ console.log(`Cost $${batch.usage.cost}. ${retry.length} requests to retry.`);
         "request_id": "request_1",
         "body": {
           "id": "gen-batch-1782097200-a1b2c3d4e5f6a7b8c9d0",
-          "object": "chat.completion",
+          "object": "response",
           "model": "anthropic/claude-haiku-5.5",
-          "choices": [
+          "status": "completed",
+          "output": [
             {
-              "index": 0,
-              "message": { "role": "assistant", "content": "positive" },
-              "finish_reason": "stop"
+              "type": "message",
+              "id": "msg_abc123",
+              "status": "completed",
+              "role": "assistant",
+              "content": [{ "type": "output_text", "text": "positive", "annotations": [] }]
             }
           ]
         }
@@ -609,15 +623,15 @@ Set `endpoint` to choose the request shape for every `body` in the batch. To mix
 }
 ```
 
-```json title="Responses" lines
+```json title="Chat Completions" lines
 {
-  "endpoint": "/v1/responses",
-  "model": "openai/gpt-4o",
+  "endpoint": "/v1/chat/completions",
+  "model": "anthropic/claude-haiku-5.5",
   "requests": [
     {
-      "custom_id": "resp-1",
+      "custom_id": "chat-1",
       "body": {
-        "input": [{ "role": "user", "content": [{ "type": "input_text", "text": "Say hello." }] }]
+        "messages": [{ "role": "user", "content": "Say hello." }]
       }
     }
   ]

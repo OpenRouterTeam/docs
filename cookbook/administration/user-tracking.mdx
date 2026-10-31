@@ -27,14 +27,12 @@ User tracking enables you to specify an arbitrary string identifier for your end
 
 ## How It Works
 
-Include a `user` parameter in chat-completions or image-generation requests with a stable identifier for your end user. This can be a user ID, client-side hash, pseudonym, or another stable identifier. OpenRouter folds it into the hashed identity sent upstream and never forwards it raw.
+Include a `user` parameter in [Responses API](/api_reference/responses/overview), chat-completions, or image-generation requests with a stable identifier for your end user. This can be a user ID, client-side hash, pseudonym, or another stable identifier. OpenRouter folds it into the hashed identity sent upstream and never forwards it raw.
 
 ```json lines
 {
   "model": "~openai/gpt-sol-latest",
-  "messages": [
-    {"role": "user", "content": "Hello, how are you?"}
-  ],
+  "input": "Hello, how are you?",
   "user": "user_12345"
 }
 ```
@@ -82,25 +80,21 @@ const openRouter = new OpenRouter({
   apiKey: '{{API_KEY_REF}}',
 });
 
-const response = await openRouter.chat.send({
-  chatRequest: {
+const response = await openRouter.responses.send({
+  responsesRequest: {
     model: '{{MODEL}}',
-    messages: [
-      {
-        role: 'user',
-        content: "What's the weather like today?",
-      },
-    ],
+    input: "What's the weather like today?",
     user: 'user_12345', // Your user identifier
     stream: false,
   },
 });
 
-if (response instanceof ReadableStream) {
+if (!('output' in response)) {
   throw new Error('Expected a non-streaming response');
 }
 
-console.log(response.choices[0].message.content);
+const message = [...response.output].reverse().find((item) => item.type === 'message');
+console.log(message?.content.find((part) => part.type === 'output_text')?.text);
 ```
 
 ```python title="Python (OpenAI SDK)" lines
@@ -111,15 +105,13 @@ client = OpenAI(
     api_key="{{API_KEY_REF}}",
 )
 
-response = client.chat.completions.create(
+response = client.responses.create(
     model="{{MODEL}}",
-    messages=[
-        {"role": "user", "content": "What's the weather like today?"}
-    ],
+    input="What's the weather like today?",
     user="user_12345",  # Your user identifier
 )
 
-print(response.choices[0].message.content)
+print(response.output_text)
 ```
 
 ```typescript title="TypeScript (OpenAI SDK)" expandable lines
@@ -131,18 +123,13 @@ const openai = new OpenAI({
 });
 
 async function chatWithUserTracking() {
-  const response = await openai.chat.completions.create({
+  const response = await openai.responses.create({
     model: '{{MODEL}}',
-    messages: [
-      {
-        role: 'user',
-        content: "What's the weather like today?",
-      },
-    ],
+    input: "What's the weather like today?",
     user: 'user_12345', // Your user identifier
   });
 
-  console.log(response.choices[0].message.content);
+  console.log(response.output_text);
 }
 
 chatWithUserTracking();
@@ -156,7 +143,7 @@ For all code samples and guidance use OpenRouter SDKs by default (@openrouter/sd
 
 ## Per-User Abuse Isolation
 
-Send a stable per-end-user identifier with every request: `user` on chat completions and image generation, or `safety_identifier` on the Responses API. A client-side hash or pseudonym works — when a provider requires a user identity, OpenRouter folds it into the hashed identity sent upstream and never forwards the raw value. Requests that include neither field share a single account-level identity upstream, so a provider policy block triggered by one end user can affect your whole account.
+Send a stable per-end-user identifier with every request as `user` on chat completions, image generation, and the Responses API. On the Responses API, `safety_identifier` sets only the upstream abuse-isolation identity. A client-side hash or pseudonym works — when a provider requires a user identity, OpenRouter folds it into the hashed identity sent upstream and never forwards the raw value. Requests that include neither field share a single account-level identity upstream, so a provider policy block triggered by one end user can affect your whole account.
 
 ## Best Practices
 

@@ -42,16 +42,11 @@ Each preset can manage:
     ![Creating a new preset](/assets/preset-example.png "A new preset")
     </Frame>
 
-2. Make an API request to the preset:
+2. Make a [Responses API](/api_reference/responses/overview) request to the preset:
     ```json lines
     {
       "model": "@preset/ravenel-bridge",
-      "messages": [
-        {
-          "role": "user",
-          "content": "What's your opinion of the Golden Gate Bridge? Isn't it beautiful?"
-        }
-      ]
+      "input": "What's your opinion of the Golden Gate Bridge? Isn't it beautiful?"
     }
     ```
 
@@ -80,12 +75,7 @@ You can reference the preset as if it was a model by sending requests to `@prese
 ```json lines
 {
   "model": "@preset/email-copywriter",
-  "messages": [
-    {
-      "role": "user",
-      "content": "Write a marketing email about our new feature"
-    }
-  ]
+  "input": "Write a marketing email about our new feature"
 }
 ```
 
@@ -97,12 +87,7 @@ The `preset` field takes the same `@preset/{slug}` reference as the model field.
 {
   "model": "openai/gpt-4",
   "preset": "@preset/email-copywriter",
-  "messages": [
-    {
-      "role": "user",
-      "content": "Write a marketing email about our new feature"
-    }
-  ]
+  "input": "Write a marketing email about our new feature"
 }
 ```
 
@@ -110,12 +95,7 @@ The `preset` field takes the same `@preset/{slug}` reference as the model field.
 ```json lines
 {
   "model": "openai/gpt-4@preset/email-copywriter",
-  "messages": [
-    {
-      "role": "user",
-      "content": "Write a marketing email about our new feature"
-    }
-  ]
+  "input": "Write a marketing email about our new feature"
 }
 ```
 

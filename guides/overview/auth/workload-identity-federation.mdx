@@ -113,12 +113,12 @@ curl https://openrouter.ai/api/v1/oauth/token \
 Then call the API with the access token as the bearer:
 
 ```bash title="Inference with an access token"
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "openai/gpt-4o-mini",
-    "messages": [{ "role": "user", "content": "Hello" }]
+    "input": "Hello"
   }'
 ```
 

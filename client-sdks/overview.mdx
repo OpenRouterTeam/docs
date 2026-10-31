@@ -90,20 +90,22 @@ const client = new OpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-const response = await client.chat.send({
-  chatRequest: {
+const response = await client.responses.send({
+  responsesRequest: {
     model: 'openai/gpt-5.2',
-    messages: [
-      { role: 'user', content: 'Explain quantum computing in one sentence.' },
-    ],
+    input: 'Explain quantum computing in one sentence.',
   },
 });
 
-if (response instanceof ReadableStream) {
+if (!('output' in response)) {
   throw new Error('Expected a non-streaming response');
 }
+if (response.status !== 'completed') {
+  throw new Error(response.error?.message ?? `Response ended as ${response.status}`);
+}
 
-console.log(response.choices[0].message.content);
+const message = [...response.output].reverse().find((item) => item.type === 'message');
+console.log(message?.content.find((part) => part.type === 'output_text')?.text);
 ```
 
 ```python title="Python" lines
@@ -111,14 +113,16 @@ from openrouter import OpenRouter
 import os
 
 with OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY")) as client:
-    response = client.chat.send(
+    response = client.responses.send(
         model="openai/gpt-5.2",
-        messages=[
-            {"role": "user", "content": "Explain quantum computing in one sentence."}
-        ],
+        input="Explain quantum computing in one sentence.",
     )
+    if response.status != "completed":
+        message = response.error.message if response.error else f"Response ended as {response.status}"
+        raise RuntimeError(message)
 
-    print(response.choices[0].message.content)
+    message = next(item for item in reversed(response.output) if item.type == "message")
+    print(next(part.text for part in message.content if part.type == "output_text"))
 ```
 
 </CodeGroup>

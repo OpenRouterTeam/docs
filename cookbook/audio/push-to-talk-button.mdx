@@ -69,7 +69,7 @@ This guide uses `elevenlabs/scribe-v2` for transcription, `anthropic/claude-haik
 
 ## Step 1: Add the server route
 
-Create `server.ts`. `handleTalk` reads the recording and the conversation so far from a form post, then transcribes, answers, and speaks. The system prompt asks for short plain sentences, because everything the model writes is read aloud, and for one opening audio tag such as `[warmly]`, which Eleven v4 Turbo performs instead of saying. Browsers record WebM, except Safari, which records MP4 audio, so the route picks the `format` from the file's type. If any of the three calls fails, the route returns the OpenRouter error with a 502 so the browser can show why, and a malformed `history` field starts a fresh conversation instead of failing the turn.
+Create `server.ts`. `handleTalk` reads the recording and the conversation so far from a form post, then transcribes, answers, and speaks. The `instructions` ask for short plain sentences, because everything the model writes is read aloud, and for one opening audio tag such as `[warmly]`, which Eleven v4 Turbo performs instead of saying. Browsers record WebM, except Safari, which records MP4 audio, so the route picks the `format` from the file's type. If any of the three calls fails, the route returns the OpenRouter error with a 502 so the browser can show why, and a malformed `history` field starts a fresh conversation instead of failing the turn.
 
 ```ts expandable lines title="server.ts"
 // The server half of a push-to-talk button. One route takes a recording,
@@ -89,7 +89,7 @@ const headers = {
   "Content-Type": "application/json",
 };
 
-type Message = { role: "system" | "user" | "assistant"; content: string };
+type Message = { role: "user" | "assistant"; content: string };
 
 const SYSTEM_PROMPT =
   "You are a friendly voice assistant. Everything you write is read aloud by a " +
@@ -125,13 +125,23 @@ async function transcribe(audio: File) {
 
 // The answer, written to be spoken
 async function think(history: Message[]) {
-  const response = await call("/chat/completions", {
+  const response = await call("/responses", {
     model: "anthropic/claude-haiku-5.5",
-    messages: [{ role: "system", content: SYSTEM_PROMPT }, ...history],
-    max_tokens: 300,
+    instructions: SYSTEM_PROMPT,
+    input: history,
+    max_output_tokens: 300,
   });
-  const completion = await response.json();
-  return (completion.choices[0].message.content as string).trim();
+  const result = await response.json();
+  if (result.status !== "completed") {
+    throw new Error(
+      result.error?.message ??
+        result.incomplete_details?.reason ??
+        `Response ended as ${result.status}`,
+    );
+  }
+  const message = [...result.output].reverse().find((item: { type: string }) => item.type === "message");
+  const text = message.content.find((part: { type: string }) => part.type === "output_text").text as string;
+  return text.trim();
 }
 
 // Text to speech with Eleven v4 Turbo
@@ -385,7 +395,7 @@ bun server.ts
 Open http://localhost:3000
 ```
 
-Open the page, allow the microphone, and hold the button while you ask a question. Release it and the button shows **Thinking…** and then **Speaking…** while the answer plays. Each turn takes about ten seconds from release to the first word of the reply, and speech is the longest stage, so the system prompt's two-or-three-sentence limit is what keeps it short.
+Open the page, allow the microphone, and hold the button while you ask a question. Release it and the button shows **Thinking…** and then **Speaking…** while the answer plays. Each turn takes about ten seconds from release to the first word of the reply, and speech is the longest stage, so the two-or-three-sentence limit in `instructions` is what keeps it short.
 
 ## Use it in your own app
 

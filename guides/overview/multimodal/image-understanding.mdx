@@ -22,7 +22,7 @@ import {
   API_KEY_REF,
 } from '/snippets/exports/constants.mdx';
 
-Requests with images, to multimodel models, are available via the `/api/v1/chat/completions` API with a multi-part `messages` parameter. The `image_url` can either be a URL or a base64-encoded image. Note that multiple images can be sent in separate content array entries. The number of images you can send in a single request varies per provider and per model. Due to how the content is parsed, we recommend sending the text prompt first, then the images. If the images must come first, we recommend putting it in the system prompt.
+Requests with images, to multimodal models, are available via the [Responses API](/api_reference/responses/overview) (`/api/v1/responses`) with a multi-part message in the `input` parameter. Each image is an `input_image` content part whose `image_url` can either be a URL or a base64-encoded data URL. Note that multiple images can be sent in separate content array entries. The number of images you can send in a single request varies per provider and per model. Due to how the content is parsed, we recommend sending the text prompt first, then the images. If the images must come first, put them before the text within the same user message; system messages should contain text only.
 
 OpenRouter supports both **direct URLs** and **base64-encoded data** for images:
 
@@ -46,22 +46,21 @@ const openRouter = new OpenRouter({
   apiKey: '{{API_KEY_REF}}',
 });
 
-const result = await openRouter.chat.send({
-  chatRequest: {
+const result = await openRouter.responses.send({
+  responsesRequest: {
     model: '{{MODEL}}',
-    messages: [
+    input: [
       {
         role: 'user',
         content: [
           {
-            type: 'text',
+            type: 'input_text',
             text: "What's in this image?",
           },
           {
-            type: 'image_url',
-            imageUrl: {
-              url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg',
-            },
+            type: 'input_image',
+            imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg',
+            detail: 'auto',
           },
         ],
       },
@@ -77,25 +76,24 @@ console.log(result);
 import requests
 import json
 
-url = "https://openrouter.ai/api/v1/chat/completions"
+url = "https://openrouter.ai/api/v1/responses"
 headers = {
     "Authorization": f"Bearer {API_KEY_REF}",
     "Content-Type": "application/json"
 }
 
-messages = [
+input_items = [
     {
         "role": "user",
         "content": [
             {
-                "type": "text",
+                "type": "input_text",
                 "text": "What's in this image?"
             },
             {
-                "type": "image_url",
-                "image_url": {
-                    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
-                }
+                "type": "input_image",
+                "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg",
+                "detail": "auto"
             }
         ]
     }
@@ -103,7 +101,7 @@ messages = [
 
 payload = {
     "model": "{{MODEL}}",
-    "messages": messages
+    "input": input_items
 }
 
 response = requests.post(url, headers=headers, json=payload)
@@ -111,7 +109,7 @@ print(response.json())
 ```
 
 ```typescript title="TypeScript (fetch)" expandable lines
-const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     Authorization: `Bearer ${API_KEY_REF}`,
@@ -119,19 +117,18 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
   },
   body: JSON.stringify({
     model: '{{MODEL}}',
-    messages: [
+    input: [
       {
         role: 'user',
         content: [
           {
-            type: 'text',
+            type: 'input_text',
             text: "What's in this image?",
           },
           {
-            type: 'image_url',
-            image_url: {
-              url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg',
-            },
+            type: 'input_image',
+            image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg',
+            detail: 'auto',
           },
         ],
       },
@@ -174,22 +171,21 @@ async function encodeImageToBase64(imagePath: string): Promise<string> {
 const imagePath = 'path/to/your/image.jpg';
 const base64Image = await encodeImageToBase64(imagePath);
 
-const result = await openRouter.chat.send({
-  chatRequest: {
+const result = await openRouter.responses.send({
+  responsesRequest: {
     model: '{{MODEL}}',
-    messages: [
+    input: [
       {
         role: 'user',
         content: [
           {
-            type: 'text',
+            type: 'input_text',
             text: "What's in this image?",
           },
           {
-            type: 'image_url',
-            imageUrl: {
-              url: base64Image,
-            },
+            type: 'input_image',
+            imageUrl: base64Image,
+            detail: 'auto',
           },
         ],
       },
@@ -211,7 +207,7 @@ def encode_image_to_base64(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-url = "https://openrouter.ai/api/v1/chat/completions"
+url = "https://openrouter.ai/api/v1/responses"
 headers = {
     "Authorization": f"Bearer {API_KEY_REF}",
     "Content-Type": "application/json"
@@ -222,19 +218,18 @@ image_path = "path/to/your/image.jpg"
 base64_image = encode_image_to_base64(image_path)
 data_url = f"data:image/jpeg;base64,{base64_image}"
 
-messages = [
+input_items = [
     {
         "role": "user",
         "content": [
             {
-                "type": "text",
+                "type": "input_text",
                 "text": "What's in this image?"
             },
             {
-                "type": "image_url",
-                "image_url": {
-                    "url": data_url
-                }
+                "type": "input_image",
+                "image_url": data_url,
+                "detail": "auto"
             }
         ]
     }
@@ -242,7 +237,7 @@ messages = [
 
 payload = {
     "model": "{{MODEL}}",
-    "messages": messages
+    "input": input_items
 }
 
 response = requests.post(url, headers=headers, json=payload)
@@ -250,6 +245,8 @@ print(response.json())
 ```
 
 ```typescript title="TypeScript (fetch)" expandable lines
+import * as fs from 'fs';
+
 async function encodeImageToBase64(imagePath: string): Promise<string> {
   const imageBuffer = await fs.promises.readFile(imagePath);
   const base64Image = imageBuffer.toString('base64');
@@ -260,7 +257,7 @@ async function encodeImageToBase64(imagePath: string): Promise<string> {
 const imagePath = 'path/to/your/image.jpg';
 const base64Image = await encodeImageToBase64(imagePath);
 
-const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     Authorization: `Bearer ${API_KEY_REF}`,
@@ -268,19 +265,18 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
   },
   body: JSON.stringify({
     model: '{{MODEL}}',
-    messages: [
+    input: [
       {
         role: 'user',
         content: [
           {
-            type: 'text',
+            type: 'input_text',
             text: "What's in this image?",
           },
           {
-            type: 'image_url',
-            image_url: {
-              url: base64Image,
-            },
+            type: 'input_image',
+            image_url: base64Image,
+            detail: 'auto',
           },
         ],
       },

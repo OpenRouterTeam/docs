@@ -70,12 +70,12 @@ If you prefer to use a specific free model rather than the Free Models Router, y
 You can also use the Free Models Router programmatically. Simply set the model to `openrouter/free` in your API requests:
 
 ```bash lines
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "openrouter/free",
-    "messages": [{"role": "user", "content": "Hello!"}]
+    "input": "Hello!"
   }'
 ```
 

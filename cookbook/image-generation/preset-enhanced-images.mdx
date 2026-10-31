@@ -61,20 +61,15 @@ The text model handles the creative interpretation. The image model handles the 
 
 ## Step 1: Create the preset via API
 
-The fastest way to create the preset is to POST a request body to the preset creation endpoint. This captures the model, system prompt, tools, and parameters in one call:
+The fastest way to create the preset is to POST a [Responses API](/api_reference/responses/overview) request body to the preset creation endpoint. This captures the model, system prompt (`instructions`), tools, and parameters in one call:
 
 ```bash expandable lines
-curl https://openrouter.ai/api/v1/presets/image-enhancer/chat/completions \
+curl https://openrouter.ai/api/v1/presets/image-enhancer/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "anthropic/claude-opus-4.8",
-    "messages": [
-      {
-        "role": "system",
-        "content": "You are an expert visual prompt engineer. When the user asks you to create an image, analyze their request and expand it into a detailed image generation prompt. Cover: subject and action, composition and framing, lighting and atmosphere, color palette, artistic style or medium, and mood. Then call the image generation tool with your enhanced prompt. Keep explanations brief; prioritize the image."
-      }
-    ],
+    "instructions": "You are an expert visual prompt engineer. When the user asks you to create an image, analyze their request and expand it into a detailed image generation prompt. Cover: subject and action, composition and framing, lighting and atmosphere, color palette, artistic style or medium, and mood. Then call the image generation tool with your enhanced prompt. Keep explanations brief; prioritize the image.",
     "tools": [
       {
         "type": "openrouter:image_generation",
@@ -131,17 +126,12 @@ You can also create or edit presets from the [Presets dashboard](https://openrou
 Send requests to your preset slug as if it were a model:
 
 ```bash lines
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "@preset/image-enhancer",
-    "messages": [
-      {
-        "role": "user",
-        "content": "A cozy bookshop on a rainy evening"
-      }
-    ]
+    "input": "A cozy bookshop on a rainy evening"
   }'
 ```
 
@@ -149,24 +139,48 @@ The text model receives your message, crafts a detailed prompt, calls the image 
 
 ## What comes back
 
-The response looks like a normal chat completion. The text model's message contains the generated image URL (typically as a markdown image or inline URL) plus any commentary it added:
+The response looks like a normal Responses API response. The `output` array has an `openrouter:image_generation` item with the generated image in `result` and the enhanced `prompt` the text model wrote, followed by the text model's `message` with any commentary it added:
 
-```json lines
+```json expandable lines
 {
   "id": "gen-...",
+  "object": "response",
   "model": "anthropic/claude-opus-4.8",
-  "choices": [
+  "status": "completed",
+  "output": [
     {
-      "message": {
-        "role": "assistant",
-        "content": "Here's your cozy bookshop scene:\n\n![Generated image](https://images.openrouter.ai/...)\n\nI interpreted your request as a warm, inviting independent bookstore viewed through a rain-streaked window, with golden light spilling onto wet cobblestones."
-      }
+      "type": "openrouter:image_generation",
+      "id": "st_...",
+      "status": "completed",
+      "result": "data:image/png;base64,iVBORw0KGgo...",
+      "imageUrl": "data:image/png;base64,iVBORw0KGgo...",
+      "prompt": "A cozy bookshop on a rainy evening, warm golden light glowing from inside, wooden shelves filled with colorful books, a large window with raindrops trickling down..."
+    },
+    {
+      "type": "message",
+      "id": "msg_...",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Here's your cozy bookshop scene: a warm, inviting independent bookstore viewed through a rain-streaked window, with golden light spilling onto wet cobblestones.",
+          "annotations": []
+        }
+      ]
     }
-  ]
+  ],
+  "usage": {
+    "input_tokens": 1996,
+    "output_tokens": 174,
+    "total_tokens": 2170,
+    "cost": 0.0010768,
+    "server_tool_use_details": { "tool_calls_requested": 1, "tool_calls_executed": 1 }
+  }
 }
 ```
 
-The image URL in the response is temporary. Download or cache it if you need it long-term.
+Save the image from `result` if you need it long-term.
 
 ## Customization
 
@@ -215,4 +229,4 @@ To create a new version via API, POST to the same endpoint again with your updat
 - Use the [OpenRouter TypeScript SDK](/sdks/typescript) or [Python SDK](/sdks/python) for typed preset interactions in your app
 - Add [web search](/guides/features/server-tools/web-search) to the preset's tools so the orchestrator can reference current visual trends or specific art styles
 - Track image generation costs with the [Analytics guide](/cookbook/administration/analytics-cost-control) to monitor per-preset spend
-- Handle multi-turn conversations where the user refines images iteratively (pass previous messages to the preset to maintain context)
+- Handle multi-turn conversations where the user refines images iteratively (pass previous turns in `input` to the preset to maintain context)

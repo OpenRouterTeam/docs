@@ -70,7 +70,7 @@ Retry-After: 60
 The OpenAI SDK, Anthropic SDK, Vercel AI SDK, and OpenRouter SDK already respect this header for backoff on the statuses each SDK retries automatically. None of them retries a <code>{HTTPStatus.S402_Payment_Required}</code> on its own, so for the in-flight budget case catch the error, read `Retry-After`, and retry explicitly. If you're using `fetch` directly, honor it before retrying:
 
 ```typescript lines
-const res = await fetch('https://openrouter.ai/api/v1/chat/completions', { ... });
+const res = await fetch('https://openrouter.ai/api/v1/responses', { ... });
 if (res.status === 429 || res.status === 503 || res.status === 402) {
   const retryAfter = Number(res.headers.get('Retry-After'));
   if (Number.isFinite(retryAfter) && retryAfter > 0) {
@@ -259,7 +259,7 @@ Common causes of mid-stream errors:
 If an attempt fails before any tokens reach you, OpenRouter automatically tries a backup provider. The `200 OK` has already been sent by then, so the status stays `200` even when every provider fails — the last error reaches you in the response body.
 </Note>
 
-Mid-stream errors are sent as Server-Sent Events (SSE) with a unified structure that includes both the error details and a completion choice:
+On Chat Completions (`/api/v1/chat/completions`), mid-stream errors are sent as Server-Sent Events (SSE) with a unified structure that includes both the error details and a completion choice. The Responses API uses its own event types; see [Responses API](#responses-api-apiv1responses).
 
 ```typescript expandable lines
 type MidStreamError = {
@@ -319,7 +319,7 @@ The HTTP status each `error_type` maps to is listed in the tables below.
 | `error_type` | HTTP Status | Description |
 |---|---|---|
 | `context_length_exceeded` | {HTTPStatus.S400_Bad_Request} | The combined input and output tokens exceed the model's context window. |
-| `max_tokens_exceeded` | {HTTPStatus.S400_Bad_Request} | Generation stopped because `max_tokens` (or `max_completion_tokens`) was reached. |
+| `max_tokens_exceeded` | {HTTPStatus.S400_Bad_Request} | Generation stopped because the output token limit (`max_output_tokens` on the Responses API, `max_tokens` or `max_completion_tokens` on Chat Completions) was reached. |
 | `token_limit_exceeded` | {HTTPStatus.S400_Bad_Request} | A token budget enforced by OpenRouter (e.g. credit-based cap) was exceeded. |
 | `string_too_long` | {HTTPStatus.S400_Bad_Request} | A single string field in the request (system prompt, user message, etc.) exceeded the provider's per-field character limit. |
 
@@ -344,7 +344,7 @@ The HTTP status each `error_type` maps to is listed in the tables below.
 | `error_type` | HTTP Status | Description |
 |---|---|---|
 | `invalid_request` | {HTTPStatus.S400_Bad_Request} | A request parameter is malformed or missing. |
-| `invalid_prompt` | {HTTPStatus.S400_Bad_Request} | A specific message in the `messages` array is invalid (e.g. unsupported role, empty content). |
+| `invalid_prompt` | {HTTPStatus.S400_Bad_Request} | A specific message in the request (`input` on the Responses API, `messages` on Chat Completions) is invalid (e.g. unsupported role, empty content). |
 | `not_found` | {HTTPStatus.S404_Not_Found} | The requested resource (model, file, etc.) does not exist. |
 | `precondition_failed` | {HTTPStatus.S412_Precondition_Failed} | A precondition header (e.g. `If-Match`) was not satisfied. |
 | `payload_too_large` | {HTTPStatus.S413_Payload_Too_Large} | The request body exceeds the maximum allowed size. |
@@ -427,7 +427,7 @@ Both the streaming terminal event and the non-streaming JSON body carry the cano
 }
 ```
 
-Streaming errors surface as one of three SSE event types, each wrapping the same response object:
+OpenRouter ends a failed stream with a `response.failed` event. The stream schema also defines a plain `error` event (upstream OpenAI behavior), so handling both is safe:
 
 1. **`response.failed`** — terminal event when the response could not complete:
    ```json lines
@@ -442,34 +442,30 @@ Streaming errors surface as one of three SSE event types, each wrapping the same
    }
    ```
 
-2. **`response.error`** — error during response generation:
-   ```json lines
-   {
-     "type": "response.error",
-     "error": { "code": "rate_limit_exceeded", "message": "Rate limit exceeded" }
-   }
-   ```
-
-3. **`error`** — plain error event (matches upstream OpenAI behavior):
+2. **`error`** — plain error event defined by the stream schema; the fields sit directly on the event:
    ```json lines
    {
      "type": "error",
-     "error": { "code": "invalid_api_key", "message": "Invalid API key provided" }
+     "code": "invalid_api_key",
+     "message": "Invalid API key provided",
+     "param": null,
+     "sequence_number": 3
    }
    ```
 
 #### Error code transformations
 
-Certain token/length errors are transformed into successful completions instead of failures:
+Certain token/length error codes reported by the upstream provider are transformed into a completed-but-truncated response instead of a failure. On the Responses API the response has `status: "incomplete"` and `incomplete_details.reason: "max_output_tokens"` (streams end with a `response.incomplete` event); on Chat Completions the same case is `finish_reason: "length"`.
 
-| `error_type` | Transformed To | Finish Reason |
-|---|---|---|
-| `context_length_exceeded` | Success | `length` |
-| `max_tokens_exceeded` | Success | `length` |
-| `token_limit_exceeded` | Success | `length` |
-| `string_too_long` | Success | `length` |
+| Upstream error code | Result on `/api/v1/responses` |
+|---|---|
+| `context_length_exceeded` (with `param: "input"`, or an overflow message) | terminal failure (see below) |
+| `context_length_exceeded` (output budget) | `status: "incomplete"`, `incomplete_details.reason: "max_output_tokens"` |
+| `max_tokens_exceeded` | `status: "incomplete"`, `incomplete_details.reason: "max_output_tokens"` |
+| `token_limit_exceeded` | `status: "incomplete"`, `incomplete_details.reason: "max_output_tokens"` |
+| `string_too_long` | `status: "incomplete"`, `incomplete_details.reason: "max_output_tokens"` |
 
-This allows graceful handling of limit-based errors without treating them as failures.
+The exception is a length error reported against the `input` itself (the prompt overflowed the context window). Retrying cannot succeed, so it is a terminal failure: a non-streaming request gets an error status, and a stream ends with `response.failed` carrying `error.code: "invalid_prompt"`. This allows graceful handling of output-limit errors without treating them as failures.
 
 ### Anthropic Messages (`/api/v1/messages`)
 
@@ -538,7 +534,7 @@ To enable debug output, include the `debug` parameter in your request:
 <CodeGroup>
 
 ```typescript title="TypeScript" expandable lines
-fetch('https://openrouter.ai/api/v1/chat/completions', {
+const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
   method: 'POST',
   headers: {
     Authorization: 'Bearer <OPENROUTER_API_KEY>',
@@ -613,7 +609,7 @@ for line in response.iter_lines():
 <CodeGroup>
 
 ```typescript title="TypeScript" expandable lines
-fetch('https://openrouter.ai/api/v1/responses', {
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     Authorization: 'Bearer <OPENROUTER_API_KEY>',

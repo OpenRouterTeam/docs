@@ -57,21 +57,19 @@ SERVER_CONFIG = {
 }
 ```
 
-Next, our helper function to convert MCP tool definitions to OpenAI tool definitions:
+Next, our helper function to convert MCP tool definitions to [Responses API](/api_reference/responses/overview) function tool definitions:
 
 ```python lines
 
 def convert_tool_format(tool):
     converted_tool = {
         "type": "function",
-        "function": {
-            "name": tool.name,
-            "description": tool.description,
-            "parameters": {
-                "type": "object",
-                "properties": tool.inputSchema["properties"],
-                "required": tool.inputSchema["required"]
-            }
+        "name": tool.name,
+        "description": tool.description,
+        "parameters": {
+            "type": "object",
+            "properties": tool.inputSchema.get("properties", {}),
+            "required": tool.inputSchema.get("required", [])
         }
     }
     return converted_tool
@@ -113,46 +111,45 @@ class MCPClient:
         response = await self.session.list_tools()
         available_tools = [convert_tool_format(tool) for tool in response.tools]
 
-        response = self.openai.chat.completions.create(
-            model=MODEL,
-            tools=available_tools,
-            messages=self.messages
-        )
-        self.messages.append(response.choices[0].message.model_dump())
-
-        final_text = []
-        content = response.choices[0].message
-        if content.tool_calls is not None:
-            tool_name = content.tool_calls[0].function.name
-            tool_args = content.tool_calls[0].function.arguments
-            tool_args = json.loads(tool_args) if tool_args else {}
-
-            # Execute tool call
-            try:
-                result = await self.session.call_tool(tool_name, tool_args)
-                final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
-            except Exception as e:
-                print(f"Error calling tool {tool_name}: {e}")
-                result = None
-
-            self.messages.append({
-                "role": "tool",
-                "tool_call_id": content.tool_calls[0].id,
-                "name": tool_name,
-                "content": result.content
-            })
-
-            response = self.openai.chat.completions.create(
+        for _ in range(10):
+            response = self.openai.responses.create(
                 model=MODEL,
-                max_tokens=1000,
-                messages=self.messages,
+                tools=available_tools,
+                max_output_tokens=1000,
+                input=self.messages,
             )
+            if response.status != "completed":
+                message = response.error.message if response.error else f"Response ended as {response.status}"
+                raise RuntimeError(message)
 
-            final_text.append(response.choices[0].message.content)
-        else:
-            final_text.append(content.content)
+            self.messages += [item.model_dump(exclude_none=True) for item in response.output]
 
-        return "\n".join(final_text)
+            tool_calls = [item for item in response.output if item.type == "function_call"]
+            if not tool_calls:
+                return response.output_text
+
+            # Answer every function_call the model made; a call left without
+            # an output makes the next request invalid.
+            for tool_call in tool_calls:
+                tool_name = tool_call.name
+                tool_args = json.loads(tool_call.arguments) if tool_call.arguments else {}
+
+                # Execute tool call
+                try:
+                    result = await self.session.call_tool(tool_name, tool_args)
+                except Exception as e:
+                    print(f"Error calling tool {tool_name}: {e}")
+                    result = None
+
+                self.messages.append({
+                    "type": "function_call_output",
+                    "call_id": tool_call.call_id,
+                    "output": "\n".join(
+                        part.text for part in result.content if part.type == "text"
+                    ) if result else "Tool call failed",
+                })
+
+        raise RuntimeError("Tool calling exceeded 10 iterations")
 
     async def chat_loop(self):
         """Run an interactive chat loop"""
@@ -187,7 +184,7 @@ if __name__ == "__main__":
 
 Assembling all of the above code into mcp-client.py, you get a client that behaves as follows (some outputs truncated for brevity):
 
-```bash expandable lines
+```text expandable lines
 % python mcp-client.py
 
 Secure MCP Filesystem Server running on stdio

@@ -32,7 +32,45 @@ Structured outputs allow you to:
 
 ## Using Structured Outputs
 
-To use structured outputs, include a `response_format` parameter in your request, with `type` set to `json_schema` and the `json_schema` object containing your schema:
+### Responses API
+
+On the [Responses API](/api_reference/responses/overview), set `text.format` in your request, with `type` set to `json_schema` and your schema's `name`, `strict`, and `schema` fields alongside it:
+
+```json expandable lines
+{
+  "input": "What's the weather like in London?",
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "name": "weather",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "City or location name"
+          },
+          "temperature": {
+            "type": "number",
+            "description": "Temperature in Celsius"
+          },
+          "conditions": {
+            "type": "string",
+            "description": "Weather conditions description"
+          }
+        },
+        "required": ["location", "temperature", "conditions"],
+        "additionalProperties": false
+      }
+    }
+  }
+}
+```
+
+### Chat Completions API
+
+On Chat Completions (`/api/v1/chat/completions`), include a `response_format` parameter in your request, with `type` set to `json_schema` and the `json_schema` object containing your schema:
 
 ```json expandable lines
 {
@@ -68,7 +106,7 @@ To use structured outputs, include a `response_format` parameter in your request
 }
 ```
 
-The model will respond with a JSON object that strictly follows your schema:
+On both APIs, the model will respond with a JSON object that strictly follows your schema:
 
 ```json lines
 {
@@ -97,7 +135,7 @@ To ensure your request is only routed to endpoints that support structured outpu
 
 1. Check the model's supported parameters on the [models page](https://openrouter.ai/models)
 2. Set `require_parameters: true` in your provider preferences (see [Provider Routing](/guides/routing/provider-selection))
-3. Include `response_format` and set `type: json_schema` in the required parameters
+3. Include `text.format` (Responses API) or `response_format` (Chat Completions) with `type: json_schema` in your request
 
 ## Best Practices
 
@@ -122,15 +160,13 @@ const openRouter = new OpenRouter({
   apiKey: '{{API_KEY_REF}}',
 });
 
-const response = await openRouter.chat.send({
-  chatRequest: {
+const response = await openRouter.responses.send({
+  responsesRequest: {
     model: '{{MODEL}}',
-    messages: [
-      { role: 'user', content: 'What is the weather like in London?' },
-    ],
-    responseFormat: {
-      type: 'json_schema',
-      jsonSchema: {
+    input: 'What is the weather like in London?',
+    text: {
+      format: {
+        type: 'json_schema',
         name: 'weather',
         strict: true,
         schema: {
@@ -158,11 +194,12 @@ const response = await openRouter.chat.send({
   },
 });
 
-if (response instanceof ReadableStream) {
+if (!('output' in response)) {
   throw new Error('Expected a non-streaming response');
 }
 
-const weatherInfo = response.choices[0].message.content;
+const message = [...response.output].reverse().find((item) => item.type === 'message');
+const weatherInfo = message?.content.find((part) => part.type === 'output_text')?.text;
 ```
 
 ```python title="Python" expandable lines
@@ -170,7 +207,7 @@ import requests
 import json
 
 response = requests.post(
-  "https://openrouter.ai/api/v1/chat/completions",
+  "https://openrouter.ai/api/v1/responses",
   headers={
     "Authorization": f"Bearer {{API_KEY_REF}}",
     "Content-Type": "application/json",
@@ -178,12 +215,10 @@ response = requests.post(
 
   json={
     "model": "{{MODEL}}",
-    "messages": [
-      {"role": "user", "content": "What is the weather like in London?"},
-    ],
-    "response_format": {
-      "type": "json_schema",
-      "json_schema": {
+    "input": "What is the weather like in London?",
+    "text": {
+      "format": {
+        "type": "json_schema",
         "name": "weather",
         "strict": True,
         "schema": {
@@ -211,11 +246,12 @@ response = requests.post(
 )
 
 data = response.json()
-weather_info = data["choices"][0]["message"]["content"]
+message = next(item for item in reversed(data["output"]) if item["type"] == "message")
+weather_info = next(part["text"] for part in message["content"] if part["type"] == "output_text")
 ```
 
 ```typescript title="TypeScript (fetch)" expandable lines
-const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     Authorization: 'Bearer {{API_KEY_REF}}',
@@ -223,12 +259,10 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
   },
   body: JSON.stringify({
     model: '{{MODEL}}',
-    messages: [
-      { role: 'user', content: 'What is the weather like in London?' },
-    ],
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
+    input: 'What is the weather like in London?',
+    text: {
+      format: {
+        type: 'json_schema',
         name: 'weather',
         strict: true,
         schema: {
@@ -256,7 +290,10 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 });
 
 const data = await response.json();
-const weatherInfo = data.choices[0].message.content;
+const weatherInfo = [...data.output]
+  .reverse()
+  .find((item: { type: string }) => item.type === 'message')
+  ?.content.find((part: { type: string; text?: string }) => part.type === 'output_text')?.text;
 ```
 
 </CodeGroup>
@@ -269,12 +306,14 @@ Structured outputs are also supported with streaming responses. The model will s
 
 To enable streaming with structured outputs, simply add `stream: true` to your request:
 
-```typescript lines
+```json lines
 {
   "stream": true,
-  "response_format": {
-    "type": "json_schema",
-    // ... rest of your schema
+  "text": {
+    "format": {
+      "type": "json_schema",
+      // ... rest of your schema
+    }
   }
 }
 ```
@@ -288,4 +327,4 @@ When using structured outputs, you may encounter these scenarios:
 
 ## Response Healing
 
-For non-streaming requests using `response_format` with `type: "json_schema"`, you can enable the [Response Healing](/guides/features/plugins/response-healing) plugin to reduce the risk of invalid JSON when models return imperfect formatting. Learn more in the [Response Healing documentation](/guides/features/plugins/response-healing).
+For non-streaming requests using `text.format` with `type: "json_schema"`, you can enable the [Response Healing](/guides/features/plugins/response-healing) plugin to reduce the risk of invalid JSON when models return imperfect formatting. Learn more in the [Response Healing documentation](/guides/features/plugins/response-healing).

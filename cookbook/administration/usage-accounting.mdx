@@ -25,22 +25,51 @@ The OpenRouter API provides built-in **Usage Accounting** that allows you to tra
 
 OpenRouter automatically returns detailed usage information with every response, including:
 
-1. Prompt and completion token counts using the model's native tokenizer
+1. Input and output token counts using the model's native tokenizer
 2. Cost in credits
 3. Reasoning token counts (if applicable)
 4. Cached token counts (if available)
 
-This information is included in the last SSE message for streaming responses, or in the complete response for non-streaming requests. No additional parameters are required.
+This information is included in the terminal `response.completed` or `response.incomplete` event for streaming responses, or in the terminal response for non-streaming requests. No additional parameters are required. The examples on this page use the [Responses API](/api_reference/responses/overview).
 
 <Note>
 **Deprecated Parameters**
 
-  The `usage: { include: true }` and `stream_options: { include_usage: true }` parameters are deprecated and have no effect. Full usage details are now always included automatically in every response.
+  On Chat Completions, the `usage: { include: true }` and `stream_options: { include_usage: true }` parameters are deprecated and have no effect. The Responses API has no equivalent parameter. Full usage details are always included automatically in every response on both APIs.
 </Note>
 
 ## Response Format
 
-Every response includes a `usage` object with detailed token information:
+Every response includes a `usage` object with detailed token information. The field names follow the API you call.
+
+### Responses API
+
+```json lines
+{
+  "object": "response",
+  "usage": {
+    "input_tokens": 194,
+    "input_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 100
+    },
+    "output_tokens": 2,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 196,
+    "cost": 0.95,
+    "is_byok": false,
+    "cost_details": {
+      "upstream_inference_cost": null,
+      "upstream_inference_input_cost": 18,
+      "upstream_inference_output_cost": 1
+    }
+  }
+}
+```
+
+### Chat Completions
 
 ```json lines
 {
@@ -72,14 +101,14 @@ Every response includes a `usage` object with detailed token information:
 The usage response includes detailed cost information:
 
 - `cost`: The total amount charged to your account
-- `cost_details.upstream_inference_cost`: The actual cost charged by the upstream AI provider
+- `cost_details.upstream_inference_cost`: The actual cost charged by the upstream AI provider, split into `upstream_inference_input_cost` and `upstream_inference_output_cost` on the Responses API (`upstream_inference_prompt_cost` and `upstream_inference_completions_cost` on Chat Completions)
 
 ## Benefits
 
 1. **Efficiency**: Get usage information without making separate API calls
 2. **Accuracy**: Token counts are calculated using the model's native tokenizer
 3. **Transparency**: Track costs and cached token usage in real-time
-4. **Detailed Breakdown**: Separate counts for prompt, completion, reasoning, and cached tokens
+4. **Detailed Breakdown**: Separate counts for input, output, reasoning, and cached tokens
 
 ## Best Practices
 
@@ -93,7 +122,7 @@ You can also retrieve usage information asynchronously by using the generation I
 
 To use this method:
 
-1. Make your chat completion request as normal
+1. Make your Responses API request as normal
 2. Note the `id` field in the response
 3. Use that ID to fetch usage information via the `/generation` endpoint
 
@@ -121,23 +150,19 @@ const openRouter = new OpenRouter({
   apiKey: '{{API_KEY_REF}}',
 });
 
-const response = await openRouter.chat.send({
-  chatRequest: {
+const response = await openRouter.responses.send({
+  responsesRequest: {
     model: '{{MODEL}}',
-    messages: [
-      {
-        role: 'user',
-        content: 'What is the capital of France?',
-      },
-    ],
+    input: 'What is the capital of France?',
   },
 });
 
-if (response instanceof ReadableStream) {
+if (!('output' in response)) {
   throw new Error('Expected a non-streaming response');
 }
 
-console.log('Response:', response.choices[0].message.content);
+const message = [...response.output].reverse().find((item) => item.type === 'message');
+console.log('Response:', message?.content.find((part) => part.type === 'output_text')?.text);
 // Usage is always included automatically
 console.log('Usage Stats:', response.usage);
 ```
@@ -150,14 +175,12 @@ client = OpenAI(
     api_key="{{API_KEY_REF}}",
 )
 
-response = client.chat.completions.create(
+response = client.responses.create(
     model="{{MODEL}}",
-    messages=[
-        {"role": "user", "content": "What is the capital of France?"}
-    ]
+    input="What is the capital of France?",
 )
 
-print("Response:", response.choices[0].message.content)
+print("Response:", response.output_text)
 # Usage is always included automatically
 print("Usage Stats:", response.usage)
 ```
@@ -171,17 +194,12 @@ const openai = new OpenAI({
 });
 
 async function getResponseWithUsage() {
-  const response = await openai.chat.completions.create({
+  const response = await openai.responses.create({
     model: '{{MODEL}}',
-    messages: [
-      {
-        role: 'user',
-        content: 'What is the capital of France?',
-      },
-    ],
+    input: 'What is the capital of France?',
   });
 
-  console.log('Response:', response.choices[0].message.content);
+  console.log('Response:', response.output_text);
   // Usage is always included automatically
   console.log('Usage Stats:', response.usage);
 }
@@ -213,27 +231,24 @@ client = OpenAI(
     api_key="{{API_KEY_REF}}",
 )
 
-def chat_completion_streaming(messages):
-    response = client.chat.completions.create(
+def stream_response(input):
+    return client.responses.create(
         model="{{MODEL}}",
-        messages=messages,
-        stream=True
+        input=input,
+        stream=True,
     )
-    return response
 
-# Usage is always included in the final chunk when streaming
-for chunk in chat_completion_streaming([
-    {"role": "user", "content": "Write a haiku about Paris."}
-]):
-    if hasattr(chunk, 'usage') and chunk.usage:
-        if hasattr(chunk.usage, 'total_tokens'):
-            print(f"\nUsage Statistics:")
-            print(f"Total Tokens: {chunk.usage.total_tokens}")
-            print(f"Prompt Tokens: {chunk.usage.prompt_tokens}")
-            print(f"Completion Tokens: {chunk.usage.completion_tokens}")
-            print(f"Cost: {chunk.usage.cost} credits")
-    elif chunk.choices and chunk.choices[0].delta.content:
-        print(chunk.choices[0].delta.content, end="")
+# Usage is included in the terminal response.completed or response.incomplete event
+for event in stream_response("Write a haiku about Paris."):
+    if event.type == "response.output_text.delta":
+        print(event.delta, end="")
+    elif event.type in ("response.completed", "response.incomplete") and event.response.usage:
+        usage = event.response.usage
+        print(f"\nUsage Statistics:")
+        print(f"Total Tokens: {usage.total_tokens}")
+        print(f"Input Tokens: {usage.input_tokens}")
+        print(f"Output Tokens: {usage.output_tokens}")
+        print(f"Cost: {getattr(usage, 'cost', None)} credits")
 ```
 
 ```typescript TypeScript expandable lines
@@ -244,29 +259,30 @@ const openai = new OpenAI({
   apiKey: '{{API_KEY_REF}}',
 });
 
-async function chatCompletionStreaming(messages) {
-  const response = await openai.chat.completions.create({
+async function streamResponse(input: string) {
+  return openai.responses.create({
     model: '{{MODEL}}',
-    messages,
+    input,
     stream: true,
   });
-
-  return response;
 }
 
-// Usage is always included in the final chunk when streaming
+// Usage is included in the terminal response.completed or response.incomplete event
 (async () => {
-  for await (const chunk of chatCompletionStreaming([
-    { role: 'user', content: 'Write a haiku about Paris.' },
-  ])) {
-    if (chunk.usage) {
+  for await (const event of await streamResponse('Write a haiku about Paris.')) {
+    if (event.type === 'response.output_text.delta') {
+      process.stdout.write(event.delta);
+    } else if (
+      (event.type === 'response.completed' || event.type === 'response.incomplete') &&
+      event.response.usage
+    ) {
+      // OpenRouter adds `cost` to the usage object.
+      const usage: typeof event.response.usage & { cost?: number } = event.response.usage;
       console.log('\nUsage Statistics:');
-      console.log(`Total Tokens: ${chunk.usage.total_tokens}`);
-      console.log(`Prompt Tokens: ${chunk.usage.prompt_tokens}`);
-      console.log(`Completion Tokens: ${chunk.usage.completion_tokens}`);
-      console.log(`Cost: ${chunk.usage.cost} credits`);
-    } else if (chunk.choices[0]?.delta?.content) {
-      process.stdout.write(chunk.choices[0].delta.content);
+      console.log(`Total Tokens: ${usage.total_tokens}`);
+      console.log(`Input Tokens: ${usage.input_tokens}`);
+      console.log(`Output Tokens: ${usage.output_tokens}`);
+      console.log(`Cost: ${usage.cost} credits`);
     }
   }
 })();

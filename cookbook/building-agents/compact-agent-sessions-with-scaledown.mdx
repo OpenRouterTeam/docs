@@ -35,7 +35,7 @@ Prerequisites:
 
 ## 1. Call Summarize
 
-`summarize` sends your instructions as the system message and the text as the user message, and returns the plain-text summary with its `usage`. The instructions tell the model what to keep: the goal, the decisions made and why, the files and commands the agent touched, the approaches that failed, and the facts it confirmed. They also tell it to copy names exactly, such as file paths, table names, and ticket IDs, because our summaries lost many of them otherwise. Longer histories get split into chunks before they reach `summarize`, so each summary stays short and focused.
+`summarize` calls the [Responses API](/api_reference/responses/overview) with your instructions as `instructions` and the text as `input`, and returns the plain-text summary from the `message` output item with its `usage`. The instructions tell the model what to keep: the goal, the decisions made and why, the files and commands the agent touched, the approaches that failed, and the facts it confirmed. They also tell it to copy names exactly, such as file paths, table names, and ticket IDs, because our summaries lost many of them otherwise. Longer histories get split into chunks before they reach `summarize`, so each summary stays short and focused.
 
 ```typescript lines
 import { z } from 'zod';
@@ -48,14 +48,22 @@ approaches that failed and why, and facts confirmed. Drop pleasantries and raw t
 unless a specific value is needed later. Quote identifiers verbatim: ticket IDs, file paths, branch names,
 table names, commands, environment variables, numbers and names. Use short bullet points.`;
 
-const ChatCompletionSchema = z.object({
-  choices: z.array(z.object({ message: z.object({ content: z.string() }) })).min(1),
-  usage: z.object({ prompt_tokens: z.number(), completion_tokens: z.number(), cost: z.number() }),
+const ResponseSchema = z.object({
+  status: z.enum(['completed', 'incomplete', 'in_progress', 'failed', 'cancelled', 'queued']),
+  error: z.object({ message: z.string() }).nullable(),
+  incomplete_details: z.object({ reason: z.string() }).nullable(),
+  output: z.array(
+    z.object({
+      type: z.string(),
+      content: z.array(z.object({ type: z.string(), text: z.string().optional() })).optional(),
+    }),
+  ),
+  usage: z.object({ input_tokens: z.number(), output_tokens: z.number(), cost: z.number() }),
 });
-type Usage = z.infer<typeof ChatCompletionSchema>['usage'];
+type Usage = z.infer<typeof ResponseSchema>['usage'];
 
 async function summarize(text: string): Promise<{ summary: string; usage: Usage }> {
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const res = await fetch('https://openrouter.ai/api/v1/responses', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -63,18 +71,27 @@ async function summarize(text: string): Promise<{ summary: string; usage: Usage 
     },
     body: JSON.stringify({
       model: SUMMARIZE_MODEL,
-      messages: [
-        { role: 'system', content: COMPACTION_INSTRUCTIONS },
-        { role: 'user', content: text },
-      ],
+      instructions: COMPACTION_INSTRUCTIONS,
+      input: text,
     }),
     signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) {
     throw new Error(`summarize ${res.status}: ${await res.text()}`);
   }
-  const body = ChatCompletionSchema.parse(await res.json());
-  return { summary: body.choices[0]!.message.content, usage: body.usage };
+  const body = ResponseSchema.parse(await res.json());
+  if (body.status !== 'completed') {
+    throw new Error(
+      body.error?.message ??
+        `summarize ended as ${body.status}${body.incomplete_details?.reason ? `: ${body.incomplete_details.reason}` : ''}`,
+    );
+  }
+  const message = [...body.output].reverse().find((item) => item.type === 'message');
+  const summary = message?.content?.find((part) => part.type === 'output_text')?.text;
+  if (summary === undefined) {
+    throw new Error('summarize returned no output_text');
+  }
+  return { summary, usage: body.usage };
 }
 ```
 
@@ -84,7 +101,7 @@ Each `summarize` call is one paid request billed to your OpenRouter account at t
 
 ## 2. Turn old messages into text
 
-Summarize reads one block of text and rejects `tool` messages with a `400`, so turn the old messages into text first. Keep the tool calls and their results, since that's where most of what the agent learned lives. The message type below is the OpenAI chat format; swap in your own.
+Summarize reads one block of text and rejects tool calls and tool results with a `400`, so turn the old messages into text first. Keep the tool calls and their results, since that's where most of what the agent learned lives. The message type below is the OpenAI chat format; swap in your own.
 
 ```typescript lines
 type ToolCall = { id: string; function: { name: string; arguments: string } };
@@ -230,7 +247,7 @@ export async function maybeCompact(history: HistoryMessage[]): Promise<HistoryMe
       summary = folded.summary;
       usage = [...usage, ...folded.usage];
     }
-    console.log(JSON.stringify({ compacted_messages: old.length, old_chars: historySize(old), carried_chars: carried?.length ?? 0, summary_chars: summary.length, calls: usage.length, cost: usage.reduce((n, u) => n + u.cost, 0), prompt_tokens: usage.reduce((n, u) => n + u.prompt_tokens, 0) }));
+    console.log(JSON.stringify({ compacted_messages: old.length, old_chars: historySize(old), carried_chars: carried?.length ?? 0, summary_chars: summary.length, calls: usage.length, cost: usage.reduce((n, u) => n + u.cost, 0), input_tokens: usage.reduce((n, u) => n + u.input_tokens, 0) }));
     return [system, { role: 'user', content: `${SUMMARY_PREFIX}${summary}` }, ...recent];
   } catch (error) {
     console.error('compaction failed, keeping full history', error);
@@ -313,7 +330,7 @@ if (isSummaryMessage(summary)) {
 **Captured output.** The first compaction's log line from `maybeCompact`, and the first two of the six parts of its summary:
 
 ```text lines
-{"compacted_messages":193,"old_chars":82444,"carried_chars":0,"summary_chars":3256,"calls":6,"cost":0.00072568,"prompt_tokens":18142}
+{"compacted_messages":193,"old_chars":82444,"carried_chars":0,"summary_chars":3256,"calls":6,"cost":0.00072568,"input_tokens":18142}
 ```
 
 ```text lines
@@ -342,7 +359,7 @@ We then appended `syntheticSession(80, 200).slice(2)`, 80 more steps, and compac
 | First compaction | 82,444 characters of old turns became a 3.3k to 4.2k-character summary; history went from 86k to 7.1k to 8.2k characters |
 | Hidden facts kept after the first compaction | 9 or 10 of 10 across 7 runs |
 | After the second and third compaction | summary grew to 11.8k characters, then folded to 10.5k to 10.8k; facts 9 then 8 of 10 in one run, 10 then 10 in the other |
-| Calls and cost per compaction | 5 to 6 calls and 16.3k to 18.1k prompt tokens without a fold, \$0.00065 to \$0.00073 from `usage.cost`; 11 calls, 24.6k to 24.8k tokens and \$0.00099 with one |
+| Calls and cost per compaction | 5 to 6 calls and 16.3k to 18.1k input tokens without a fold, \$0.00065 to \$0.00073 from `usage.cost`; 11 calls, 24.6k to 24.8k tokens and \$0.00099 with one |
 | Latency per compaction, chunks in parallel | 2 to 33 seconds; a fold adds a second round of calls after the chunk calls, and one run in testing hit the 60-second timeout and kept the full history |
 | Kept turns after every compaction | started on an `assistant` message |
 

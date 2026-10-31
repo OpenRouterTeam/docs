@@ -25,7 +25,7 @@ OpenRouter provides all three building blocks for a RAG pipeline through a singl
 
 1. **Embeddings** — convert documents and queries into vectors for semantic search
 2. **Rerank** — re-score retrieved candidates for higher precision
-3. **Chat Completions** — generate a final answer using the retrieved context
+3. **[Responses](/api_reference/responses/overview)** — generate a final answer using the retrieved context
 
 ## How RAG Works
 
@@ -368,29 +368,23 @@ def generate_answer(query, context_docs):
     )
 
     response = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
+        "https://openrouter.ai/api/v1/responses",
         headers={
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
             "Content-Type": "application/json",
         },
         json={
             "model": "{{CHAT_MODEL}}",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "Answer the user's question based on the provided context. "
-                               "Cite the relevant source numbers in brackets. "
-                               "If the context doesn't contain enough information, say so.",
-                },
-                {
-                    "role": "user",
-                    "content": f"Context:\n{context}\n\nQuestion: {query}",
-                },
-            ],
+            "instructions": "Answer the user's question based on the provided context. "
+                            "Cite the relevant source numbers in brackets. "
+                            "If the context doesn't contain enough information, say so.",
+            "input": f"Context:\n{context}\n\nQuestion: {query}",
         },
     )
 
-    return response.json()["choices"][0]["message"]["content"]
+    data = response.json()
+    message = next(item for item in reversed(data["output"]) if item["type"] == "message")
+    return next(part["text"] for part in message["content"] if part["type"] == "output_text")
 
 answer = generate_answer(query, reranked)
 print(f"Question: {query}")
@@ -407,7 +401,7 @@ async function generateAnswer(
     .map((doc, i) => `[${i + 1}] ${doc.document.text}`)
     .join('\n\n');
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const response = await fetch('https://openrouter.ai/api/v1/responses', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
@@ -415,24 +409,19 @@ async function generateAnswer(
     },
     body: JSON.stringify({
       model: '{{CHAT_MODEL}}',
-      messages: [
-        {
-          role: 'system',
-          content:
-            "Answer the user's question based on the provided context. " +
-            'Cite the relevant source numbers in brackets. ' +
-            "If the context doesn't contain enough information, say so.",
-        },
-        {
-          role: 'user',
-          content: `Context:\n${context}\n\nQuestion: ${query}`,
-        },
-      ],
+      instructions:
+        "Answer the user's question based on the provided context. " +
+        'Cite the relevant source numbers in brackets. ' +
+        "If the context doesn't contain enough information, say so.",
+      input: `Context:\n${context}\n\nQuestion: ${query}`,
     }),
   });
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  return [...data.output]
+    .reverse()
+    .find((item: { type: string }) => item.type === 'message')
+    .content.find((part: { type: string }) => part.type === 'output_text').text;
 }
 
 const answer = await generateAnswer(query, reranked);
@@ -513,26 +502,20 @@ def generate(query, context_docs):
         for i, doc in enumerate(context_docs)
     )
     response = requests.post(
-        f"{BASE_URL}/chat/completions",
+        f"{BASE_URL}/responses",
         headers=get_headers(),
         json={
             "model": CHAT_MODEL,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "Answer the user's question using only the provided context. "
-                        "Cite sources with [n]. If the context is insufficient, say so."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": f"Context:\n{context}\n\nQuestion: {query}",
-                },
-            ],
+            "instructions": (
+                "Answer the user's question using only the provided context. "
+                "Cite sources with [n]. If the context is insufficient, say so."
+            ),
+            "input": f"Context:\n{context}\n\nQuestion: {query}",
         },
     )
-    return response.json()["choices"][0]["message"]["content"]
+    data = response.json()
+    message = next(item for item in reversed(data["output"]) if item["type"] == "message")
+    return next(part["text"] for part in message["content"] if part["type"] == "output_text")
 
 # --- Pipeline ---
 
@@ -626,27 +609,22 @@ async function generate(query: string, contextDocs: string[]): Promise<string> {
   const context = contextDocs
     .map((doc, i) => `[${i + 1}] ${doc}`)
     .join('\n\n');
-  const response = await fetch(`${BASE_URL}/chat/completions`, {
+  const response = await fetch(`${BASE_URL}/responses`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
       model: CHAT_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content:
-            "Answer the user's question using only the provided context. " +
-            'Cite sources with [n]. If the context is insufficient, say so.',
-        },
-        {
-          role: 'user',
-          content: `Context:\n${context}\n\nQuestion: ${query}`,
-        },
-      ],
+      instructions:
+        "Answer the user's question using only the provided context. " +
+        'Cite sources with [n]. If the context is insufficient, say so.',
+      input: `Context:\n${context}\n\nQuestion: ${query}`,
     }),
   });
   const data = await response.json();
-  return data.choices[0].message.content;
+  return [...data.output]
+    .reverse()
+    .find((item: { type: string }) => item.type === 'message')
+    .content.find((part: { type: string }) => part.type === 'output_text').text;
 }
 
 // --- Pipeline ---

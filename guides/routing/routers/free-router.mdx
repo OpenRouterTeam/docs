@@ -37,29 +37,25 @@ const openRouter = new OpenRouter({
   apiKey: '<OPENROUTER_API_KEY>',
 });
 
-const completion = await openRouter.chat.send({
-  chatRequest: {
+const response = await openRouter.responses.send({
+  responsesRequest: {
     model: 'openrouter/free',
-    messages: [
-      {
-        role: 'user',
-        content: 'Hello! What can you help me with today?',
-      },
-    ],
+    input: 'Hello! What can you help me with today?',
   },
 });
 
-if (completion instanceof ReadableStream) {
+if (!('output' in response)) {
   throw new Error('Expected a non-streaming response');
 }
 
-console.log(completion.choices[0].message.content);
+const message = [...response.output].reverse().find((item) => item.type === 'message');
+console.log(message?.content.find((part) => part.type === 'output_text')?.text);
 // Check which model was selected
-console.log('Model used:', completion.model);
+console.log('Model used:', response.model);
 ```
 
 ```typescript title="TypeScript (fetch)" expandable lines
-const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer <OPENROUTER_API_KEY>',
@@ -67,17 +63,13 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
   },
   body: JSON.stringify({
     model: 'openrouter/free',
-    messages: [
-      {
-        role: 'user',
-        content: 'Hello! What can you help me with today?',
-      },
-    ],
+    input: 'Hello! What can you help me with today?',
   }),
 });
 
 const data = await response.json();
-console.log(data.choices[0].message.content);
+const message = [...data.output].reverse().find((item: { type: string }) => item.type === 'message');
+console.log(message?.content.find((part: { type: string; text?: string }) => part.type === 'output_text')?.text);
 // Check which model was selected
 console.log('Model used:', data.model);
 ```
@@ -87,35 +79,31 @@ import requests
 import json
 
 response = requests.post(
-  url="https://openrouter.ai/api/v1/chat/completions",
+  url="https://openrouter.ai/api/v1/responses",
   headers={
     "Authorization": "Bearer <OPENROUTER_API_KEY>",
     "Content-Type": "application/json",
   },
   data=json.dumps({
     "model": "openrouter/free",
-    "messages": [
-      {
-        "role": "user",
-        "content": "Hello! What can you help me with today?"
-      }
-    ]
+    "input": "Hello! What can you help me with today?"
   })
 )
 
 data = response.json()
-print(data['choices'][0]['message']['content'])
+message = next(item for item in reversed(data['output']) if item['type'] == 'message')
+print(next(part['text'] for part in message['content'] if part['type'] == 'output_text'))
 # Check which model was selected
 print('Model used:', data['model'])
 ```
 
 ```bash title="cURL" lines
-curl https://openrouter.ai/api/v1/chat/completions \
+curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "openrouter/free",
-    "messages": [{"role": "user", "content": "Hello!"}]
+    "input": "Hello!"
   }'
 ```
 
@@ -128,18 +116,24 @@ The response includes the `model` field showing which free model was actually us
 ```json lines
 {
   "id": "gen-...",
+  "object": "response",
   "model": "upstage/solar-pro-3:free",
-  "choices": [
+  "status": "completed",
+  "output": [
     {
-      "message": {
-        "role": "assistant",
-        "content": "..."
-      }
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "..."
+        }
+      ]
     }
   ],
   "usage": {
-    "prompt_tokens": 12,
-    "completion_tokens": 85,
+    "input_tokens": 12,
+    "output_tokens": 85,
     "total_tokens": 97
   }
 }

@@ -45,7 +45,7 @@ Figures may be restated as snapshots refresh, so record the `meta` block alongsi
 
 The first endpoint, `/api/v1/datasets/rankings-daily`, returns the top 50 public models per day by total token usage, plus a single aggregated `other` row per day summing every model outside that top 50. Each real model row is keyed on `(date, model_permaslug)`. Numbers are token counts (`prompt_tokens + completion_tokens`), matching what is shown on the rankings page.
 
-The endpoint is gated by any valid OpenRouter API key. The same key you use to call `/api/v1/chat/completions` works here.
+The endpoint is gated by any valid OpenRouter API key. The same key you use to call `/api/v1/responses` works here.
 
 ### Endpoint
 
@@ -61,7 +61,7 @@ The endpoint accepts only `GET` requests. There is no request body; pass the dat
 
 | Header | Required | Value |
 |---|---|---|
-| `Authorization` | Yes | `Bearer <YOUR_OPENROUTER_API_KEY>`. The same key you use to call `/api/v1/chat/completions` works here. |
+| `Authorization` | Yes | `Bearer <YOUR_OPENROUTER_API_KEY>`. The same key you use to call `/api/v1/responses` works here. |
 
 Requests without a valid key receive `401 Unauthorized`.
 
