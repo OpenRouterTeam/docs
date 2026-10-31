@@ -120,7 +120,7 @@ Historical activity, logs, and billing records are kept. Your other workspaces a
     Org admins have admin permissions across all workspaces: they can view and manage everything in every workspace, including API keys, guardrails, BYOK, routing, presets, plugins, observability, members, and settings. Organization admins and account owners can create or delete workspaces. Org admins and workspace admins can control members' access to their workspaces; assigning workspace roles additionally requires a Pro or Enterprise plan. At the account level, org admins manage billing and credits, organization membership and roles, management API keys, and account-level data policies and allowed providers/models.
   </Accordion>
   <Accordion title='Can management keys be used across workspaces?'>
-    Yes. Management keys operate at the account level and can be used to perform administrative actions across all workspaces via the [management API](https://openrouter.ai/docs/api/api-reference/workspaces/list-workspaces).
+    Organization-scoped management keys operate at the account level and can be used to perform administrative actions across all workspaces via the [management API](https://openrouter.ai/docs/api/api-reference/workspaces/list-workspaces). [Workspace-scoped](/guides/overview/auth/management-api-keys) management keys only act inside their own workspace on `/api/v1/keys`.
   </Accordion>
   <Accordion title='Can workspaces have different data policies?'>
     Workspaces inherit account-level data policies and allowed providers/models. Within those constraints, each workspace can set more granular guardrails to further restrict API key and member activity. The account-level policy is the ceiling; individual workspaces can only be more restrictive.

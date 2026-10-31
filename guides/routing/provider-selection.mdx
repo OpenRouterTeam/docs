@@ -1267,7 +1267,7 @@ You can enforce Zero Data Retention (ZDR) on a per-request basis using the `zdr`
 | --- | --- | --- | --- |
 | `zdr` | boolean | - | Restrict routing to only ZDR (Zero Data Retention) endpoints. |
 
-When `zdr` is set to `true`, the request will only be routed to endpoints that have a Zero Data Retention policy. When `zdr` is `false` or not provided, it has no effect on routing.
+When `zdr` is set to `true`, the request will only be routed to endpoints that have a Zero Data Retention policy. Endpoints that use Safety Retention are included only if Safety Retention is allowed for your account or guardrail (see [Google Safety Retention](/guides/features/zdr#google-safety-retention)). When `zdr` is `false` or not provided, it has no effect on routing.
 
 `zdr` filters model inference endpoints. The [Advisor](/guides/features/server-tools/advisor) and [Subagent](/guides/features/server-tools/subagent) server tools forward your `provider` preferences, including `zdr`, to their inner generations. Tool backends are not filtered by `zdr`. See [Privacy and regional availability](/guides/features/server-tools#privacy-and-regional-availability).
 

@@ -359,7 +359,7 @@ The HTTP status each `error_type` maps to is listed in the tables below.
 
 Both policy types share one status: the request was understood and declined, so it is a 403 regardless of whether the model or a filter around it made the call, and regardless of the provider's own wire status. The two `error_type` values only tell you which mechanism declined it. `metadata.provider_name`, `metadata.provider_code`, and `metadata.raw` identify who declined and carry the provider's verbatim payload. The status is the same for every provider and skin, whether the block is the HTTP response or arrives mid-stream (in which case it is the `code` inside the error body, since the HTTP line was already committed).
 
-A refusal that the model produces as its own completed output is not an error. When the provider answers successfully with a refusal (e.g. Anthropic's `stop_reason: "refusal"`), each API keeps its native successful shape: Chat Completions returns `message.refusal` with `finish_reason: "content_filter"`, and the Responses API returns `status: "completed"` with a `refusal` content part. Fallback to another model still runs before any output is returned when routing allows it.
+A refusal that the model produces as its own completed output is not an error. When the provider answers successfully with a refusal (e.g. Anthropic's `stop_reason: "refusal"`), each API keeps its native successful shape: Chat Completions returns `message.refusal` with `finish_reason: "content_filter"`, and the Responses API returns `status: "incomplete"` with `incomplete_details.reason: "content_filter"` and a `refusal` content part. Fallback to another model still runs before any output is returned when routing allows it.
 
 ### Image errors
 
