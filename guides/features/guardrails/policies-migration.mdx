@@ -1,0 +1,157 @@
+---
+publish: true
+title: Migrating to Guardrail Policies
+description: What changes for API and Terraform users moving from guardrails to Guardrail Policies
+seoTitle: 'Migrating to Guardrail Policies | OpenRouter'
+og:site_name: OpenRouter Documentation
+og:title: 'Migrating to Guardrail Policies'
+og:description: 'How existing OpenRouter guardrails map to Guardrail Policies, and what API and Terraform users need to change.'
+og:image: https://openrouter.ai/dynamic-og?title=Migrating%20to%20Guardrail%20Policies&description=For%20API%20and%20Terraform%20users
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: arrow-right-arrow-left
+sidebarTitle: Migrating to policies
+---
+
+This guide is for teams that manage [guardrails](/guides/features/guardrails) through the API or Terraform today. It explains what happens to your existing guardrails, what keeps working, and how to move to [Guardrail Policies](/guides/features/guardrails/policies) when you're ready.
+
+## The short version
+
+1. Nothing breaks. Your existing guardrails keep enforcing the same rules, keep their IDs, and the guardrails API and Terraform resources keep working.
+2. Each guardrail now also appears in Guardrail Policies as up to three separate policies: a budget, a model & provider access policy, and a content moderation policy.
+3. Changes you make through the guardrails API or Terraform keep flowing into those policies.
+4. Changes you make in Guardrail Policies don't flow back into guardrails. Once you edit a policy for a workspace, manage that policy type there from then on.
+
+## How guardrails map to policies
+
+| Guardrails | Guardrail Policies |
+| --- | --- |
+| A guardrail with a budget, model and provider lists, and content filters | Up to three policies, one per type. Only the parts the guardrail actually sets become policies. |
+| The workspace default guardrail | A workspace-wide policy assigned to that workspace, which every member and API key is checked against, plus the workspace default for each type it sets. |
+| A guardrail assigned to a member | That member's policy of each type the guardrail sets |
+| A guardrail assigned to an API key | That API key's policy of each type the guardrail sets |
+| `limit_usd`, `reset_interval`, `include_byok_in_budgets` | The budget policy's `config` |
+| `allowed_providers`, `ignored_providers`, `allowed_models`, `ignored_models`, `enforce_zdr_*`, `allow_safety_retention_*`, model training and publication settings, data regions | The model & provider access policy's `config` |
+| `content_filter_builtins`, `content_filters`, prompt injection and sensitive info settings | The content moderation policy's `config` |
+
+Setting names and values are the same for guardrails and policies, so a guardrail body can be split into policy `config` objects without renaming anything.
+
+The rules for combining layers are also unchanged: the stricter rule wins, and every budget is checked on its own. See [How policies combine](/guides/features/guardrails/policies#how-policies-combine).
+
+## What's different with policies
+
+- **Each type is assigned on its own.** A member can share a team's model access policy and still have their own budget. With guardrails, giving someone a different budget meant copying the whole guardrail.
+- **Policies belong to one workspace.** A workspace policy can only be assigned to members and API keys in that workspace. Use a workspace-wide policy for a rule that spans workspaces.
+- **The workspace default is optional.** A workspace can have no default of a given type, and you can opt individual members or API keys out of a default.
+- **Workspace-wide policies can cover many workspaces.** One workspace-wide policy can be the default for every workspace or assigned to a chosen list, instead of repeating the same workspace default in each one.
+- **API keys are named by hash.** Policy requests use `api_key_hashes` and `opted_out_api_key_hashes`, the `hash` returned by [List API keys](/api/api-reference/api-keys/list-api-keys). Member IDs are the same user IDs you use with guardrails.
+
+## Editing a migrated policy
+
+When you change a migrated policy through the Guardrail Policies API or the dashboard, OpenRouter makes a copy of it in that workspace and applies your change to the copy. The copy has a new ID, which the `PUT` response returns in `data.id`. Use that ID from then on.
+
+What this means for you:
+
+- The original guardrail is not changed, and neither are other workspaces that use it.
+- From then on, changes to that guardrail no longer reach that policy type in that workspace. Other policy types in the workspace are still kept in sync.
+- You can't delete a migrated policy directly. Unassign it, or delete the guardrail with [`DELETE /api/v1/guardrails/{id}`](/api/api-reference/guardrails/delete-a-guardrail).
+
+<Warning>
+Pick one place to manage each policy type in each workspace. If you keep changing the same rules through both guardrails and policies, the two drift apart and the guardrail no longer shows what is actually enforced.
+</Warning>
+
+### Telling whether a guardrail or a policy is in charge
+
+Guardrail member and API key assignment responses include two fields that show this:
+
+- `managed_by` is `legacy` when every policy type for that assignment still follows the guardrail, and `policies` once at least one type is managed in Guardrail Policies.
+- `legacy_policy_types` lists the types that still follow the guardrail, such as `["budget", "moderation"]`.
+
+## Migrating API integrations
+
+There's no deadline to switch, and you can move one workspace and one policy type at a time.
+
+1. List what OpenRouter already created from your guardrails with `GET /api/v1/guardrails/policies/budget?workspace_id=...` (and the `/moderation` and `/model-availability` routes). Migrated policies already carry your settings and assignments.
+2. Point your writes at the policy routes for the type you're moving. See [Managing policies with the API](/guides/features/guardrails/policies#managing-policies-with-the-api) for the routes and examples.
+3. Store the IDs the policy responses return. The first edit of a migrated policy returns a new ID.
+4. Stop writing that type through the guardrail routes for that workspace.
+5. Repeat for the other types and workspaces.
+
+### Request-shape changes
+
+| Guardrails | Guardrail Policies |
+| --- | --- |
+| One body with every setting at the top level | Settings for one type inside `config`, plus `name`, `policy_type`, and `workspace_id` |
+| Separate bulk assign and unassign routes for members and API keys | `member_ids` and `api_key_hashes` on the policy, or the single-subject `/assignments` routes |
+| `PATCH` updates only the fields you send | `PUT` replaces `name` and `config`. Omit both `member_ids` and `api_key_hashes` to keep current assignments, or send both to replace them. |
+| Updating the workspace default guardrail | Set `is_workspace_default` on a workspace policy, or manage the workspace-wide policy that covers the workspace |
+
+### Example: guardrail to policies
+
+This guardrail:
+
+```json lines
+{
+  "name": "Engineering",
+  "workspace_id": "YOUR_WORKSPACE_ID",
+  "limit_usd": 200,
+  "reset_interval": "monthly",
+  "allowed_providers": ["openai", "anthropic"],
+  "enforce_zdr_openai": true
+}
+```
+
+becomes two policies:
+
+```json lines
+{
+  "name": "Engineering budget",
+  "policy_type": "budget",
+  "workspace_id": "YOUR_WORKSPACE_ID",
+  "config": { "limit_usd": 200, "reset_interval": "monthly", "include_byok_in_budgets": false }
+}
+```
+
+```json lines
+{
+  "name": "Engineering models",
+  "policy_type": "model_availability",
+  "workspace_id": "YOUR_WORKSPACE_ID",
+  "config": { "allowed_providers": ["openai", "anthropic"], "enforce_zdr_openai": true }
+}
+```
+
+Send them to `POST /api/v1/guardrails/policies/budget` and `POST /api/v1/guardrails/policies/model-availability`.
+
+## Terraform users
+
+The OpenRouter Terraform provider manages guardrails. Those resources keep working the same way, and their changes keep flowing into the matching policies, so your plans stay clean.
+
+| Terraform resource | What it maps to in Guardrail Policies |
+| --- | --- |
+| `openrouter_guardrail` | Up to three workspace policies |
+| `openrouter_workspace_default_guardrail` | The workspace-wide policy and workspace defaults created from the workspace default |
+| `openrouter_guardrail_member_assignment` | That member's policy of each type |
+| `openrouter_guardrail_key_assignment` | That API key's policy of each type |
+
+To keep Terraform as your source of truth:
+
+- Don't edit Terraform-managed guardrails in the dashboard or through the Guardrail Policies API. That creates a copy Terraform can't see, so Terraform shows no change while the copy is what gets enforced.
+- Don't edit a Terraform-managed workspace default guardrail in the dashboard. The dashboard saves that change to a new workspace-wide policy, which Terraform can't see either.
+- Keep using guardrail resources for any workspace you manage with Terraform. The provider doesn't have Guardrail Policies resources yet.
+
+If you do want to use policy-only features such as workspace-wide policies covering many workspaces or per-type assignments in a Terraform-managed workspace, move that workspace's guardrails out of Terraform first (`terraform state rm`), then manage them with the Guardrail Policies API or dashboard.
+
+## FAQ
+
+### Do I have to migrate?
+
+No. guardrails, the guardrails API, and the Terraform resources keep working.
+
+### Will my guardrail IDs change?
+
+No. Guardrail IDs stay the same. Only a migrated policy that you edit gets a new ID.
