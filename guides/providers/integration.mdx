@@ -939,6 +939,22 @@ Behavior:
 
 Send `discount_to_user` as a number, not a string. Unlike the `cost_usd` fields, it isn't quoted.
 
+#### Automatic hiding of endpoints
+
+The following conditions may trigger automatic hiding of endpoints:
+
+- **Model id missing from your feed.** On each poll of your `/v1/models`, a live endpoint whose `id` is no longer present is hidden. Video, text-to-speech, embedding, transcription, and decision models are currently exempt.
+- **`is_ready: false`** on a live endpoint. See [Controlling launch with `is_ready`](#controlling-launch-with-is_ready).
+- **`is_free: false`** on a model we only served as free: the free endpoint is hidden and a paid endpoint is staged. See [Free model variants with `is_free`](#free-model-variants-with-is_free).
+- **Batch document removed.** Dropping the batch document or `pricing.batch` from an otherwise valid feed hides the batch endpoint. See [Batch endpoints](#batch-endpoints).
+- **Standard endpoint hidden.** Service-tier endpoints that share the standard endpoint's `id` and set `service_tier` (`flex`, `priority`, ...) are hidden whenever that standard endpoint is hidden or deleted, and stay hidden until unhidden from the dashboard once it is back. Tiers published under their own `id` are independent.
+- **Declared region changed.** Only applies if OpenRouter routes to a dedicated in-region host for you. If one of your models moves to a different region that OpenRouter also has a host in, the endpoint pinned to the old region is hidden and a new one is staged in the new region. For all other providers, a region change is only flagged for review. See [Datacenters and deployment region](#6-datacenters-and-deployment-region).
+- **Deprecation date reached.** Endpoints at or past their `deprecation_date` are hidden. See [Deprecation date](#deprecation-date).
+- **No successful requests for a week.** An endpoint that received a meaningful amount of traffic for seven days without a single successful completion and without any rate-limit (429) responses.
+- **Error surge.** A sudden spike of authentication, payment or not-found errors triggers a health check; the endpoint is hidden only if that check fails deterministically.
+
+An endpoint that stays hidden for 30 days is deleted. Unhiding from the provider dashboard re-runs the baseline tests; a hide caused by your feed (`is_ready`, a missing id) is applied again on the next poll unless the feed changes.
+
 ### 8. Schema download
 
 The full schema is available as an OpenAPI 3.1 document, in which every closed value domain (modality types, pricing types and units, capacity windows, descriptor types, media sources, formats) surfaces as an explicit `enum`:
