@@ -20,6 +20,9 @@ export const ProviderDataRetentionTable = () => {
       }
       return `Retained for ${policy.retentionDays} days`;
     }
+    if (policy.safetyRetention) {
+      return "Safety Retention";
+    }
     return "Zero retention";
   };
 
