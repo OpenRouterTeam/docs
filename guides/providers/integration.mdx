@@ -382,7 +382,8 @@ Valid output modality types are: `text`, `image`, `video`, `speech`, `transcript
   "type": "decisions",
   "max_choice_options": 255,
   "max_score_levels": 10,
-  "supported_parameters": {}
+  "supported_parameters": {},
+  "pricing": [{ "type": "completion", "unit": "token", "cost_usd": "0.0000004" }]
 }
 ```
 
@@ -409,7 +410,7 @@ Each output modality entry carries:
 | `streaming` | No | Whether this output supports native SSE streaming (not applicable to `embeddings` / `rerank`) |
 | `max_length` | No | Maximum output length (`text` only) |
 | `max_choice_options`, `max_score_levels` | No | Option and level ceilings per Choice and Score question; positive integers (`decisions` only) |
-| `pricing` | No | Prices billed against this output (see [Pricing](#3-pricing)); accepted but not ingested on `decisions` |
+| `pricing` | No | Prices billed against this output (see [Pricing](#3-pricing)) |
 | `capacity` | No | Declared throughput limits for this output (see [Capacity](#4-capacity)) |
 | `passthrough_parameters` | No | Provider-specific parameters scoped to this output |
 
