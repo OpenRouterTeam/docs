@@ -233,6 +233,11 @@ Please see our [Terms of Service](https://openrouter.ai/terms) and [Privacy Poli
 
     [Learn more about provider logging policies](/guides/privacy/provider-logging).
   </Accordion>
+  <Accordion title='What are ZDR, Safety Retention, and Retention and Training?'>
+    They're the three data policy tiers OpenRouter uses for endpoints. ZDR means no routine storage of prompts or responses after processing, apart from a CSAM exception. Safety Retention means OpenRouter or a provider may retain prompts and responses from any request, only to prevent abuse; it's not used for training. Retention and Training means data may be stored and used for training under the provider's policy.
+
+    When you enforce ZDR, you can choose **ZDR only** or **Allow Safety Retention** in your [privacy settings](https://openrouter.ai/settings/privacy) or guardrails. [Learn more](/guides/features/zdr#data-policy-tiers).
+  </Accordion>
   <Accordion title='Does OpenRouter support EU data residency?'>
     Yes, for prompts and completions. Requests to `eu.openrouter.ai` are decrypted in the EU and routed only to shared provider endpoints in Europe (the EU/EEA, the UK, and Switzerland). BYOK requests go to your own deployment's region. Account and billing data may be stored or processed in the US. DPA Exhibit A covers API payloads when elected in writing.
 

@@ -1261,13 +1261,13 @@ response = requests.post('https://openrouter.ai/api/v1/responses', headers=heade
 
 ## Zero Data Retention Enforcement
 
-You can enforce Zero Data Retention (ZDR) on a per-request basis using the `zdr` parameter, ensuring your request only routes to endpoints that do not retain prompts.
+You can enforce Zero Data Retention (ZDR) on a per-request basis using the `zdr` parameter, ensuring your request only routes to ZDR endpoints, or to Safety Retention endpoints if your settings allow them.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `zdr` | boolean | - | Restrict routing to only ZDR (Zero Data Retention) endpoints. |
 
-When `zdr` is set to `true`, the request will only be routed to endpoints that have a Zero Data Retention policy. Endpoints that use Safety Retention are included only if Safety Retention is allowed for your account or guardrail (see [Google Safety Retention](/guides/features/zdr#google-safety-retention)). When `zdr` is `false` or not provided, it has no effect on routing.
+When `zdr` is set to `true`, the request will only be routed to ZDR endpoints. Safety Retention endpoints (which may retain prompts and responses from any request, only to prevent abuse, and don't train on them) are also eligible unless your privacy settings or guardrail are set to **ZDR only**. See [Allowing or excluding Safety Retention](/guides/features/zdr#allowing-or-excluding-safety-retention). When `zdr` is `false` or not provided, it has no effect on routing.
 
 `zdr` filters model inference endpoints. The [Advisor](/guides/features/server-tools/advisor) and [Subagent](/guides/features/server-tools/subagent) server tools forward your `provider` preferences, including `zdr`, to their inner generations. Tool backends are not filtered by `zdr`. See [Privacy and regional availability](/guides/features/server-tools#privacy-and-regional-availability).
 
