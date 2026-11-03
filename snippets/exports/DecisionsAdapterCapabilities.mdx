@@ -1,0 +1,26 @@
+{/*
+  AUTO-GENERATED — DO NOT EDIT BY HAND.
+  Generated from the Decisions adapter registry
+  (packages/domains/inference-decisions/configs/accepts-request.ts and
+  get-adapter-name.ts) by scripts/generate-docs-decisions-capabilities.ts.
+  Run `bun run generate:docs:decisions-capabilities` to regenerate.
+  projects/docs must not import from other packages, so the registry is
+  emitted here as a standalone snippet; its test fails when this file drifts.
+*/}
+
+| Adapter | Providers served by default | Question types | `assets` references | Media parts read from top-level `state` | Image parts elsewhere in the request |
+| --- | --- | --- | --- | --- | --- |
+| `AzureDecisionsAdapter` | Azure | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | None; rejected with `400` | Rejected with `400`; top-level `state` items only |
+| `BasetenDecisionsAdapter` | BaseTen | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | `image_url` | Rejected with `400`; top-level `state` items only |
+| `CloudflareDecisionsAdapter` | Cloudflare | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | `image_url`, `input_audio`, `video_url` | Rejected with `400`; top-level `state` items only |
+| `DeepInfraSystemOneDecisionsAdapter` | Set per endpoint by OpenRouter | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | `image_url` | Rejected with `400`; top-level `state` items only |
+| `InceptionDecisionsAdapter` | Inception | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | `image_url` | Rejected with `400`; top-level `state` items only |
+| `LiquidDecisionsAdapter` | Liquid | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | `image_url` | Rejected with `400`; top-level `state` items only |
+| `OpenAIDecisionsAdapter` | OpenAI | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | `image_url` | Rejected with `400`; top-level `state` items only |
+| `PerplexityDecisionsAdapter` | Perplexity | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | `image_url` | Rejected with `400`; top-level `state` items only |
+| `RespanDecisionsAdapter` | Respan | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | None; rejected with `400` | Rejected with `400`; top-level `state` items only |
+| `RespanSystemOneDecisionsAdapter` | Set per endpoint by OpenRouter | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | `image_url` | Rejected with `400`; top-level `state` items only |
+| `ScaleDownDecisionsAdapter` | ScaleDown | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | None; rejected with `400` | Rejected with `400`; top-level `state` items only |
+| `TogetherTevDecisionsAdapter` | Set per endpoint by OpenRouter | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | None; rejected with `400` | Rejected with `400`; top-level `state` items only |
+| `TypeSafeDecisionsAdapter` | Every provider not named in another row | `noul`, `choice`, `score` | Resolved to `image_url` parts (next column); whole-string references only | None; rejected with `400` | Rejected with `400`; top-level `state` items only |
+| `TypeSafeFirstPartyDecisionsAdapter` | TypeSafe | `noul`, `choice`, `score`, `box` | Sent as written; a reference may sit inside longer text | `image_url` | Read anywhere in `state`, `instructions` and `criteria` |

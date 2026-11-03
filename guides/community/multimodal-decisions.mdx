@@ -34,6 +34,8 @@ models:
   - baseten/joey-1
 ---
 
+import DecisionsAdapterCapabilities from '/snippets/exports/DecisionsAdapterCapabilities.mdx';
+
 Decisions models answer typed questions about content you send in `state`. Some of them also read media parts in `state`: images, and on some models audio and video. Text-only Decisions requests work the same as before.
 
 ## Supported models
@@ -198,6 +200,21 @@ TypeSafe marks image input as an early feature whose request format, answers, an
 - Send at most 4 audio clips and 2 videos per request. Each audio clip can be up to 8 MiB or 300 seconds, each video up to 16 MiB or 60 seconds, and all audio and video together up to 16 MiB decoded.
 - Audio costs about 780 input tokens per minute; audio, video, and image tokens all count toward the 65,536-token context window.
 - Only Clef Omni reads audio and video. Clef and Clef Flash reject requests that contain them; other Decisions models see these parts as plain JSON text.
+
+## What each endpoint accepts
+
+Every Decisions endpoint is served by one adapter, chosen by the endpoint's provider. The adapter decides, before anything is sent upstream, which question types it accepts, how an `assets` reference is read, which media parts it lifts out of the top-level `state` array, and whether it reads image parts anywhere else. A request the adapter cannot serve fails with a `400` from OpenRouter, and routing tries another endpoint of the same model when one can serve it. The response `provider` field names the provider that answered.
+
+The table is generated from the adapter registry, so it is the current contract:
+
+<DecisionsAdapterCapabilities />
+
+- Question types: `noul`, `choice`, and `score` work everywhere. [Box](/guides/community/jev#box-questions) questions need a TypeSafe endpoint; Jev 1.13 also rejects them upstream with a `400`.
+- `assets` references: on TypeSafe the map is forwarded as written, so a reference matches anywhere in your text. Everywhere else, each whole-string reference becomes an `image_url` part before the request is sent, and it then has to be accepted where that adapter reads `image_url` parts.
+- Media parts: an `image_url`, `input_audio`, or `video_url` item in the top-level `state` array is lifted into the provider's image, audio, or video input when its type is listed, and rejected otherwise. A malformed part (a typo in `type`, a missing payload) is a `400` on every adapter rather than being sent to the model as text.
+- Image parts elsewhere: only TypeSafe reads image parts nested inside `state` objects or placed in `instructions` or `criteria`; see [Image positions on Jev](#image-positions-on-jev).
+
+By default the adapter an endpoint uses follows from its provider (a Decisions adapter name stored on the provider wins over the default), so an `openai/gpt-6-luna-decisions` request served by OpenAI uses the OpenAI row, and a `typesafe/jev-1.14` request served by TypeSafe uses the TypeSafe row. Models whose endpoints are served by a provider not named in the table (Nace.AI, Upstage, Microsoft, and others) use the `TypeSafeDecisionsAdapter` row.
 
 ## Limits
 

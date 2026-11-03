@@ -1,0 +1,157 @@
+---
+publish: true
+title: 'Extractions API: Typed Fields from Text, Images, and PDFs'
+sidebarTitle: Extractions API
+description: Pull typed fields (text, numbers, dates, lists, estimates, forecasts) out of text, images, and PDFs with the alpha /api/alpha/extractions route. Request shape, field types, assets, provider options, and per-model limits.
+seoTitle: 'Extractions API | Typed Fields from Text, Images, and PDFs on OpenRouter'
+og:site_name: OpenRouter Documentation
+og:title: 'Extractions API - Typed Fields from Text, Images, and PDFs on OpenRouter'
+og:description: 'Describe the fields you want and let an extraction model find, compute, estimate, or forecast them. Request shape, field types, assets, and per-model limits.'
+og:image: https://openrouter.ai/dynamic-og?title=Extractions%20API&description=Typed%20fields%20from%20text%2C%20images%2C%20and%20PDFs
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: table-list
+models:
+  - cloudflare/clairic
+  - inception/mercury-decide
+  - scaledown/extract
+---
+
+import ExtractionsFieldTypes from '/snippets/exports/ExtractionsFieldTypes.mdx';
+
+`POST /api/alpha/extractions` asks an extraction model for typed fields: the invoice number in a document, the total as a number, a due date, a list of names, or an estimate with its distribution. You describe each field once in a `fields` map and get one typed answer per field back, with the probability that the text contains nothing for it.
+
+The route is alpha and its shape can change. It takes the [Decisions](/api/api-reference/alphadecisions/submit-a-decisions-request) envelope (`model`, `state`, `assets`, `provider`, `user`, `session_id`, `trace`) with a `fields` map in place of `questions`. The envelope is shared, but the specs inside it are not: a field spec is one of the types in the table below, not a Decisions question (`noul`, `choice`, `score`, `box`), so moving a request between the routes means rewriting each question as a field as well as renaming the key. A top-level `questions` field on this route fails with a `400` that says so.
+
+## Supported models
+
+| Model | Reads | Field types | Provider options |
+| --- | --- | --- | --- |
+| [`cloudflare/clairic`](https://openrouter.ai/cloudflare/clairic) | Text and up to 4 PNG or JPEG images | Every type in the table below | `include_quantiles`, `return_state_text` under `provider.options.cloudflare` |
+| [`inception/mercury-decide`](https://openrouter.ai/inception/mercury-decide) | Text only | `text`, and `list` with `items: "text"` | `snap_to_words`, `threshold`, `group_fields` under `provider.options.inception` |
+| [`scaledown/extract`](https://openrouter.ai/scaledown/extract) | Text, or one PDF or image | `text`, and `list` with `items: "text"` | `threshold`, `top_n` under `provider.options.scaledown` |
+
+A request a model cannot serve (a `date` field on Mercury Decide, an image on a text-only model, a fifth image on Clairic) fails with a `400` from OpenRouter before anything is sent to the provider. The response `provider` field names the provider that answered.
+
+## Quickstart
+
+```bash
+curl https://openrouter.ai/api/alpha/extractions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "cloudflare/clairic",
+    "state": "Invoice INV-2291 issued 2026-09-02, net 30. Contacts: Dana Ruiz, Priya Shah. Total $1080.",
+    "fields": {
+      "invoice_number": { "type": "text" },
+      "due_date": { "type": "date", "instructions": "Issue date plus the net payment days" },
+      "total": { "type": "number", "decimals": 2, "unit": "USD" },
+      "contacts": { "type": "list", "items": "text" },
+      "days_to_pay": { "type": "estimate", "min": 0, "max": 120, "step": 1 }
+    },
+    "reference_date": "2026-10-28"
+  }'
+```
+
+The response has one answer per field, keyed by the field name:
+
+```json
+{
+  "id": "gen-dec-1793251006-X5e5eKGQdvR9rblyX250",
+  "model": "cloudflare/clairic",
+  "provider": "Cloudflare",
+  "answers": {
+    "invoice_number": { "type": "text", "value": "INV-2291", "span": [8, 16], "guess": "INV-2291", "p_null": 3.8e-10, "confidence": 1 },
+    "due_date": { "type": "date", "value": "2026-10-02", "guess": "2026-10-02", "p_null": 1.9e-8 },
+    "total": { "type": "number", "value": 1080, "guess": 1080, "p_null": 2.3e-8, "confidence": 0.9999 },
+    "contacts": { "type": "list", "value": ["Dana Ruiz", "Priya Shah"], "spans": [[53, 62], [64, 74]], "confidence": 0.9999 },
+    "days_to_pay": { "type": "estimate", "value": 30, "mean": 29.5, "median": 30, "p10": 21, "p90": 38 }
+  },
+  "truncated": false,
+  "usage": { "input_tokens": 655, "output_tokens": 0, "cost": 0.0000655, "state_tokens": 61, "image_tokens": 0, "schema_tokens": 472, "passes": 3 }
+}
+```
+
+## Request
+
+- `model` is a model slug from the table above.
+- `state` is the text to read from. It may be empty only when the request carries assets.
+- `fields` maps each field name to a typed field spec. At least one field is required. Unknown keys at the top level or inside a field are rejected with a `400`, not ignored, so a provider option in the wrong place never silently does nothing.
+- `reference_date` (`YYYY-MM-DD`) anchors dates written without a year. Models without date fields reject it.
+- `assets`, `provider`, `user`, `session_id`, and `trace` work as on `/api/alpha/decisions`; see [Assets](#assets) and [Provider options](#provider-options).
+
+## Field types
+
+Every field takes `type`, an optional `instructions` string saying what the field should contain, and an optional `null_threshold`: the probability of null above which the answer's `value` is `null` (default `0.5`). The other keys depend on the type. A key marked `?` is optional.
+
+<ExtractionsFieldTypes />
+
+- `number` and `duration` take `unit`, `integer`, and `decimals` (0 to 6 decimal places kept in `value`). A `duration` `unit` is `seconds`, `minutes`, `hours`, `days`, `weeks`, `months`, or `years`.
+- `list` takes `items`: `text`, `number`, or `date`.
+- `estimate` and `forecast` take `min` and `max` (numbers, or ISO dates for date-valued estimates), an optional `step` (a positive number, in days for date estimates, or `"month"` or `"year"`), and an optional `scale` of `linear` or `log`. A `forecast` also takes `horizon` (1 to 64 steps) and `interval` (`step`, `minute`, `hour`, `day`, `week`, `month`, `quarter`, or `year`).
+
+## Answers
+
+- `value` is the typed answer, or `null` when `p_null` crossed the field's threshold. `guess` is the most likely value even then.
+- `p_null` is the probability that the state contains nothing for the field; `confidence` is the model's confidence in `value`.
+- `span` (`spans` for lists, one per item) is `[start, end)` as Unicode code point offsets into the state text, so an emoji or an accented letter counts once. Set `return_state_text` on Clairic to get the exact text the offsets index into back as `state_text`.
+- `source` is `image` or `document` when the answer was read from an asset rather than the state text; `spell_confidence` then reports how sure the model is of the spelling.
+- `estimate` and `forecast` answers carry the distribution: `mean`, `median`, `p10`, `p90`, `p_below` and `p_above` (probability mass outside `min` and `max`), `quantiles` when asked for, and per-step values under `steps` for forecasts.
+- `truncated` is `true` when the provider read only a prefix of the state. `usage.passes` counts the upstream calls the fields needed when they did not fit in one.
+
+## Assets
+
+Images and PDFs go in a top-level `assets` map, each sent once and referenced by its key. An asset is `{ "type": "image" | "document", "format": "png" | "jpg" | "jpeg" | "pdf", "data_base64": "..." }`; `type` is optional and `data_base64` is the file in standard base64 with no `data:` prefix. Every asset must be referenced in `state` or a field's `instructions`, or the request fails with a `400` naming the unused key.
+
+```json
+{
+  "model": "cloudflare/clairic",
+  "state": "Read the totals from the invoice photo: invoice-photo",
+  "assets": {
+    "invoice-photo": { "format": "jpg", "data_base64": "/9j/4AAQSkZJRg..." }
+  },
+  "fields": {
+    "total": { "type": "number", "decimals": 2 }
+  }
+}
+```
+
+- A `state` that is exactly the sole asset's key carries no text of its own and is read as file-only.
+- Clairic reads up to 4 PNG or JPEG images, each at most 4 MiB decoded, 8 MiB decoded in total, in a request body of at most 16 MiB. It does not read PDFs.
+- Clairic reads images positionally, in `assets` key order, and has no in-text reference syntax. With one image, the file-only form above works. With two or more images, a key used as the whole `state` or as the whole `instructions` of a field fails with a `400` (the model could not tell which image is meant), so name each image inside longer text instead; every key still has to appear somewhere, or the request fails with the unused-asset `400` above:
+
+```json
+{
+  "model": "cloudflare/clairic",
+  "state": "Receipt photos, front then back: receipt-front, receipt-back",
+  "assets": {
+    "receipt-front": { "format": "jpg", "data_base64": "/9j/4AAQSkZJRg..." },
+    "receipt-back": { "format": "jpg", "data_base64": "/9j/4AAQSkZJRg..." }
+  },
+  "fields": {
+    "total": { "type": "number", "decimals": 2 },
+    "return_policy": { "type": "text", "instructions": "The return policy printed on receipt-back" }
+  }
+}
+```
+
+- ScaleDown Extract reads one PDF or image per request, and reads either the text or the document, not both: send the file-only form of `state`.
+- Mercury Decide reads text only; any asset fails with a `400`.
+
+## Provider options
+
+Provider-specific knobs go under `provider.options.<provider slug>`, and each model accepts only its own keys; anything else fails with a `400` naming the accepted keys.
+
+- `cloudflare`: `include_quantiles` adds 99 percentiles to estimates as `quantiles`; `return_state_text` returns the text that spans index into as `state_text`.
+- `inception`: `snap_to_words` and `threshold` pass through to Mercury Decide; `group_fields` sends all fields in one question (up to 26 per upstream pass) instead of one question per field, which costs fewer state copies but lets a token belong to only one field.
+- `scaledown`: `threshold` and `top_n` pass through to Extract. Extract reports no null probability, so `null_threshold` on a field fails with a `400`.
+
+## Related
+
+- [Extractions API reference](/api/api-reference/alphaextractions/submit-an-extractions-request) has the full request and response schema.
+- [Extract invoice fields with ScaleDown Extract](/cookbook/evaluate-and-optimize/extract-invoice-fields-with-scaledown) walks through the same task on the Responses API.
+- [Multimodal Decisions](/guides/community/multimodal-decisions) covers the Decisions route this one shares its envelope with.
