@@ -138,35 +138,6 @@ Below is an example of the response format:
 }
 ```
 
-A [Decisions](/guides/community/multimodal-decisions) model declares a `decisions` output; comments mark what is applied:
-
-```json lines
-{
-  "data": [
-    {
-      "schema_version": "2.4",
-      "id": "acme/judge-1", // identity fields: applied
-      "name": "Acme: Judge 1",
-      "input_modalities": [
-        {
-          "type": "text", // context length, prompt pricing: applied
-          "supported_inputs": { "max_context_length": { "value": 128000, "unit": "token" } },
-          "pricing": [{ "type": "prompt", "unit": "token", "cost_usd": "0.0000005" }]
-        }
-      ],
-      "output_modalities": [
-        {
-          "type": "decisions",
-          "max_choice_options": 255, // applied: endpoint features of the same name
-          "max_score_levels": 10,
-          "supported_parameters": {} // accepted, not ingested, as is output pricing
-        }
-      ]
-    }
-  ]
-}
-```
-
 The `id` field should be the exact model identifier that OpenRouter will use when calling your API.
 
 All `cost_usd` fields are in string format to avoid floating point precision issues, and must be in USD.
@@ -406,6 +377,15 @@ Valid output modality types are: `text`, `image`, `video`, `speech`, `transcript
 }
 ```
 
+```json title="decisions" lines
+{
+  "type": "decisions",
+  "max_choice_options": 255,
+  "max_score_levels": 10,
+  "supported_parameters": {}
+}
+```
+
 ```json title="audio" lines
 {
   "type": "audio",
@@ -429,7 +409,7 @@ Each output modality entry carries:
 | `streaming` | No | Whether this output supports native SSE streaming (not applicable to `embeddings` / `rerank`) |
 | `max_length` | No | Maximum output length (`text` only) |
 | `max_choice_options`, `max_score_levels` | No | Option and level ceilings per Choice and Score question; positive integers (`decisions` only) |
-| `pricing` | No | Prices billed against this output (see [Pricing](#3-pricing)) |
+| `pricing` | No | Prices billed against this output (see [Pricing](#3-pricing)); accepted but not ingested on `decisions` |
 | `capacity` | No | Declared throughput limits for this output (see [Capacity](#4-capacity)) |
 | `passthrough_parameters` | No | Provider-specific parameters scoped to this output |
 
