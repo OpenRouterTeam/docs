@@ -1,0 +1,152 @@
+---
+publish: true
+title: Roll Out Claude Desktop and Claude Code
+description: Roll out Claude Desktop and Claude Code on OpenRouter across your organization with SSO, SCIM, and per-user sign-in
+seoTitle: 'Claude Desktop and Claude Code Enterprise Rollout | OpenRouter'
+og:site_name: OpenRouter Documentation
+og:title: 'Claude Desktop and Claude Code Enterprise Rollout - OpenRouter'
+og:description: 'Roll out Claude Desktop and Claude Code on OpenRouter across your organization, from SSO and SCIM to per-user sign-in, history import, and known limitations.'
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: true
+nofollow: false
+icon: building
+tag: Beta
+---
+
+<Badge color="blue">Beta</Badge>
+
+This guide takes an organization from an OpenRouter Enterprise account to every employee running Claude Desktop and Claude Code on OpenRouter. Each employee signs in with their own work identity, usage is attributed to them, and nobody copies an API key onto a device.
+
+<Warning>
+Claude Desktop and Claude Code with OpenRouter are only guaranteed to work with the Anthropic first-party provider. For maximum compatibility, we recommend setting [Anthropic 1P as top priority provider](/guides/routing/provider-selection).
+</Warning>
+
+## Choose your rollout path
+
+There are two ways to put Claude Desktop on OpenRouter. Claude Code uses [Ori](/guides/ori/harness) on both paths.
+
+| | Path A: Enterprise Admin Console | Path B: Ori setup |
+| --- | --- | --- |
+| **Best for** | Organizations with Anthropic's [Enterprise Admin Console for Desktop 3P](https://claude.com/docs/third-party/claude-desktop/admin-console) | Organizations without the Admin Console, or a quick pilot |
+| **Who configures Claude Desktop** | An administrator, once, in the console at claude.ai | Each user, with `ori harness setup claude` |
+| **Platforms** | Claude Desktop on macOS and Windows | Claude Desktop on macOS; Claude Code on macOS and Linux |
+| **Central policy** | Anthropic's console: capabilities, connectors, telemetry, limits, and per-group policies | OpenRouter Managed Machines: the Claude model list, the Desktop default tier, the claude.ai import, minimum versions, and Claude Code native settings, which Ori applies on every machine |
+| **How Desktop signs in to OpenRouter** | [OpenRouter OIDC sign-in](/cookbook/coding-agents/claude-desktop-oidc) in the app | The user's `ori login` session, through Ori's credential helper |
+| **Claude Code** | `ori claude` | Configured by the same `ori harness setup claude` |
+
+We recommend Path A for Claude Desktop whenever you have the Admin Console, because it controls the whole app, including Chat, Cowork, connectors, and telemetry. Pick Path B when you want Ori's Managed Machines to manage models and versions from OpenRouter. Pick one path per device: Ori setup refuses to run where Claude managed configuration already exists.
+
+## Step 1: Set up your OpenRouter organization
+
+Do this once, whichever path you choose.
+
+1. **Single sign-on.** Connect your identity provider (Okta, Microsoft Entra ID, Google Workspace, or any SAML provider) to your OpenRouter organization. Setup is self-serve: see [Single Sign-On (SSO)](/guides/features/sso). After this, every OpenRouter sign-in in this guide goes through your identity provider.
+2. **SCIM and group mappings.** Turn on SCIM provisioning and map identity provider groups to OpenRouter workspaces, so the right people land in the right workspace with the right role: see [SCIM Group Mappings](/guides/features/scim-mappings).
+3. **Workspace controls.** Set [guardrails](/guides/features/guardrails) and [workspace budgets](/guides/features/workspaces/workspace-budgets) on the workspaces your Claude users belong to. A guardrail enforces nothing until it is assigned: make it the workspace default to cover all of the workspace's traffic, or assign it to members or keys. Budgets count only OpenRouter credit spend unless you turn on **Include BYOK spend**, so turn it on if Claude requests use your own Anthropic key. OpenRouter then applies these controls to every request from Claude Desktop and Claude Code in that workspace.
+4. **Provider priority.** Put Anthropic first in [provider selection](/guides/routing/provider-selection) for the workspaces that run Claude.
+
+## Step 2A: Configure Claude Desktop in the Admin Console
+
+Use this step for Path A. If you don't have the Admin Console, go to [Step 2B](#step-2b-set-up-claude-desktop-and-claude-code-with-ori).
+
+Users sign in twice on first launch, and the two sign-ins are separate:
+
+- **Claude sign-in.** Delivers your organization's Claude Desktop configuration. You can connect your identity provider to the Claude organization as described in Anthropic's [Connect your identity provider](https://claude.com/docs/third-party/claude-desktop/admin-console#connect-your-identity-provider).
+- **OpenRouter sign-in.** Authorizes inference. It goes through your identity provider by way of the OpenRouter SSO connection from [Step 1](#step-1-set-up-your-openrouter-organization).
+
+### Connection page
+
+In claude.ai, open **Organization settings**, then **Desktop 3P > Connection**, and enter:
+
+| Field | Value |
+| --- | --- |
+| **Inference provider** | `Gateway` |
+| **Credential kind** | `Interactive sign-in` (labeled **Identity provider sign-in (OIDC)** in the in-app panel) |
+| **Gateway base URL** | `https://openrouter.ai/api` |
+| **Gateway sign-in flow** | Default (system browser) |
+
+Under **Gateway SSO IdP (OIDC)**, enter OpenRouter's sign-in settings:
+
+| Field | Value |
+| --- | --- |
+| **Client ID** | `nYyZpszr6mE59HMY` |
+| **Issuer URL** | `https://clerk.openrouter.ai` |
+| **Bearer token** | `Access token` |
+| **Scopes** | `inference` |
+| **Append offline_access** | On |
+
+<Warning>
+The issuer is OpenRouter, not your own identity provider. OpenRouter accepts only tokens it issues, so an issuer such as `https://login.microsoftonline.com/<tenant>/v2.0` fails. Your identity provider is still in the loop: the OpenRouter sign-in page hands off to it through your OpenRouter SSO connection. For the same reason, leave **Gateway sign-in flow** on the default; the Microsoft Entra broker option only works when Entra is the issuer.
+</Warning>
+
+If a [data-region guardrail](/guides/features/guardrails#guardrail-settings) restricts the workspace to `eu.openrouter.ai` or `us.openrouter.ai`, requests to `https://openrouter.ai/api` are rejected. We haven't verified Claude Desktop sign-in against the regional hostnames, so talk to your OpenRouter account team before rolling out to a region-restricted workspace.
+
+Save the **Connection** page before the other pages; the console doesn't accept changes on any other page until a connection is saved. If you already built a configuration in Claude Desktop, use **Import configuration…** on the same page instead of entering each field. These are the same values as in the [Claude Desktop OIDC sign-in guide](/cookbook/coding-agents/claude-desktop-oidc).
+
+### Capabilities and the rest of the console
+
+- **Capabilities.** Make sure Chat, Cowork, and Code are each turned on the way you want. Turn on **Enable import** under **Claude.ai data import** if your users are moving from claude.ai; see [Bring over claude.ai history](#bring-over-claudeai-history).
+- **Per-group policies.** Groups your identity provider syncs to the Claude organization through SCIM can carry their own settings on **People > Permission policies**. The inference connection is the same for every user; use OpenRouter workspaces from [Step 1](#step-1-set-up-your-openrouter-organization) to separate budgets and guardrails.
+- Everything else (connectors, telemetry, limits, plugins) is covered in Anthropic's [What you can configure](https://claude.com/docs/third-party/claude-desktop/admin-console#what-you-can-configure).
+
+### What users do
+
+1. Install the latest [Claude Desktop](https://claude.ai/download), sign in with their work account, and click **Restart** when prompted.
+2. Click **Sign in with your organization**. The OpenRouter sign-in opens in the browser and hands off to your identity provider.
+3. On the OpenRouter approval page, choose the organization and workspace that should pay for their usage, and a new or existing key. The approval page also lists personal accounts and any other organization the user belongs to, so tell users which organization and workspace to pick in your rollout announcement, and check [Activity](https://openrouter.ai/activity) for usage after rollout. Nothing on this path enforces that choice: a user who picks another account sends requests under that account's guardrails, budgets, and billing. The Ori organization pin in [Step 2B](#step-2b-set-up-claude-desktop-and-claude-code-with-ori) governs only Ori's own sign-in, not this Claude Desktop sign-in.
+4. Confirm the callback URL is a local address (`http://127.0.0.1:...`) and click **Allow**.
+
+Claude Desktop's Code tab uses the same connection. For the Claude Code CLI, continue to [Step 3](#step-3-set-up-the-claude-code-cli).
+
+## Step 2B: Set up Claude Desktop and Claude Code with Ori
+
+Use this step for Path B, on Macs and Linux machines without Claude managed configuration.
+
+1. **Pin Ori to your organization (recommended).** SSO and SCIM control who belongs to your OpenRouter organization, not which account `ori login` saves, so without a pin a user can sign in with a personal account or another organization and send requests outside your guardrails and budgets. Through MDM or the machine policy file, set `ORI_REQUIRED_ORGANIZATION_ID` (and `ORI_REQUIRED_WORKSPACE_ID` to pin one workspace) so Ori refuses keys from any other account, and turn off API key sign-in. See [Keep the fleet on your organization](/guides/ori/configuration#two-recipes).
+2. **Each user installs Ori and signs in:**
+
+   ```sh
+   curl -fsSL https://openrouter.ai/labs/ori/install.sh | bash
+   ori login
+   ```
+
+   `ori login` opens the OpenRouter sign-in, which goes through your identity provider once SSO is active.
+
+3. **Each user runs setup once:**
+
+   ```sh
+   ori harness setup claude
+   ```
+
+   This points Claude Desktop (macOS) and the plain `claude` command (macOS and Linux) at OpenRouter. Users then open Claude Desktop from the Dock and run `claude` as usual. `ori harness reset claude` puts back what they had.
+
+Ori setup doesn't run on Windows; Windows users run Claude Code with `ori claude`. Setup also stops and names the file when Claude managed configuration exists, such as a `com.anthropic.claudefordesktop` or `com.anthropic.claudecode` MDM profile, a Claude Code `managed-settings.json`, or Claude Code settings pushed by a Claude organization. On those devices use Path A for Claude Desktop and `ori claude` for Claude Code. See [Set up a harness with `ori harness`](/guides/ori/harness#set-up-a-harness-with-ori-harness).
+
+## Step 3: Set up the Claude Code CLI
+
+The Admin Console configures the Code tab inside Claude Desktop, not the standalone `claude` CLI. On Path A, give developers Ori:
+
+- **`ori claude`** is the default on Path A. It starts Claude Code on OpenRouter for that session, on macOS, Linux, and Windows, and works alongside Claude managed configuration.
+- **`ori harness setup claude`** makes plain `claude` use OpenRouter by default, but only on macOS and Linux devices without Claude managed configuration, which Path A devices usually have.
+
+Both sign in with `ori login`, so there's no key to distribute. For a manual setup with environment variables instead, see the [Claude Code integration guide](/cookbook/coding-agents/claude-code-integration).
+
+## Bring over claude.ai history
+
+Claude Desktop on OpenRouter runs in Anthropic's third-party mode, which keeps its own local profile with no claude.ai account. Users who come from claude.ai don't see their earlier chats until they import them.
+
+1. **Turn on import.** On Path A, turn on **Enable import** under **Claude.ai data import** on the **Capabilities** page. On Path B, Ori alpha releases turn it on for you, and the next stable release will too. On Ori 0.16.3 and earlier, users turn it on themselves: open **Developer > Configure Third-Party Inference…**, go to **Capabilities**, turn on **Enable import**, and click **Apply Changes**.
+2. **Allow member export on claude.ai.** If users are coming from a claude.ai Team or Enterprise workspace, a workspace owner turns on **Allow members to export their own data** under **Organization settings > Data and privacy** on claude.ai. HIPAA-ready claude.ai organizations can't turn this on.
+3. **Users import.** In Claude Desktop, users open **Settings > Import & export**, click **Import…**, and sign in to claude.ai.
+
+Each import is a one-time copy: later claude.ai activity doesn't appear unless the user imports again, and re-importing doesn't create duplicates. Anthropic's [Import history from claude.ai](https://claude.com/docs/third-party/claude-desktop/import) covers the wizard and the automatic import of earlier third-party sessions.
+
+## Known limitations
+
+- **History stays on the device.** Conversations, projects, and memory live on each computer. There's no claude.ai web or mobile access, no sync between devices, and no sharing between users. See Anthropic's [feature comparison](https://claude.com/docs/third-party/claude-desktop/feature-matrix).
+- **Artifact previews need egress.** Interactive artifact previews load in a sandboxed iframe from `www.claudeusercontent.com`, with assets from `cdnjs.cloudflare.com`, `fonts.googleapis.com`, and `cdn.jsdelivr.net`. Allow those hosts through your firewall, or previews stay static. Setting `disableNonessentialServices` also turns interactive previews off. See Anthropic's [telemetry and egress](https://claude.com/docs/third-party/claude-desktop/telemetry) page.
+- **Features that need Anthropic's cloud aren't available.** Voice mode and cloud sessions aren't available in third-party mode.
+- **Ori setup writes a minimal Desktop configuration.** On Path B, check under **Developer > Configure Third-Party Inference… > Capabilities** that Chat is turned on. Anthropic telemetry stays at its default unless you turn it off; on Path A you control both in the console.
+- **Web tools.** Web search isn't available on the EU [regional endpoint](/guides/features/in-region-routing#feature-availability). Claude Desktop's sandbox can block WebFetch until you add hosts to the egress allowlist; see [Claude Desktop troubleshooting](/cookbook/coding-agents/claude-desktop-integration#troubleshooting).
+- **OIDC sign-in is in beta.** Report sign-in issues to your OpenRouter account team.
