@@ -64,6 +64,8 @@ requests_with_tool_call_errors / requests_where_finish_reason_is_tool_calls
 
 Put differently, of all the requests where the model finished by emitting tool calls, what fraction had at least one tool call that hit one of the three error buckets. A request with five tool calls and one invalid call counts as one errored request, not one-out-of-five.
 
+When generation hits the request's token limit (any native finish reason that normalizes to `length`, such as `max_tokens` or `MAX_TOKENS`, or a bare Responses `incomplete`), the last tool call is recorded as `truncated-arguments` instead of `InvalidJson` or `SchemaMismatch` if its arguments fail to parse or never arrived, and it does not count as an error. A caller's `max_tokens` cutting off a tool call does not count against the provider. Earlier tool calls in the same response still count, and so does the last call when assistant text or reasoning followed it, because the limit then cut off that later output.
+
 ### Caveats
 
 - Keywords introduced only in JSON Schema Draft 2019-09 or 2020-12 (for example `unevaluatedProperties`, `$dynamicRef`) are not enforced under Draft 7.
