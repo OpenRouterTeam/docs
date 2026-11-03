@@ -121,6 +121,22 @@ All provider parameters are supported.
 
 Provider options are keyed by provider slug. Only the options for the matched provider are forwarded. For the Google Vertex video endpoint, use the `google-vertex` provider slug.
 
+Google Veo models are the only video models that nest options in a `parameters` object. Other video models, including other Google video models, take their allowed passthrough keys directly under the slug of the provider the request is routed to. A `parameters` object sent to them is not forwarded, and Runway video upscale rejects any provider options. For example, Seedance 2.0 is served by the Seed provider, so it takes `watermark` directly under the `seed` slug:
+
+```json lines
+{
+  "provider": {
+    "options": {
+      "seed": {
+        "watermark": false
+      }
+    }
+  }
+}
+```
+
+A Seedance request routed to BytePlus uses the `byteplus` slug instead of `seed`.
+
 Example request shape:
 
 ```js expandable lines

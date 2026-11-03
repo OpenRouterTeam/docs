@@ -37,6 +37,12 @@ The route is alpha and its shape can change. It takes the [Decisions](/api/api-r
 
 A request a model cannot serve (a `date` field on Mercury Decide, an image on a text-only model, a fifth image on Clairic) fails with a `400` from OpenRouter before anything is sent to the provider. The response `provider` field names the provider that answered.
 
+To list these models programmatically, filter the Models API by the request path they serve; `output_modalities` cannot select them because Extractions is served by text and decisions models alike:
+
+```bash lines
+curl "https://openrouter.ai/api/v1/models?endpoints=/api/alpha/extractions"
+```
+
 ## Quickstart
 
 ```bash
