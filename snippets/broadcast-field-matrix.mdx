@@ -89,6 +89,8 @@ Some field names appear at both the top level of the trace and inside each `obse
   </Accordion>
   <Accordion title="Timing and latency">
 
+Every destination that receives `routerLatencyMs` also receives the [router timing](#router-timing) values, on the root generation, as `openrouter_router_timing_<field>` or, on OTLP destinations, `openrouter.router_timing.<field>`.
+
 | Destination | `timestamp` | `startTime` | `endTime` | `routerLatencyMs` | `timeline`<br />(raw object) |
 |---|---|---|---|---|---|
 | Arize AX | — | — | — | — | — |
