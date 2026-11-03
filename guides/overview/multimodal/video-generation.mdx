@@ -359,6 +359,24 @@ You can pass provider-specific options using the `provider` parameter. Options a
 }
 ```
 
+Google Veo models are the only video models that nest options in a `parameters` object. Other video models, including other Google video models, take their allowed passthrough keys directly under the slug of the provider the request is routed to. A `parameters` object sent to them is not forwarded, and Runway video upscale rejects any provider options. For example, Seedance 2.0 is served by the Seed provider, so it takes `watermark` directly under the `seed` slug:
+
+```json lines
+{
+  "model": "bytedance/seedance-2.0",
+  "prompt": "A time-lapse of a flower blooming",
+  "provider": {
+    "options": {
+      "seed": {
+        "watermark": false
+      }
+    }
+  }
+}
+```
+
+A Seedance request routed to BytePlus uses the `byteplus` slug instead of `seed`.
+
 Use the [Video Models API](#via-the-video-models-api) to check which passthrough parameters each model supports via the `allowed_passthrough_parameters` field.
 
 ## Response Format

@@ -271,6 +271,8 @@ Single-value limits (`max_context_length`, `max_prompt_length`, output `max_leng
 
 Valid output modality types are: `text`, `image`, `video`, `speech`, `transcription`, `embeddings`, `rerank`, `decisions`, `audio`.
 
+The [Extractions API](/guides/community/extractions) (`POST /api/alpha/extractions`) is not an output modality and has no feed field. OpenRouter assigns it per endpoint, as a companion to the endpoint's existing `text` or `decisions` entry, when the upstream route answers field-extraction requests. Keep the feed entry for the route the model already serves and ask your OpenRouter contact to enable the Extractions route for it.
+
 <CodeGroup>
 
 ```json title="text" lines

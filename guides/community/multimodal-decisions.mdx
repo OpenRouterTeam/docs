@@ -230,4 +230,5 @@ By default the adapter an endpoint uses follows from its provider (a Decisions a
 
 - [Jev Documentation](/guides/community/jev) covers the Decisions primitives (Choice, Noul, Score) in depth.
 - [Decisions API reference](/api/api-reference/alphadecisions/submit-a-decisions-request) has the full request and response schema.
+- [Extractions API](/guides/community/extractions) takes the same envelope with a `fields` map in place of `questions` and returns typed fields (text, numbers, dates, lists, estimates, forecasts). Its `state` is text only; images and PDFs go in `assets`, so a multimodal Decisions request is not migrated by renaming `questions` alone.
 - [Decisions Lab](https://openrouter.ai/labs/decisions) runs Decisions models head to head in the browser, such as the [platform race](https://openrouter.ai/labs/decisions/race), where each model steers its own dog up a shared tower. The race sends text options only, not images.

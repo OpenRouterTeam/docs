@@ -38,7 +38,7 @@ When the parameter is omitted, the endpoint returns text-output models only. Mod
 | `transcription` | Speech-to-text models |
 | `embeddings` | Embedding models |
 | `rerank` | Reranking models |
-| `decisions` | Decision models such as [Jev](https://openrouter.ai/typesafe/jev-1.13) that return typed judgments instead of text. See [Jev Lab](https://openrouter.ai/labs/jev) and the [Jev gating recipe](/cookbook/building-agents/gate-tool-calls-with-jev) |
+| `decisions` | Decision models such as [Jev](https://openrouter.ai/typesafe/jev-1.13) that return typed judgments instead of text. See [Jev Lab](https://openrouter.ai/labs/jev) and the [Jev gating recipe](/cookbook/building-agents/gate-tool-calls-with-jev). Models that pull typed fields out of text, images and PDFs answer on the [Extractions API](/guides/community/extractions) (`POST /api/alpha/extractions`); that guide lists them |
 | `all` | Include all models, skip modality filtering |
 
 Examples:
@@ -61,6 +61,20 @@ curl "https://openrouter.ai/api/v1/models?output_modalities=all"
 ```
 
 The same parameter is available on the [`/v1/models/count`](/api/api-reference/models/get-total-count-of-available-models) endpoint so that counts stay consistent with list results.
+
+### `endpoints`
+
+Filter models by the request API paths they serve, as listed in each model's `endpoints` response field. Accepts a comma-separated list; a model must serve every listed path. Valid values are the request paths OpenRouter routes, for example `/api/v1/chat/completions`, `/api/v1/embeddings`, `/api/alpha/decisions` and `/api/alpha/extractions`; an unknown path returns `400`.
+
+This is the way to list models for a route that is not an output modality. [Extractions](/guides/community/extractions) is served by text models and decisions models alike, so `output_modalities` cannot select it; when `endpoints` is set without `output_modalities`, models of every output modality are considered.
+
+```bash lines
+# Models that serve the Extractions API
+curl "https://openrouter.ai/api/v1/models?endpoints=/api/alpha/extractions"
+
+# Decisions models that also serve Extractions
+curl "https://openrouter.ai/api/v1/models?endpoints=/api/alpha/decisions,/api/alpha/extractions"
+```
 
 ### `supported_parameters`
 
