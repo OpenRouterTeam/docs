@@ -83,7 +83,7 @@ If validation fails, the draft is kept and returned with the failed checks. Fix 
 
 Send an `Idempotency-Key` header to make create retry-safe. Repeating a request with the same key returns the endpoint the first request created; reusing the key with a different body returns `422 idempotency_key_reused`.
 
-After activation, `PUT /api/v1/private-endpoints/{id}/pricing` updates the reported rates, and `/disable` and `/enable` stop or resume routing. `DELETE /api/v1/private-endpoints/{id}` removes an endpoint and stops routing to it. Pass `draft_only=true` to refuse the delete (409) if the endpoint has ever been activated.
+After activation, `PATCH /api/v1/private-endpoints/{id}` with `pricing` updates the reported rates, and `/disable` and `/enable` stop or resume routing. `DELETE /api/v1/private-endpoints/{id}` removes an endpoint and stops routing to it. Pass `draft_only=true` to refuse the delete (409) if the endpoint has ever been activated.
 
 ### Terraform
 

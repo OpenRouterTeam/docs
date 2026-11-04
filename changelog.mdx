@@ -22,7 +22,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 - `UpdatePrivateEndpointRequest`: required `upstream_model_id` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
   - Used by [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
-  - **Migration: no action.** `PATCH /private-endpoints/{id}` is now a merge patch over every field an owner controls (`pricing`, `declared_parameters`, `settings`, and the draft-only upstream fields), so no single field is required and only the keys you send change. A request that still sends `upstream_model_id` is accepted on a draft endpoint; on an active endpoint it returns 409 `already_active`, as before. `PUT /private-endpoints/{id}/pricing` and `PUT /private-endpoints/{id}/parameters` keep working as deprecated aliases of this route.
+  - **Migration: no action.** `PATCH /private-endpoints/{id}` is now a merge patch over every field an owner controls (`pricing`, `declared_parameters`, `settings`, and the draft-only upstream fields), so no single field is required and only the keys you send change. A request that still sends `upstream_model_id` is accepted on a draft endpoint; on an active endpoint it returns 409 `already_active`, as before. `PUT /private-endpoints/{id}/pricing` and `PUT /private-endpoints/{id}/parameters` were deprecated aliases of this route and have since been removed; send `pricing` or `declared_parameters` to `PATCH /private-endpoints/{id}` instead.
 
 ## New endpoints
 
