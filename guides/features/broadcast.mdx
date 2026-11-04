@@ -251,7 +251,7 @@ Broadcast includes router timing for Chat Completions, Responses, Messages, and 
 
 The values are the same ones OpenRouter records for the request. On a completed request, the `_ms` fields add up to the request's end-to-end time. On a request without a completion time, such as one the client cancelled or one that failed after dispatch, they cover only the part measured. Broadcast does not send a total or a per-phase breakdown.
 
-Router timing is sent on the root generation only. Destinations that receive a metadata object get each value as `openrouter_router_timing_<field>`. OTLP destinations get the same names dotted, `openrouter.router_timing.<field>`, under the destination's OpenRouter prefix. Destinations that store the raw trace, such as S3, get the values as a `routerTiming` object.
+Router timing is sent on the root generation only. When OpenRouter retries a failed attempt on another provider without the client seeing the failure, the failed attempt's generation is sent without router timing, because the values describe the whole request; only the generation of the attempt that ends the request carries them. Destinations that receive a metadata object get each value as `openrouter_router_timing_<field>`. OTLP destinations get the same names dotted, `openrouter.router_timing.<field>`, under the destination's OpenRouter prefix. Destinations that store the raw trace, such as S3, get the values as a `routerTiming` object.
 
 All values are whole milliseconds, except `attempt_count`.
 
@@ -355,7 +355,7 @@ Broadcast waits up to 10 seconds after the response is generated for the client 
 
 ### Large Trace Values
 
-This applies to the OpenTelemetry-based destinations (Arize, Elastic, Grafana, Langfuse, LangSmith, New Relic, OpenInference, OTel Collector, Phoenix, Ramp, Sentry, and Webhook). Other destinations are not bounded this way and emit no truncation markers.
+This applies to the OpenTelemetry-based destinations (Arize, Elastic, Grafana, Langfuse, LangSmith, New Relic, OTel Collector, Ramp, Sentry, and Webhook). Other destinations are not bounded this way and emit no truncation markers.
 
 Large agent transcripts are normal, so broadcast delivery keeps the rest of the trace when an individual trace or observation value exceeds the per-attribute character limit (currently 10,000,000 characters). The oversized value is shortened rather than causing the trace to be dropped, and a boolean `<key>.truncated` attribute is added alongside it.
 
