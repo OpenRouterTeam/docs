@@ -290,7 +290,7 @@ Check the model's `supported_parameters` to see which values each endpoint accep
 
 - `quality` &mdash; `auto`, `low`, `medium`, or `high`. Providers without a quality knob ignore this.
 - `output_format` &mdash; `png`, `jpeg`, `webp`, `svg` (vectorization models only), or `gif` (animation-capable models only, e.g. OpenAI gpt-image-2.6). If omitted, the provider's default applies.
-- `frame_count` and `frame_duration_ms` &mdash; animation length (2-64 frames) and per-frame display time (20-2000 ms) when `output_format` is `gif`. Ignored by models that do not produce animations.
+- `frame_count` and `frame_duration_ms` &mdash; animation length (2-64 frames; each model accepts its own range and returns its own error for values outside it) and per-frame display time (20-2000 ms) when `output_format` is `gif`. Ignored by models that do not produce animations. OpenAI renders every frame onto one sprite sheet with a fixed pixel budget, so a bare `aspect_ratio` is shaped to the largest frame that fits (for example `1:1` at 9 frames is 928x928); an explicit `size` is forwarded as-is and can be rejected upstream when the sheet does not fit.
 - `markup` &mdash; a transparent PNG overlay (same dimensions as the first reference image) that marks where an edit applies. Image-to-image only; honored by models with markup-guided editing (OpenAI gpt-image-2.6).
 - `background` &mdash; `auto`, `transparent`, or `opaque`. `transparent` requires an alpha-capable format (png or webp).
 - `output_compression` &mdash; 0-100 for webp/jpeg. Ignored for png.
@@ -511,7 +511,7 @@ For streaming requests, any partial preview images delivered before the stream e
 | `size` | string | No | Convenience shorthand &mdash; a tier, or explicit pixels (`"2048x2048"`) where the provider accepts them (xAI and Sourceful V2/V2.5 reject pixel sizes with a 400; Sourceful V2.6 accepts them within its dimension limits) |
 | `quality` | string | No | `auto`, `low`, `medium`, or `high` |
 | `output_format` | string | No | `png`, `jpeg`, `webp`, `svg`, or `gif`. When omitted, the provider default applies. |
-| `frame_count` | integer | No | Animation frames (2-64) for `gif` output; animation-capable models only |
+| `frame_count` | integer | No | Animation frames (2-64) for `gif` output; animation-capable models only, each with its own accepted range |
 | `frame_duration_ms` | integer | No | Per-frame display time (20-2000 ms) for `gif` output |
 | `markup` | object | No | Transparent PNG overlay (same shape as an `input_references` entry) guiding an edit; image-to-image only |
 | `background` | string | No | `auto`, `transparent`, or `opaque` |
