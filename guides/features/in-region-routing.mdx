@@ -102,7 +102,9 @@ Two categories of endpoints are always excluded from regional routing even if th
 
 ### Regional Endpoints on the Global Domain
 
-Some providers bill a premium for serving a model from a specific region. On the global domain (`https://openrouter.ai`), default routing skips these regional-surcharge endpoints whenever the model also has a standard-priced endpoint. The model page lists them under **Not used in Standard routing**. That grouping describes shared routing without your BYOK keys, so an endpoint that only your own key unlocks still appears there.
+Some providers bill a premium for serving a model from a specific region. OpenRouter detects the premium from the endpoint's own pricing: a regional endpoint that costs more than the provider's own standard (non-regional) endpoint for the same model and service tier, or more than the cheapest standard endpoint when the provider has no standard one, is a regional-surcharge endpoint, and one priced at parity is treated like any other endpoint. Only endpoints a default request can use count as the standard reference, so a disabled endpoint or one that needs your own key never sets the price. For closed-weight models, where the premium is a fixed multiple of the model's list price, default routing on the global domain (`https://openrouter.ai`) skips these regional-surcharge endpoints whenever the model also has a standard-priced endpoint. The model page lists them under **Not used in Standard routing**. That grouping describes shared routing without your BYOK keys, so an endpoint that only your own key unlocks still appears there.
+
+Open-weight models (models with a Hugging Face id) have no single list price, so their regional endpoints are not held out: they stay in default routing and compete on price and performance with every other endpoint for the model, the same way priority service-tier endpoints do.
 
 A regional-surcharge endpoint is used when:
 
