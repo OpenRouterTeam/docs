@@ -1258,7 +1258,32 @@ The response returns one receipt per report, in submission order. Resending a re
 
 #### Team members
 
-Owners can share dashboard and API access with teammates. `GET /api/v1/providers/{provider_slug}/members` lists everyone with access and their role: `owner` (full access, including managing members) or `member` (full dashboard and API access, except managing members). `POST .../members` with `{ "email": "..." }` adds a member; the email must belong to an existing OpenRouter account. The response is `201` with `is_new: true` for a new grant, or `200` with `is_new: false` when the account already had access. `DELETE .../members/{member_id}` removes a member, using the `id` from the list. When an owner is an organization, the list shows its active members as owners, each with the organization's name in `organization`; a row with the organization's name and no `email` stands for the organization itself, shown when it has no active members or when the request comes from an organization API key whose creator is no longer a member. Each entry carries `is_current_user`, so a client can tell the caller their own role. Only owners (and OpenRouter staff) can add or remove members; owners are managed by OpenRouter.
+Owners can share dashboard and API access with teammates. Each person has one of two roles:
+
+| Role | Access |
+| --- | --- |
+| `owner` | Full access, including adding and removing members. Owners are managed by OpenRouter. |
+| `member` | Full dashboard and API access, except managing members. |
+
+Only owners (and OpenRouter staff) can add or remove members and revoke invites. Members can list members and pending invites.
+
+| Method | Path | What it does |
+| --- | --- | --- |
+| `GET` | `/api/v1/providers/{provider_slug}/members` | Lists everyone with access and their role. |
+| `POST` | `/api/v1/providers/{provider_slug}/members` | Adds a member by email. Send `{ "email": "..." }`. |
+| `DELETE` | `/api/v1/providers/{provider_slug}/members/{member_id}` | Removes a member, using the `id` from the list. |
+| `GET` | `/api/v1/providers/{provider_slug}/invites` | Lists pending invites, oldest first. |
+| `DELETE` | `/api/v1/providers/{provider_slug}/invites/{invite_id}` | Revokes a pending invite, using the `id` from the invites list. |
+
+Adding a member returns one of:
+
+| Status | When |
+| --- | --- |
+| `201` | The email belongs to an OpenRouter account, and it now has member access (`is_new: true`). |
+| `200` | The account already had member access (`is_new: false`). |
+| `202` | No OpenRouter account has that email. A sign-up invite is emailed (`outcome: "invited"`), and the person gets member access once they sign up with that email. Sending again replaces the pending invite. |
+
+Each invite carries an `id`, the invited `email`, `invited_at`, and `expires_at`. Signing up after `expires_at` doesn't grant access; send the invite again. Revoking an invite means signing up with that email no longer grants access.
 
 ```bash
 curl -X POST https://openrouter.ai/api/v1/providers/my-provider/members \
@@ -1266,3 +1291,10 @@ curl -X POST https://openrouter.ai/api/v1/providers/my-provider/members \
   -H "Content-Type: application/json" \
   -d '{ "email": "teammate@my-provider.com" }'
 ```
+
+Each entry in the list carries:
+
+- `is_current_user`: `true` for the caller, so a client can show the caller their own role.
+- `organization`: set when an owner is an organization. The organization's active members are listed as owners, each with the organization's name here.
+
+A row with the organization's name and no `email` stands for the organization itself. It appears when the organization has no active members, or when the request comes from an organization API key whose creator is no longer a member.
