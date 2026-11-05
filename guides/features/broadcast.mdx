@@ -543,6 +543,7 @@ Each destination can optionally enable **Privacy Mode** to exclude prompt and co
 
 - **Input messages** (prompts sent to the model)
 - **Output choices** (completions returned by the model)
+- **Error text** (the observation's `statusMessage`, and every field of `metadata.openrouter_error` except `code` and `shadow`, since these can repeat the provider's error message). The error level, status code, `openrouter_error.code`, and error ownership are still sent.
 
 All other trace data (including token counts, costs, timing, model information, model parameters, and custom metadata) is still sent normally. Model parameters include the request's `stop` sequences, which are caller-supplied text.
 

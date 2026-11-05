@@ -124,4 +124,4 @@ Each trace file is a JSON object. Custom metadata keys from `trace` are stored i
 
 ## Privacy Mode
 
-When [Privacy Mode](/guides/features/broadcast#privacy-mode) is enabled for this destination, prompt and completion content is excluded from traces. All other trace data (token usage, costs, timing, model information, and custom metadata) is still sent normally. Raw provider usage is replaced with `null` and reported as `privacy_mode`, because a provider's usage object can contain arbitrary future fields. See [Privacy Mode](/guides/features/broadcast#privacy-mode) for details.
+When [Privacy Mode](/guides/features/broadcast#privacy-mode) is enabled for this destination, prompt and completion content and provider error text are excluded from traces. All other trace data (token usage, costs, timing, model information, and custom metadata) is still sent normally. Raw provider usage is replaced with `null` and reported as `privacy_mode`, because a provider's usage object can contain arbitrary future fields. See [Privacy Mode](/guides/features/broadcast#privacy-mode) for details.
