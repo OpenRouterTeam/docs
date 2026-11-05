@@ -1110,7 +1110,7 @@ Throughput is calculated as: **output tokens ÷ generation time**, where generat
 
 To keep your metrics competitive:
 
-- Return early 429s if under load, rather than queueing requests
+- Return early 429s if under load, rather than queueing requests. If the load comes from one account that is abusing your endpoint, [report it](#abuse-reports) so OpenRouter can act on the account instead of your endpoint rate limiting everyone
 - Stream tokens as soon as they're available
 - If processing takes time (e.g. reasoning models), send SSE comments as keep-alives so we know you're still working on the request. Otherwise we may cancel with a fetch timeout and fallback to another provider
 
@@ -1160,7 +1160,7 @@ To maximize the tool-calling traffic routed to your endpoints:
 
 - **Maintain high tool-call reliability** -- ensure your endpoint returns well-formed tool call responses consistently.
 - **Optimize throughput** -- minimize queueing and stream tokens as soon as they are available (see [Performance Metrics](#11-performance-metrics) above).
-- **Return early 429s under load** -- rather than queueing and degrading throughput, return rate limit errors so we can retry with another provider and your metrics stay healthy.
+- **Return early 429s under load** -- rather than queueing and degrading throughput, return rate limit errors so we can retry with another provider and your metrics stay healthy. If the load is one abusive account, [report it](#abuse-reports) rather than only rate limiting it.
 
 ### 13. Provider API
 
@@ -1219,6 +1219,41 @@ curl -X PATCH https://openrouter.ai/api/v1/providers/my-provider \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "status_page_url": "https://status.my-provider.com" }'
+```
+
+#### Abuse reports
+
+`POST /api/v1/providers/{provider_slug}/abuse-reports` reports accounts whose traffic to your endpoints breaks OpenRouter's acceptable use policy, including abusive traffic patterns such as automated probing or flooding (`abuse_type: "misuse_of_access/abusive_traffic"`). One report describes one account, and each report must identify the OpenRouter account in one of two ways:
+
+- `requests`: the `x-request-id` (or `request-id`) values your endpoint returned to OpenRouter for the abusive calls. Include each request's `timestamp` if you have it; it narrows the lookup. This works for every provider.
+- `user_id`: the hashed user id OpenRouter sent on the request. Only providers whose data policy requires user ids receive this, so most providers should use `requests`.
+
+OpenRouter resolves the request ids to the account on its side; you don't need to know who the user is. Add any context in `notes`. Reports are reviewed by OpenRouter's trust & safety team and flag the resolved account for review; they do not trigger automatic enforcement, and they do not change how OpenRouter routes traffic to you. The flag counts one per provider per UTC day, so repeated reports about the same account on the same day are linked to it but do not raise it further. `report_ref` is optional (e.g. your internal case id). If you send a report with the same `report_ref` again, OpenRouter returns the original receipt instead of filing a duplicate. The response contains one receipt `id` per report, in submission order.
+
+```bash
+curl -X POST https://openrouter.ai/api/v1/providers/my-provider/abuse-reports \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reports": [{
+      "abuse_type": "misuse_of_access/abusive_traffic",
+      "requests": [
+        { "request_id": "req_8f3a1c", "timestamp": "2026-10-22T14:05:11Z" },
+        { "request_id": "req_8f3a1d", "timestamp": "2026-10-22T14:05:12Z" }
+      ],
+      "model": "my-model-70b",
+      "notes": "~50 rps of single-token prompts from one caller",
+      "report_ref": "case-1042"
+    }]
+  }'
+```
+
+The response returns one receipt per report, in submission order. Resending a report with the same `report_ref` returns the same `id`:
+
+```json
+{
+  "results": [{ "id": "0198c3f1-7b9a-7c31-a2d4-5e6f7a8b9c0d", "status": "received" }]
+}
 ```
 
 #### Team members
