@@ -57,6 +57,34 @@
 | --- | --- | --- |
 | `POST` | `/api/v1/generation/feedback` | [Submit feedback for a generation](/api/api-reference/generations/submit-feedback-for-a-generation) |
 
+### Guardrail Policies
+
+| Method | Route | Reference |
+| --- | --- | --- |
+| `GET` | `/api/v1/guardrails/policies/account` | [List workspace-wide policies](/api/api-reference/guardrail-policies/list-workspace-wide-policies) |
+| `POST` | `/api/v1/guardrails/policies/account` | [Create a workspace-wide policy](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy) |
+| `PUT` | `/api/v1/guardrails/policies/account/{id}` | [Update a workspace-wide policy](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy) |
+| `DELETE` | `/api/v1/guardrails/policies/account/{id}` | [Delete a workspace-wide policy](/api/api-reference/guardrail-policies/delete-a-workspace-wide-policy) |
+| `GET` | `/api/v1/guardrails/policies/assignments/api-keys/{hash}` | [Get an API key policy assignment](/api/api-reference/guardrail-policies/get-an-api-key-policy-assignment) |
+| `PUT` | `/api/v1/guardrails/policies/assignments/api-keys/{hash}` | [Change an API key policy assignment](/api/api-reference/guardrail-policies/change-an-api-key-policy-assignment) |
+| `GET` | `/api/v1/guardrails/policies/assignments/members/{member_id}` | [Get a member policy assignment](/api/api-reference/guardrail-policies/get-a-member-policy-assignment) |
+| `PUT` | `/api/v1/guardrails/policies/assignments/members/{member_id}` | [Change a member policy assignment](/api/api-reference/guardrail-policies/change-a-member-policy-assignment) |
+| `GET` | `/api/v1/guardrails/policies/budget` | [List budget policies](/api/api-reference/guardrail-policies/list-budget-policies) |
+| `POST` | `/api/v1/guardrails/policies/budget` | [Create a budget policy](/api/api-reference/guardrail-policies/create-a-budget-policy) |
+| `GET` | `/api/v1/guardrails/policies/budget/{id}` | [Get a budget policy](/api/api-reference/guardrail-policies/get-a-budget-policy) |
+| `PUT` | `/api/v1/guardrails/policies/budget/{id}` | [Update a budget policy](/api/api-reference/guardrail-policies/update-a-budget-policy) |
+| `DELETE` | `/api/v1/guardrails/policies/budget/{id}` | [Delete a budget policy](/api/api-reference/guardrail-policies/delete-a-budget-policy) |
+| `GET` | `/api/v1/guardrails/policies/model-availability` | [List model availability policies](/api/api-reference/guardrail-policies/list-model-availability-policies) |
+| `POST` | `/api/v1/guardrails/policies/model-availability` | [Create a model availability policy](/api/api-reference/guardrail-policies/create-a-model-availability-policy) |
+| `GET` | `/api/v1/guardrails/policies/model-availability/{id}` | [Get a model availability policy](/api/api-reference/guardrail-policies/get-a-model-availability-policy) |
+| `PUT` | `/api/v1/guardrails/policies/model-availability/{id}` | [Update a model availability policy](/api/api-reference/guardrail-policies/update-a-model-availability-policy) |
+| `DELETE` | `/api/v1/guardrails/policies/model-availability/{id}` | [Delete a model availability policy](/api/api-reference/guardrail-policies/delete-a-model-availability-policy) |
+| `GET` | `/api/v1/guardrails/policies/moderation` | [List moderation policies](/api/api-reference/guardrail-policies/list-moderation-policies) |
+| `POST` | `/api/v1/guardrails/policies/moderation` | [Create a moderation policy](/api/api-reference/guardrail-policies/create-a-moderation-policy) |
+| `GET` | `/api/v1/guardrails/policies/moderation/{id}` | [Get a moderation policy](/api/api-reference/guardrail-policies/get-a-moderation-policy) |
+| `PUT` | `/api/v1/guardrails/policies/moderation/{id}` | [Update a moderation policy](/api/api-reference/guardrail-policies/update-a-moderation-policy) |
+| `DELETE` | `/api/v1/guardrails/policies/moderation/{id}` | [Delete a moderation policy](/api/api-reference/guardrail-policies/delete-a-moderation-policy) |
+
 ### Guardrails
 
 | Method | Route | Reference |
