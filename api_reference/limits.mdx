@@ -39,7 +39,7 @@ OpenRouter enforces three kinds of limits:
 | --------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------- |
 | [Credit limits](#credit-limits)   | How much you can spend (account balance, per-key credit caps, and the in-flight spending budget) | <StatusCode code={HTTPStatus.S402_Payment_Required} />  | `GET /api/v1/key` → `limit_remaining`; `error.metadata.limit_source` on the error response |
 | [Budget limits](#budget-limits)   | Spend caps an org admin configured: guardrail budgets, workspace budgets, and the key's own limit once it is spent | <StatusCode code={HTTPStatus.S403_Forbidden} />  | `GET /api/v1/key` → `budgets` and `effective_budget`; `error.metadata` on the error response |
-| [Rate limits](#rate-limits)       | How many requests you can make (free-model request caps and DDoS protection) | <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> | `X-RateLimit-*` headers on the error response                   |
+| [Rate limits](#rate-limits)       | How many requests you can make (free-model request caps, key-management caps, per-IP burst limits, and DDoS protection) | <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> | `X-RateLimit-*` headers on free-model and key-management errors |
 
 ## Checking your limits
 
@@ -279,7 +279,23 @@ Rate limits govern how many requests you can make. There are a few rate limits t
 
 The `free_model_daily_requests` field in the `GET /api/v1/key` response above reports the daily counter and ceiling that gate your free-model requests when these limits apply to your account. Accounts and endpoints exempt from free-model limits, and BYOK requests, are not gated by it, so `remaining` reflects the tier policy rather than an enforced ceiling for them. The per-minute limit is not reported there. The `limit` tier is selected by all-time credits purchased, independently of `is_free_tier`. To absorb rounding and top-up fees, the higher daily ceiling is granted starting one credit below the table's threshold (currently {FREE_MODEL_CREDITS_THRESHOLD - 1} credits); an account that has purchased fewer credits than that reports `is_free_tier: false` together with the lower daily ceiling.
 
-2. **DDoS protection**: Cloudflare's DDoS protection will block requests that dramatically exceed reasonable usage.
+2. **Key-management limits**: Creating, updating, and deleting API keys with a [management key](/guides/overview/auth/management-api-keys) count toward a daily limit for your account or organization. The limit is 10,000 requests per day by default, and it resets at 00:00 UTC.
+
+   - `POST /api/v1/keys`, `PATCH /api/v1/keys/{hash}` (including disabling a key), and `DELETE /api/v1/keys/{hash}` all count toward the same limit. A request counts even if it then fails, for example with a 404 for an unknown key.
+   - Reading keys, usage, or credits doesn't count toward it.
+   - When you reach the limit, requests fail with <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> until the reset. The `X-RateLimit-Reset` header gives the reset time in milliseconds since the Unix epoch.
+   - If you create a short-lived key for each job, set `expires_at` when you create it instead of deleting it afterward. This halves the requests that count toward the limit.
+   - If your workload needs a higher limit, contact support.
+
+3. **Per-IP burst limits**: These endpoints also limit how many requests each client IP address can make per minute:
+
+   - Key writes: `POST /api/v1/keys`, `PATCH /api/v1/keys/{hash}`, and `DELETE /api/v1/keys/{hash}`
+   - Key reads: `GET /api/v1/keys` and `GET /api/v1/keys/{hash}`
+   - Current key and credits: `GET /api/v1/key` and `GET /api/v1/credits`
+
+   Each endpoint counts separately, except that `PATCH` and `DELETE` on `/api/v1/keys/{hash}` share a count. The limits for key writes are lower than the limits for the other endpoints. These responses don't include `X-RateLimit-*` headers, so wait a few seconds and retry with exponential backoff.
+
+4. **DDoS protection**: Cloudflare's DDoS protection will block requests that dramatically exceed reasonable usage.
 
 ### Handling 429 errors
 
@@ -299,11 +315,11 @@ Requests rejected with <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> f
 
 A <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> error can come from two places:
 
-1. **OpenRouter**, when you hit one of the platform limits above (free-model requests per minute or per day, or DDoS protection).
+1. **OpenRouter**, when you hit one of the platform limits above (free-model requests per minute or per day, key-management requests per day, per-IP burst limits, or DDoS protection).
 2. **The upstream provider**, when the provider serving your request is rate limiting or at capacity. In this case `error.metadata.provider_code` carries the provider's original error code when available, and [fallback routing](/guides/routing/provider-selection) retries other providers for the same model automatically before the error reaches you. You can also specify [fallback models](/guides/routing/model-fallbacks) to try a different model when all providers for the first are exhausted.
 
 <Note>
-  Successful inference responses do not include `X-RateLimit-*` headers. When OpenRouter itself returns a <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> error for a platform limit, the error response carries `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers describing the limit that was hit. When every attempted provider returned a retry hint, the error response also carries a `Retry-After` header. To monitor your remaining quota before hitting a limit, call `GET /api/v1/key` as shown above.
+  Successful inference responses do not include `X-RateLimit-*` headers. When OpenRouter itself returns a <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> error for a free-model or key-management limit, the error response carries `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers describing the limit that was hit. When every attempted provider returned a retry hint, the error response also carries a `Retry-After` header. To monitor your remaining free-model daily quota before hitting a limit, call `GET /api/v1/key` as shown above. It doesn't report the key-management limit.
 </Note>
 
 To resolve <StatusCode code={HTTPStatus.S429_Too_Many_Requests} /> errors:
