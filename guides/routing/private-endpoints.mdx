@@ -79,11 +79,11 @@ curl https://openrouter.ai/api/v1/private-endpoints \
   }'
 ```
 
-If validation fails, the draft is kept and returned with the failed checks. Fix it with `PATCH /api/v1/private-endpoints/{id}` (only drafts can be edited), then call `/validate` and `/activate` again instead of creating a new endpoint.
+If validation fails, the draft is kept and returned with the failed checks. Fix it with `PATCH /api/v1/private-endpoints/{id}` (the upstream fields can change only on a draft), then call `/validate` and `/activate` again instead of creating a new endpoint.
 
 Send an `Idempotency-Key` header to make create retry-safe. Repeating a request with the same key returns the endpoint the first request created; reusing the key with a different body returns `422 idempotency_key_reused`.
 
-After activation, `PATCH /api/v1/private-endpoints/{id}` with `pricing` updates the reported rates, and `/disable` and `/enable` stop or resume routing. `DELETE /api/v1/private-endpoints/{id}` removes an endpoint and stops routing to it. Pass `draft_only=true` to refuse the delete (409) if the endpoint has ever been activated.
+After activation, `PATCH /api/v1/private-endpoints/{id}` with `pricing` updates the reported rates, and `declared_zdr` or `declared_region` updates the endpoint's data-policy declarations; routing applies the change to subsequent requests once the private catalog republishes, and the endpoint keeps its validation. `base_url` and `upstream_model_id` can't change after activation: the request returns `409 already_active`, so delete and re-create the endpoint instead. `/disable` and `/enable` stop or resume routing. `DELETE /api/v1/private-endpoints/{id}` removes an endpoint and stops routing to it. Pass `draft_only=true` to refuse the delete (409) if the endpoint has ever been activated.
 
 ### Terraform
 
@@ -134,4 +134,4 @@ If you need more than 10, talk to your OpenRouter account representative about r
 
 ## In-Region Routing
 
-A private endpoint is eligible for in-region routing when OpenRouter can derive a region from its base URL, or when you declare a data region during setup. Endpoints with neither route on the global `openrouter.ai` domain. See the [In-Region Routing guide](/guides/features/in-region-routing#byok-with-in-region-routing) for supported providers.
+A private endpoint is eligible for in-region routing when OpenRouter can derive a region from its base URL, or when you declare a data region, during setup or later through `PATCH /api/v1/private-endpoints/{id}`. Endpoints with neither route on the global `openrouter.ai` domain. See the [In-Region Routing guide](/guides/features/in-region-routing#byok-with-in-region-routing) for supported providers.
