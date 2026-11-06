@@ -83,7 +83,7 @@ Batch accepts text, public image URLs, and some file URLs. It returns text and e
 | Google AI Studio | Yes | No. Public YouTube URLs work as `video_url` parts. |
 | xAI, Together, Sail Research | Yes | No |
 | Alibaba (`/v1/chat/completions` only) | Yes | No |
-| Fireworks, Parasail, Morph | No | No |
+| Fireworks, Morph | No | No |
 
 File parts use the endpoint's own type: `input_file` on `/v1/responses`, `file` on `/v1/chat/completions`, and `document` on `/v1/messages`. The entries below use the Responses shape so they drop into the batch above; on a `/v1/chat/completions` batch, send `messages` with `image_url` and `file` parts instead.
 
@@ -552,7 +552,7 @@ OpenRouter also deletes provider-side files, whatever `upstream.status` says:
 
 | Provider | Files deleted |
 |----------|---------------|
-| OpenAI, Mistral, DeepInfra, Morph, Alibaba, Parasail, xAI | Uploaded input, output, and error files |
+| OpenAI, Mistral, DeepInfra, Morph, Alibaba, xAI | Uploaded input, output, and error files |
 | Fireworks | Input and output datasets |
 | Google AI Studio | Uploaded input and output files |
 | Together | Uploaded input. Together does not allow deleting generated output. |
