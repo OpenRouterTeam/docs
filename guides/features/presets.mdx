@@ -170,13 +170,15 @@ The endpoints are:
 
 The `{slug}` path parameter is a URL-safe identifier for the preset. If a preset with that slug already exists in your workspace, a new version is created and designated as the active version. If it does not exist, a new preset is created.
 
+These endpoints require a read-write [management key](/docs/guides/overview/auth/management-api-keys), like other workspace configuration endpoints; inference API keys are rejected with a 401. If you omit `workspace_id`, the preset is created in the key's workspace (keys limited to one workspace) or the account's default workspace. Pass `workspace_id` to target another workspace.
+
 ### From a Chat Completions request
 
 Reuse the exact body you would `POST /api/v1/chat/completions`:
 
 ```bash lines
 curl https://openrouter.ai/api/v1/presets/email-copywriter/chat/completions \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Authorization: Bearer $OPENROUTER_MANAGEMENT_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "openai/gpt-4o",
@@ -195,7 +197,7 @@ The `messages` array is ignored for preset storage; only the configuration field
 
 ```bash lines
 curl https://openrouter.ai/api/v1/presets/code-reviewer/messages \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Authorization: Bearer $OPENROUTER_MANAGEMENT_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "anthropic/claude-4.6-sonnet",
@@ -213,7 +215,7 @@ The top-level `system` field becomes the preset's system prompt.
 
 ```bash lines
 curl https://openrouter.ai/api/v1/presets/inbound-classifier/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Authorization: Bearer $OPENROUTER_MANAGEMENT_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "openai/gpt-4o",

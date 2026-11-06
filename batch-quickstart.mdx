@@ -339,6 +339,8 @@ app.post(
 
 Call `GET /api/v1/batches/{id}` until the status is final: `completed`, `failed`, `expired`, or `cancelled`. Once a minute is enough. Back off if you get `429`.
 
+If a batch the provider ran ends `failed`, `expired`, or `cancelled` and the provider reports fewer requests than OpenRouter accepted, `request_counts.total` is the accepted number and the requests the provider did not report count as `failed`. Older batches that have no stored accepted count keep the provider's counts.
+
 ```typescript title="Poll until final" lines
 const FINAL = new Set(['completed', 'failed', 'expired', 'cancelled']);
 
