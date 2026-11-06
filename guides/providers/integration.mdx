@@ -915,7 +915,7 @@ Behavior:
 - `is_ready: false` on the batch document hides only the batch endpoint.
 - Once your feed has updated a batch endpoint, removing its batch document from an otherwise valid feed hides that batch endpoint. A feed that fails to load never hides anything.
 
-If you serve the [legacy OpenAI-compatible format](/guides/providers/integration-legacy), you can add an optional `batch` object inside `pricing` with `prompt`, `completion`, and `input_cache_read`. It prices the batch endpoint only: it never changes the batch endpoint's other fields, and `is_ready` never hides it. Once your feed has priced a batch endpoint, removing `pricing.batch` from an otherwise valid feed hides that endpoint, as removing a batch document does. To declare different capabilities for the batch endpoint, publish current-format documents instead.
+If you serve the [legacy OpenAI-compatible format](/guides/providers/integration-legacy), you can add an optional `batch` object inside `pricing` with `prompt`, `completion`, and `input_cache_read`. It prices the batch endpoint only: it never changes the batch endpoint's other fields, and `is_ready` never hides it. Once your feed has priced a batch endpoint, removing `pricing.batch` from an otherwise valid feed hides that endpoint, as removing a batch document does. If no model in your feed carries `pricing.batch` anymore, OpenRouter no longer hides batch endpoints that only your batch pricing ever updated, though one that a batch document updated before still follows the removal rule above; set `is_ready: false` on a current-format batch document to hide one on purpose. To declare different capabilities for the batch endpoint, publish current-format documents instead.
 
 ```json lines
 {
