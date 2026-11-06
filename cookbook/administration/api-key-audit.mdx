@@ -59,10 +59,9 @@ async function* listKeys() {
   const workspacePages = await openRouter.workspaces.list({ limit: PAGE_SIZE });
   for await (const workspacePage of workspacePages) {
     for (const workspace of workspacePage.result.data) {
-      for (let offset = 0; ; offset += PAGE_SIZE) {
-        const page = await openRouter.apiKeys.list({ workspaceId: workspace.id, offset });
-        yield* page.data;
-        if (page.data.length < PAGE_SIZE) break;
+      const keyPages = await openRouter.apiKeys.list({ workspaceId: workspace.id });
+      for await (const keyPage of keyPages) {
+        yield* keyPage.result.data;
       }
     }
   }

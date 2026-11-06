@@ -18,6 +18,7 @@ icon: table-list
 models:
   - cloudflare/clairic
   - inception/mercury-decide
+  - levanto/sage-2
   - scaledown/extract
 ---
 
@@ -33,6 +34,7 @@ The route is alpha and its shape can change. It takes the [Decisions](/api/api-r
 | --- | --- | --- | --- |
 | [`cloudflare/clairic`](https://openrouter.ai/cloudflare/clairic) | Text and up to 4 PNG or JPEG images | Every type in the table below | `include_quantiles`, `return_state_text` under `provider.options.cloudflare` |
 | [`inception/mercury-decide`](https://openrouter.ai/inception/mercury-decide) | Text only | `text`, and `list` with `items: "text"` | `snap_to_words`, `threshold`, `group_fields` under `provider.options.inception` |
+| [`levanto/sage-2`](https://openrouter.ai/levanto/sage-2) | Text only | `text`, `number` (as stated: no `unit`), `date`, `time`, `datetime`, `duration`, and `list` of any item type (no `null_threshold` on lists); no `reference_date` | None |
 | [`scaledown/extract`](https://openrouter.ai/scaledown/extract) | Text, or one PDF or image | `text`, and `list` with `items: "text"` | `threshold`, `top_n` under `provider.options.scaledown` |
 
 A request a model cannot serve (a `date` field on Mercury Decide, an image on a text-only model, a fifth image on Clairic) fails with a `400` from OpenRouter before anything is sent to the provider. The response `provider` field names the provider that answered.
@@ -96,7 +98,7 @@ Every field takes `type`, an optional `instructions` string saying what the fiel
 
 <ExtractionsFieldTypes />
 
-- `number` and `duration` take `unit`, `integer`, and `decimals` (0 to 6 decimal places kept in `value`). A `duration` `unit` is `seconds`, `minutes`, `hours`, `days`, `weeks`, `months`, or `years`.
+- `number` and `duration` take `unit`, `integer`, and `decimals` (0 to 6 decimal places kept in `value`). A `duration` `unit` is `seconds`, `minutes`, `hours`, `days`, `weeks`, `months`, or `years`. A provider that returns durations in ISO 8601 form (Sage) has them converted to the requested unit: clock units (`seconds` to `weeks`) convert exactly among themselves, as do `months` and `years` (twelve months to the year); across that divide a month is 30 days and a year 365, so `P1Y` in `days` is `365` and `P12M` is `360`. Ask for `months` or `years` when the document states a calendar span and a precise day count matters.
 - `list` takes `items`: `text`, `number`, or `date`.
 - `estimate` and `forecast` take `min` and `max` (numbers, or ISO dates for date-valued estimates), an optional `step` (a positive number, in days for date estimates, or `"month"` or `"year"`), and an optional `scale` of `linear` or `log`. A `forecast` also takes `horizon` (1 to 64 steps) and `interval` (`step`, `minute`, `hour`, `day`, `week`, `month`, `quarter`, or `year`).
 
@@ -146,7 +148,7 @@ Images and PDFs go in a top-level `assets` map, each sent once and referenced by
 ```
 
 - ScaleDown Extract reads one PDF or image per request, and reads either the text or the document, not both: send the file-only form of `state`.
-- Mercury Decide reads text only; any asset fails with a `400`.
+- Mercury Decide and Sage read text only; any asset fails with a `400`.
 
 ## Provider options
 
