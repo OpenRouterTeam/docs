@@ -200,6 +200,15 @@ The more specific setting always wins, in this order:
 
 A workspace default behaves exactly like the same value sent on the request, including `default`, which pins the standard tier and turns off `:nitro`/`:floor` tier admission for that workspace's requests.
 
+### Allowed Service Tiers
+
+The same Routing settings page lets a workspace admin choose which service tiers the workspace's requests may use. Every tier is allowed by default; the `default` tier is always allowed. A tier that is not allowed is enforced on every request routed under the workspace, whatever API key or preset it uses:
+
+- A request that selects the tier explicitly is rejected with a `403`: `service_tier` (including the `fast` alias and `speed: "fast"`), or a tier endpoint slug such as `openai/priority` or `openai/fast` in `provider.order` or `provider.only`.
+- Endpoints of that tier are never routed to. A `:nitro` or `:floor` variant stops admitting them and routes among the remaining endpoints, with no error. On model pages, those endpoints show a **Not routable** badge while you are signed in to the workspace.
+
+The workspace default service tier must be an allowed tier: the page refuses to disallow the current default, and refuses a default that is not allowed.
+
 ### Fast mode
 
 Three spellings request the priority tier. They are fully interchangeable on all APIs and providers:
