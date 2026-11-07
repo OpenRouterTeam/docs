@@ -34,7 +34,7 @@ The `openrouter:image_generation` server tool enables any model to generate imag
 
 1. You include `{ "type": "openrouter:image_generation" }` in your `tools` array.
 2. Based on the user's request, the model decides whether image generation is needed and crafts a prompt.
-3. OpenRouter generates the image using the configured model (defaults to `openai/gpt-5-image`).
+3. OpenRouter generates the image using the configured model (defaults to `openai/gpt-image-2.6-flare`).
 4. The generated image URL is returned to the model.
 5. The model incorporates the image into its response. It may generate multiple images in a single request if needed.
 
@@ -137,11 +137,11 @@ The image generation tool accepts optional `parameters` to customize the output:
 {
   "type": "openrouter:image_generation",
   "parameters": {
-    "model": "openai/gpt-5-image",
+    "model": "openai/gpt-image-2.6-flare",
     "quality": "high",
     "aspect_ratio": "16:9",
     "size": "1024x1024",
-    "background": "transparent",
+    "background": "opaque",
     "output_format": "png"
   }
 }
@@ -149,7 +149,7 @@ The image generation tool accepts optional `parameters` to customize the output:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `model` | string | `openai/gpt-5-image` | Which image generation model to use. See [available image models](https://openrouter.ai/models?output_modalities=image). |
+| `model` | string | `openai/gpt-image-2.6-flare` | Which image generation model to use. See [available image models](https://openrouter.ai/models?output_modalities=image). |
 | `quality` | string | N/A | Image quality level (model-dependent, e.g. `"low"`, `"medium"`, `"high"`) |
 | `size` | string | N/A | Image dimensions (e.g. `"1024x1024"`, `"512x512"`) |
 | `aspect_ratio` | string | N/A | Aspect ratio (e.g. `"16:9"`, `"1:1"`, `"4:3"`) |
@@ -287,9 +287,7 @@ if not text and not any(image.get("result") for image in images):
 
 Image generation pricing depends on the underlying model used:
 
-- **openai/gpt-5-image** (default): See [model page](https://openrouter.ai/openai/gpt-5-image)
-- **openai/gpt-5-image-mini**: See [model page](https://openrouter.ai/openai/gpt-5-image-mini)
-- **openai/gpt-5.4-image-2**: See [model page](https://openrouter.ai/openai/gpt-5.4-image-2)
+- **openai/gpt-image-2.6-flare** (default): See [model page](https://openrouter.ai/openai/gpt-image-2.6-flare)
 - Other models: See the [image models list](https://openrouter.ai/models?output_modalities=image) on OpenRouter
 
 The cost is in addition to standard LLM token costs for processing the request and response.
