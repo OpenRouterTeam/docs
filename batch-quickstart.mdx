@@ -268,7 +268,7 @@ Most batches finish in minutes, and nearly all finish within 24 hours. Use a web
 
 ### Option A: Wait with a webhook
 
-Set `callback_url` on the batch or **Default batch webhook URL** in your workspace settings. A batch-level URL overrides the workspace default and must use public HTTPS. A private or internal address makes the submit fail with `400`.
+Set `callback_url` on the batch or **Default batch webhook URL** in your workspace settings. A batch-level URL overrides the workspace default and must use public HTTPS, and its hostname must resolve in DNS to public addresses only. A private or internal address, or a hostname that does not resolve, makes the submit fail with `400`. If OpenRouter's DNS resolver fails while checking the hostname, the submit returns `503`; retry it. OpenRouter checks the hostname again before it hands the event to its webhook delivery service, and skips the webhook if the hostname now resolves to a private address. That service handles delivery retries; these checks are not repeated on each retry or redirect. Webhooks are delivered over IPv4, so the hostname needs at least one public `A` record; a host with only `AAAA` records never receives deliveries.
 
 OpenRouter sends one `POST` when the batch reaches a final status:
 
@@ -737,7 +737,7 @@ When the BYOK-only switch is on for your account or workspace, batches run only 
 
 | Status | Cause | Fix |
 |--------|-------|-----|
-| `400` | Bad input, `requests` before other fields, a private `callback_url`, or a model with no batch variant. | Read `error.message`. Pick a model from the [batch models list](https://openrouter.ai/models?variant=batch). |
+| `400` | Bad input, `requests` before other fields, a private or unresolvable `callback_url`, or a model with no batch variant. | Read `error.message`. Pick a model from the [batch models list](https://openrouter.ai/models?variant=batch). |
 | `402` | The estimated cost is more than your balance. | Add credits, or split the batch. |
 | `404` | No provider in `provider.only`, your account's allowlist, or your guardrails serves the model in batch mode, or every batch endpoint for the model requires your own [provider key](/guides/overview/auth/byok) and no eligible key is configured (the error names those providers). | Change `provider.only`, your provider settings, or the guardrail on your key; add a provider key; or pick a model with a platform-billed batch endpoint. |
 | `409` | You tried to delete a batch that is still running. | Wait until it finishes. |
