@@ -65,11 +65,28 @@ Disabling a key is reversible. Archiving a key is permanent and asks you to type
   The IP allowlist requires an Enterprise plan. Other accounts see an upgrade prompt on this tab.
 </Note>
 
-The IP allowlist restricts which IP addresses can send inference API requests with your account's keys. It does not currently restrict requests made with Management API keys. When the list is empty, requests from any IP address are accepted. After you add at least one entry, OpenRouter checks the client IP of each covered API request against the list and rejects requests from other addresses with a `403 Forbidden` error. The allowlist applies to covered API keys in the personal account or organization, including existing keys. Before you add the first entry, include the address of every server, office network, and CI runner that calls the API, or those requests start failing. To turn the restriction off, remove every entry.
+The IP allowlist restricts which IP addresses can use your account's API keys for inference requests and for other API requests, both reads and writes, such as credits, activity, generations, generation feedback, analytics, file uploads, and batch submissions. When the list is empty, requests from any IP address are accepted. After you add an entry, OpenRouter checks the client IP of each of these requests against the entries that apply to it and rejects requests from other addresses with a `403 Forbidden` error. The allowlist applies to every API key in the personal account or organization, including existing keys. Before you add the first entry, include the address of every server, office network, and CI runner that calls the API, or those requests start failing. To turn the restriction off, remove every entry.
 
-To add an entry, open the IP allowlist tab and select **Add address**, or **Add IP address** if the list is empty. Enter a single IPv4 or IPv6 address, such as `203.0.113.42`, or a CIDR range, such as `10.0.0.0/8`, and optionally a label that describes it. Then select **Add address** to save. Changes apply immediately. To edit or remove an entry, hover over its row and select the pencil or trash icon. Only personal accounts and organization administrators can edit the list; organization members see a notice that administrator access is required.
+Management API keys are checked on the same endpoints when those endpoints accept them. There, a management key not scoped to a workspace must match an entry that applies to all workspaces, and a management key scoped to a workspace must match an entry that applies to that workspace. If no entry applies to all workspaces, management keys not scoped to a workspace are unrestricted.
 
-![IP allowlist tab with three entries](/assets/guides/overview/auth/security-settings/ip-allowlist.png)
+The allowlist is not checked, for any key, on these endpoints:
+
+- Skills (`/api/v1/skills`).
+- [Vault](/guides/ori/vault) (`/api/v1/vault`) and interns (`/api/v1/interns`).
+- [Stripe Projects](/guides/overview/stripe-projects) provisioning (`/api/v1/provisioning`).
+- Endpoints that accept only management keys, such as those that create and manage API keys, workspaces, and guardrails.
+
+To add an entry, open the IP allowlist tab and select **Add address**, or **Add IP address** if the list is empty. Enter a single IPv4 or IPv6 address, such as `203.0.113.42`, or a CIDR range, such as `10.0.0.0/8`, and optionally a label that describes it. Under **Applies to**, choose **All workspaces** or **Specific workspaces**, and for specific workspaces check up to 100 of them. Then select **Add address** to save. Changes apply immediately. To edit or remove an entry, open the actions menu at the end of its row and select **Edit** or **Remove**. Only personal accounts and organization administrators can edit the list; organization members see a notice that administrator access is required.
+
+![IP allowlist tab with four entries that apply to all workspaces](/assets/guides/overview/auth/security-settings/ip-allowlist.png)
+
+### Workspace scope
+
+Each entry applies either to all workspaces or to the workspaces you choose. Entries added before workspace scope existed apply to all workspaces. A request in a workspace is accepted only from an address in an entry that applies to that workspace. A workspace that no entry applies to is unrestricted, and requests in it are accepted from any IP address. The **Applies to** column shows each entry's scope.
+
+Select **Rules by workspace** to see, for each workspace, the entries that apply to it and whether it is unrestricted. The view also lists management keys not scoped to a workspace, which only entries that apply to all workspaces cover, and any deleted workspace an entry still names.
+
+While you add or edit an entry, the dialog names the workspaces, and the management keys not scoped to a workspace, that no entry would apply to once you save. When removing an entry would leave workspaces or those management keys with no applicable entry, OpenRouter asks you to confirm and names what would become unrestricted.
 
 ## Related guides
 
