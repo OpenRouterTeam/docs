@@ -116,9 +116,9 @@ An image is an item of the `state` array with this shape, the same image part Ch
 { "type": "image_url", "image_url": { "url": "data:image/jpeg;base64,/9j/4AAQ..." } }
 ```
 
-- `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Jev accepts only `image/png` and `image/jpeg`. Remote `http(s)` URLs are not fetched.
+- `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Jev accepts only `image/png` and `image/jpeg`. ScaleDown also accepts `image/tiff` and reads the image as its one document (see [Document parts](#document-parts)). Remote `http(s)` URLs are not fetched.
 - `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, Clef Omni, Mercury Decide, and the Baseten decision models (Elephant 1, Mammoth 1, Joey 1) ignore it.
-- Put image parts directly in the top-level `state` array. Only Jev reads image parts in other places (see [Image positions on Jev](#image-positions-on-jev)); on every other Decisions model, an image part nested inside a `state` object or placed in a question's `instructions` or `criteria` fails with a `400` rather than being sent to the model as text.
+- Put image parts directly in the top-level `state` array. Only Jev reads image parts in other places (see [Image positions on Jev](#image-positions-on-jev)); on every other Decisions model, an image part nested inside a `state` object or placed in a question's `instructions` or `criteria` fails with a `400` rather than being sent to the model as text. The same rule applies to audio, video, and `file` parts on every model, Jev included.
 - Send at most 4 images per request to Clef, Clef Flash, and Clef Omni, at most 16 to Mercury Decide and the Baseten decision models, and at most 128 to GPT-6 Luna Decisions.
 - Text items in the array are plain strings, not `{ "type": "text" }` parts.
 - Jev 1.14 and [`~typesafe/jev-latest`](https://openrouter.ai/~typesafe/jev-latest) also answer [Box](/guides/community/jev#box-questions) questions about images.
@@ -199,7 +199,19 @@ TypeSafe marks image input as an early feature whose request format, answers, an
 - `video_url.url` must be a base64 `data:video/...` URL. Remote `http(s)` URLs are not fetched. `processing` is accepted but ignored. Clef Omni samples every video at 2 frames per second regardless.
 - Send at most 4 audio clips and 2 videos per request. Each audio clip can be up to 8 MiB or 300 seconds, each video up to 16 MiB or 60 seconds, and all audio and video together up to 16 MiB decoded.
 - Audio costs about 780 input tokens per minute; audio, video, and image tokens all count toward the 65,536-token context window.
-- Only Clef Omni reads audio and video. Clef and Clef Flash reject requests that contain them; other Decisions models see these parts as plain JSON text.
+- Only Clef Omni reads audio and video. Every other model in the [capability table](#what-each-endpoint-accepts) rejects a request that contains them with a `400` capability mismatch, so routing can try another endpoint.
+
+## Document parts
+
+A PDF or office document goes in the top-level `state` array as a `file` part (or as the whole `state` when it is the only item), the same shape Chat Completions uses:
+
+```json
+{ "type": "file", "file": { "file_data": "data:application/pdf;base64,JVBERi0xLjQK...", "filename": "invoice.pdf" } }
+```
+
+- `file_data` is a base64 data URL or a public `https://` URL. `filename` is optional and ignored by the provider. Which of the two forms a model reads is listed with its capability row.
+- ScaleDown accepts one document per request, as a base64 data URL only, of type `application/pdf`, `image/jpeg`, `image/png`, or `image/tiff`. An `image_url` part counts as that one document. Remote URLs, Office files, and a second document or image fail with a `400` capability mismatch.
+- Only the models whose row in the [capability table](#what-each-endpoint-accepts) lists `file` read document parts. Every other model rejects the request with a `400` capability mismatch so routing can try another endpoint.
 
 ## What each endpoint accepts
 
@@ -211,7 +223,7 @@ The table is generated from the adapter registry, so it is the current contract:
 
 - Question types: `noul`, `choice`, and `score` work everywhere. [Box](/guides/community/jev#box-questions) questions need a TypeSafe endpoint; Jev 1.13 also rejects them upstream with a `400`.
 - `assets` references: on TypeSafe the map is forwarded as written, so a reference matches anywhere in your text. Everywhere else, each whole-string reference becomes an `image_url` part before the request is sent, and it then has to be accepted where that adapter reads `image_url` parts.
-- Media parts: an `image_url`, `input_audio`, or `video_url` item in the top-level `state` array is lifted into the provider's image, audio, or video input when its type is listed, and rejected otherwise. A malformed part (a typo in `type`, a missing payload) is a `400` on every adapter rather than being sent to the model as text.
+- Media parts: an `image_url`, `input_audio`, `video_url`, or `file` item in the top-level `state` array is lifted into the provider's image, audio, video, or document input when its type is listed, and rejected otherwise. A malformed part (a typo in `type`, a missing payload) is a `400` on every adapter rather than being sent to the model as text.
 - Image parts elsewhere: only TypeSafe reads image parts nested inside `state` objects or placed in `instructions` or `criteria`; see [Image positions on Jev](#image-positions-on-jev).
 
 By default the adapter an endpoint uses follows from its provider (a Decisions adapter name stored on the provider wins over the default), so an `openai/gpt-6-luna-decisions` request served by OpenAI uses the OpenAI row, and a `typesafe/jev-1.14` request served by TypeSafe uses the TypeSafe row. Models whose endpoints are served by a provider not named in the table (Nace.AI, Upstage, Microsoft, and others) use the `TypeSafeDecisionsAdapter` row.
