@@ -814,7 +814,7 @@ All three OpenRouter APIs expose this, each in the shape native to that API. The
 ```json lines
 // Responses API
 {
-  "model": "anthropic/claude-fable-5.1",
+  "model": "anthropic/claude-fable-5.2",
   "reasoning": { "effort": "high" },
   "input": [
     { "role": "user", "content": "Plan the migration." },
@@ -828,7 +828,7 @@ All three OpenRouter APIs expose this, each in the shape native to that API. The
 ```json lines
 // Chat Completions
 {
-  "model": "anthropic/claude-fable-5.1",
+  "model": "anthropic/claude-fable-5.2",
   "reasoning": { "effort": "high" },
   "messages": [
     { "role": "user", "content": "Plan the migration." },
@@ -842,7 +842,7 @@ All three OpenRouter APIs expose this, each in the shape native to that API. The
 ```json lines
 // Anthropic Messages API
 {
-  "model": "anthropic/claude-fable-5.1",
+  "model": "anthropic/claude-fable-5.2",
   "max_tokens": 4096,
   "output_config": { "effort": "high" },
   "messages": [
@@ -867,7 +867,7 @@ Effort values are translated to the target model's vocabulary the same way as re
 </Note>
 
 <Note title='Provider Support'>
-  Support is per model and OpenRouter enables it as providers roll it out; the first models to accept mid-conversation effort changes were Claude Fable 5.1 and OpenAI GPT-6 Astra, and Claude Opus 5 accepts them as well. Requests that use an update are routed only to endpoints that accept it, and a request for a model that does not support it is rejected with a 400 instead of being sent with the update silently dropped.
+  Support is per model and OpenRouter enables it as providers roll it out. Models that accept mid-conversation effort changes include Claude Fable 5.2, Claude Fable 5.1, Claude Opus 5, and the standard OpenAI GPT-6 models (Astra, Sol, Luna) and GPT-6.1 models (Sol, Terra; see the [GPT-6 migration guide](/cookbook/evaluate-and-optimize/model-migrations/gpt-6#mid-conversation-effort-with-configuration_update) for the pro-mode exclusion). Requests that use an update are routed only to endpoints that accept it, and a request for a model that does not support it is rejected with a 400 instead of being sent with the update silently dropped.
 </Note>
 
 <span id="responses-api-shape"></span>

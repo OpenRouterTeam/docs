@@ -232,9 +232,14 @@ Gateway model discovery is opt-in. Set `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVE
 
 ## Fast Mode
 
-Anthropic's fast mode provides up to 2.5x faster output at premium pricing. **Fast mode is only available on Claude Opus 4.6, Claude Opus 4.7, Claude Opus 4.8, and Claude Opus 5** — no other Anthropic models support it.
+Anthropic's fast mode provides up to 2.5x faster output at premium pricing. On OpenRouter, fast mode is a [`fast` service tier endpoint](/guides/features/service-tiers#fast-mode) on the regular model, like any other provider's priority tier. **Fast mode is available on every Anthropic model whose model page lists an `anthropic/fast` endpoint**, currently:
 
-On OpenRouter, fast mode is a [`fast` service tier endpoint](/guides/features/service-tiers#fast-mode) on the regular model, like any other provider's priority tier. With [`anthropic/claude-opus-5`](https://openrouter.ai/anthropic/claude-opus-5), [`anthropic/claude-opus-4.8`](https://openrouter.ai/anthropic/claude-opus-4.8), [`anthropic/claude-opus-4.7`](https://openrouter.ai/anthropic/claude-opus-4.7), or [`anthropic/claude-opus-4.6`](https://openrouter.ai/anthropic/claude-opus-4.6), there are three ways to request it (see [How Routing Works](/guides/features/service-tiers#how-routing-works) for the full semantics):
+- [`anthropic/claude-fable-5.2`](https://openrouter.ai/anthropic/claude-fable-5.2)
+- [`anthropic/claude-opus-5.5`](https://openrouter.ai/anthropic/claude-opus-5.5)
+- [`anthropic/claude-opus-5`](https://openrouter.ai/anthropic/claude-opus-5)
+- [`anthropic/claude-opus-4.8`](https://openrouter.ai/anthropic/claude-opus-4.8)
+
+No other Anthropic model has a fast tier (Opus 4.7 and earlier, Sonnet, Haiku, and Fable 5.1 and earlier included). On a supported model there are three ways to request it (see [How Routing Works](/guides/features/service-tiers#how-routing-works) for the full semantics):
 
 1. Send `speed: "fast"`, `service_tier: "fast"`, or `service_tier: "priority"` — the three spellings are fully interchangeable on all APIs. The fast tier endpoint is tried first, with fallback to standard endpoints (billed at their standard rates).
 2. Use the [`:nitro`](/guides/routing/model-variants/nitro) variant (e.g. `anthropic/claude-opus-5:nitro`) — the fast tier endpoint becomes eligible and serves when it wins the throughput sort.
@@ -243,31 +248,40 @@ On OpenRouter, fast mode is a [`fast` service tier endpoint](/guides/features/se
 The required beta header is injected automatically whenever the fast tier endpoint serves the request.
 
 <Note>
-Each supported Opus version also has a dedicated `*-fast` model (for example, [`anthropic/claude-opus-5-fast`](https://openrouter.ai/anthropic/claude-opus-5-fast)). These are deprecated: they keep working for existing integrations and are served by the same fast tier capacity, but new integrations should use one of the options above on the regular model. New Anthropic models will not receive `*-fast` siblings.
+Opus 4.6 through Opus 5 also have a dedicated `*-fast` model (for example, [`anthropic/claude-opus-5-fast`](https://openrouter.ai/anthropic/claude-opus-5-fast)). These are deprecated: they keep working for existing integrations and are served by the same fast tier capacity, but new integrations should use one of the options above on the regular model. Opus 5.5, Fable 5.2, and later Anthropic models have no `*-fast` sibling.
 </Note>
 
 ### Using `/fast` in Claude Code
 
-Claude Code has a built-in `/fast` command that toggles fast mode. When enabled, Claude Code sends `speed: "fast"` in its requests alongside the configured Opus model. OpenRouter fully supports this parameter — you just need to set the following environment variable:
+Claude Code has a built-in `/fast` command that toggles fast mode. When enabled, Claude Code sends `speed: "fast"` in its requests alongside the configured model. OpenRouter fully supports this parameter — you just need to set the following environment variable:
 
 ```bash lines
 export CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK=1
 ```
 
 <Note>
-Requires Claude Code v2.1.96 or newer.
+Requires Claude Code v2.1.96 or newer. Fast mode on Claude Opus 5.5 requires v2.1.280 or newer, and on Claude Fable 5.2 v2.1.321 or newer.
 </Note>
 
 <Warning>
-Claude Code only attaches `speed: "fast"` when the resolved model ID matches a supported Opus version (e.g. `anthropic/claude-opus-5`). With `ANTHROPIC_DEFAULT_OPUS_MODEL` set to the `~anthropic/claude-opus-latest` alias — including the example in [Configuring Models](#configuring-models) above — `/fast` reports "Fast mode ON" but requests are sent without the `speed` parameter: standard speed, standard pricing. To actually use fast mode, pin the variable to a specific Opus ID such as `anthropic/claude-opus-5`.
+Claude Code only attaches `speed: "fast"` when the resolved model ID is a supported version. With the role variable set to a `~latest` alias, as in [Configuring Models](#configuring-models) above, `/fast` reports "Fast mode ON" but requests are sent without the `speed` parameter: standard speed, standard pricing. To actually use fast mode, pin the variable for the role you run to a specific supported ID:
+
+| Role you run | Variable                        | Pin to                           |
+| ------------ | ------------------------------- | -------------------------------- |
+| Fable        | `ANTHROPIC_DEFAULT_FABLE_MODEL` | `anthropic/claude-fable-5.2[1m]` |
+| Opus         | `ANTHROPIC_DEFAULT_OPUS_MODEL`  | `anthropic/claude-opus-5.5[1m]`  |
+
+Keep the `[1m]` suffix from [Configuring Models](#configuring-models) on the pin so Claude Code keeps the 1M context window; without it Claude Code assumes 200k and compacts early.
+
+On Fable 5.2 the fast preference is per model: run `/fast` while on Fable 5.2. A toggle made on Opus, or `"fastMode": true` in settings, does not carry over to Fable 5.2 until you do.
 </Warning>
 
 ### Pricing
 
-Fast mode is priced at a premium over the underlying Claude Opus model's standard token rates. See [Anthropic's fast mode pricing](https://platform.claude.com/docs/en/build-with-claude/fast-mode#pricing) for current rates. When fast mode is active, the response's `usage` object includes `"speed": "fast"` to confirm the request was processed at the higher speed tier, and the reported service tier is `priority` (the Messages API returns it in `usage.service_tier`; the Chat Completions and Responses APIs return a top-level `service_tier` field).
+Fast mode is priced at a premium over the underlying model's standard token rates. See [Anthropic's fast mode pricing](https://platform.claude.com/docs/en/build-with-claude/fast-mode#pricing) for current rates. When fast mode is active, the response's `usage` object includes `"speed": "fast"` to confirm the request was processed at the higher speed tier, and the reported service tier is `priority` (the Messages API returns it in `usage.service_tier`; the Chat Completions and Responses APIs return a top-level `service_tier` field).
 
 <Note>
-If `speed: "fast"` is sent for a model that does not support fast mode, it still requests the [priority service tier](/guides/features/service-tiers#fast-mode) where a provider offers one (at priority pricing); otherwise the request proceeds at standard speed with standard pricing. **Claude Fable has no fast tier** — toggling `/fast` while on a Fable model does not speed Fable up. Instead, Claude Code switches your session to your configured Opus model, so subsequent requests run (and bill) on Opus rather than Fable.
+If `speed: "fast"` is sent for a model that does not support fast mode, it still requests the [priority service tier](/guides/features/service-tiers#fast-mode) where a provider offers one (at priority pricing); otherwise the request proceeds at standard speed with standard pricing. On a model without a fast tier (Claude Fable 5.1 and earlier, Sonnet, Haiku), toggling `/fast` does not speed that model up: Claude Code switches your session to your configured Opus model, so subsequent requests run (and bill) on Opus rather than the model you were on.
 </Note>
 
 ### Routing behavior
