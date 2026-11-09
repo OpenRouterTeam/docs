@@ -266,6 +266,18 @@ Once created, the preset can be used in subsequent inference requests via any of
 
 This lets you iterate on prompts and parameters in code, then promote the working configuration to a preset without manual transcription.
 
+## Lifecycle
+
+Lifecycle calls require a read-write [management key](/docs/guides/overview/auth/management-api-keys). A management key limited to one workspace can only act in that workspace.
+
+1. Delete a preset with `DELETE /api/v1/presets/{slug}`. Deleting archives the preset: inference requests that reference it fail, and it no longer appears in get or list responses. The preset and its versions are kept, so the slug stays taken and creating a preset with the same slug returns `400`. Deleting an already-archived preset succeeds again.
+2. Restore a deleted preset with `POST /api/v1/presets/{slug}/restore`, the inverse of delete. The preset becomes active again with the same designated version; no new version is created.
+3. To change a preset's configuration, `POST` to one of the create endpoints, which adds a new version.
+
+Disabled presets are not changed by these endpoints; delete and restore return `409` for them.
+
+Every preset endpoint accepts `workspace_id` as a query parameter. Endpoints that take a request body (create, delete, and restore) also accept it as a field in the JSON body; if both are sent, they must match, or the request returns `400`. A nonempty body that is not a JSON object also returns `400`. Without it, a key limited to one workspace acts in that workspace, and any other key acts in the account's default workspace.
+
 ## Other Notes
 
 1. If you're using an organization account, all members can access organization presets. This is a great way to share best practices across teams.
