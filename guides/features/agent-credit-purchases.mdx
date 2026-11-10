@@ -1,0 +1,46 @@
+---
+publish: true
+title: Agent Credit Purchases
+hidden: true
+description: Let an agent buy OpenRouter credits with a USDC machine payment on Tempo
+---
+
+An agent can top up its account without a browser by paying for credits over the [Machine Payments Protocol](https://mpp.dev) (MPP), an HTTP `402` payment flow. The agent sends USDC on the Tempo network; the OpenRouter management key on the request decides which account gets the credits, and the paying wallet only supplies the funds.
+
+Buying credits needs the same permission as buying them in the dashboard, so the request must use an organization-level [management key](/docs/guides/overview/auth/management-api-keys) with read-write access. Regular API keys, read-only management keys, and management keys scoped to a workspace can't buy credits. Reading a purchase back works with any organization-level management key of the account, including a read-only one.
+
+This endpoint is in limited availability and only works for accounts that have it enabled.
+
+## Flow
+
+1. Call `POST /api/v1/credits/purchases` with your management key, an `Idempotency-Key` header, and the amount of credits to buy, from $10 up to a $10,000 total charge.
+2. OpenRouter answers `402 Payment Required` with an MPP challenge in the `WWW-Authenticate: Payment ...` header. The challenge names the total to pay (credits plus the platform fee), the currency, and the deposit address.
+3. Sign a transfer for that challenge with an MPP client and retry the same request, with the same `Idempotency-Key`, sending the credential in `Payment-Authorization: Payment ...`. If you send the management key as `X-Api-Key`, you can send the credential in `Authorization: Payment ...` instead.
+4. The paid request answers `202` with `status: processing`: the transfer was sent and Stripe still matches and screens it, so the credits arrive asynchronously. Poll the URL in the `Location` header, `GET /api/v1/credits/purchases/{id}`, until `status` is `credited` or `failed`.
+
+```bash
+curl -i https://openrouter.ai/api/v1/credits/purchases \
+  -H "Authorization: Bearer $OPENROUTER_MANAGEMENT_KEY" \
+  -H "Idempotency-Key: 6f1f7f0e-2b1a-4f57-9a43-3c1f6f3e8b0d" \
+  -H "Content-Type: application/json" \
+  -d '{"credit_amount_usd": "25.00"}'
+```
+
+## Purchase status
+
+| Status | Meaning |
+| --- | --- |
+| `awaiting_payment` | Stripe issued the purchase its own Tempo deposit address and is waiting for the transfer. |
+| `processing` | The transfer was sent; the credits are minted once Stripe validates the payment. |
+| `credited` | The credits are on the account. |
+| `failed` | The transfer was rejected, or the payment failed after it landed. `failure_reason` says which when Stripe gives a reason. If the payment fails after the transfer landed, contact support with the purchase ID. |
+
+Retrying with the same `Idempotency-Key` returns the same purchase, so a retry never charges twice or mints credits twice. Send the paid retry within 24 hours of the first request. After that, the key starts a new purchase with a new `402`. Nothing is charged until you sign a credential for it, but poll the original purchase's `Location` instead of retrying an old key.
+
+## Errors
+
+- `401`: the request has no management key, or the key is invalid. Regular API keys and cookie sessions can't buy credits this way.
+- `403`: the management key can't buy credits: it's read-only or scoped to a workspace, or the account can't buy credits with this payment method.
+- `404`: the account isn't enabled for agent credit purchases, or the purchase doesn't exist.
+- `409`: the `Idempotency-Key` was already used with a different amount, or the price changed between the `402` and the paid retry (for example, a fee waiver ended). No funds move. Start a new purchase with a new `Idempotency-Key`.
+- `503`: machine payments are temporarily unavailable, or the transfer's outcome is unknown. If you already sent a paid retry, poll the purchase before signing a new credential.
