@@ -104,9 +104,9 @@ Every field takes `type`, an optional `instructions` string saying what the fiel
 
 ## Answers
 
-- `value` is the typed answer, or `null` when `p_null` crossed the field's threshold. `guess` is the most likely value even then.
+- `value` is the typed answer, or `null` when `p_null` crossed the field's threshold. `guess` is the most likely value even then, and is absent when the model has none to offer.
 - `p_null` is the probability that the state contains nothing for the field; `confidence` is the model's confidence in `value`.
-- `span` (`spans` for lists, one per item) is `[start, end)` as Unicode code point offsets into the state text, so an emoji or an accented letter counts once. Set `return_state_text` on Clairic to get the exact text the offsets index into back as `state_text`.
+- `span` (`spans` for lists, one per item) is `[start, end)` as Unicode code point offsets into the state text, so an emoji or an accented letter counts once. Both are optional: an answer read from an image or a document can come without one. When `spans` is present, an item with no offsets has `null` at its position, so check each entry before indexing into it. Set `return_state_text` on Clairic to get the exact text the offsets index into back as `state_text`.
 - `source` is `image` or `document` when the answer was read from an asset rather than the state text; `spell_confidence` then reports how sure the model is of the spelling.
 - `estimate` and `forecast` answers carry the distribution: `mean`, `median`, `p10`, `p90`, `p_below` and `p_above` (probability mass outside `min` and `max`), `quantiles` when asked for, and per-step values under `steps` for forecasts.
 - `truncated` is `true` when the provider read only a prefix of the state. `usage.passes` counts the upstream calls the fields needed when they did not fit in one.
