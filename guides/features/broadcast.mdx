@@ -287,6 +287,27 @@ For advanced observability workflows, you can pass arbitrary metadata to your tr
 The `trace` field is flexible and accepts any key-value pairs. Certain keys have special meaning depending on your observability destination. See the destination-specific documentation for details on which keys each platform recognizes.
 </Tip>
 
+#### Metadata via Headers
+
+Clients that can add headers but not body fields, such as Claude Code (`ANTHROPIC_CUSTOM_HEADERS`) and Codex (`http_headers`), can send the same metadata as HTTP headers. Header values are merged into `trace`.
+
+- **One header per key**: `x-openrouter-trace-<key>: <value>`. The key is lowercased and hyphens become underscores, so `X-OpenRouter-Trace-Customer-Id: acme` sets `trace.customer_id` to `"acme"`.
+- **One JSON header**: `x-openrouter-trace: {"environment":"production","team":"search"}`. The value must be a JSON object of at most 16,384 characters.
+
+```bash
+curl https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "x-openrouter-trace-project: atlas" \
+  -H "x-openrouter-trace-customer-id: acme" \
+  -H 'x-openrouter-trace: {"environment":"production"}' \
+  -d '{"model": "openai/gpt-4o", "messages": [{"role": "user", "content": "Hi"}]}'
+```
+
+When the same key appears in more than one place, the request body `trace` wins, then the per-key header, then the JSON header. Each source is capped at 16 keys, and per-key header values over 1,024 characters are dropped. A malformed JSON header is ignored rather than failing the request.
+
+Both header forms work from browser requests on another origin: CORS preflight allows the JSON `x-openrouter-trace` header and any per-key `x-openrouter-trace-<key>` header.
+
 #### Common Metadata Keys
 
 These metadata keys are commonly used across observability platforms:
