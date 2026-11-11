@@ -32,7 +32,7 @@ The route is alpha and its shape can change. It takes the [Decisions](/api/api-r
 
 | Model | Reads | Field types | Provider options |
 | --- | --- | --- | --- |
-| [`cloudflare/clairic`](https://openrouter.ai/cloudflare/clairic) | Text and up to 4 PNG or JPEG images | Every type in the table below | `include_quantiles`, `return_state_text` under `provider.options.cloudflare` |
+| [`cloudflare/clairic`](https://openrouter.ai/cloudflare/clairic) | Text and up to 4 PNG, JPEG, or WebP images | Every type in the table below (no `null_threshold` on `list`, `estimate`, or `forecast`) | `include_quantiles`, `return_state_text` under `provider.options.cloudflare` |
 | [`inception/mercury-decide`](https://openrouter.ai/inception/mercury-decide) | Text only | `text`, and `list` with `items: "text"` | `snap_to_words`, `threshold`, `group_fields` under `provider.options.inception` |
 | [`levanto/sage-2`](https://openrouter.ai/levanto/sage-2) | Text only | `text`, `number` (as stated: no `unit`), `date`, `time`, `datetime`, `duration`, and `list` of any item type (no `null_threshold` on lists); no `reference_date` | None |
 | [`scaledown/extract`](https://openrouter.ai/scaledown/extract) | Text, or one PDF or image | `text`, and `list` with `items: "text"` | `threshold`, `top_n` under `provider.options.scaledown` |
@@ -87,33 +87,34 @@ The response has one answer per field, keyed by the field name:
 ## Request
 
 - `model` is a model slug from the table above.
-- `state` is the text to read from. It may be empty only when the request carries assets.
+- `state` is the text to read from. It may be empty or omitted only when the request carries assets, which are then read without being referenced.
 - `fields` maps each field name to a typed field spec. At least one field is required. Unknown keys at the top level or inside a field are rejected with a `400`, not ignored, so a provider option in the wrong place never silently does nothing.
 - `reference_date` (`YYYY-MM-DD`) anchors dates written without a year. Models without date fields reject it.
 - `assets`, `provider`, `user`, `session_id`, and `trace` work as on `/api/alpha/decisions`; see [Assets](#assets) and [Provider options](#provider-options).
 
 ## Field types
 
-Every field takes `type`, an optional `instructions` string saying what the field should contain, and an optional `null_threshold`: the probability of null above which the answer's `value` is `null` (default `0.5`). The other keys depend on the type. A key marked `?` is optional.
+Every field takes `type`, an optional `instructions` string saying what the field should contain, and an optional `null_threshold`: the probability of null above which the answer's `value` is `null` (default `0.5`). Clairic takes no `null_threshold` on a `list`, an `estimate`, or a `forecast`, and requires it above `0` elsewhere. The other keys depend on the type. A key marked `?` is optional.
 
 <ExtractionsFieldTypes />
 
 - `number` and `duration` take `unit`, `integer`, and `decimals` (0 to 6 decimal places kept in `value`). A `duration` `unit` is `seconds`, `minutes`, `hours`, `days`, `weeks`, `months`, or `years`. A provider that returns durations in ISO 8601 form (Sage) has them converted to the requested unit: clock units (`seconds` to `weeks`) convert exactly among themselves, as do `months` and `years` (twelve months to the year); across that divide a month is 30 days and a year 365, so `P1Y` in `days` is `365` and `P12M` is `360`. Ask for `months` or `years` when the document states a calendar span and a precise day count matters.
-- `list` takes `items`: `text`, `number`, or `date`.
+- `text`, `date`, `time`, and `datetime` take an optional `unit` label, which Clairic reads and the other models reject.
+- `list` takes `items`: `text`, `number`, or `date`. A list of numbers also takes `integer` and `decimals`. A list also takes an optional `unit` label, which Clairic reads and the other models reject.
 - `estimate` and `forecast` take `min` and `max` (numbers, or ISO dates for date-valued estimates), an optional `step` (a positive number, in days for date estimates, or `"month"` or `"year"`), and an optional `scale` of `linear` or `log`. A `forecast` also takes `horizon` (1 to 64 steps) and `interval` (`step`, `minute`, `hour`, `day`, `week`, `month`, `quarter`, or `year`).
 
 ## Answers
 
 - `value` is the typed answer, or `null` when `p_null` crossed the field's threshold. `guess` is the most likely value even then, and is absent when the model has none to offer.
 - `p_null` is the probability that the state contains nothing for the field; `confidence` is the model's confidence in `value`.
-- `span` (`spans` for lists, one per item) is `[start, end)` as Unicode code point offsets into the state text, so an emoji or an accented letter counts once. Both are optional: an answer read from an image or a document can come without one. When `spans` is present, an item with no offsets has `null` at its position, so check each entry before indexing into it. Set `return_state_text` on Clairic to get the exact text the offsets index into back as `state_text`.
+- `span` (`spans` for lists, one per item) is `[start, end)` as Unicode code point offsets into the state text, so an emoji or an accented letter counts once. Both are optional: an answer read from an image or a document can come without one. When `spans` is present, an item with no offsets has `null` at its position, so check each entry before indexing into it. When ScaleDown returns offsets that are inside the state but don't delimit the returned text, the answer keeps its `value` and `confidence` and has no `span` (`null` in `spans`). This happens for an entity that crosses a line break, which ScaleDown returns with its whitespace normalized. Set `return_state_text` on Clairic to get the exact text the offsets index into back as `state_text`.
 - `source` is `image` or `document` when the answer was read from an asset rather than the state text; `spell_confidence` then reports how sure the model is of the spelling.
 - `estimate` and `forecast` answers carry the distribution: `mean`, `median`, `p10`, `p90`, `p_below` and `p_above` (probability mass outside `min` and `max`), `quantiles` when asked for, and per-step values under `steps` for forecasts.
 - `truncated` is `true` when the provider read only a prefix of the state. `usage.passes` counts the upstream calls the fields needed when they did not fit in one.
 
 ## Assets
 
-Images and PDFs go in a top-level `assets` map, each sent once and referenced by its key. An asset is `{ "type": "image" | "document", "format": "png" | "jpg" | "jpeg" | "pdf", "data_base64": "..." }`; `type` is optional and `data_base64` is the file in standard base64 with no `data:` prefix. Every asset must be referenced in `state` or a field's `instructions`, or the request fails with a `400` naming the unused key.
+Images and PDFs go in a top-level `assets` map, each sent once and referenced by its key. An asset is `{ "type": "image" | "document", "format": "png" | "jpg" | "jpeg" | "webp" | "pdf", "data_base64": "..." }`; `type` is optional and `data_base64` is the file in standard base64 with no `data:` prefix. When `state` has text, every asset must be referenced in `state` or a field's `instructions`, or the request fails with a `400` naming the unused key. When `state` is empty or omitted, the assets are what is read and need no reference: every asset is sent, and an instruction that mentions one of several inside longer text does not limit the read to it. An `instructions` value that is exactly one asset's key is still refused when there are two or more images (see the Clairic note below).
 
 ```json
 {
@@ -128,9 +129,9 @@ Images and PDFs go in a top-level `assets` map, each sent once and referenced by
 }
 ```
 
-- A `state` that is exactly the sole asset's key carries no text of its own and is read as file-only.
-- Clairic reads up to 4 PNG or JPEG images, each at most 4 MiB decoded, 8 MiB decoded in total, in a request body of at most 16 MiB. It does not read PDFs.
-- Clairic reads images positionally, in `assets` key order, and has no in-text reference syntax. With one image, the file-only form above works. With two or more images, a key used as the whole `state` or as the whole `instructions` of a field fails with a `400` (the model could not tell which image is meant), so name each image inside longer text instead; every key still has to appear somewhere, or the request fails with the unused-asset `400` above:
+- An empty or omitted `state`, or one that is exactly the sole asset's key, carries no text of its own and is read as file-only.
+- Clairic reads up to 4 PNG, JPEG, or WebP images, each at most 4 MiB decoded, 8 MiB decoded in total, in a request body of at most 16 MiB. It does not read PDFs.
+- Clairic reads images positionally, in `assets` key order, and has no in-text reference syntax. With one image, either file-only form above works. With two or more images, a key used as the whole `state` or as the whole `instructions` of a field fails with a `400` (the model could not tell which image is meant), so name each image inside longer text instead; when `state` has text, every key still has to appear somewhere, or the request fails with the unused-asset `400` above:
 
 ```json
 {
@@ -147,7 +148,7 @@ Images and PDFs go in a top-level `assets` map, each sent once and referenced by
 }
 ```
 
-- ScaleDown Extract reads one PDF or image per request, and reads either the text or the document, not both: send the file-only form of `state`.
+- ScaleDown Extract reads one PDF, PNG, or JPEG per request (a WebP fails with a `400`), and reads either the text or the document, not both: send the file-only form of `state` or omit `state`.
 - Mercury Decide and Sage read text only; any asset fails with a `400`.
 
 ## Provider options
