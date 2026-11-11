@@ -197,6 +197,31 @@ The API returns a structured response with the generated content:
 }
 ```
 
+### Server Tool Usage
+
+For a request that invokes an OpenRouter server tool, the `usage` object includes `server_tool_use_details`. The field is omitted when no tool usage is recorded. Provider-native web search may still report `web_search_requests` without an OpenRouter server-tool invocation. The object reports aggregate activity for the request; `web_search_requests` is currently the only tool-specific counter:
+
+```json lines
+{
+  "usage": {
+    "input_tokens": 12,
+    "output_tokens": 45,
+    "total_tokens": 57,
+    "server_tool_use_details": {
+      "tool_calls_requested": 2,
+      "tool_calls_executed": 2,
+      "web_search_requests": 2
+    }
+  }
+}
+```
+
+- `tool_calls_requested` counts OpenRouter server-orchestrated tool calls requested by the model.
+- `tool_calls_executed` counts calls that ran and returned a result.
+- `web_search_requests` counts searches performed by server-side tools. A server-orchestrated search is also included in `tool_calls_requested`; provider-native search may only report `web_search_requests`.
+
+These fields describe tool activity; the request's overall `usage.cost` includes applicable server-tool charges.
+
 ## Streaming Responses
 
 Enable streaming for real-time response generation:

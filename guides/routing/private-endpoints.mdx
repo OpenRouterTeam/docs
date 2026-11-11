@@ -32,6 +32,21 @@ Once a private endpoint is active:
 - The model slug works with [Model Fallbacks](/guides/routing/model-fallbacks), [Provider Selection](/guides/routing/provider-selection), and the other routing features.
 - For callers with access, OpenRouter prefers the private endpoint. Public providers for the model stay available as fallbacks if you list them.
 
+## Private endpoints and disabled fallbacks
+
+Setting `allow_fallbacks: false` with a `provider.order` list normally limits a request to the providers in that list. Private endpoints you have access to are an exception: they stay eligible even when their provider isn't in `order`. The exception applies only when `order` is non-empty. Without `order`, `allow_fallbacks: false` keeps only the top-ranked endpoint.
+
+For a request with fallbacks disabled, OpenRouter tries endpoints in this order:
+
+1. Endpoints from the providers in `order`, in the order you listed them.
+2. Private endpoints you have access to, from providers not in `order`.
+
+Public endpoints from providers not in `order` are dropped.
+
+If your organization has access to a private model, every endpoint of that model counts as a private endpoint. For example, if a private model has endpoints on three providers and you send `order: ["together"]` with `allow_fallbacks: false`, all three endpoints stay eligible, and Together is tried first.
+
+To limit a request to specific providers, including private endpoints, use [`only`](/guides/routing/provider-selection#allowing-only-specific-providers) or [`ignore`](/guides/routing/provider-selection#ignoring-providers) instead of `allow_fallbacks: false`.
+
 ## Adding a private endpoint
 
 A private endpoint must meet two requirements:

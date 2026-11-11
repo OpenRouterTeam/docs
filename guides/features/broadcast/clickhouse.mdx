@@ -16,6 +16,8 @@ nofollow: false
 icon: puzzle-piece
 ---
 
+import BroadcastClickHouseTableReference from "/snippets/broadcast-clickhouse-table-reference.mdx";
+
 [ClickHouse](https://clickhouse.com) is a fast, open-source columnar database for real-time analytics. OpenRouter can stream traces directly to your ClickHouse database for high-performance analytics and custom dashboards.
 
 ## Step 1: Create the traces table
@@ -190,26 +192,15 @@ LIMIT 10;
 
 ## Schema design
 
+<BroadcastClickHouseTableReference />
+
 ### Typed columns
 
-The schema extracts commonly-queried fields as typed columns for efficient filtering and aggregation:
-
-- **Identifiers**: TRACE_ID, USER_ID, SESSION_ID, etc.
-- **Timestamps**: DateTime64 for time-series analysis with millisecond precision
-- **Model Info**: For cost and performance analysis
-- **Metrics**: Tokens and costs for billing
+The field reference above identifies commonly queried identifiers, timestamps, model information, token metrics, and cost metrics as typed columns for efficient filtering and aggregation.
 
 ### String columns for JSON
 
-Less commonly-accessed and variable-structure data is stored as JSON strings:
-
-- **ATTRIBUTES**: Full OTEL attribute set
-- **INPUT/OUTPUT**: Variable message structures
-- **METADATA**: User-defined key-values
-- **MODEL_PARAMETERS**: Model-specific configurations
-
-Use ClickHouse's `JSONExtract*` functions to query these fields.
-
+Less commonly accessed and variable-structure data is stored in the JSON string columns identified in the field reference above. Use ClickHouse's `JSONExtract*` functions to query these fields.
 
 ## Custom Metadata
 
@@ -219,10 +210,10 @@ Custom metadata from the `trace` field is stored in the `METADATA` column as a J
 
 | Key | ClickHouse Mapping | Description |
 |-----|-------------------|-------------|
-| `trace_id` | `TRACE_ID` column / `METADATA` JSON | Custom trace identifier for grouping |
-| `trace_name` | `METADATA` JSON | Custom name for the trace |
-| `span_name` | `METADATA` JSON | Name for intermediate spans |
-| `generation_name` | `METADATA` JSON | Name for the LLM generation |
+| `trace_id` | `TRACE_ID` column | Custom trace identifier for grouping |
+| `parent_span_id` | `PARENT_SPAN_ID` column | Parent span identifier for linking to an existing trace |
+| Additional `trace` keys | `METADATA` JSON | Custom values stored under their original keys |
+| Request `metadata.<k>` | `METADATA` JSON key `metadata_<k>` | Request metadata stored with the `metadata_` prefix |
 
 ### Example
 
@@ -264,7 +255,9 @@ ORDER BY TIMESTAMP DESC;
 
 - The `user` field maps to the `USER_ID` typed column
 - The `session_id` field maps to the `SESSION_ID` typed column
-- All custom metadata keys from `trace` are stored in the `METADATA` JSON string column
+- Additional custom keys from `trace` are stored in the `METADATA` JSON string column
+- `trace_name` and `generation_name` affect internal names but have no dedicated table columns
+- `trace.span_name` is reserved and currently ignored
 - For high-performance filtering on metadata fields, consider creating materialized columns with `ALTER TABLE ... ADD COLUMN`
 
 ## Additional resources
