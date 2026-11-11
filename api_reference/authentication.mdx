@@ -30,6 +30,18 @@ They allow users to set credit limits for apps, and they can be used in [OAuth](
 
 </Warning>
 
+## Accepted credentials
+
+Send one credential per request in the `Authorization` header as `Bearer <credential>`. For clients built on the Anthropic SDK, you can also send an API key (not an access token) in the `x-api-key` header. OpenRouter accepts the following credential types:
+
+| Credential | Format | How you get it |
+| --- | --- | --- |
+| API key | `sk-or-v1-` followed by 64 lowercase hexadecimal characters, for example `sk-or-v1-0123…cdef` (73 characters in total). | Create one on the [API keys page](https://openrouter.ai/keys), or receive one through [OAuth PKCE](/guides/overview/auth/oauth). [Management keys](/guides/overview/auth/management-api-keys) use the same format. |
+| OpenRouter access token | A signed JWT (three base64url segments separated by `.`) with `typ: at+jwt`, issuer `https://openrouter.ai`, and an `inference` or `management` scope. Signed with `ES256`; public keys are at `https://openrouter.ai/api/v1/oauth/jwks`. Valid for at most 15 minutes. | Exchange a JWT from your own identity provider with [workload identity federation](/guides/overview/auth/workload-identity-federation). |
+| OpenRouter sign-in (OIDC) access token | A signed JWT issued by `https://clerk.openrouter.ai` that carries the `inference` scope. | Sign in to OpenRouter through an OIDC client, for example [Claude Desktop with OpenRouter sign-in](/cookbook/coding-agents/claude-desktop-oidc). |
+
+Send the credential exactly as issued, with no extra whitespace or quotes. OpenRouter treats a bearer that starts with `sk-or-v1-` as an API key. It treats a JWT as an access token only when its issuer is `https://openrouter.ai` or `https://clerk.openrouter.ai`, and rejects any other bearer. OpenRouter also rejects an expired JWT and a JWT without the scope the endpoint requires. Some endpoints accept only an API key, so an access token with the `inference` scope doesn't replace an API key everywhere. To use a token from your own identity provider, exchange it for an OpenRouter access token first; OpenRouter doesn't accept third-party JWTs directly.
+
 ## Using an API key
 
 To use an API key, [first create your key](https://openrouter.ai/keys). Give it a name and choose a credit limit (or no limit). Once a key has used its credit limit, requests with it are rejected until you raise the limit on the key's page, or, for a daily, weekly, or monthly limit, until the limit resets. Keys created for you during onboarding get a $100 credit limit and expire after 180 days.
