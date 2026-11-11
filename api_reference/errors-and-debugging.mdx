@@ -327,7 +327,7 @@ The HTTP status each `error_type` maps to is listed in the tables below.
 
 | `error_type` | HTTP Status | Description |
 |---|---|---|
-| `authentication` | {HTTPStatus.S401_Unauthorized} | The API key is missing, invalid, or revoked. |
+| `authentication` | {HTTPStatus.S401_Unauthorized} | The API key is missing, invalid, or revoked. If OpenRouter rejected your OpenRouter credential, see [Troubleshooting 401 errors](/api_reference/authentication#troubleshooting-401-errors) for what each message means. |
 | `permission_denied` | {HTTPStatus.S403_Forbidden} | The key is valid but lacks the required permission or the request was blocked by a [guardrail](/guides/features/guardrails). |
 | `payment_required` | {HTTPStatus.S402_Payment_Required} | The account or API key has insufficient credits. [Add credits](https://openrouter.ai/credits) and retry. |
 
