@@ -425,8 +425,10 @@ type ResponseUsage = {
     server_tool_cost?: number | null;
   };
 
-  /** Server-side tool usage (optional) */
-  server_tool_use?: {
+  /** Server-side tool usage; omitted when no server tool usage is recorded */
+  server_tool_use_details?: {
+    tool_calls_requested?: number;
+    tool_calls_executed?: number;
     web_search_requests?: number;
   };
 };

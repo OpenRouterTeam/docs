@@ -1,0 +1,75 @@
+The dashboard-generated `CREATE TABLE` statement is the source of truth for setup. The field reference below describes the current schema without duplicating the generated SQL.
+
+### Field reference
+
+| Column                | Snowflake type             | Meaning                                                                                    |
+| --------------------- | -------------------------- | ------------------------------------------------------------------------------------------ |
+| `TRACE_ID`            | `VARCHAR(128) NOT NULL`    | Trace identifier shared by all observations in a trace.                                    |
+| `SPAN_ID`             | `VARCHAR(128) NOT NULL`    | Unique identifier for this observation.                                                    |
+| `PARENT_SPAN_ID`      | `VARCHAR(128)`             | Parent observation identifier, or `NULL` for an unparented observation.                    |
+| `USER_ID`             | `VARCHAR(256)`             | End-user identifier from the request.                                                      |
+| `SESSION_ID`          | `VARCHAR(256)`             | Session identifier used to group related requests.                                         |
+| `ORGANIZATION_ID`     | `VARCHAR(256)`             | Organization that owns the trace.                                                          |
+| `ENTITY_ID`           | `VARCHAR(256) NOT NULL`    | Entity that owns the trace.                                                                |
+| `API_KEY_NAME`        | `VARCHAR(256)`             | User-defined name of the API key used for the request.                                     |
+| `TIMESTAMP`           | `TIMESTAMP_NTZ NOT NULL`   | Trace creation timestamp.                                                                  |
+| `START_TIME`          | `TIMESTAMP_NTZ NOT NULL`   | Observation start time.                                                                    |
+| `END_TIME`            | `TIMESTAMP_NTZ`            | Observation end time, or `NULL` when unavailable.                                          |
+| `DURATION_MS`         | `NUMBER(18, 3)`            | Observation duration in milliseconds.                                                      |
+| `MODEL`               | `VARCHAR(256)`             | Model name used for the observation.                                                       |
+| `PROVIDER_NAME`       | `VARCHAR(256)`             | Provider name for the observation.                                                         |
+| `PROVIDER_SLUG`       | `VARCHAR(256)`             | Provider slug identifier.                                                                  |
+| `STATUS`              | `VARCHAR(256) NOT NULL`    | `ok` or `error`; `error` is emitted only when `LEVEL` is `ERROR`.                          |
+| `LEVEL`               | `VARCHAR(64) NOT NULL`     | Observation level: `DEBUG`, `INFO`, `DEFAULT`, `WARNING`, or `ERROR`.                      |
+| `FINISH_REASON`       | `VARCHAR(256)`             | Completion finish reason, such as `stop` or `length`; not an enum.                         |
+| `PROMPT_TOKENS`       | `NUMBER(18, 0) NOT NULL`   | Input/prompt token count.                                                                  |
+| `COMPLETION_TOKENS`   | `NUMBER(18, 0) NOT NULL`   | Output/completion token count.                                                             |
+| `TOTAL_TOKENS`        | `NUMBER(18, 0) NOT NULL`   | Total token count.                                                                         |
+| `CACHED_TOKENS`       | `NUMBER(18, 0) NOT NULL`   | Cached prompt token count.                                                                 |
+| `CACHE_WRITE_TOKENS`  | `NUMBER(18, 0)`            | Prompt tokens written to the provider prompt cache. Added in schema version 2; tables created from version 1 don't have this column. `NULL` when the provider did not report them, or when the destination's **Include cache_write_tokens** setting is off. The setting is off by default; turn it on after the table has this column. |
+| `REASONING_TOKENS`    | `NUMBER(18, 0) NOT NULL`   | Reasoning/thinking token count.                                                            |
+| `INPUT_COST`          | `NUMBER(18, 8) NOT NULL`   | Input cost in USD.                                                                         |
+| `OUTPUT_COST`         | `NUMBER(18, 8) NOT NULL`   | Output cost in USD.                                                                        |
+| `TOTAL_COST`          | `NUMBER(18, 8) NOT NULL`   | Total cost in USD.                                                                         |
+| `INPUT_UNIT_PRICE`    | `NUMBER(18, 10)`           | Price per input token in USD.                                                              |
+| `OUTPUT_UNIT_PRICE`   | `NUMBER(18, 10)`           | Price per output token in USD.                                                             |
+| `SPAN_TYPE`           | `VARCHAR(64) NOT NULL`     | Observation type: `GENERATION`, `SPAN`, or `EVENT`.                                        |
+| `SPAN_KIND`           | `VARCHAR(64) NOT NULL`     | Derived from `SPAN_TYPE`: `GENERATION` → `llm`, `EVENT` → `tool`, and `SPAN` → `workflow`. |
+| `OPERATION_NAME`      | `VARCHAR(256) NOT NULL`    | Operation type derived from the API surface, such as `chat`, `embeddings`, or `image_generation`. |
+| `ATTRIBUTES`          | `VARIANT`                  | OpenTelemetry-style attributes for compatibility.                                          |
+| `INPUT`               | `VARIANT`                  | Input data, such as request messages.                                                      |
+| `OUTPUT`              | `VARIANT`                  | Output data, such as response messages.                                                    |
+| `METADATA`            | `VARIANT`                  | Combined custom, request, guardrail, and provider-attempt metadata.                        |
+| `TAGS`                | `VARIANT`                  | Trace tags array.                                                                          |
+| `MODEL_PARAMETERS`    | `VARIANT`                  | Model parameters, such as temperature.                                                     |
+| `RESOURCE_ATTRIBUTES` | `VARIANT`                  | Resource attributes, including `service.name` and the Broadcast source.                    |
+| `SCHEMA_VERSION`      | `NUMBER(5, 0) NOT NULL`    | Broadcast schema version; currently defaults to `2`.                                       |
+
+### Field ownership and custom metadata
+
+OpenRouter populates all columns except for the following caller-controlled values:
+
+- `TRACE_ID` can be set with `trace.trace_id`. If supplied, the same trace ID can span multiple API requests.
+- `PARENT_SPAN_ID` can be set with `trace.parent_span_id`.
+- `USER_ID` comes from the request `user` field.
+- `SESSION_ID` comes from the request `session_id` field.
+- Custom values are stored in the `METADATA` `VARIANT` column.
+
+Additional keys in `trace` are merged into `METADATA` using their original keys. Top-level request `metadata.<k>` values are also placed in `METADATA`, under the key `metadata_<k>`. There is no separate database column for each custom key. `trace_name` and `generation_name` affect internal trace and observation names but have no dedicated table columns. `trace.span_name` is accepted as a reserved request field but is currently ignored.
+
+### Observation rows and aggregation
+
+Broadcast writes one row per observation, not one row per API request. A typical request produces:
+
+- One root `GENERATION` row with `SPAN_ID` equal to the generation ID. Its `PARENT_SPAN_ID` is `NULL` unless the request set `trace.parent_span_id`, so identify it by `SPAN_TYPE = 'GENERATION'`, not by a null parent.
+- An optional `<generation_id>:moderation` `SPAN` row.
+- One `<generation_id>:attempt-<i>` `SPAN` row for each provider attempt.
+- An optional `<generation_id>:generation` `SPAN` row.
+
+All rows share `TRACE_ID`. Child rows use the generation ID as `PARENT_SPAN_ID`.
+
+<Warning>
+  Only the root `GENERATION` row carries the request's tokens and cost; the other rows report zero. Filter `SPAN_TYPE = 'GENERATION'` for per-request counts, averages, and error rates: a failed provider attempt has `STATUS = 'error'` even when a fallback then served the request.
+</Warning>
+
+Delivery is at least once and Snowflake's primary key is informational, so deduplicate on `(TRACE_ID, SPAN_ID)` for idempotent ingestion.

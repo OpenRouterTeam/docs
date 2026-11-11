@@ -464,7 +464,7 @@ Web search usage is reported in the response `usage` object:
 }
 ```
 
-The `web_search_requests` field counts the total number of search queries the model made during the request.
+The `web_search_requests` field counts the total number of search queries the model made during the request. A server-orchestrated search is also counted in `tool_calls_requested`, while provider-native web search may report only `web_search_requests`, so don't add the two together.
 
 ## Pricing
 

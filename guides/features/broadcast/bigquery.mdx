@@ -16,7 +16,9 @@ nofollow: false
 icon: puzzle-piece
 ---
 
-[Google BigQuery](https://cloud.google.com/bigquery) is a serverless cloud data warehouse. OpenRouter can stream traces directly into a BigQuery table for custom analytics, long-term storage, and business intelligence. Each trace becomes exactly one row, so the table can be queried directly without grouping or deduplicating by `trace_id`.
+import BroadcastBigQueryTableReference from "/snippets/broadcast-bigquery-table-reference.mdx";
+
+[Google BigQuery](https://cloud.google.com/bigquery) is a serverless cloud data warehouse. OpenRouter can stream traces directly into a BigQuery table for custom analytics, long-term storage, and business intelligence. Each request becomes one row, so you can sum tokens and costs without filtering by observation type. See [rows and aggregation](#rows-and-aggregation) for details.
 
 ## Step 1: Choose a project and enable the BigQuery API
 
@@ -214,25 +216,15 @@ LIMIT 10;
 
 ## Schema design
 
+<BroadcastBigQueryTableReference />
+
 ### Typed columns
 
-The schema extracts commonly-queried fields as typed columns for efficient filtering and aggregation:
-
-- **Identifiers**: `trace_id`, `user_id`, `session_id`, etc.
-- **Timestamps**: `TIMESTAMP` columns for time-series analysis
-- **Model Info**: For cost and performance analysis
-- **Metrics**: Tokens and costs for billing
+The field reference above identifies commonly queried identifiers, timestamps, model information, token metrics, and cost metrics as typed columns for efficient filtering and aggregation.
 
 ### JSON columns
 
-Less commonly-accessed and variable-structure data is stored in `JSON` columns:
-
-- **attributes**: Full OTEL attribute set
-- **input/output**: Variable message structures
-- **metadata**: User-defined key-values
-- **model_parameters**: Model-specific configurations
-
-The `tags` column is a repeated `STRING` column (`ARRAY<STRING>`). Use BigQuery's `JSON_VALUE` and `JSON_QUERY` functions to query the JSON fields.
+Less commonly accessed and variable-structure data is stored in the `JSON` columns identified in the field reference above. The `tags` column is a repeated `STRING` column (`ARRAY<STRING>`). Use BigQuery's `JSON_VALUE` and `JSON_QUERY` functions to query the JSON fields.
 
 ## Custom Metadata
 
@@ -242,10 +234,10 @@ Custom metadata from the `trace` field is stored in the `metadata` JSON column. 
 
 | Key | BigQuery Mapping | Description |
 |-----|------------------|-------------|
-| `trace_id` | `trace_id` column / `metadata` JSON | Custom trace identifier for grouping |
-| `trace_name` | `metadata` JSON | Custom name for the trace |
-| `span_name` | `metadata` JSON | Name for intermediate spans |
-| `generation_name` | `metadata` JSON | Name for the LLM generation |
+| `trace_id` | `trace_id` column | Custom trace identifier for grouping |
+| `parent_span_id` | `parent_span_id` column | Parent span identifier for linking to an existing trace |
+| Additional `trace` keys | `metadata` JSON | Custom values stored under their original keys |
+| Request `metadata.<k>` | `metadata.metadata_<k>` | Request metadata stored with the `metadata_` prefix |
 
 ### Example
 
@@ -284,7 +276,9 @@ ORDER BY timestamp DESC;
 
 - The `user` field maps to the `user_id` typed column
 - The `session_id` field maps to the `session_id` typed column
-- All custom metadata keys from `trace` are stored in the `metadata` JSON column for flexible querying
+- Additional custom keys from `trace` are stored in the `metadata` JSON column for flexible querying
+- `trace_name` and `generation_name` affect internal names but have no dedicated table columns
+- `trace.span_name` is reserved and currently ignored
 
 ## Troubleshooting
 

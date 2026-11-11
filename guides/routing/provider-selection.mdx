@@ -867,7 +867,7 @@ The router will prioritize providers in this list, and in this order, for the mo
   You can use the copy button next to provider names on model pages to get the exact provider slug, including any variants like "/turbo". See [Targeting Specific Provider Endpoints](#targeting-specific-provider-endpoints) for details.
 </Tip>
 
-OpenRouter will try them one at a time and proceed to other providers if none are operational. If you don't want to allow any other providers, you should [disable fallbacks](#disabling-fallbacks) as well.
+OpenRouter will try them one at a time and proceed to other providers if none are operational. If you don't want to allow any other public providers, you should [disable fallbacks](#disabling-fallbacks) as well. Private endpoints you have access to stay eligible, as described in [Disabling Fallbacks](#disabling-fallbacks).
 
 ### Example: Specifying providers with fallbacks
 
@@ -1423,9 +1423,13 @@ response = requests.post('https://openrouter.ai/api/v1/responses', headers=heade
 
 ## Disabling Fallbacks
 
-To guarantee that your request is only served by the top-ranked provider, you can disable fallbacks.
+To stop OpenRouter from falling back to other providers, you can disable fallbacks. Without `order`, the request is served only by the top-ranked provider.
 
 This is combined with the `order` field from [Ordering Specific Providers](#ordering-specific-providers) to restrict the providers that OpenRouter will prioritize to just your chosen list.
+
+<Note>
+When you disable fallbacks and set a non-empty `order`, private endpoints you have access to stay eligible even if their provider isn't in `order`. OpenRouter tries the providers in `order` first, then your private endpoints, and no other public providers. If your organization has access to a private model, every endpoint of that model counts as a private endpoint, so all of them stay eligible. Without `order`, disabling fallbacks keeps only the top-ranked endpoint, and private endpoints get no exception. For details, see [Private endpoints and disabled fallbacks](/guides/routing/private-endpoints#private-endpoints-and-disabled-fallbacks).
+</Note>
 
 <CodeGroup>
 

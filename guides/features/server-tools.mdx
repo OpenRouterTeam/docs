@@ -278,7 +278,7 @@ The model can call any combination of server tools and user-defined tools. OpenR
 
 ## Usage Tracking
 
-Server tool usage is tracked in the response `usage` object:
+Server tool usage is tracked in the response `usage.server_tool_use_details` object on the Chat Completions and Responses APIs:
 
 ```json lines
 {
@@ -287,11 +287,21 @@ Server tool usage is tracked in the response `usage` object:
     "output_tokens": 250,
     "total_tokens": 355,
     "server_tool_use_details": {
+      "tool_calls_requested": 2,
+      "tool_calls_executed": 2,
       "web_search_requests": 2
     }
   }
 }
 ```
+
+The object is omitted when no server-side tool usage is recorded. The Messages API reports the same counters in Anthropic's `usage.server_tool_use` object, which is `null` instead of omitted when no server tool runs. Provider-native web search may still report `web_search_requests` without an OpenRouter server-tool invocation. The object reports aggregate activity for the request rather than a separate entry for every tool; `web_search_requests` is currently the only tool-specific counter. Its fields are:
+
+- `tool_calls_requested`: Total OpenRouter server-orchestrated tool calls requested by the model, across all tool types. Provider-native tools are not included.
+- `tool_calls_executed`: Server tool calls that executed and produced a result.
+- `web_search_requests`: Search queries performed by server-side tools. A server-orchestrated web search is also included in `tool_calls_requested`; provider-native web search may report `web_search_requests` without incrementing that field, so do not add the two together.
+
+Server tool usage is included in the request's overall `usage.cost`; see [Web Search pricing](/guides/features/server-tools/web-search#pricing) for search-specific charges.
 
 ## Next Steps
 
