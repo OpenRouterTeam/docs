@@ -163,7 +163,13 @@ See [Input & Output Logging](/guides/features/input-output-logging) for storage 
 
 ### User tracking
 
-Track your end-users by including a `user` parameter in API requests. This improves caching performance (sticky routing per user) and enables user-level analytics in your activity feed and exports.
+Include a `user` parameter on requests to attach a stable identifier for each end user. Three things use it:
+
+- **Abuse isolation.** On endpoints whose data policy requires a user identity, a stable per-user value helps isolate provider policy blocks. Without `user` or `safety_identifier`, requests to those endpoints share an account-level identity, so a block triggered by one end user can affect other users on the account.
+- **Upstream identity.** When the endpoint requires a user identity, OpenRouter folds the value into a hashed identity rather than forwarding it raw; a client-side hash or pseudonym works.
+- **Reporting.** The identifier appears in your [activity feed](https://openrouter.ai/activity) for per-user cost and usage analysis. See [Activity Export](/cookbook/administration/activity-export) for the separate aggregated CSV and PDF reporting options.
+
+Send a stable per-user value rather than one shared value for the whole account: a shared value cannot distinguish end users for reporting or upstream isolation.
 
 See [User Tracking](/cookbook/administration/user-tracking) for implementation details.
 

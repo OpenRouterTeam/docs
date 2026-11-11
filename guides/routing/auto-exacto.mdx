@@ -42,27 +42,37 @@ new Validator(parameters, '7')
 
 Tools whose `parameters` schema is absent or fails to compile are treated as having no schema and are always considered valid, so the metric is conservative when caller-side schemas are malformed.
 
+Some malformed schemas compile but make the validator throw when it evaluates a call, for example a `pattern` that is not a valid JavaScript regular expression or `"required": null`. Such a call is recorded as `unvalidatable-schema` and counts as neither valid nor errored, because the arguments were never judged.
+
 ### Regex engine
 
 `@cfworker/json-schema` delegates `pattern` and `patternProperties` to the runtime's built-in regex implementation. In OpenRouter's environment that is the native JavaScript `RegExp` (V8 / ECMA-262). There is no ECMA-262-conformance shim layered on top, so JavaScript regex semantics differ in some edge cases from the regex dialect specified by JSON Schema.
 
 ### Per-tool-call classification
 
-Each tool call is bucketed into one of three error categories, or counted as valid:
+Each tool call the validator can judge is counted as valid or bucketed into one of the error categories below:
 
 - **`InvalidJson`.** `JSON.parse(arguments)` throws.
 - **`UnknownName`.** `function.name` is not present in the request's `tools[]`.
+- **`MissingName`.** The call carries no `function.name` at all.
 - **`SchemaMismatch`.** The validator returns `valid: false` against the resolved schema.
+
+Two more issues describe the response as a whole, not a single call. Both are detected only from the first 1,024 characters of the assistant text, and only when that text begins with a requested tool name that is either followed by more tool-call syntax or, when nothing follows it, is at least 12 characters long. A tool name mentioned later in ordinary prose is not flagged:
+
+- **`NameLeakedInContent`.** A structured tool call was emitted, and the assistant text also begins with a requested tool name.
+- **`UnparsedToolCall`.** No structured tool call was emitted, and the assistant text begins with a requested tool name in the model's native tool-call syntax.
+
+These two are recorded in the request's issue list but are not added to its count of invalid tool calls.
 
 ### Request-level aggregation
 
-A request is flagged as errored if **any** of its tool calls falls into one of the three buckets above. The Tool Call Error Rate displayed per endpoint per day is then computed at the **request** level. Both the numerator and the denominator are counts of requests, not counts of individual tool calls:
+A request is flagged as errored if **any** of its tool calls falls into one of the per-call error categories above. The Tool Call Error Rate displayed per endpoint per day is then computed at the **request** level. Both the numerator and the denominator are counts of requests, not counts of individual tool calls:
 
 ```lines
 requests_with_tool_call_errors / requests_where_finish_reason_is_tool_calls
 ```
 
-Put differently, of all the requests where the model finished by emitting tool calls, what fraction had at least one tool call that hit one of the three error buckets. A request with five tool calls and one invalid call counts as one errored request, not one-out-of-five.
+Put differently, of all the requests where the model finished by emitting tool calls, what fraction had at least one tool call that hit one of those error buckets. A request with five tool calls and one invalid call counts as one errored request, not one-out-of-five.
 
 When generation hits the request's token limit (any native finish reason that normalizes to `length`, such as `max_tokens` or `MAX_TOKENS`, or a bare Responses `incomplete`), the last tool call is recorded as `truncated-arguments` instead of `InvalidJson` or `SchemaMismatch` if its arguments fail to parse or never arrived, and it does not count as an error. A caller's `max_tokens` cutting off a tool call does not count against the provider. Earlier tool calls in the same response still count, and so does the last call when assistant text or reasoning followed it, because the limit then cut off that later output.
 

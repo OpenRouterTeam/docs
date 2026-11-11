@@ -201,7 +201,9 @@ Some models can voice a conversation between several speakers in one request. To
 }
 ```
 
-Multi-speaker input is supported by Gemini TTS models and by Fish Audio models other than S1. Other providers return a 400 error for it.
+Multi-speaker input is supported by Gemini TTS models, by Fish Audio models other than S1, and by Speechify dialogue models. Other providers return a 400 error for it.
+
+Speechify dialogue models need a voice for every turn and at least two distinct voices. They ignore per-turn `instructions`, don't support `speed`, and limit each request to about 2 minutes of `pcm` audio or 6 minutes of `mp3` audio.
 
 ### Voice Cloning
 
