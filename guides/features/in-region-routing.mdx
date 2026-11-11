@@ -179,8 +179,8 @@ Zero Data Retention ([ZDR](/guides/features/zdr)) enforcement and [data collecti
 
 Regional broadcast delivery upholds the same data boundary as inference:
 
-- **Traces are sent from within the data boundary.** EU and US traces are delivered to your destination directly from infrastructure inside the region, and regional trace data is never persisted to queueing infrastructure outside the region.
-- **Delivery is best-effort.** Because regional traces are handled in memory only and never queued out of region, a failed delivery to a destination is not retried through the global retry queue the way global traffic is.
+- **Traces are sent from within the data boundary.** EU and US traces are delivered to your destination directly from infrastructure inside the region, and regional trace data is never queued or persisted on OpenRouter infrastructure outside the region.
+- **Failed deliveries are retried in-region.** When delivery to your destination fails for a temporary reason, such as a timeout, a network error, a server error, or a rate limit, OpenRouter retries it once from a queue and worker inside the same region, the same retry behavior global traffic gets. Errors your destination reports as an authentication, permission, payload-size, or plan-limit problem are not retried, and S3 destinations that authenticate with an IAM role get the inline attempt only (they are never retried from a queue, in any region). The retry never leaves the region.
 - **You control where the destination lives.** OpenRouter sends the trace from inside the data boundary, but the receiving endpoint is yours. If you need end-to-end residency for observability data, host the destination (e.g. your OpenTelemetry collector, Langfuse instance, or S3 bucket) inside the selected data boundary.
 
 Configure destination regions in [Settings > Observability](https://openrouter.ai/settings/observability) when adding or editing a destination.
