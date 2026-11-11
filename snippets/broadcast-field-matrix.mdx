@@ -120,6 +120,8 @@ These two keys are computed by OpenRouter from the `timeline` milestones rather 
 
 Both are sent on the root generation only, and both are **omitted rather than zeroed** when they cannot be measured: time to first token needs `providerRequestMs` and `firstTokenMs`, and inter-token latency needs `firstTokenMs`, `providerBodyEndMs` and at least two output tokens. A non-streamed response or a `max_tokens: 1` request therefore carries the milestones but no inter-token latency.
 
+`first_token_ms` stops at the first reasoning text, reasoning summary, answer text or tool call, including reasoning hidden from the caller by `reasoning.exclude`. `first_content_token_ms` stops at the first answer text or tool call only. Both are measured from when OpenRouter received the request, not from provider dispatch. On reasoning models, `first_content_token_ms` is the time to the first answer token, and `first_content_token_ms - first_token_ms` is the time between the first reasoning and the first answer. It is omitted when no answer token arrived or the provider did not stream its response, whatever the request's `stream` setting.
+
 Inter-token latency is the mean gap between output tokens, matching vLLM's `request_time_per_output_token`: `(providerBodyEndMs - firstTokenMs) / (output_tokens - 1)`.
 
 | Destination | `provider_time_to_first_token_ms` | `inter_token_latency_ms` |
@@ -272,7 +274,7 @@ Every documented destination receives both.
 | Webhook | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 
   </Accordion>
-  <Accordion title="Cost">
+  <Accordion title="Cost totals">
 
 | Destination | `inputCost` | `outputCost` | `totalCost` |
 |---|---|---|---|
@@ -372,7 +374,7 @@ Every documented destination receives both.
 | Webhook | <Icon icon="check" color="#16a34a" /> | <Icon icon="check" color="#16a34a" /> |
 
   </Accordion>
-  <Accordion title="Cost allocation (beta)">
+  <Accordion title="Cost allocation block (beta)">
 
 `openrouter_cost_allocation` is added to the trace metadata and the generation span's metadata only for destinations with the **Cost allocation** opt-in, so it reaches a destination exactly where that destination receives `metadata` in the next table. OTLP destinations flatten it to attributes such as `openrouter_cost_allocation.input_tokens`; see [Cost allocation](#cost-allocation-beta) for the fields.
 

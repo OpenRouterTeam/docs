@@ -72,12 +72,12 @@ For the most up-to-date list of available destinations, visit the [Broadcast set
 
 Each broadcast trace includes comprehensive information about your API request:
 
-- **Request & Response Data**: The input messages and model output (with multimodal content stripped for efficiency)
+- **Request & Response Data**: The input messages and model output (with multimodal content stripped for efficiency). The output also carries `rawRequest`: the request body without the input messages. When the model called any of the request's tools, `tools` moves out of `rawRequest` to `output.tools`; otherwise it stays in `rawRequest`. It includes request settings such as the `provider` object, `models`, `plugins`, and `response_format`. [Privacy Mode](#privacy-mode) removes the input and the whole output, including `rawRequest`.
 - **Token Usage**: Prompt tokens, completion tokens, and total tokens consumed
 - **Cost Information**: The total cost of the request
 - **Timing**: Request start time, end time, and latency metrics
 - **Model Information**: The model slug and provider name used for the request
-- **Model Parameters**: The sampling parameters the request set (`temperature`, `top_p`, `top_k`, `frequency_penalty`, `presence_penalty`, `repetition_penalty`, `min_p`, `top_a`, `seed`, `max_completion_tokens`, `max_tokens` or `max_output_tokens` as `max_tokens`, and `stop` as `stop_sequences`). OpenTelemetry destinations export them as `gen_ai.request.*` attributes. Privacy Mode keeps them, including `stop`, which is text you wrote and can come from your prompt.
+- **Model Parameters**: The sampling parameters the request set (`temperature`, `top_p`, `top_k`, `frequency_penalty`, `presence_penalty`, `repetition_penalty`, `min_p`, `top_a`, `seed`, `max_completion_tokens`, `max_tokens` or `max_output_tokens` as `max_tokens`, and `stop` as `stop_sequences`). Values the router ignores or rejects, such as `top_p: 0` or a `temperature` above 2, are left out. OpenTelemetry destinations export them as `gen_ai.request.*` attributes. Privacy Mode keeps them, including `stop`, which is text you wrote and can come from your prompt.
 - **Tool Usage**: Whether tools were included in the request and if tool calls were made
 
 ### Token and cost fields
@@ -96,154 +96,7 @@ Use the root `GENERATION` observation for usage reporting. Its `promptTokens` an
 | `inputCost`, `outputCost` | Prompt and completion portions of the inference cost in USD. |
 | `totalCost` | The total OpenRouter charge in USD, including applicable fees and plugin charges. |
 
-Enable **Cost** under **Additional generation metadata** on each destination to include the following fields in `metadata.openrouter_generation`. They remain available in Privacy Mode.
-
-| Metadata field | Meaning |
-| --- | --- |
-| `cache_write_tokens` | The same cache-write total as `promptTokensDetails.cacheWriteTokens`. |
-| `cache_creation` | The same TTL breakdown as `promptTokensDetails.cacheCreation`. |
-| `native_server_tool_use` | Available per-tool counts for provider-native server tools; see below. |
-| `usage_is_estimated` | `true` when accounting used a fallback prompt or completion quantity, or fallback pricing after a usage-calculation failure. `false` means those fallback paths were not used. |
-| `is_long_context` | `true` when the endpoint's long-context pricing tier was selected because the prompt exceeded `long_context_threshold`. Null when the endpoint has no long-context pricing tier, or when the charge did not come from token rates (for example, a provider-reported direct cost). Waived charges (refunds, free endpoints, promotions, unbilled refusals) still report the tier the prompt fell into; `cost` shows the waiver. |
-| `long_context_threshold` | The prompt-token threshold that decided `is_long_context`. For endpoints with several long-context tiers, the highest tier the prompt exceeded, or the lowest tier when none was exceeded. |
-| `usage` | The OpenRouter charge, matching the generation's total cost. |
-| `is_byok` | Whether the generation used your provider key. |
-| `byok_usage_inference` | Reference inference cost for BYOK, not an additional OpenRouter charge or your provider's invoice amount. |
-| `routed_service_tier` | The service tier (`default`, `flex`, `priority`, or `ultrafast`) of the endpoint OpenRouter routed the final attempt to. |
-| `billed_service_tier` | The service tier the generation was priced at. When the provider reports serving a different tier than the one routed to (for example, a `priority` request shed to `default`), this is the reported tier. Anthropic fast mode, including dedicated `*-fast` models, is exported as `priority`. For BYOK requests, this is the tier your provider reported serving (which your provider invoices); when the provider reports none, it is the routed tier, or `null` for a default endpoint. |
-| `cancelled` | The generation's stored `cancelled` flag. On chat, `true` when OpenRouter aborted the upstream provider request. On streaming image generation, `true` when the client disconnected before receiving the full response, even though the upstream is drained rather than aborted. See the table below for each surface. |
-| `upstream_id` | The provider's own identifier for the final attempt, as `{ value, source }`. `source` is `response_body_id` (the ID in the response body, such as `chatcmpl-...`), `http_request_id` (a provider request-ID header such as `request-id`, `x-request-id`, or `x-amzn-requestid`), or `task_job_id` (an async job ID). Use it to find the request in your provider's logs. |
-| `gateway_request_id` | The request ID the called host sets in its own provider-specific header, as `{ value, header }`, for example Azure's `apim-request-id`. Absent when the host only sends generic request-ID headers. |
-| `endpoint_region` | Where the final attempt's upstream endpoint processed the request, usually the cloud region (for example `eastus2` or `us-east-1`). A Bedrock geographic inference profile gives its geography (`us`, `eu`, `apac`). Absent when unknown or when the request was processed globally. |
-| `endpoint_deployment_type` | How the final attempt's deployment is priced by location: `global`, `data_zone` (for example an Azure US data zone deployment or a Bedrock `us.*` profile), or `regional`. Absent when unknown. |
-| `endpoint_deployment_type_source` | `inferred` when OpenRouter derived `endpoint_deployment_type` from its endpoint configuration, or `declared` when it comes from the deployment type set on your BYOK key. |
-
-Both tier fields are also exported with **Request context**, alongside `requested_service_tier`: the tier the request asked for after presets are applied, with `fast` normalized to `priority`. Tiers implied by a `:nitro` (`priority`) or `:floor` (`flex`) model variant, by a dedicated Anthropic `*-fast` model (`priority`), or by tier-suffixed provider slugs such as `openai/priority` in `provider.order` or `provider.only`, are included when `service_tier` is not set. Compare `requested_service_tier` with `billed_service_tier` to find requests that were not served at the tier they asked for. The existing `service_tier` field, also under **Request context**, is the provider's own reported tier value as returned upstream; it is `null` when the provider reports none and is not used for pricing.
-
-**Request context** also exports `provider_preferences`: the routing keys of the request's [`provider` object](/guides/routing/provider-selection) after presets are applied, such as `sort`, `order`, `only`, `ignore`, `allow_fallbacks`, `quantizations`, and `max_price`, exactly as sent. Provider-specific `options` are left out. It is `null` when the request set no provider preferences (empty lists and objects don't count), or when the routing keys serialize to more than 64 KiB. The deprecated top-level `max_price` is not included even though routing applies it; read it from the request body. Sorting implied by a `:nitro` or `:floor` model variant or by `service_tier` is not included; see the `model` and `requested_service_tier` fields for those.
-
-The following **Request context** fields are also exported with **Cost**, because they select or multiply a rate: `model` (the versioned model permaslug), `api_type`, `web_search_engine`, `num_search_results`, `num_fetches`, `num_media_prompt`, `num_input_audio_prompt`, and `num_media_completion`.
-
-#### Provider request IDs and endpoint location
-
-Each provider attempt span also carries its own `upstream_id`, `gateway_request_id`, `endpoint_region`, `endpoint_deployment_type`, and `endpoint_deployment_type_source`, including failed attempts, so you can match a failed or retried attempt to your provider's logs. The fields in `openrouter_generation` describe the final attempt; when every attempt fails, they describe the last failed attempt. `upstream_id` and `gateway_request_id` are exported with either **Cost** or **Request context**; the endpoint location fields are exported only with **Cost**. Attempt spans follow the same opt-ins. An attempt made with your own provider key also carries `byok_provider_key_id` and the key's name as `byok_provider_key_name` (omitted for an unnamed key), `byok_health_routing_enabled` (present only on enrolled requests; `true` when BYOK health routing ranked the request's candidates, `false` otherwise), and `byok_demotion_reason` (`rejected` or `degraded`) when health routing had moved that key behind healthy candidates at routing time. All four appear only with **Cost**.
-
-For BYOK keys that send requests to a resource you own, such as Azure OpenAI or OpenAI keys, or keys that pin a cloud region, such as Amazon Bedrock and Google Vertex keys, OpenRouter can't tell where or how the deployment is priced, so these fields are omitted. For Azure keys, set **Deployment type** (**Global**, **Data zone**, or **Regional**) on each key on the [BYOK](/guides/overview/auth/byok) page to export it as `endpoint_deployment_type` with `endpoint_deployment_type_source` set to `declared`. The declared type is metadata only; it doesn't change routing or pricing.
-
-#### Cancelled generations
-
-Exported quantities always match what OpenRouter billed. How they relate to what the provider processed depends on the surface:
-
-| Surface | `cancelled` | Billed quantities |
-| --- | --- | --- |
-| Chat, completed normally | `false` | The full response. |
-| Chat, client disconnected, upstream aborted | `true` | Output delivered before the disconnect. The provider stopped generating. |
-| Chat, client disconnected, upstream cannot be aborted | `false` | Output delivered before the disconnect. The provider finishes the response in the background and may bill your provider key for more output than OpenRouter billed. The provider's final usage is not exported, and these rows look the same as completed generations. |
-| Text-to-speech, client disconnected | `false` | The provider's final usage, because speech is priced on input characters. |
-| Streaming image generation, client disconnected | `true` | The provider's final usage after the stream drains. |
-
-The existing `openrouter_generation.tokens_prompt` and `tokens_completion` fields are OpenRouter's own token estimates, not the provider's token counters. The new `usage_is_estimated` flag describes the accounting path; it does not turn these two estimate fields into provider-reported measurements or certify every detailed token count and cost as provider-reported.
-
-A null or omitted quantity is unavailable, not zero. An omitted `usage_is_estimated` flag means provenance is unavailable, such as on older exports or failures without accounting data. An interrupted stream is not automatically estimated: the flag depends on whether accounting actually used fallback quantities.
-
-#### Native server-tool counts
-
-`native_server_tool_use` can contain:
-
-| Counter | Source |
-| --- | --- |
-| `web_search_requests` | The existing provider-native web-search count, including Anthropic's reported usage and OpenAI Responses completed search calls. |
-| `web_fetch_requests` | Anthropic's reported native web-fetch count. |
-| `code_execution_requests` | Distinct Anthropic code-execution invocations, or completed OpenAI Responses code-interpreter calls. Anthropic bash and text-editor code-execution variants are included. |
-| `file_search_requests` | Completed OpenAI Responses file-search calls. |
-| `image_generation_requests` | Completed OpenAI Responses image-generation calls. |
-
-These counters exclude client function calls and OpenRouter-orchestrated tool-call totals. They are not universally invoice units: a provider may bill code execution by container, session, or duration rather than invocation, and may charge for failed work. Apply your provider's billing rules rather than multiplying every tool count by a per-call price.
-
-#### Cache TTL availability and BYOK reconciliation
-
-Anthropic may report a TTL split at stream start and subsequently increase the cache-write aggregate during server-tool execution without sending a revised split. In that case, Broadcast preserves the later total and exports a null TTL breakdown rather than attributing the difference to a guessed TTL. When iteration usage is present, the exported quantities include all reported iterations.
-
-For BYOK reconciliation, use available cache and native-tool quantities with your provider's rates, and distinguish fallback-estimated generations using `usage_is_estimated`. These additional exports do not change billing, existing native token counts, or API response usage. Provider-reported cache-write totals can differ from the quantities normalized by OpenRouter's pricing layer.
-
-#### Raw provider usage
-
-With the **Cost** metadata opt-in enabled, `upstream_raw_response_usage` carries the provider's own usage values as they arrived, before OpenRouter normalizes them. Unknown provider fields are preserved, so this object can change whenever a provider changes its API. Without the Cost opt-in, the field is absent from the export entirely, along with the rest of `openrouter_generation`.
-
-| Container | Meaning |
-| --- | --- |
-| Object | One usage report, such as a final non-streaming or Responses usage object. |
-| Array of objects | Several usage reports for one generation, in the order the provider sent them, such as Anthropic stream frames. Do not add their values together; a provider may send cumulative totals. |
-| `null` | No provider usage was captured or the value was suppressed. |
-
-This field is provider evidence, not an invoice calculation, and not every provider reports usage. Its values are not OpenRouter's accounting inputs: read `promptTokens`, `completionTokens`, costs, and the fields above for accounting, and treat differences between the two as expected rather than as a billing discrepancy.
-
-OpenRouter replaces the object with `null` and records `upstream_raw_response_usage_suppression_reason` when:
-
-| Reason | Condition |
-| --- | --- |
-| `privacy_mode` | The destination has Privacy Mode enabled. |
-| `usage_estimated` | Accounting used fallback quantities or pricing, so the partial provider report would misrepresent the generation. |
-| `size_limit` | The provider's usage JSON exceeded 64 KiB. The object is never truncated. |
-
-An absent reason with a `null` value means provider usage was simply unavailable. An absent field means the export predates this feature. A reported `0` remains a provider-reported zero.
-
-See the [S3 field locations](/guides/features/broadcast/s3#billing-quantities) and [OTEL attribute mappings](/guides/features/broadcast/otel-collector#billing-quantities) for destination-specific examples.
-
-#### Cost allocation (beta)
-
-Enable **Cost allocation** under **Additional generation metadata**, or set `broadcast_generation_cost_allocation` through the [destinations API](/api/api-reference/observability/create-an-observability-destination), to add `metadata.openrouter_cost_allocation` to each generation. It splits the generation's billed usage and cost by token kind so a cost-allocation tool can join it to your bill by date, provider, model, token kind, and the pricing qualifiers below. It is independent of **Cost**: you can enable it without exporting `openrouter_generation`, and it remains available in Privacy Mode. Like `openrouter_generation`, it appears in the trace metadata and in the generation observation's metadata, not on provider attempt spans. A `trace` field in your request cannot set or override it, either as a top-level key or as dotted keys inside a nested object such as `trace.metadata`.
-
-Counts and costs are currently available for chat generations (the Chat Completions, Responses, Messages, and Completions APIs). Other generations, such as embeddings, images, video, and audio, carry only `cost_status` (`no_sku_items`) and the pricing qualifiers.
-
-| Field | Meaning |
-| --- | --- |
-| `cost_status` | Whether the counts and costs below are present; see the next table. Always present. |
-| `input_tokens` | All billed input tokens, including cache reads and cache writes: `non_cache_input_tokens + cache_read_input_tokens + cache_write_input_tokens`. |
-| `non_cache_input_tokens`, `cache_read_input_tokens`, `cache_write_input_tokens` | Billed input tokens by kind. The counts do not overlap. |
-| `output_tokens`, `reasoning_tokens` | Billed output tokens by kind. `reasoning_tokens` appears only for providers that price reasoning separately; elsewhere reasoning is billed, and counted, as output. |
-| `non_cache_input_cost`, `cache_read_input_cost`, `cache_write_input_cost`, `output_cost`, `reasoning_cost` | Cost of each token kind in USD, as a decimal string. |
-| `advisor_cost` | Cost of Anthropic advisor-model tokens in USD. They belong to the advisor model, not the generation's model, so they are not in any count or per-kind cost above. |
-| `tool_cost` | Cost of provider server tools and OpenRouter plugins (web search, web fetch, file parsing) in USD. |
-| `unclassified_cost` | Cost of priced rows with no token kind, such as Gemini cache storage, in USD. |
-| `platform_cost` | What OpenRouter charged beyond inference and tools in USD: fees, discounts, and waivers. Can be negative. For BYOK, all of OpenRouter's charge beyond tools, because the token costs were billed by your provider. |
-| `is_byok`, `billed_service_tier`, `is_long_context`, `endpoint_region`, `endpoint_deployment_type` | The pricing qualifiers, with the same meaning as in `openrouter_generation`. |
-
-Counts are the quantities OpenRouter billed, so they can differ from `promptTokens` when the provider's own report is inconsistent. For example, when Gemini reports cache reads above an uncached input, it bills both, and `input_tokens` follows what was billed. In a reconciled block, a count is present only when the generation billed at least one row of that kind, so an absent count means the kind was not billed separately, not zero. Provider and model are not repeated here; read them from the generation's own fields.
-
-Counts and per-kind costs are emitted only when OpenRouter can show they match what was billed. The rows' costs must equal the generation's upstream inference cost (`usage_upstream`, or `byok_usage_inference` for BYOK, compared as stored) and OpenRouter's plugin charges (`usage_web`, `usage_web_fetch`, and `usage_file`). When they do, the costs sum to the OpenRouter charge, plus the provider-billed inference cost for BYOK, to within float64 rounding of the stored amounts. Otherwise the block carries only `cost_status` and the pricing qualifiers, and `cost_status` says why:
-
-| `cost_status` | Meaning |
-| --- | --- |
-| `reconciled` | Every count and cost field for the billed kinds is present and adds up as described above. |
-| `unreconciled` | The rows do not add up to the billed cost. Known causes: a provider discount (the stored upstream cost is after the discount, the rows are at list price), and BYOK requests that used OpenRouter web search or web fetch (the charge is in `usage` but not in `usage_web` / `usage_web_fetch`). |
-| `null_price` | A token row has no price, for example fallback pricing or a provider-reported total cost. |
-| `row_error` | A billed row could not be split into non-overlapping quantities. |
-| `no_billed_cost` | The generation carries no upstream cost to reconcile against. |
-| `no_sku_items` | The generation's billed rows are not available to Broadcast: it stored none (for example a failed request), or it is not a chat generation. |
-
-```json
-{
-  "openrouter_cost_allocation": {
-    "cost_status": "reconciled",
-    "input_tokens": 1000,
-    "non_cache_input_tokens": 600,
-    "cache_read_input_tokens": 400,
-    "output_tokens": 50,
-    "non_cache_input_cost": "0.0012",
-    "cache_read_input_cost": "0.0002",
-    "output_cost": "0.0005",
-    "platform_cost": "0.00019",
-    "is_byok": false,
-    "billed_service_tier": "default",
-    "is_long_context": false,
-    "endpoint_region": "us-east-1",
-    "endpoint_deployment_type": "global"
-  }
-}
-```
-
-This field is in beta: its shape may change before a dedicated cost-allocation destination ships.
+These are the token and cost fields every trace carries. For additional billing metadata, such as provider-native tool counts, BYOK reference costs, and service tiers, turn on the [Cost](#cost) toggle.
 
 ### Router timing
 
@@ -516,6 +369,223 @@ OpenRouter builds one trace per request, but not every destination stores every 
 
 <BroadcastFieldMatrix />
 
+## Additional generation metadata
+
+Each destination has four **Additional generation metadata** toggles. They're off by default, and each adds a different set of fields to the trace's metadata, so turn on only what your destination needs. Set them under **Additional generation metadata** when you add or edit a destination, or with the matching field in the [destinations API](/api/api-reference/observability/create-an-observability-destination).
+
+| Toggle | API field | What it adds | Where it appears |
+| --- | --- | --- | --- |
+| [Cost](#cost) | `broadcast_generation_cost` | Billing quantities, charges, BYOK, credit pool, service tier, and endpoint location | `metadata.openrouter_generation` |
+| [Identity](#identity) | `broadcast_generation_identity` | The app, API key, workspace, end user, and client SDK that made the request | `metadata.openrouter_generation` |
+| [Request context](#request-context) | `broadcast_generation_request_context` | Request IDs, lineage, routing preferences, presets, service tiers, and data region | `metadata.openrouter_generation` |
+| [Cost allocation (beta)](#cost-allocation-beta) | `broadcast_generation_cost_allocation` | Billed tokens and cost split by token kind, for cost-allocation tools | `metadata.openrouter_cost_allocation` |
+
+Cost, Identity, and Request context all write to the same `openrouter_generation` object. A field listed under more than one toggle, such as `model` or `upstream_id`, is sent when any of those toggles is on. When none of the three is on, `openrouter_generation` is absent.
+
+[Privacy Mode](#privacy-mode) keeps every field these toggles add, except [raw provider usage](#raw-provider-usage). Because Privacy Mode removes `rawRequest`, these fields are how a Privacy Mode destination sees request settings such as `provider_preferences`. If your organization admin locks privacy settings, you can't turn on Identity.
+
+How a destination stores these fields depends on its format. See the [S3 field locations](/guides/features/broadcast/s3#billing-quantities) and [OTEL attribute mappings](/guides/features/broadcast/otel-collector#billing-quantities) for examples.
+
+### Cost
+
+Turn on **Cost** (`broadcast_generation_cost`) for the fields you need to reconcile billing.
+
+| Metadata field | Meaning |
+| --- | --- |
+| `cache_write_tokens` | The same cache-write total as `promptTokensDetails.cacheWriteTokens`. |
+| `cache_creation` | The same TTL breakdown as `promptTokensDetails.cacheCreation`. |
+| `native_server_tool_use` | Available per-tool counts for provider-native server tools; see below. |
+| `usage_is_estimated` | `true` when accounting used a fallback prompt or completion quantity, or fallback pricing after a usage-calculation failure. `false` means those fallback paths were not used. |
+| `is_long_context` | `true` when the endpoint's long-context pricing tier was selected because the prompt exceeded `long_context_threshold`. Null when the endpoint has no long-context pricing tier, or when the charge did not come from token rates (for example, a provider-reported direct cost). Waived charges (refunds, free endpoints, promotions, unbilled refusals) still report the tier the prompt fell into; `cost` shows the waiver. |
+| `long_context_threshold` | The prompt-token threshold that decided `is_long_context`. For endpoints with several long-context tiers, the highest tier the prompt exceeded, or the lowest tier when none was exceeded. |
+| `usage` | The OpenRouter charge, matching the generation's total cost. |
+| `is_byok` | Whether the generation used your provider key. |
+| `byok_usage_inference` | Reference inference cost for BYOK, not an additional OpenRouter charge or your provider's invoice amount. |
+| `routed_service_tier` | The service tier (`default`, `flex`, `priority`, or `ultrafast`) of the endpoint OpenRouter routed the final attempt to. |
+| `billed_service_tier` | The service tier the generation was priced at. When the provider reports serving a different tier than the one routed to (for example, a `priority` request shed to `default`), this is the reported tier. Anthropic fast mode, including dedicated `*-fast` models, is exported as `priority`. For BYOK requests, this is the tier your provider reported serving (which your provider invoices); when the provider reports none, it is the routed tier, or `null` for a default endpoint. |
+| `cancelled` | The generation's stored `cancelled` flag. On chat, `true` when OpenRouter aborted the upstream provider request. On streaming image generation, `true` when the client disconnected before receiving the full response, even though the upstream is drained rather than aborted. See the table below for each surface. |
+| `upstream_id` | The provider's own identifier for the final attempt, as `{ value, source }`. `source` is `response_body_id` (the ID in the response body, such as `chatcmpl-...`), `http_request_id` (a provider request-ID header such as `request-id`, `x-request-id`, or `x-amzn-requestid`), or `task_job_id` (an async job ID). Use it to find the request in your provider's logs. |
+| `gateway_request_id` | The request ID the called host sets in its own provider-specific header, as `{ value, header }`, for example Azure's `apim-request-id`. Absent when the host only sends generic request-ID headers. |
+| `endpoint_region` | Where the final attempt's upstream endpoint processed the request, usually the cloud region (for example `eastus2` or `us-east-1`). A Bedrock geographic inference profile gives its geography (`us`, `eu`, `apac`). Absent when unknown or when the request was processed globally. |
+| `endpoint_deployment_type` | How the final attempt's deployment is priced by location: `global`, `data_zone` (for example an Azure US data zone deployment or a Bedrock `us.*` profile), or `regional`. Absent when unknown. |
+| `endpoint_deployment_type_source` | `inferred` when OpenRouter derived `endpoint_deployment_type` from its endpoint configuration, or `declared` when it comes from the deployment type set on your BYOK key. |
+| `usage_upstream` | The cost the upstream provider charged for inference, in USD. |
+| `usage_web`, `usage_web_fetch`, `usage_file` | The parts of `usage` that came from web search, web fetch, and file parsing, in USD. |
+| `usage_upstream_web_fetch` | What the web fetch cost OpenRouter, in USD. Not a part of `usage`; `usage_web_fetch` is what you were charged for it. |
+| `usage_cache` | The cache saving or write premium against the prompt rate, in USD. Not a part of `usage`: the cache token costs already include it. |
+| `usage_data` | The prompt-logging discount taken off `usage`, in USD. Not a part of `usage`. |
+| `credit_pool_usage`, `credit_pool_id`, `credit_pool_expires_at` | The credit pool usage, the pool's ID, and when the pool expires. Null when no credit pool paid for the generation. |
+| `sku_items`, `pricing_formula` | The itemized pricing rows behind the charge and the formula that produced them. Null unless the billed account is eligible for itemized pricing export. |
+| `tokens_prompt`, `tokens_completion` | OpenRouter's own prompt and completion token estimates; see [cancelled generations](#cancelled-generations). |
+| `model` | The versioned model permaslug that served the request. The trace-level model stays the requested variant slug. |
+| `api_type` | The API that produced the generation, such as `completions` or `embeddings`. |
+| `web_search_engine`, `num_search_results`, `num_fetches` | The web search engine used, and how many search results and page fetches were billed. |
+| `num_media_prompt`, `num_input_audio_prompt`, `num_media_completion` | Media inputs, audio inputs, and media outputs counted for pricing. |
+
+#### Provider request IDs and endpoint location
+
+Each provider attempt span also carries its own `upstream_id`, `gateway_request_id`, `endpoint_region`, `endpoint_deployment_type`, and `endpoint_deployment_type_source`, including failed attempts, so you can match a failed or retried attempt to your provider's logs. The fields in `openrouter_generation` describe the final attempt; when every attempt fails, they describe the last failed attempt. `upstream_id` and `gateway_request_id` are exported with either **Cost** or **Request context**; the endpoint location fields are exported only with **Cost**. Attempt spans follow the same opt-ins. An attempt made with your own provider key also carries `byok_provider_key_id` and the key's name as `byok_provider_key_name` (omitted for an unnamed key), `byok_health_routing_enabled` (present only on enrolled requests; `true` when BYOK health routing ranked the request's candidates, `false` otherwise), and `byok_demotion_reason` (`rejected` or `degraded`) when health routing had moved that key behind healthy candidates at routing time. All four appear only with **Cost**.
+
+For BYOK keys that send requests to a resource you own, such as Azure OpenAI or OpenAI keys, or keys that pin a cloud region, such as Amazon Bedrock and Google Vertex keys, OpenRouter can't tell where or how the deployment is priced, so these fields are omitted. For Azure keys, set **Deployment type** (**Global**, **Data zone**, or **Regional**) on each key on the [BYOK](/guides/overview/auth/byok) page to export it as `endpoint_deployment_type` with `endpoint_deployment_type_source` set to `declared`. The declared type is metadata only; it doesn't change routing or pricing.
+
+#### Cancelled generations
+
+Exported quantities always match what OpenRouter billed. How they relate to what the provider processed depends on the surface:
+
+| Surface | `cancelled` | Billed quantities |
+| --- | --- | --- |
+| Chat, completed normally | `false` | The full response. |
+| Chat, client disconnected, upstream aborted | `true` | Output delivered before the disconnect. The provider stopped generating. |
+| Chat, client disconnected, upstream cannot be aborted | `false` | Output delivered before the disconnect. The provider finishes the response in the background and may bill your provider key for more output than OpenRouter billed. The provider's final usage is not exported, and these rows look the same as completed generations. |
+| Text-to-speech, client disconnected | `false` | The provider's final usage, because speech is priced on input characters. |
+| Streaming image generation, client disconnected | `true` | The provider's final usage after the stream drains. |
+
+The existing `openrouter_generation.tokens_prompt` and `tokens_completion` fields are OpenRouter's own token estimates, not the provider's token counters. The new `usage_is_estimated` flag describes the accounting path; it does not turn these two estimate fields into provider-reported measurements or certify every detailed token count and cost as provider-reported.
+
+A null or omitted quantity is unavailable, not zero. An omitted `usage_is_estimated` flag means provenance is unavailable, such as on older exports or failures without accounting data. An interrupted stream is not automatically estimated: the flag depends on whether accounting actually used fallback quantities.
+
+#### Native server-tool counts
+
+`native_server_tool_use` can contain:
+
+| Counter | Source |
+| --- | --- |
+| `web_search_requests` | The existing provider-native web-search count, including Anthropic's reported usage and OpenAI Responses completed search calls. |
+| `web_fetch_requests` | Anthropic's reported native web-fetch count. |
+| `code_execution_requests` | Distinct Anthropic code-execution invocations, or completed OpenAI Responses code-interpreter calls. Anthropic bash and text-editor code-execution variants are included. |
+| `file_search_requests` | Completed OpenAI Responses file-search calls. |
+| `image_generation_requests` | Completed OpenAI Responses image-generation calls. |
+
+These counters exclude client function calls and OpenRouter-orchestrated tool-call totals. They are not universally invoice units: a provider may bill code execution by container, session, or duration rather than invocation, and may charge for failed work. Apply your provider's billing rules rather than multiplying every tool count by a per-call price.
+
+#### Cache TTL availability and BYOK reconciliation
+
+Anthropic may report a TTL split at stream start and subsequently increase the cache-write aggregate during server-tool execution without sending a revised split. In that case, Broadcast preserves the later total and exports a null TTL breakdown rather than attributing the difference to a guessed TTL. When iteration usage is present, the exported quantities include all reported iterations.
+
+For BYOK reconciliation, use available cache and native-tool quantities with your provider's rates, and distinguish fallback-estimated generations using `usage_is_estimated`. These additional exports do not change billing, existing native token counts, or API response usage. Provider-reported cache-write totals can differ from the quantities normalized by OpenRouter's pricing layer.
+
+#### Raw provider usage
+
+With the **Cost** metadata opt-in enabled, `upstream_raw_response_usage` carries the provider's own usage values as they arrived, before OpenRouter normalizes them. Unknown provider fields are preserved, so this object can change whenever a provider changes its API. Without the Cost opt-in, the field is absent from the export entirely, along with the rest of `openrouter_generation`.
+
+| Container | Meaning |
+| --- | --- |
+| Object | One usage report, such as a final non-streaming or Responses usage object. |
+| Array of objects | Several usage reports for one generation, in the order the provider sent them, such as Anthropic stream frames. Do not add their values together; a provider may send cumulative totals. |
+| `null` | No provider usage was captured or the value was suppressed. |
+
+This field is provider evidence, not an invoice calculation, and not every provider reports usage. Its values are not OpenRouter's accounting inputs: read `promptTokens`, `completionTokens`, costs, and the fields above for accounting, and treat differences between the two as expected rather than as a billing discrepancy.
+
+OpenRouter replaces the object with `null` and records `upstream_raw_response_usage_suppression_reason` when:
+
+| Reason | Condition |
+| --- | --- |
+| `privacy_mode` | The destination has Privacy Mode enabled. |
+| `usage_estimated` | Accounting used fallback quantities or pricing, so the partial provider report would misrepresent the generation. |
+| `size_limit` | The provider's usage JSON exceeded 64 KiB. The object is never truncated. |
+
+An absent reason with a `null` value means provider usage was simply unavailable. An absent field means the export predates this feature. A reported `0` remains a provider-reported zero.
+
+See the [S3 field locations](/guides/features/broadcast/s3#billing-quantities) and [OTEL attribute mappings](/guides/features/broadcast/otel-collector#billing-quantities) for destination-specific examples.
+
+### Identity
+
+Turn on **Identity** (`broadcast_generation_identity`) to attribute each generation to the app, key, and end user that made it.
+
+| Metadata field | Meaning |
+| --- | --- |
+| `workspace_id` | The workspace the generation is attributed to. |
+| `api_key_id`, `api_key.id` | The ID of the OpenRouter API key that made the request. Both names carry the same value. |
+| `api_key.label` | The API key's label. |
+| `api_key.creator_user_id` | The user who created the API key. Null for workspace system keys and when no API key was used. |
+| `wif.sub` | The verified workload identity federation subject. Null for other authentication methods. |
+| `external_user` | The end-user ID: the request's `user` field, or the API key's external user when the request doesn't set one. |
+| `app_id`, `app.title`, `app.categories`, `app.origin_url` | The [app](/app-attribution) the request is attributed to. |
+| `origin`, `http_referer` | The request's origin URL and its `Referer` header. |
+| `user_agent` | The request's `User-Agent` header. |
+| `sdk_client` | The OpenRouter SDK that sent the request: `agent-sdk` when the `x-openrouter-callmodel` header is set or the `User-Agent` identifies the agent SDK, `openrouter-sdk` when the `User-Agent` names an OpenRouter SDK package, null otherwise. |
+| `sdk_language`, `sdk_package`, `sdk_version`, `agent_sdk_version` | The SDK's language, package, and version, parsed from the `User-Agent` header. Null when the `User-Agent` doesn't identify an OpenRouter SDK, so they can be null when `sdk_client` is `agent-sdk`. |
+
+### Request context
+
+Turn on **Request context** (`broadcast_generation_request_context`) to see how each request asked to be routed, and to correlate it with other generations.
+
+| Metadata field | Meaning |
+| --- | --- |
+| `request_id` | Groups every generation made for one API request. |
+| `parent_generation_id`, `spawned_by` | For a generation that OpenRouter made on your behalf, the generation that spawned it and what spawned it: for example `openrouter:fusion` for a Fusion call, `server-tools` or `server-tools:<tool>` for a server-tool loop turn, or `tool_search` for a deferred tool search. Null otherwise. |
+| `provider_preferences` | The request's `provider` routing preferences, as sent. See below. |
+| `preset_id` | The [preset](/guides/features/presets) the request used. Null when it used none. |
+| `router` | The router used for the request, for example `openrouter/auto`. |
+| `requested_service_tier`, `routed_service_tier`, `billed_service_tier`, `service_tier` | The service tier the request asked for, routed to, and was billed at, and the provider's own reported tier. See below. |
+| `data_region` | The data region the generation was routed through: `global`, `europe`, or `us`. |
+| `streamed` | Whether the response was streamed. |
+| `has_encrypted_reasoning` | Whether the response included encrypted reasoning. See below. |
+| `cancelled` | Whether the generation was cancelled; see [cancelled generations](#cancelled-generations). |
+| `upstream_id`, `gateway_request_id` | The provider's identifiers for the final attempt; see the [Cost](#cost) table. |
+| `model`, `api_type`, `tokens_prompt`, `tokens_completion`, `web_search_engine`, `num_search_results`, `num_fetches`, `num_media_prompt`, `num_input_audio_prompt`, `num_media_completion` | The same fields as in the [Cost](#cost) table. |
+
+`provider_preferences` holds the routing keys of the request's [`provider` object](/guides/routing/provider-selection) after presets are applied, such as `sort`, `order`, `only`, `ignore`, `allow_fallbacks`, `quantizations`, and `max_price`, exactly as sent. Provider-specific `options` are left out. It is `null` when the request set no provider preferences (empty lists and objects don't count), or when the routing keys serialize to more than 64 KiB. The deprecated top-level `max_price` is not included even though routing applies it; read it from the request body. Sorting implied by a `:nitro` or `:floor` model variant or by `service_tier` is not included; see the `model` and `requested_service_tier` fields for those.
+
+`requested_service_tier` is the tier the request asked for after presets are applied, with `fast` normalized to `priority`. Tiers implied by a `:nitro` (`priority`) or `:floor` (`flex`) model variant, by a dedicated Anthropic `*-fast` model (`priority`), or by tier-suffixed provider slugs such as `openai/priority` in `provider.order` or `provider.only`, are included when `service_tier` is not set. Compare `requested_service_tier` with `billed_service_tier` to find requests that were not served at the tier they asked for. `service_tier` is the provider's own reported tier value as returned upstream; it is `null` when the provider reports none and is not used for pricing.
+
+`has_encrypted_reasoning` is `true` when the response included encrypted reasoning (`reasoning_details` entries of type `reasoning.encrypted`, such as OpenAI's encrypted reasoning content or Anthropic's redacted thinking). Encrypted reasoning is only readable by the provider, so the response's encrypted reasoning is never exported. When it is the only reasoning, the trace carries no reasoning text even though the reasoning token count, when the provider reports it, is non-zero, and time to first token includes the time the model spent reasoning. `null` on surfaces that don't track reasoning, such as image and video generation.
+
+### Cost allocation (beta)
+
+Turn on **Cost allocation** (`broadcast_generation_cost_allocation`) to add `metadata.openrouter_cost_allocation` to each generation. It splits the generation's billed usage and cost by token kind so a cost-allocation tool can join it to your bill by date, provider, model, token kind, and the pricing qualifiers below. It is independent of **Cost**: you can enable it without exporting `openrouter_generation`, and it remains available in Privacy Mode. Like `openrouter_generation`, it appears in the trace metadata and in the generation observation's metadata, not on provider attempt spans. A `trace` field in your request cannot set or override it, either as a top-level key or as dotted keys inside a nested object such as `trace.metadata`.
+
+Counts and costs are currently available for chat generations (the Chat Completions, Responses, Messages, and Completions APIs). Other generations, such as embeddings, images, video, and audio, carry only `cost_status` (`no_sku_items`) and the pricing qualifiers.
+
+| Field | Meaning |
+| --- | --- |
+| `cost_status` | Whether the counts and costs below are present; see the next table. Always present. |
+| `input_tokens` | All billed input tokens, including cache reads and cache writes: `non_cache_input_tokens + cache_read_input_tokens + cache_write_input_tokens`. |
+| `non_cache_input_tokens`, `cache_read_input_tokens`, `cache_write_input_tokens` | Billed input tokens by kind. The counts do not overlap. |
+| `output_tokens`, `reasoning_tokens` | Billed output tokens by kind. `reasoning_tokens` appears only for providers that price reasoning separately; elsewhere reasoning is billed, and counted, as output. |
+| `non_cache_input_cost`, `cache_read_input_cost`, `cache_write_input_cost`, `output_cost`, `reasoning_cost` | Cost of each token kind in USD, as a decimal string. |
+| `advisor_cost` | Cost of Anthropic advisor-model tokens in USD. They belong to the advisor model, not the generation's model, so they are not in any count or per-kind cost above. |
+| `tool_cost` | Cost of provider server tools and OpenRouter plugins (web search, web fetch, file parsing) in USD. |
+| `unclassified_cost` | Cost of priced rows with no token kind, such as Gemini cache storage, in USD. |
+| `platform_cost` | What OpenRouter charged beyond inference and tools in USD: fees, discounts, and waivers. Can be negative. For BYOK, all of OpenRouter's charge beyond tools, because the token costs were billed by your provider. |
+| `is_byok`, `billed_service_tier`, `is_long_context`, `endpoint_region`, `endpoint_deployment_type` | The pricing qualifiers, with the same meaning as in `openrouter_generation`. |
+
+Counts are the quantities OpenRouter billed, so they can differ from `promptTokens` when the provider's own report is inconsistent. For example, when Gemini reports cache reads above an uncached input, it bills both, and `input_tokens` follows what was billed. In a reconciled block, a count is present only when the generation billed at least one row of that kind, so an absent count means the kind was not billed separately, not zero. Provider and model are not repeated here; read them from the generation's own fields.
+
+Counts and per-kind costs are emitted only when OpenRouter can show they match what was billed. The rows' costs must equal the generation's upstream inference cost (`usage_upstream`, or `byok_usage_inference` for BYOK, compared as stored) and OpenRouter's plugin charges (`usage_web`, `usage_web_fetch`, and `usage_file`). When they do, the costs sum to the OpenRouter charge, plus the provider-billed inference cost for BYOK, to within float64 rounding of the stored amounts. Otherwise the block carries only `cost_status` and the pricing qualifiers, and `cost_status` says why:
+
+| `cost_status` | Meaning |
+| --- | --- |
+| `reconciled` | Every count and cost field for the billed kinds is present and adds up as described above. |
+| `unreconciled` | The rows do not add up to the billed cost. Known causes: a provider discount (the stored upstream cost is after the discount, the rows are at list price), and BYOK requests that used OpenRouter web search or web fetch (the charge is in `usage` but not in `usage_web` / `usage_web_fetch`). |
+| `null_price` | A token row has no price, for example fallback pricing or a provider-reported total cost. |
+| `row_error` | A billed row could not be split into non-overlapping quantities. |
+| `no_billed_cost` | The generation carries no upstream cost to reconcile against. |
+| `no_sku_items` | The generation's billed rows are not available to Broadcast: it stored none (for example a failed request), or it is not a chat generation. |
+
+```json
+{
+  "openrouter_cost_allocation": {
+    "cost_status": "reconciled",
+    "input_tokens": 1000,
+    "non_cache_input_tokens": 600,
+    "cache_read_input_tokens": 400,
+    "output_tokens": 50,
+    "non_cache_input_cost": "0.0012",
+    "cache_read_input_cost": "0.0002",
+    "output_cost": "0.0005",
+    "platform_cost": "0.00019",
+    "is_byok": false,
+    "billed_service_tier": "default",
+    "is_long_context": false,
+    "endpoint_region": "us-east-1",
+    "endpoint_deployment_type": "global"
+  }
+}
+```
+
+This field is in beta: its shape may change before a dedicated cost-allocation destination ships.
+
 ## API Key Filtering
 
 Each destination can be configured to only receive traces from specific API keys. This is useful when you want to:
@@ -545,7 +615,7 @@ Each destination can optionally enable **Privacy Mode** to exclude prompt and co
 - **Output choices** (completions returned by the model)
 - **Error text** (the observation's `statusMessage`, and every field of `metadata.openrouter_error` except `code` and `shadow`, since these can repeat the provider's error message). The error level, status code, `openrouter_error.code`, and error ownership are still sent.
 
-All other trace data (including token counts, costs, timing, model information, model parameters, and custom metadata) is still sent normally. Model parameters include the request's `stop` sequences, which are caller-supplied text.
+The output's `rawRequest` is removed with the output choices. All other trace data (including token counts, costs, timing, model information, model parameters, custom metadata, and the [additional generation metadata](#additional-generation-metadata) you turn on) is still sent normally. Model parameters include the request's `stop` sequences, which are caller-supplied text.
 
 This is useful when you want to monitor LLM usage metrics and costs without exposing the actual content of conversations, for example to comply with data privacy regulations or internal policies.
 
