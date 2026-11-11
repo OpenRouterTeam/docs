@@ -109,7 +109,7 @@ You can also control which upstream providers handle your requests. See the [Pro
 
 ## Troubleshooting
 
-- **"Invalid API key":** Make sure you're using your OpenRouter API key (starts with `sk-or-...`), not an OpenAI key.
+- **"Invalid API key" or "not an OpenRouter API key":** Make sure you're using your OpenRouter API key (starts with `sk-or-...`), not an OpenAI key. See [Troubleshooting 401 errors](/api_reference/authentication#troubleshooting-401-errors).
 - **Model not found:** Ensure the model ID exactly matches the format on [openrouter.ai/models](https://openrouter.ai/models). Router model aliases need the `~` prefix (e.g., `~anthropic/claude-sonnet-latest`, not `anthropic/claude-sonnet-latest`).
 - **Base URL:** The override URL must be `https://openrouter.ai/api/v1/cursor`. If you're using `https://openrouter.ai/api/v1` (without `/cursor`), tool calls and some request formats may not work correctly.
 - **Tool errors:** If you see unexpected tool call failures, double-check whether you're pointed at the `/cursor` endpoint. The dedicated endpoint handles Cursor's flat tool format; the generic `/v1` endpoint does not.

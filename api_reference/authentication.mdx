@@ -42,6 +42,21 @@ Send one credential per request in the `Authorization` header as `Bearer <creden
 
 Send the credential exactly as issued, with no extra whitespace or quotes. OpenRouter treats a bearer that starts with `sk-or-v1-` as an API key. It treats a JWT as an access token only when its issuer is `https://openrouter.ai` or `https://clerk.openrouter.ai`, and rejects any other bearer. OpenRouter also rejects an expired JWT and a JWT without the scope the endpoint requires. Some endpoints accept only an API key, so an access token with the `inference` scope doesn't replace an API key everywhere. To use a token from your own identity provider, exchange it for an OpenRouter access token first; OpenRouter doesn't accept third-party JWTs directly.
 
+## Troubleshooting 401 errors
+
+A rejected credential returns `401 Unauthorized`. The error message tells you what OpenRouter received:
+
+| Message | Cause | Fix |
+| --- | --- | --- |
+| `Invalid API key: this is not an OpenRouter API key` | The `Authorization` or `x-api-key` value is a key from another provider: it starts with `sk-` but not `sk-or-`. OpenAI and Anthropic SDKs fall back to `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` when you don't pass a key explicitly. | Pass your OpenRouter key explicitly, for example `apiKey: process.env.OPENROUTER_API_KEY`, and check that `OPENROUTER_API_KEY` is set in the process that makes the request. |
+| `No API key in the Authorization header` | The header is `Bearer` followed by nothing, `undefined`, or `null`. This usually means the environment variable holding your key is unset. | Set the variable, then restart the shell or app that reads it. |
+| `Missing Authentication header` | The `Authorization` header is malformed, for example it has extra spaces, or its value isn't a recognized credential. | Send exactly `Authorization: Bearer <OPENROUTER_API_KEY>`, with one space and no quotes. |
+| `Malformed authentication credential` | The key contains characters that can't be sent in an HTTP header, often invisible characters picked up during copy-paste. | Copy the key again from the [API keys page](https://openrouter.ai/keys). |
+| `API key expired` | The key passed its expiration date. | Create a new key. |
+| `Invalid API key` (with nothing after it) or `User not found.` | The key has the OpenRouter format but was deleted, disabled, or never existed. | Check the key on the [API keys page](https://openrouter.ai/keys), or create a new one. |
+
+A request with no credentials at all (no `Authorization` header, no `x-api-key` header, and no session cookie) returns `No cookie auth credentials found` on endpoints that also accept a signed-in session, such as `/api/v1/chat/completions`. Other endpoints may return `Missing Authentication header` instead.
+
 ## Using an API key
 
 To use an API key, [first create your key](https://openrouter.ai/keys). Give it a name and choose a credit limit (or no limit). Once a key has used its credit limit, requests with it are rejected until you raise the limit on the key's page, or, for a daily, weekly, or monthly limit, until the limit resets. Keys created for you during onboarding get a $100 credit limit and expire after 180 days.

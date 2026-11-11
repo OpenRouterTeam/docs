@@ -163,7 +163,7 @@ Point `model` at any OpenRouter slug (e.g. `~openai/gpt-sol-latest`, `~anthropic
 
 ## Troubleshooting
 
-- **Auth Errors:** Ensure `OPENROUTER_API_KEY` is set and valid. Check at [openrouter.ai/keys](https://openrouter.ai/keys). A 401 with "Missing Authentication header" usually means the `auth` command failed to run. On Windows, make sure you use the PowerShell variant above and that the environment variable is set user-wide (`setx`), then fully restart Codex.
+- **Auth Errors:** Ensure `OPENROUTER_API_KEY` is set and valid. Check at [openrouter.ai/keys](https://openrouter.ai/keys). A 401 with "No API key in the Authorization header" or "Missing Authentication header" usually means the `auth` command failed to run or printed nothing because `OPENROUTER_API_KEY` is unset. A 401 saying the key is not an OpenRouter API key means Codex sent a key from another provider, such as `OPENAI_API_KEY`. On Windows, make sure you use the PowerShell variant above and that the environment variable is set user-wide (`setx`), then fully restart Codex.
 - **Model Not Found:** Verify the model ID on [openrouter.ai/models](https://openrouter.ai/models). Use the exact format (e.g., `~openai/gpt-sol-latest`).
 - **Privacy:** OpenRouter does not log your source code prompts unless you opt-in to prompt logging. See our [Privacy Policy](https://openrouter.ai/privacy) for details.
 
