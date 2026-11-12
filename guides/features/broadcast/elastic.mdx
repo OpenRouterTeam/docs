@@ -19,7 +19,7 @@ icon: puzzle-piece
 [Elastic Observability](https://www.elastic.co/observability) stores and analyzes logs, metrics, and traces in Elasticsearch. OpenRouter sends traces to Elastic as OTLP HTTP/JSON with [OpenTelemetry GenAI](https://opentelemetry.io/docs/specs/semconv/gen-ai/) attributes, which Elastic's [LLM observability](https://www.elastic.co/docs/solutions/observability/applications/llm-observability) views use.
 
 <Note>
-Broadcast sends traces only. It doesn't send logs or metrics.
+The Elastic destination sends traces only. It doesn't send logs or metrics.
 </Note>
 
 ## Step 1: Get your Elastic endpoint and API key

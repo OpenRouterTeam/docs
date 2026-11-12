@@ -1,7 +1,7 @@
 ---
 publish: true
 title: OpenTelemetry Collector
-description: Send traces to any OpenTelemetry-compatible backend
+description: Send traces, and optionally metrics, to any OpenTelemetry-compatible backend
 seoTitle: 'Broadcast to OpenTelemetry Collector | OpenRouter Observability'
 og:site_name: OpenRouter Documentation
 og:title: 'Broadcast to OpenTelemetry Collector - Send Traces to OTLP Backends'
@@ -46,6 +46,8 @@ Go to [Settings > Observability](https://openrouter.ai/settings/observability) a
 Click the edit icon next to **OpenTelemetry Collector** and enter:
 
 - **Endpoint**: Your OTLP traces endpoint URL (e.g., `https://api.axiom.co/v1/traces` or `https://your-collector.example.com:4318/v1/traces`)
+- **Send OTLP metrics** (optional, off by default): Also send [OTLP metrics](#metrics) for each generation, with the same headers. Leave it off to send traces only.
+- **Metrics endpoint**: Your OTLP metrics endpoint URL (e.g., `https://your-collector.example.com:4318/v1/metrics`). Required while **Send OTLP metrics** is on: the form keeps **Test Connection** disabled until it is set, and the API (`shouldSendMetrics: true` without `metricsEndpoint`) rejects the configuration with "Metrics endpoint is required while Send OTLP metrics is on". Ignored while the checkbox is off, so turning it off stops metrics without clearing the URL.
 - **Headers** (optional): Custom HTTP headers as a JSON object for authentication
 
 Example headers for Axiom:
@@ -66,7 +68,7 @@ Example headers for authenticated collectors:
 
 ## Step 4: Test and save
 
-Click **Test Connection** to verify the setup. The configuration only saves if the test passes.
+Click **Test Connection** to verify the setup. The configuration only saves if the test passes. With **Send OTLP metrics** on, the test also sends one `openrouter.connection_test` data point to the metrics endpoint and fails if that endpoint rejects it.
 
 ## Step 5: Send a test trace
 
@@ -84,8 +86,90 @@ The OpenTelemetry Collector destination works with any backend that supports OTL
 - **Self-hosted OpenTelemetry Collector** - Route traces to multiple backends
 
 <Tip>
-OpenRouter sends traces using the OTLP/HTTP protocol with JSON encoding. Ensure your collector or backend is configured to accept OTLP over HTTP on the `/v1/traces` path.
+OpenRouter sends traces using the OTLP/HTTP protocol with JSON encoding. Ensure your collector or backend is configured to accept OTLP over HTTP on the `/v1/traces` path, and on `/v1/metrics` if you send metrics.
 </Tip>
+
+## Metrics
+
+With **Send OTLP metrics** on and a **Metrics endpoint** set, OpenRouter sends OTLP metrics alongside traces, as a separate OTLP/HTTP JSON request. The numbers are the ones already on the generation span, as time series you can aggregate without deriving them from spans.
+
+### What is sent
+
+Each generation produces one set of data points, measured from the generation itself; provider fallback attempts do not add to the counts.
+
+| Metric | Type | Unit | Value | Sent when |
+| --- | --- | --- | --- | --- |
+| `gen_ai.client.token.usage` | Histogram | `{token}` | Prompt tokens (`gen_ai.token.type` = `input`) and completion tokens (`output`) | The count is known |
+| `gen_ai.client.operation.duration` | Histogram | `s` | Generation end minus start | Always, except for a generation with no recorded end |
+| `gen_ai.server.time_to_first_token` | Histogram | `s` | Time from the request reaching OpenRouter to the first token | The generation succeeded and its first token was measured, which needs a streamed provider response |
+| `gen_ai.server.time_per_output_token` | Histogram | `s` | Mean time between output tokens after the first | The generation succeeded, the decode phase was measured, and there were at least two output tokens |
+| `openrouter.router.duration` | Histogram | `s` | OpenRouter routing overhead | Router latency was measured |
+| `openrouter.requests` | Sum (monotonic) | `{request}` | `1` | Always |
+| `openrouter.cost` | Sum (monotonic) | `{USD}` | Total cost of the generation | The cost is known |
+
+Histograms use the bucket boundaries of the [OpenTelemetry GenAI metric conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/). `openrouter.router.duration` uses buckets from 1 ms to 5 s, since routing overhead is usually a few milliseconds. `openrouter.cost` is sent whether or not **Cost** is enabled under **Additional generation metadata**, because the same value is already on every span as `gen_ai.usage.total_cost`.
+
+### Attributes
+
+Every data point carries only these attributes, so the number of series stays bounded:
+
+| Attribute | Value |
+| --- | --- |
+| `gen_ai.operation.name` | The API surface, e.g. `chat` or `embeddings`; left out for older requests that did not record it |
+| `gen_ai.request.model` | The model, e.g. `openai/gpt-4o` |
+| `gen_ai.provider.name` | The provider that served the generation |
+| `openrouter.api_key.name` | The name of the API key that made the request. Each named key adds its own series, so the series count grows with the number of keys sending traffic |
+| `error.type` | Failed generations only: the HTTP status code, or `_OTHER` |
+| `http.response.status_code` | Failed generations only, when a status code was recorded |
+| `openrouter.error.ownership` | Failed generations only, when known: `openrouter`, `provider`, `client`, `shared`, or `undeterminable` |
+| `gen_ai.token.type` | `gen_ai.client.token.usage` only: `input` or `output` |
+
+The resource carries `service.name` = `openrouter`. Trace, span and generation IDs, user and session IDs, prompts, and custom metadata are never metric attributes; use traces for those.
+
+### Delta temporality
+
+Data points use delta temporality: each one counts a single generation, over a window from the generation's start to its end. OpenRouter keeps no running totals between requests, so there are no cumulative series to reset. Data points from concurrent requests on the same series have overlapping windows.
+
+Backends that store delta metrics natively ingest these as they arrive. Prometheus-compatible backends such as Prometheus, Mimir, and Thanos store cumulative series, so they need delta ingestion support or a conversion step in front of them. The OpenTelemetry Collector's `deltatocumulative` processor is one such step, but it applies the same checks to every metric type. It drops a data point whose timestamp is not newer than the last one it accepted for that series (`ErrOutOfOrder`), and one that starts before the series' first data point (`ErrOlderStart`). OpenRouter sends one data point per generation, in delivery order rather than time order, so on a busy series some points arrive out of order and are dropped, including two generations that end in the same millisecond. Every metric loses points on that path: `openrouter.requests` and `openrouter.cost` undercount your real requests and spend, and histograms lose samples. Check how your backend handles delta data before you build alerts or billing reports on these counts.
+
+### Delivery
+
+- Metrics are sent only after the trace for that generation is accepted. A trace that is retried is sent with its metrics once, on the attempt that delivers it.
+- A failed metrics request does not fail or retry the trace and is not retried itself, so counts can fall short while the metrics endpoint is unavailable.
+- Metrics follow this destination's sampling rate and filter rules, because they are sent with the traces it sends. At a sampling rate of 0.5, the counts cover about half of your requests.
+- Privacy Mode does not change metrics: they never contain prompt or completion content.
+
+### Example collector configuration
+
+A collector that receives traces and metrics from OpenRouter on port 4318 and forwards both to an OTLP backend:
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+
+exporters:
+  otlphttp:
+    endpoint: https://otlp.example.com
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp]
+```
+
+Set **Endpoint** to `https://your-collector.example.com:4318/v1/traces`, turn on **Send OTLP metrics**, and set **Metrics endpoint** to `https://your-collector.example.com:4318/v1/metrics`.
 
 ## Custom Metadata
 
