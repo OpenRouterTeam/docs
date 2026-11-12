@@ -170,7 +170,7 @@ The endpoints are:
 
 The `{slug}` path parameter is a URL-safe identifier for the preset. If a preset with that slug already exists in your workspace, a new version is created and designated as the active version. If it does not exist, a new preset is created.
 
-These endpoints require a read-write [management key](/docs/guides/overview/auth/management-api-keys), like other workspace configuration endpoints; inference API keys are rejected with a 401. If you omit `workspace_id`, the preset is created in the key's workspace (keys limited to one workspace) or the account's default workspace. Pass `workspace_id` to target another workspace.
+These endpoints require a read-write [management key](/guides/overview/auth/management-api-keys), like other workspace configuration endpoints; inference API keys are rejected with a 401. If you omit `workspace_id`, the preset is created in the key's workspace (keys limited to one workspace) or the account's default workspace. Pass `workspace_id` to target another workspace.
 
 ### From a Chat Completions request
 
@@ -268,7 +268,7 @@ This lets you iterate on prompts and parameters in code, then promote the workin
 
 ## Lifecycle
 
-Lifecycle calls require a read-write [management key](/docs/guides/overview/auth/management-api-keys). A management key limited to one workspace can only act in that workspace.
+Lifecycle calls require a read-write [management key](/guides/overview/auth/management-api-keys). A management key limited to one workspace can only act in that workspace.
 
 1. Delete a preset with `DELETE /api/v1/presets/{slug}`. Deleting archives the preset: inference requests that reference it fail, and it no longer appears in get or list responses. The preset and its versions are kept, so the slug stays taken and creating a preset with the same slug returns `400`. Deleting an already-archived preset succeeds again.
 2. Restore a deleted preset with `POST /api/v1/presets/{slug}/restore`, the inverse of delete. The preset becomes active again with the same designated version; no new version is created.

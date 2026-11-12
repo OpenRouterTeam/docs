@@ -18,7 +18,6 @@ sidebarTitle: Video Understanding
 ---
 
 import { API_KEY_REF } from "/snippets/exports/constants.mdx";
-import { Template } from "/snippets/exports/Template.jsx";
 
 OpenRouter supports sending video files to compatible models via the API. This guide shows you how to work with video through the API.
 
@@ -45,22 +44,18 @@ You can search for models that support video by filtering to video input modalit
 
 Here's how to send a video using a URL. Note that for Google Gemini on AI Studio, only YouTube links are supported:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemini-2.5-flash'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" expandable lines
 import { OpenRouter } from '@openrouter/sdk';
 
 const openRouter = new OpenRouter({
-  apiKey: '{{API_KEY_REF}}',
+  apiKey: '<OPENROUTER_API_KEY>',
 });
 
 const result = await openRouter.responses.send({
   responsesRequest: {
-    model: "{{MODEL}}",
+    model: "google/gemini-2.5-flash",
     input: [
       {
         role: "user",
@@ -110,7 +105,7 @@ input_items = [
 ]
 
 payload = {
-    "model": "{{MODEL}}",
+    "model": "google/gemini-2.5-flash",
     "input": input_items
 }
 
@@ -126,7 +121,7 @@ const response = await fetch("https://openrouter.ai/api/v1/responses", {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: "{{MODEL}}",
+    model: "google/gemini-2.5-flash",
     input: [
       {
         role: "user",
@@ -150,16 +145,11 @@ console.log(data);
 ```
 
 </CodeGroup>
-</Template>
 
 ### Using Base64 Encoded Videos
 
 For locally stored videos, you can send them using base64 encoding as data URLs:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemini-2.5-flash'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" expandable lines
@@ -167,7 +157,7 @@ import { OpenRouter } from '@openrouter/sdk';
 import * as fs from 'fs';
 
 const openRouter = new OpenRouter({
-  apiKey: '{{API_KEY_REF}}',
+  apiKey: '<OPENROUTER_API_KEY>',
 });
 
 async function encodeVideoToBase64(videoPath: string): Promise<string> {
@@ -182,7 +172,7 @@ const base64Video = await encodeVideoToBase64(videoPath);
 
 const result = await openRouter.responses.send({
   responsesRequest: {
-    model: '{{MODEL}}',
+    model: 'google/gemini-2.5-flash',
     input: [
       {
         role: 'user',
@@ -243,7 +233,7 @@ input_items = [
 ]
 
 payload = {
-    "model": "{{MODEL}}",
+    "model": "google/gemini-2.5-flash",
     "input": input_items
 }
 
@@ -271,7 +261,7 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: 'google/gemini-2.5-flash',
     input: [
       {
         role: 'user',
@@ -295,7 +285,6 @@ console.log(data);
 ```
 
 </CodeGroup>
-</Template>
 
 ### Video Processing Mode
 
@@ -323,10 +312,6 @@ The Messages API (`/api/v1/messages`) does not support video inputs.
 
 #### Responses API
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemini-2.5-flash'
-}}>
 <CodeGroup>
 
 ```python Python expandable lines
@@ -339,7 +324,7 @@ headers = {
 }
 
 payload = {
-    "model": "{{MODEL}}",
+    "model": "google/gemini-2.5-flash",
     "input": [
         {
             "role": "user",
@@ -370,7 +355,7 @@ const response = await fetch("https://openrouter.ai/api/v1/responses", {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: "{{MODEL}}",
+    model: "google/gemini-2.5-flash",
     input: [
       {
         role: "user",
@@ -395,14 +380,9 @@ console.log(data);
 ```
 
 </CodeGroup>
-</Template>
 
 #### Chat Completions API
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemini-2.5-flash'
-}}>
 <CodeGroup>
 
 ```python Python expandable lines
@@ -415,7 +395,7 @@ headers = {
 }
 
 payload = {
-    "model": "{{MODEL}}",
+    "model": "google/gemini-2.5-flash",
     "messages": [
         {
             "role": "user",
@@ -448,7 +428,7 @@ const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: "{{MODEL}}",
+    model: "google/gemini-2.5-flash",
     messages: [
       {
         role: "user",
@@ -475,7 +455,6 @@ console.log(data);
 ```
 
 </CodeGroup>
-</Template>
 
 #### Response handling per API
 

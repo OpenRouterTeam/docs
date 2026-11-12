@@ -17,8 +17,7 @@ icon: laptop-code
 sidebarTitle: Client Tools
 ---
 
-import { API_KEY_REF, Model } from '/snippets/exports/constants.mdx';
-import { Template } from "/snippets/exports/Template.jsx";
+import { Model } from "/snippets/exports/constants.mdx";
 
 Tool calls (also known as function calls) give an LLM access to external tools. The LLM does not call the tools directly. Instead, it suggests the tool to call. The user then calls the tool separately and provides the results back to the LLM. Finally, the LLM formats the response into an answer to the user's original question.
 
@@ -228,10 +227,6 @@ Here is an end-to-end example that gives LLMs the ability to call an external AP
 
 First, let's do some basic setup:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemini-3-flash-preview'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" expandable lines
@@ -248,10 +243,10 @@ import type {
 } from '@openrouter/sdk/models';
 import { OpenRouter } from '@openrouter/sdk';
 
-const OPENROUTER_API_KEY = "{{API_KEY_REF}}";
+const OPENROUTER_API_KEY = "<OPENROUTER_API_KEY>";
 
 // You can use any model that supports tool calling
-const MODEL = "{{MODEL}}";
+const MODEL = "google/gemini-3-flash-preview";
 
 const openRouter = new OpenRouter({
   apiKey: OPENROUTER_API_KEY,
@@ -308,10 +303,10 @@ function isFunctionCallOrReasoningItem(
 import json, requests
 from openai import OpenAI
 
-OPENROUTER_API_KEY = f"{{API_KEY_REF}}"
+OPENROUTER_API_KEY = f"<OPENROUTER_API_KEY>"
 
 # You can use any model that supports tool calling
-MODEL = "{{MODEL}}"
+MODEL = "google/gemini-3-flash-preview"
 
 openai_client = OpenAI(
   base_url="https://openrouter.ai/api/v1",
@@ -342,16 +337,11 @@ const input: unknown[] = [
 ```
 
 </CodeGroup>
-</Template>
 
 ### Define the Tool
 
 Next, we define the tool that we want to call. Remember, the tool is going to get _requested_ by the LLM, but the code we are writing here is ultimately responsible for executing the call and returning the results to the LLM.
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemini-3-flash-preview'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" expandable lines
@@ -521,7 +511,6 @@ const tools = [
 ```
 
 </CodeGroup>
-</Template>
 
 Note that the "tool" is just a normal function. We then write a JSON "spec" compatible with the OpenAI function calling parameter. We'll pass that spec to the LLM so that it knows this tool is available and how to use it. It will request the tool when needed, along with any arguments. We'll then marshal the tool call locally, make the function call, and return the results to the LLM.
 
@@ -529,16 +518,12 @@ Note that the "tool" is just a normal function. We then write a JSON "spec" comp
 
 Let's make the first OpenRouter API call to the model:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemini-3-flash-preview'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" lines
 const response_1 = await openRouter.responses.send({
   responsesRequest: {
-    model: '{{MODEL}}',
+    model: MODEL,
     instructions,
     tools,
     input,
@@ -566,11 +551,11 @@ response_1 = openai_client.responses.create(**request_1)
 const request_1 = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    Authorization: `Bearer {{API_KEY_REF}}`,
+    Authorization: `Bearer <OPENROUTER_API_KEY>`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: MODEL,
     instructions,
     tools,
     input,
@@ -581,14 +566,9 @@ const data_1 = await request_1.json();
 ```
 
 </CodeGroup>
-</Template>
 
 `response.output` contains `function_call` items with a `call_id`, `name`, and JSON-encoded `arguments`. Production code should verify that at least one exists; this example assumes one does:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemini-3-flash-preview'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" lines
@@ -673,7 +653,6 @@ for (const toolCall of toolCalls) {
 ```
 
 </CodeGroup>
-</Template>
 
 The input array now has:
 
@@ -683,16 +662,12 @@ The input array now has:
 
 Now, we can make a second OpenRouter API call, and hopefully get our result!
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemini-3-flash-preview'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" lines
 const response_2 = await openRouter.responses.send({
   responsesRequest: {
-    model: '{{MODEL}}',
+    model: MODEL,
     instructions,
     input,
     tools,
@@ -725,11 +700,11 @@ print(response_2.output_text)
 const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    Authorization: `Bearer {{API_KEY_REF}}`,
+    Authorization: `Bearer <OPENROUTER_API_KEY>`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: MODEL,
     instructions,
     input: input_2,
     tools,
@@ -742,7 +717,6 @@ console.log(message?.content.find((part: { type: string; text?: string }) => par
 ```
 
 </CodeGroup>
-</Template>
 
 The output will be something like:
 
@@ -856,17 +830,13 @@ In the example above, the calls are made explicitly and sequentially. To handle 
 
 Here's an example of a simple agentic loop (using the same `tools`, `instructions`, and initial `input` as above):
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemini-3-flash-preview'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" expandable lines
 async function callLLM(input: InputsUnion1[]): Promise<OpenResponsesResult> {
   const result = await openRouter.responses.send({
     responsesRequest: {
-      model: '{{MODEL}}',
+      model: MODEL,
       instructions,
       tools,
       input,
@@ -981,7 +951,6 @@ print(final_text)
 ```
 
 </CodeGroup>
-</Template>
 
 ## Best Practices and Advanced Patterns
 

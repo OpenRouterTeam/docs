@@ -138,10 +138,9 @@ export const BYOK_PAYG_MONTHLY_LIST_PRICE_THRESHOLD_USD = '$25,000';
 
 export const BYOK_FEE_PERCENTAGE = '5';
 
-export const getTotalFeeString = (type, value) => {
-  if (type === 'stripe') return '5.5% ($0.80 minimum)';
-  if (type === 'coinbase') return '5%';
-};
+export const STRIPE_TOTAL_FEE_STRING = '5.5% ($0.80 minimum)';
+
+export const COINBASE_TOTAL_FEE_STRING = '5%';
 
 export const anthropicMaxMessagesCount = 100000;
 

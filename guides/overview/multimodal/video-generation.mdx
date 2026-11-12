@@ -16,7 +16,6 @@ nofollow: false
 icon: film
 ---
 
-import { Template } from "/snippets/exports/Template.jsx";
 import {
   API_KEY_REF,
 } from '/snippets/exports/constants.mdx';
@@ -128,10 +127,6 @@ Unlike text or image generation, video generation is **asynchronous** because ge
 
 ### Submitting a Video Generation Request
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/veo-3.1'
-}}>
 <CodeGroup>
 
 ```python Python expandable lines
@@ -146,7 +141,7 @@ headers = {
 }
 
 payload = {
-    "model": "{{MODEL}}",
+    "model": "google/veo-3.1",
     "prompt": "A golden retriever playing fetch on a sunny beach with waves crashing in the background"
 }
 
@@ -191,7 +186,7 @@ const response = await fetch('https://openrouter.ai/api/v1/videos', {
   method: 'POST',
   headers,
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: 'google/veo-3.1',
     prompt: 'A golden retriever playing fetch on a sunny beach with waves crashing in the background',
   }),
 });
@@ -231,7 +226,7 @@ curl -X POST "https://openrouter.ai/api/v1/videos" \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "{{MODEL}}",
+    "model": "google/veo-3.1",
     "prompt": "A golden retriever playing fetch on a sunny beach with waves crashing in the background"
   }'
 
@@ -251,7 +246,6 @@ curl "https://openrouter.ai/api/v1/videos/<job_id>" \
 ```
 
 </CodeGroup>
-</Template>
 
 ### Request Parameters
 

@@ -19,8 +19,6 @@ tag: Beta
 
 <Badge color="blue">Beta</Badge>
 
-import { API_KEY_REF } from '/snippets/exports/constants.mdx';
-import { Template } from "/snippets/exports/Template.jsx";
 
 <Note>
 **Beta**
@@ -54,21 +52,17 @@ This is a **human-in-the-loop** tool: OpenRouter validates the diff but never ap
 
 ## Quick Start
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'openai/gpt-5.1-codex-mini'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript" lines
 const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    Authorization: 'Bearer {{API_KEY_REF}}',
+    Authorization: 'Bearer <OPENROUTER_API_KEY>',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: 'openai/gpt-5.1-codex-mini',
     input: 'Create a hello.py file that prints "Hello, world!"',
     tools: [
       { type: 'openrouter:apply_patch' }
@@ -88,11 +82,11 @@ import requests
 response = requests.post(
   "https://openrouter.ai/api/v1/responses",
   headers={
-    "Authorization": f"Bearer {{API_KEY_REF}}",
+    "Authorization": f"Bearer <OPENROUTER_API_KEY>",
     "Content-Type": "application/json",
   },
   json={
-    "model": "{{MODEL}}",
+    "model": "openai/gpt-5.1-codex-mini",
     "input": "Create a hello.py file that prints 'Hello, world!'",
     "tools": [
       {"type": "openrouter:apply_patch"}
@@ -108,10 +102,10 @@ print(data["output"])
 
 ```bash title="cURL" lines
 curl https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer {{API_KEY_REF}}" \
+  -H "Authorization: Bearer <OPENROUTER_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "{{MODEL}}",
+    "model": "openai/gpt-5.1-codex-mini",
     "input": "Create a hello.py file that prints \"Hello, world!\"",
     "tools": [
       {"type": "openrouter:apply_patch"}
@@ -120,7 +114,6 @@ curl https://openrouter.ai/api/v1/responses \
 ```
 
 </CodeGroup>
-</Template>
 
 ## Patch Operations
 

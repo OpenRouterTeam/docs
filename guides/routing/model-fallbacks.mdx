@@ -16,8 +16,6 @@ nofollow: false
 icon: arrows-rotate
 ---
 
-import { API_KEY_REF } from '/snippets/exports/constants.mdx';
-import { Template } from "/snippets/exports/Template.jsx";
 
 The `models` parameter lets you automatically try other models if the primary model's providers are down, rate-limited, or refuse to reply due to content moderation.
 
@@ -145,9 +143,6 @@ const message = await anthropic.beta.messages.create({
 
 To use the `models` array with the OpenAI SDK, include it in the `extra_body` parameter. In the example below, `~openai/gpt-sol-latest` will be tried first, and the `models` array will be tried in order as fallbacks.
 
-<Template data={{
-  API_KEY_REF,
-}}>
 <CodeGroup>
 
 
@@ -156,7 +151,7 @@ from openai import OpenAI
 
 openai_client = OpenAI(
   base_url="https://openrouter.ai/api/v1",
-  api_key={{API_KEY_REF}},
+  api_key="<OPENROUTER_API_KEY>",
 )
 
 response = openai_client.responses.create(
@@ -175,7 +170,7 @@ import OpenAI from 'openai';
 
 const openrouterClient = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: '{{API_KEY_REF}}',
+  apiKey: '<OPENROUTER_API_KEY>',
 });
 
 async function main() {
@@ -192,4 +187,3 @@ main();
 ```
 
 </CodeGroup>
-</Template>
