@@ -19,8 +19,6 @@ tag: Beta
 
 <Badge color="blue">Beta</Badge>
 
-import { API_KEY_REF } from '/snippets/exports/constants.mdx';
-import { Template } from "/snippets/exports/Template.jsx";
 
 <Note>
 **Beta**
@@ -143,14 +141,12 @@ Files created inside a container can be downloaded through the container files e
 
 List the files in a container:
 
-<Template data={{ API_KEY_REF }}>
 
 ```bash title="cURL" lines
 curl "https://openrouter.ai/api/v1/containers/sess_abc123/files" \
-  -H "Authorization: Bearer {{API_KEY_REF}}"
+  -H "Authorization: Bearer <OPENROUTER_API_KEY>"
 ```
 
-</Template>
 
 ```json lines
 {
@@ -182,14 +178,12 @@ Container file ids start with `cfile_`. They encode the file path, and they matc
 
 Container files live with the container. To keep a file for the long term, promote it to a workspace document:
 
-<Template data={{ API_KEY_REF }}>
 
 ```bash title="cURL" lines
 curl -X POST "https://openrouter.ai/api/v1/containers/sess_abc123/files/cfile_b3V0L3JlcG9ydC5jc3Y/promote" \
-  -H "Authorization: Bearer {{API_KEY_REF}}"
+  -H "Authorization: Bearer <OPENROUTER_API_KEY>"
 ```
 
-</Template>
 
 ```json lines
 {

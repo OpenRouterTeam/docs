@@ -21,10 +21,11 @@ sidebarTitle: FAQ
 import {
   BYOK_FEE_PERCENTAGE,
   BYOK_PAYG_MONTHLY_LIST_PRICE_THRESHOLD_USD,
+  COINBASE_TOTAL_FEE_STRING,
   FREE_MODEL_CREDITS_THRESHOLD,
   FREE_MODEL_HAS_CREDITS_RPD,
   FREE_MODEL_NO_CREDITS_RPD,
-  getTotalFeeString
+  STRIPE_TOTAL_FEE_STRING,
 } from '/snippets/exports/constants.mdx';
 
 ## Getting started
@@ -81,11 +82,11 @@ import {
 
 <AccordionGroup>
   <Accordion title='What are the fees for using OpenRouter?'>
-    OpenRouter charges a {getTotalFeeString('stripe', null)} fee when you purchase credits. We pass through
+    OpenRouter charges a {STRIPE_TOTAL_FEE_STRING} fee when you purchase credits. We pass through
     the pricing of the underlying model providers without any markup, so you pay
     the same rate as you would directly with the provider.
 
-    Crypto payments are charged a fee of {getTotalFeeString('coinbase', null)}.
+    Crypto payments are charged a fee of {COINBASE_TOTAL_FEE_STRING}.
 
   </Accordion>
   <Accordion title='Is there a fee for using my own provider keys (BYOK)?'>

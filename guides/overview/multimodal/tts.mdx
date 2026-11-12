@@ -16,7 +16,6 @@ nofollow: false
 icon: microphone
 ---
 
-import { Template } from "/snippets/exports/Template.jsx";
 import {
   API_KEY_REF,
 } from '/snippets/exports/constants.mdx';
@@ -46,10 +45,6 @@ Send a `POST` request to `/api/v1/audio/speech` with the text you want to synthe
 
 ### Basic Example
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'openai/gpt-4o-mini-tts-2025-12-15'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" expandable lines
@@ -57,11 +52,11 @@ import { OpenRouter } from '@openrouter/sdk';
 import fs from 'fs';
 
 const openRouter = new OpenRouter({
-  apiKey: '{{API_KEY_REF}}',
+  apiKey: '<OPENROUTER_API_KEY>',
 });
 
 const stream = await openRouter.tts.createSpeech({
-  model: '{{MODEL}}',
+  model: 'openai/gpt-4o-mini-tts-2025-12-15',
   input: 'Hello! This is a text-to-speech test.',
   voice: 'alloy',
   responseFormat: 'mp3',
@@ -91,11 +86,11 @@ from openai import OpenAI
 
 client = OpenAI(
   base_url="https://openrouter.ai/api/v1",
-  api_key="{{API_KEY_REF}}",
+  api_key="<OPENROUTER_API_KEY>",
 )
 
 with client.audio.speech.with_streaming_response.create(
-  model="{{MODEL}}",
+  model="openai/gpt-4o-mini-tts-2025-12-15",
   input="Hello! This is a text-to-speech test.",
   voice="alloy",
   response_format="mp3"
@@ -113,7 +108,7 @@ response = requests.post(
     "Content-Type": "application/json"
   },
   json={
-    "model": "{{MODEL}}",
+    "model": "openai/gpt-4o-mini-tts-2025-12-15",
     "input": "Hello! This is a text-to-speech test.",
     "voice": "alloy",
     "response_format": "mp3"
@@ -136,7 +131,7 @@ const response = await fetch('https://openrouter.ai/api/v1/audio/speech', {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: 'openai/gpt-4o-mini-tts-2025-12-15',
     input: 'Hello! This is a text-to-speech test.',
     voice: 'alloy',
     response_format: 'mp3',
@@ -160,7 +155,7 @@ curl https://openrouter.ai/api/v1/audio/speech \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   --output output.mp3 \
   -d '{
-    "model": "{{MODEL}}",
+    "model": "openai/gpt-4o-mini-tts-2025-12-15",
     "input": "Hello! This is a text-to-speech test.",
     "voice": "alloy",
     "response_format": "mp3"
@@ -168,7 +163,6 @@ curl https://openrouter.ai/api/v1/audio/speech \
 ```
 
 </CodeGroup>
-</Template>
 
 ### Request Parameters
 
@@ -415,9 +409,6 @@ Most TTS models are priced **per character** of input text. Some audio generatio
 
 The TTS endpoint is fully compatible with the OpenAI SDK. You can use the OpenAI client libraries by pointing them at OpenRouter's base URL:
 
-<Template data={{
-  API_KEY_REF,
-}}>
 <CodeGroup>
 
 ```python title="OpenAI Python SDK" expandable lines
@@ -425,7 +416,7 @@ from openai import OpenAI
 
 client = OpenAI(
   base_url="https://openrouter.ai/api/v1",
-  api_key="{{API_KEY_REF}}",
+  api_key="<OPENROUTER_API_KEY>",
 )
 
 # Non-streaming: get the full audio response
@@ -453,7 +444,7 @@ import fs from 'fs';
 
 const client = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: '{{API_KEY_REF}}',
+  apiKey: '<OPENROUTER_API_KEY>',
 });
 
 const response = await client.audio.speech.create({
@@ -469,7 +460,6 @@ console.log('Audio saved to output.mp3');
 ```
 
 </CodeGroup>
-</Template>
 
 ## Best Practices
 

@@ -16,8 +16,6 @@ nofollow: false
 icon: draw-square
 ---
 
-import { API_KEY_REF } from '/snippets/exports/constants.mdx';
-import { Template } from "/snippets/exports/Template.jsx";
 
 Embeddings are numerical representations of text that capture semantic meaning. They convert text into vectors (arrays of numbers) that can be used for various machine learning tasks. OpenRouter provides a unified API to access embedding models from multiple providers.
 
@@ -49,21 +47,17 @@ Embeddings are used in a wide variety of applications:
 
 To generate embeddings, send a POST request to `/embeddings` with your text input and chosen model:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'openai/text-embedding-3-small'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" lines
 import { OpenRouter } from '@openrouter/sdk';
 
 const openRouter = new OpenRouter({
-  apiKey: '{{API_KEY_REF}}',
+  apiKey: '<OPENROUTER_API_KEY>',
 });
 
 const response = await openRouter.embeddings.generate({
-  model: '{{MODEL}}',
+  model: 'openai/text-embedding-3-small',
   input: 'The quick brown fox jumps over the lazy dog',
 });
 
@@ -76,11 +70,11 @@ import requests
 response = requests.post(
   "https://openrouter.ai/api/v1/embeddings",
   headers={
-    "Authorization": f"Bearer {{API_KEY_REF}}",
+    "Authorization": f"Bearer <OPENROUTER_API_KEY>",
     "Content-Type": "application/json",
   },
   json={
-    "model": "{{MODEL}}",
+    "model": "openai/text-embedding-3-small",
     "input": "The quick brown fox jumps over the lazy dog"
   }
 )
@@ -94,11 +88,11 @@ print(f"Embedding dimension: {len(embedding)}")
 const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer {{API_KEY_REF}}',
+    'Authorization': 'Bearer <OPENROUTER_API_KEY>',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: 'openai/text-embedding-3-small',
     input: 'The quick brown fox jumps over the lazy dog',
   }),
 });
@@ -113,33 +107,28 @@ curl https://openrouter.ai/api/v1/embeddings \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -d '{
-    "model": "{{MODEL}}",
+    "model": "openai/text-embedding-3-small",
     "input": "The quick brown fox jumps over the lazy dog"
   }'
 ```
 
 </CodeGroup>
-</Template>
 
 ### Batch processing
 
 You can generate embeddings for multiple texts in a single request by passing an array of strings:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'openai/text-embedding-3-small'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" lines
 import { OpenRouter } from '@openrouter/sdk';
 
 const openRouter = new OpenRouter({
-  apiKey: '{{API_KEY_REF}}',
+  apiKey: '<OPENROUTER_API_KEY>',
 });
 
 const response = await openRouter.embeddings.generate({
-  model: '{{MODEL}}',
+  model: 'openai/text-embedding-3-small',
   input: [
     'Machine learning is a subset of artificial intelligence',
     'Deep learning uses neural networks with multiple layers',
@@ -159,11 +148,11 @@ import requests
 response = requests.post(
   "https://openrouter.ai/api/v1/embeddings",
   headers={
-    "Authorization": f"Bearer {{API_KEY_REF}}",
+    "Authorization": f"Bearer <OPENROUTER_API_KEY>",
     "Content-Type": "application/json",
   },
   json={
-    "model": "{{MODEL}}",
+    "model": "openai/text-embedding-3-small",
     "input": [
       "Machine learning is a subset of artificial intelligence",
       "Deep learning uses neural networks with multiple layers",
@@ -181,11 +170,11 @@ for i, item in enumerate(data["data"]):
 const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer {{API_KEY_REF}}',
+    'Authorization': 'Bearer <OPENROUTER_API_KEY>',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: 'openai/text-embedding-3-small',
     input: [
       'Machine learning is a subset of artificial intelligence',
       'Deep learning uses neural networks with multiple layers',
@@ -205,7 +194,7 @@ curl https://openrouter.ai/api/v1/embeddings \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -d '{
-    "model": "{{MODEL}}",
+    "model": "openai/text-embedding-3-small",
     "input": [
       "Machine learning is a subset of artificial intelligence",
       "Deep learning uses neural networks with multiple layers",
@@ -215,7 +204,6 @@ curl https://openrouter.ai/api/v1/embeddings \
 ```
 
 </CodeGroup>
-</Template>
 
 ### Image input
 
@@ -223,10 +211,6 @@ Some embedding models support image inputs, enabling multimodal embeddings that 
 
 To send an image, wrap your input in the multimodal format with a `content` array containing `image_url` objects. You can also combine text and images in a single input block.
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'nvidia/llama-nemotron-embed-vl-1b-v2:free'
-}}>
 <CodeGroup>
 
 ```python title="Python" expandable lines
@@ -235,11 +219,11 @@ import requests
 response = requests.post(
   "https://openrouter.ai/api/v1/embeddings",
   headers={
-    "Authorization": f"Bearer {{API_KEY_REF}}",
+    "Authorization": f"Bearer <OPENROUTER_API_KEY>",
     "Content-Type": "application/json",
   },
   json={
-    "model": "{{MODEL}}",
+    "model": "nvidia/llama-nemotron-embed-vl-1b-v2:free",
     "input": [
       {
         "content": [
@@ -260,11 +244,11 @@ print(f"Embedding dimension: {len(embedding)}")
 const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer {{API_KEY_REF}}',
+    'Authorization': 'Bearer <OPENROUTER_API_KEY>',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: 'nvidia/llama-nemotron-embed-vl-1b-v2:free',
     input: [
       {
         content: [
@@ -286,7 +270,7 @@ curl https://openrouter.ai/api/v1/embeddings \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -d '{
-    "model": "{{MODEL}}",
+    "model": "nvidia/llama-nemotron-embed-vl-1b-v2:free",
     "input": [
       {
         "content": [
@@ -299,14 +283,9 @@ curl https://openrouter.ai/api/v1/embeddings \
 ```
 
 </CodeGroup>
-</Template>
 
 You can also combine text and images in a single input to generate a joint embedding:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'nvidia/llama-nemotron-embed-vl-1b-v2:free'
-}}>
 <CodeGroup>
 
 ```python title="Python" expandable lines
@@ -315,11 +294,11 @@ import requests
 response = requests.post(
   "https://openrouter.ai/api/v1/embeddings",
   headers={
-    "Authorization": f"Bearer {{API_KEY_REF}}",
+    "Authorization": f"Bearer <OPENROUTER_API_KEY>",
     "Content-Type": "application/json",
   },
   json={
-    "model": "{{MODEL}}",
+    "model": "nvidia/llama-nemotron-embed-vl-1b-v2:free",
     "input": [
       {
         "content": [
@@ -341,11 +320,11 @@ print(f"Embedding dimension: {len(embedding)}")
 const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer {{API_KEY_REF}}',
+    'Authorization': 'Bearer <OPENROUTER_API_KEY>',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: 'nvidia/llama-nemotron-embed-vl-1b-v2:free',
     input: [
       {
         content: [
@@ -368,7 +347,7 @@ curl https://openrouter.ai/api/v1/embeddings \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -d '{
-    "model": "{{MODEL}}",
+    "model": "nvidia/llama-nemotron-embed-vl-1b-v2:free",
     "input": [
       {
         "content": [
@@ -382,7 +361,6 @@ curl https://openrouter.ai/api/v1/embeddings \
 ```
 
 </CodeGroup>
-</Template>
 
 ## API reference
 
@@ -396,16 +374,13 @@ OpenRouter provides access to various embedding models from different providers.
 
 To list all available embedding models programmatically:
 
-<Template data={{
-  API_KEY_REF
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" lines
 import { OpenRouter } from '@openrouter/sdk';
 
 const openRouter = new OpenRouter({
-  apiKey: '{{API_KEY_REF}}',
+  apiKey: '<OPENROUTER_API_KEY>',
 });
 
 const models = await openRouter.embeddings.listModels();
@@ -418,7 +393,7 @@ import requests
 response = requests.get(
   "https://openrouter.ai/api/v1/embeddings/models",
   headers={
-    "Authorization": f"Bearer {{API_KEY_REF}}",
+    "Authorization": f"Bearer <OPENROUTER_API_KEY>",
   }
 )
 
@@ -430,7 +405,7 @@ for model in models["data"]:
 ```typescript title="TypeScript (fetch)" lines
 const response = await fetch('https://openrouter.ai/api/v1/embeddings/models', {
   headers: {
-    'Authorization': 'Bearer {{API_KEY_REF}}',
+    'Authorization': 'Bearer <OPENROUTER_API_KEY>',
   },
 });
 
@@ -444,23 +419,18 @@ curl https://openrouter.ai/api/v1/embeddings/models \
 ```
 
 </CodeGroup>
-</Template>
 
 ## Practical example: semantic search
 
 Here's a complete example of building a semantic search system using embeddings:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'openai/text-embedding-3-small'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" expandable lines
 import { OpenRouter } from '@openrouter/sdk';
 
 const openRouter = new OpenRouter({
-  apiKey: '{{API_KEY_REF}}',
+  apiKey: '<OPENROUTER_API_KEY>',
 });
 
 // Sample documents
@@ -483,7 +453,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
 async function semanticSearch(query: string, documents: string[]) {
   // Generate embeddings for all documents and the query
   const response = await openRouter.embeddings.generate({
-    model: '{{MODEL}}',
+    model: 'openai/text-embedding-3-small',
     input: [query, ...documents],
   });
 
@@ -517,7 +487,7 @@ results.forEach((result, i) => {
 import requests
 import numpy as np
 
-OPENROUTER_API_KEY = "{{API_KEY_REF}}"
+OPENROUTER_API_KEY = "<OPENROUTER_API_KEY>"
 
 # Sample documents
 documents = [
@@ -545,7 +515,7 @@ def semantic_search(query, documents):
       "Content-Type": "application/json",
     },
     json={
-      "model": "{{MODEL}}",
+      "model": "openai/text-embedding-3-small",
       "input": [query] + documents
     }
   )
@@ -573,7 +543,6 @@ for i, result in enumerate(results):
 ```
 
 </CodeGroup>
-</Template>
 
 Expected output:
 ```lines

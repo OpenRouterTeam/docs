@@ -7,7 +7,7 @@ description: Let an agent buy OpenRouter credits with a USDC machine payment on 
 
 An agent can top up its account without a browser by paying for credits over the [Machine Payments Protocol](https://mpp.dev) (MPP), an HTTP `402` payment flow. The agent sends USDC on the Tempo network; the OpenRouter management key on the request decides which account gets the credits, and the paying wallet only supplies the funds.
 
-Buying credits needs the same permission as buying them in the dashboard, so the request must use an organization-level [management key](/docs/guides/overview/auth/management-api-keys) with read-write access. Regular API keys, read-only management keys, and management keys scoped to a workspace can't buy credits. Reading a purchase back works with any organization-level management key of the account, including a read-only one.
+Buying credits needs the same permission as buying them in the dashboard, so the request must use an organization-level [management key](/guides/overview/auth/management-api-keys) with read-write access. Regular API keys, read-only management keys, and management keys scoped to a workspace can't buy credits. Reading a purchase back works with any organization-level management key of the account, including a read-only one.
 
 This endpoint is in limited availability and only works for accounts that have it enabled.
 
@@ -43,4 +43,4 @@ Retrying with the same `Idempotency-Key` returns the same purchase, so a retry n
 - `403`: the management key can't buy credits: it's read-only or scoped to a workspace, or the account can't buy credits with this payment method.
 - `404`: the account isn't enabled for agent credit purchases, or the purchase doesn't exist.
 - `409`: the `Idempotency-Key` was already used with a different amount, or the price changed between the `402` and the paid retry (for example, a fee waiver ended). No funds move. Start a new purchase with a new `Idempotency-Key`.
-- `503`: machine payments are temporarily unavailable, or the transfer's outcome is unknown. If you already sent a paid retry, poll the purchase before signing a new credential.
+- `503`: machine payments are temporarily unavailable, or the outcome of a paid retry is unknown. When the outcome is unknown and the purchase is known, the response names it in a `Location` header and in `error.metadata.purchase_id`. Poll that purchase before signing a new credential: `awaiting_payment` means no transfer has been seen yet. A `503` without a `Location` header names no purchase, so resend the request with the same `Idempotency-Key` instead: with the same credential if you paid by card, and with no credential if you paid with USDC. Don't pay again after a `503`, even if the resend answers `402`: the first payment may still arrive. `GET /api/v1/credits/purchases/setup` has the full recovery steps for each payment method.

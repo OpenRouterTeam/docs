@@ -148,10 +148,6 @@ Visit the [Models page](https://openrouter.ai/models?output_modalities=image) an
 
 Send a `POST` request to `/api/v1/images` with the model and prompt:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'bytedance-seed/seedream-4.5'
-}}>
 <CodeGroup>
 
 ```python title="Python (requests)" lines
@@ -165,7 +161,7 @@ headers = {
 }
 
 payload = {
-    "model": "{{MODEL}}",
+    "model": "bytedance-seed/seedream-4.5",
     "prompt": "a red panda astronaut floating in space, studio lighting"
 }
 
@@ -185,7 +181,7 @@ const response = await fetch('https://openrouter.ai/api/v1/images', {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: 'bytedance-seed/seedream-4.5',
     prompt: 'a red panda astronaut floating in space, studio lighting',
   }),
 });
@@ -203,13 +199,12 @@ curl -X POST "https://openrouter.ai/api/v1/images" \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "{{MODEL}}",
+    "model": "bytedance-seed/seedream-4.5",
     "prompt": "a red panda astronaut floating in space, studio lighting"
   }'
 ```
 
 </CodeGroup>
-</Template>
 
 ### Response Format
 
@@ -414,9 +409,6 @@ data: {"type":"error","error":{"message":"Generation failed","code":"server_erro
 
 The stream terminates with `data: [DONE]`.
 
-<Template data={{
-  API_KEY_REF,
-}}>
 <CodeGroup>
 
 ```python title="Python (requests)" expandable lines
@@ -486,7 +478,6 @@ curl -N -X POST "https://openrouter.ai/api/v1/images" \
 ```
 
 </CodeGroup>
-</Template>
 
 ## Billing and Cancellation
 

@@ -16,8 +16,6 @@ nofollow: false
 icon: bandage
 ---
 
-import { API_KEY_REF } from '/snippets/exports/constants.mdx';
-import { Template } from "/snippets/exports/Template.jsx";
 
 The Response Healing plugin automatically validates and repairs malformed JSON responses from AI models. When models return imperfect formatting – missing brackets, trailing commas, markdown wrappers, or mixed text – this plugin attempts to repair the response so you receive valid, parseable JSON.
 
@@ -101,21 +99,17 @@ Here's the data you requested:
 
 ## Complete Example
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemini-2.5-flash'
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript" expandable lines
 const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    Authorization: 'Bearer {{API_KEY_REF}}',
+    Authorization: 'Bearer <OPENROUTER_API_KEY>',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: 'google/gemini-2.5-flash',
     input: 'Generate a product listing with name, price, and description',
     text: {
       format: {
@@ -165,11 +159,11 @@ import json
 response = requests.post(
   "https://openrouter.ai/api/v1/responses",
   headers={
-    "Authorization": f"Bearer {{API_KEY_REF}}",
+    "Authorization": f"Bearer <OPENROUTER_API_KEY>",
     "Content-Type": "application/json",
   },
   json={
-    "model": "{{MODEL}}",
+    "model": "google/gemini-2.5-flash",
     "input": "Generate a product listing with name, price, and description",
     "text": {
       "format": {
@@ -211,7 +205,6 @@ print(product["name"], product["price"])
 ```
 
 </CodeGroup>
-</Template>
 
 ## Limitations
 <Warning>

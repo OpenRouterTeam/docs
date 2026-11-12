@@ -79,7 +79,7 @@ Batch accepts text, public image URLs, and some file URLs. It returns text and e
 | DeepInfra (`/v1/chat/completions` only) | Yes | Yes |
 | Mistral | Yes | Yes |
 | OpenAI | Yes | Models served on the Responses API only |
-| Google Vertex | Yes, and `gs://` images with BYOK | No |
+| Google Vertex | Yes, and `gs://` images with BYOK | `gs://` PDFs with BYOK only |
 | Google AI Studio | Yes | No. Public YouTube URLs work as `video_url` parts. |
 | xAI, Together, Sail Research | Yes | No |
 | Alibaba (`/v1/chat/completions` only) | Yes | No |
@@ -719,6 +719,10 @@ When the BYOK-only switch is on for your account or workspace, batches run only 
     Vertex batches use a bucket in your GCP project for input and output. Leave out `bucket`, and OpenRouter creates a private bucket on the first batch in each region. You can also give an existing bucket. See [Google Vertex API keys](/guides/overview/auth/byok#google-vertex-api-keys) for permissions.
 
     Vertex BYOK also accepts `gs://your-bucket/image.jpg` image URLs. Your project's Vertex AI service agent must be able to read the image until the batch finishes. Image names must end in `.png`, `.jpg`, `.jpeg`, `.webp`, `.heic`, or `.heif`.
+
+    Vertex BYOK accepts PDFs in Cloud Storage the same way. Put the `gs://your-bucket/report.pdf` URI where a file URL goes: `file_url` on an `input_file` part, `file_data` on a `file` part, or the `url` of a `document` source. The PDF must be in a user message, the object name must end in `.pdf` (upper or lower case), and the model must list file input. Other file types, and `gs://` files on batches billed through OpenRouter, are rejected. OpenRouter has confirmed that Vertex reads a `gs://` PDF on its synchronous API, but not yet inside a batch job, so try a small batch first.
+
+    Google reads the PDF as your project's Vertex AI service agent (`service-PROJECT_NUMBER@gcp-sa-aiplatform.iam.gserviceaccount.com`), not as the service account in your key. Grant that agent `roles/storage.objectViewer` on the PDF's bucket and keep the grant until the batch finishes, or the rows that reference the PDF fail.
   </Accordion>
   <Accordion title="Anthropic">
     An Anthropic key declared for the US [data region](/guides/overview/auth/byok) sends `inference_geo: "us"` on Claude 4.6 and later models, the same as sync requests.

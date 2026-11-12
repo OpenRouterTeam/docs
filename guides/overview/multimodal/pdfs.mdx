@@ -17,7 +17,6 @@ icon: file-pdf
 sidebarTitle: PDFs
 ---
 
-import { Template } from "/snippets/exports/Template.jsx";
 import {
   API_KEY_REF,
   DEFAULT_PDF_ENGINE,
@@ -85,23 +84,18 @@ If your downstream model does not accept image input at all, OCR-extracted image
 
 For publicly accessible PDFs, you can send the URL directly without needing to download and encode the file:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: '~anthropic/claude-sonnet-latest',
-  ENGINE: PDFParserEngine.MistralOCR,
-}}>
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" expandable lines
 import { OpenRouter } from '@openrouter/sdk';
 
 const openRouter = new OpenRouter({
-  apiKey: '{{API_KEY_REF}}',
+  apiKey: '<OPENROUTER_API_KEY>',
 });
 
 const result = await openRouter.responses.send({
   responsesRequest: {
-    model: '{{MODEL}}',
+    model: '~anthropic/claude-sonnet-latest',
     input: [
       {
         role: 'user',
@@ -123,7 +117,7 @@ const result = await openRouter.responses.send({
       {
         id: 'file-parser',
         pdf: {
-          engine: '{{ENGINE}}',
+          engine: 'mistral-ocr',
         },
       },
     ],
@@ -166,13 +160,13 @@ plugins = [
     {
         "id": "file-parser",
         "pdf": {
-            "engine": "{{ENGINE}}"
+            "engine": "mistral-ocr"
         }
     }
 ]
 
 payload = {
-    "model": "{{MODEL}}",
+    "model": "~anthropic/claude-sonnet-latest",
     "input": input_items,
     "plugins": plugins
 }
@@ -189,7 +183,7 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: '~anthropic/claude-sonnet-latest',
     input: [
       {
         role: 'user',
@@ -211,7 +205,7 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
       {
         id: 'file-parser',
         pdf: {
-          engine: '{{ENGINE}}',
+          engine: 'mistral-ocr',
         },
       },
     ],
@@ -223,7 +217,6 @@ console.log(data);
 ```
 
 </CodeGroup>
-</Template>
 
 <Info>
   PDF URLs work with all processing engines. For Mistral OCR, the URL is passed directly to the service. For other engines, OpenRouter fetches the PDF and processes it internally.
@@ -233,12 +226,6 @@ console.log(data);
 
 For local PDF files or when you need to send PDF content directly, you can base64 encode the file:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemma-3-27b-it',
-  ENGINE: PDFParserEngine.CloudflareAI,
-  DEFAULT_PDF_ENGINE,
-}}>
 <CodeGroup>
 
 ```python Python expandable lines
@@ -285,13 +272,13 @@ plugins = [
     {
         "id": "file-parser",
         "pdf": {
-            "engine": "{{ENGINE}}"  # defaults to "{{DEFAULT_PDF_ENGINE}}". See Pricing above
+            "engine": "cloudflare-ai"  # defaults to "mistral-ocr". See Pricing above
         }
     }
 ]
 
 payload = {
-    "model": "{{MODEL}}",
+    "model": "google/gemma-3-27b-it",
     "input": input_items,
     "plugins": plugins
 }
@@ -320,7 +307,7 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: '{{MODEL}}',
+    model: 'google/gemma-3-27b-it',
     input: [
       {
         role: 'user',
@@ -343,7 +330,7 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
       {
         id: 'file-parser',
         pdf: {
-          engine: '{{ENGINE}}', // defaults to "{{DEFAULT_PDF_ENGINE}}". See Pricing above
+          engine: 'cloudflare-ai', // defaults to "mistral-ocr". See Pricing above
         },
       },
     ],
@@ -355,7 +342,6 @@ console.log(data);
 ```
 
 </CodeGroup>
-</Template>
 
 ## Skip Parsing Costs
 
@@ -363,10 +349,6 @@ When you send a PDF to the Chat Completions API (`/api/v1/chat/completions`), th
 
 Here's how to reuse file annotations:
 
-<Template data={{
-  API_KEY_REF,
-  MODEL: 'google/gemma-3-27b-it'
-}}>
 <CodeGroup>
 
 ```python Python expandable lines
@@ -412,7 +394,7 @@ messages = [
 ]
 
 payload = {
-    "model": "{{MODEL}}",
+    "model": "google/gemma-3-27b-it",
     "messages": messages
 }
 
@@ -456,7 +438,7 @@ if file_annotations:
     ]
 
     follow_up_payload = {
-        "model": "{{MODEL}}",
+        "model": "google/gemma-3-27b-it",
         "messages": follow_up_messages
     }
 
@@ -488,7 +470,7 @@ async function processDocument() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: '{{MODEL}}',
+        model: 'google/gemma-3-27b-it',
         messages: [
           {
             role: 'user',
@@ -532,7 +514,7 @@ async function processDocument() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: '{{MODEL}}',
+          model: 'google/gemma-3-27b-it',
           messages: [
             {
               role: 'user',
@@ -573,7 +555,6 @@ processDocument();
 ```
 
 </CodeGroup>
-</Template>
 
 <Info>
   When you include the file annotations from a previous response in your subsequent requests, OpenRouter will use this pre-parsed information instead of re-parsing the PDF, which saves processing time and costs. This is especially beneficial for large documents or when using the `mistral-ocr` engine which incurs additional costs.
