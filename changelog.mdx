@@ -16,6 +16,1605 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
+<Update label="November 12, 2026" tags={["Credits","Embeddings","Responses","Schemas","Workspaces"]} rss="4 modified endpoints, 4 new schemas, 8 modified schemas.">
+
+## Modified endpoints
+
+- [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request): request schema updated; description updated; response schema updated
+- [`POST /workspaces/{id}/members/add`](/api/api-reference/workspaces/bulk-add-members-to-a-workspace): description updated
+- [`POST /credits/purchases`](/api/api-reference/credits/buy-credits-with-a-machine-payment): description updated; response schema updated
+- [`POST /responses`](/api/api-reference/responses/create-a-response): description updated; response schema updated
+
+## New schemas
+
+- `CreditPurchaseUnavailableResponse`
+  - Used by [`POST /credits/purchases`](/api/api-reference/credits/buy-credits-with-a-machine-payment)
+- `ResponsesBadRequestResponse`
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `ResponsesBadRequestResponseErrorData`
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `ContentFilterReadEntry`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /guardrails`](/api/api-reference/guardrails/list-guardrails)
+    - [`GET /guardrails/{id}`](/api/api-reference/guardrails/get-a-guardrail)
+    - [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail)
+    - [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail)
+  </Expandable>
+
+## Modified schemas
+
+- `BulkAddWorkspaceMembersRequest`: description updated
+  - Used by [`POST /workspaces/{id}/members/add`](/api/api-reference/workspaces/bulk-add-members-to-a-workspace)
+- `BulkAddWorkspaceMembersResponse`: description updated
+  - Used by [`POST /workspaces/{id}/members/add`](/api/api-reference/workspaces/bulk-add-members-to-a-workspace)
+- `CreateWorkspaceRequest`: description updated
+  - Used by [`POST /workspaces`](/api/api-reference/workspaces/create-a-workspace)
+- `UpdateWorkspaceRequest`: description updated
+  - Used by [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+- `ObservabilityOtelCollectorDestination`: new property `config.metricsEndpoint`; new property `config.shouldSendMetrics`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /observability/destinations`](/api/api-reference/observability/list-observability-destinations)
+    - [`GET /observability/destinations/{id}`](/api/api-reference/observability/get-an-observability-destination)
+    - [`PATCH /observability/destinations/{id}`](/api/api-reference/observability/update-an-observability-destination)
+    - [`POST /observability/destinations`](/api/api-reference/observability/create-an-observability-destination)
+  </Expandable>
+- `OutputToolSearchServerToolItem`: new property `catalog_index_note`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `ResponseIncludesEnum`: enum property_added
+  - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `Guardrail`: example modified; $ref modified
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /guardrails`](/api/api-reference/guardrails/list-guardrails)
+    - [`GET /guardrails/{id}`](/api/api-reference/guardrails/get-a-guardrail)
+    - [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail)
+    - [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail)
+  </Expandable>
+
+</Update>
+
+<Update label="November 11, 2026" tags={["API Keys","Analytics","BYOK","Batch","Breaking","Credits","Endpoints","Guardrail Policies","Guardrails","Observability","Private Endpoints","Schemas","Video Generation","alpha.extractions"]} rss="20 breaking changes, 37 modified endpoints, 2 new response codes, 42 modified schemas.">
+
+## Breaking changes
+
+- `ExtractionsRequest`: required `state` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ChangeGuardrailPolicyAssignmentRequest`: required `workspace_id` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`PUT /guardrails/policies/assignments/api-keys/{hash}`](/api/api-reference/guardrail-policies/change-an-api-key-policy-assignment), [`PUT /guardrails/policies/assignments/members/{member_id}`](/api/api-reference/guardrail-policies/change-a-member-policy-assignment)
+- `CreateBudgetGuardrailPolicyRequest`: required `workspace_id` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /guardrails/policies/budget`](/api/api-reference/guardrail-policies/create-a-budget-policy)
+- `CreateModelAvailabilityGuardrailPolicyRequest`: required `workspace_id` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/create-a-model-availability-policy)
+- `CreateModerationGuardrailPolicyRequest`: required `workspace_id` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/create-a-moderation-policy)
+- `UpdateBudgetGuardrailPolicyRequest`: required `workspace_id` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`PUT /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/update-a-budget-policy)
+- `UpdateModelAvailabilityGuardrailPolicyRequest`: required `workspace_id` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`PUT /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/update-a-model-availability-policy)
+- `UpdateModerationGuardrailPolicyRequest`: required `workspace_id` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`PUT /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/update-a-moderation-policy)
+- [`GET /guardrails/policies/assignments/api-keys/{hash}`](/api/api-reference/guardrail-policies/get-an-api-key-policy-assignment): required changed from `true` to `false`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`GET /guardrails/policies/assignments/members/{member_id}`](/api/api-reference/guardrail-policies/get-a-member-policy-assignment): required changed from `true` to `false`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`GET /guardrails/policies/budget`](/api/api-reference/guardrail-policies/list-budget-policies): required changed from `true` to `false`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`DELETE /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/delete-a-budget-policy): required changed from `true` to `false`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`GET /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/get-a-budget-policy): required changed from `true` to `false`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`GET /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/list-model-availability-policies): required changed from `true` to `false`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`DELETE /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/delete-a-model-availability-policy): required changed from `true` to `false`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`GET /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/get-a-model-availability-policy): required changed from `true` to `false`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`GET /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/list-moderation-policies): required changed from `true` to `false`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`DELETE /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/delete-a-moderation-policy): required changed from `true` to `false`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`GET /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/get-a-moderation-policy): required changed from `true` to `false`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `VideoGenerationRequest.duration`: minimum changed from `1` to `-1`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+
+## Modified endpoints
+- [`GET /guardrails`](/api/api-reference/guardrails/list-guardrails): description updated
+- [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail): description updated
+- [`GET /guardrails/assignments/keys`](/api/api-reference/guardrails/list-all-key-assignments): description updated
+- [`GET /guardrails/assignments/members`](/api/api-reference/guardrails/list-all-member-assignments): description updated
+- [`DELETE /guardrails/{id}`](/api/api-reference/guardrails/delete-a-guardrail): description updated
+- [`GET /guardrails/{id}`](/api/api-reference/guardrails/get-a-guardrail): description updated
+- [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail): description updated
+- [`GET /guardrails/{id}/assignments/keys`](/api/api-reference/guardrails/list-key-assignments-for-a-guardrail): description updated
+- [`POST /guardrails/{id}/assignments/keys`](/api/api-reference/guardrails/bulk-assign-keys-to-a-guardrail): description updated
+- [`POST /guardrails/{id}/assignments/keys/remove`](/api/api-reference/guardrails/bulk-unassign-keys-from-a-guardrail): description updated
+- [`GET /guardrails/{id}/assignments/members`](/api/api-reference/guardrails/list-member-assignments-for-a-guardrail): description updated
+- [`POST /guardrails/{id}/assignments/members`](/api/api-reference/guardrails/bulk-assign-members-to-a-guardrail): description updated
+- [`POST /guardrails/{id}/assignments/members/remove`](/api/api-reference/guardrails/bulk-unassign-members-from-a-guardrail): description updated
+- [`GET /observability/destinations`](/api/api-reference/observability/list-observability-destinations): description updated
+- [`POST /observability/destinations`](/api/api-reference/observability/create-an-observability-destination): description updated
+- [`DELETE /observability/destinations/{id}`](/api/api-reference/observability/delete-an-observability-destination): description updated
+- [`GET /observability/destinations/{id}`](/api/api-reference/observability/get-an-observability-destination): description updated
+- [`PATCH /observability/destinations/{id}`](/api/api-reference/observability/update-an-observability-destination): description updated
+- [`GET /activity`](/api/api-reference/analytics/get-user-activity-grouped-by-endpoint): description updated
+- [`POST /credits/purchases`](/api/api-reference/credits/buy-credits-with-a-machine-payment): description updated; response schema updated
+- [`GET /guardrails/assignments/keys`](/api/api-reference/guardrails/list-all-key-assignments): new parameter `workspace_id`
+- [`GET /guardrails/assignments/members`](/api/api-reference/guardrails/list-all-member-assignments): new parameter `workspace_id`
+- [`GET /guardrails/policies/assignments/api-keys/{hash}`](/api/api-reference/guardrail-policies/get-an-api-key-policy-assignment): description updated
+- [`GET /guardrails/policies/assignments/members/{member_id}`](/api/api-reference/guardrail-policies/get-a-member-policy-assignment): description updated
+- [`GET /guardrails/policies/budget`](/api/api-reference/guardrail-policies/list-budget-policies): description updated
+- [`DELETE /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/delete-a-budget-policy): description updated
+- [`GET /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/get-a-budget-policy): description updated
+- [`GET /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/list-model-availability-policies): description updated
+- [`DELETE /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/delete-a-model-availability-policy): description updated
+- [`GET /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/get-a-model-availability-policy): description updated
+- [`GET /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/list-moderation-policies): description updated
+- [`DELETE /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/delete-a-moderation-policy): description updated
+- [`GET /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/get-a-moderation-policy): description updated
+- [`PATCH /keys/{hash}`](/api/api-reference/api-keys/update-an-api-key): description updated
+- [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials): parameter `provider` updated
+- [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint): description updated
+- [`POST /batches`](/api/api-reference/batch/create-a-batch): description updated
+
+## New response codes
+
+- [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints): now returns `401`
+- [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model): now returns `401`
+
+## Modified schemas
+
+- `CreateGuardrailRequest`: description updated
+  - Used by [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail)
+- `CreateObservabilityDestinationRequest`: description updated
+  - Used by [`POST /observability/destinations`](/api/api-reference/observability/create-an-observability-destination)
+- `ExtractionAsset`: description updated; enum property_added
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDateAnswer`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDateField`: new property `unit`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDatetimeAnswer`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDatetimeField`: new property `unit`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDurationAnswer`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDurationField`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionEstimateField`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionForecastField`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionListAnswer`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionListField`: new property `integer`; new property `unit`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionNumberAnswer`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionNumberField`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionTextAnswer`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionTextField`: new property `unit`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionTimeAnswer`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionTimeField`: new property `unit`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionsRequest`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `UpdateObservabilityDestinationRequest`: description updated
+  - Used by [`PATCH /observability/destinations/{id}`](/api/api-reference/observability/update-an-observability-destination)
+- `ChangeGuardrailPolicyAssignmentRequest`: description updated
+  - Used by [`PUT /guardrails/policies/assignments/api-keys/{hash}`](/api/api-reference/guardrail-policies/change-an-api-key-policy-assignment), [`PUT /guardrails/policies/assignments/members/{member_id}`](/api/api-reference/guardrail-policies/change-a-member-policy-assignment)
+- `CreateBudgetGuardrailPolicyRequest`: description updated
+  - Used by [`POST /guardrails/policies/budget`](/api/api-reference/guardrail-policies/create-a-budget-policy)
+- `CreateModelAvailabilityGuardrailPolicyRequest`: description updated
+  - Used by [`POST /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/create-a-model-availability-policy)
+- `CreateModerationGuardrailPolicyRequest`: description updated
+  - Used by [`POST /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/create-a-moderation-policy)
+- `UpdateBudgetGuardrailPolicyRequest`: description updated
+  - Used by [`PUT /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/update-a-budget-policy)
+- `UpdateModelAvailabilityGuardrailPolicyRequest`: description updated
+  - Used by [`PUT /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/update-a-model-availability-policy)
+- `UpdateModerationGuardrailPolicyRequest`: description updated
+  - Used by [`PUT /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/update-a-moderation-policy)
+- `BYOKProviderSlug`: enum property_added
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials)
+    - [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential)
+    - [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+    - [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+  </Expandable>
+- `MessagesStartEvent`: property `provider` updated
+  - Used by [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+- `ProviderName`: enum property_added
+
+  <Expandable title="18 endpoints using this schema">
+    - [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints)
+    - [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model)
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+    - [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+    - [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+    - [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+  </Expandable>
+- `ProviderOptions`: new property `speechify`
+
+  <Expandable title="15 endpoints using this schema">
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+    - [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+    - [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+    - [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+  </Expandable>
+- `ProviderResponse`: enum property_added
+  - Used by [`GET /generation`](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation)
+- `ChatRequest`:
+  - new property `reasoning.context`
+  - new property `reasoning.enabled`
+  - new property `reasoning.exclude`
+  - new property `reasoning.mode`
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion), [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+- `BYOKKey`: description updated
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials)
+    - [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential)
+    - [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+    - [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+  </Expandable>
+- `CreateBYOKKeyRequest`: description updated
+  - Used by [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+- `UpdateBYOKKeyRequest`: description updated
+  - Used by [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+- `VideoGenerationRequest`: description updated
+  - Used by [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+- `VideoModel`: description updated
+  - Used by [`GET /videos/models`](/api/api-reference/video-generation/list-all-video-generation-models)
+- `SpeechInput`: description updated
+  - Used by [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+- `BatchObject`: new union variant added
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch)
+- `BatchSubmitBody`: enum property_added
+  - Used by [`POST /batches`](/api/api-reference/batch/create-a-batch)
+
+</Update>
+
+<Update label="November 10, 2026" tags={["Analytics","BYOK","Breaking","Credits","MCP","OAuth","Presets","Schemas","alpha.extractions"]} rss="2 breaking changes, 5 new endpoints, 15 modified endpoints, 2 new response codes, 4 new schemas, 8 modified schemas.">
+
+## Breaking changes
+
+- [`POST /credits/purchases`](/api/api-reference/credits/buy-credits-with-a-machine-payment): content `application/json` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `ExtractionListAnswer.spans`: type changed from `array` to `array | null`<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+  - **Migration: handle a `null` entry in `spans`.** `spans` still has one entry per item of `value`, in the same order, but an entry is now `null` when that item has no offsets in the state text, for example a list item read from an image or a document. Before this release such a response returned 502; it now returns 200. Check each entry for `null` before you read its `[start, end)` offsets. Responses whose list items all come from the state text are unchanged.
+
+## New endpoints
+
+- [`POST /presets/{slug}/restore`](/api/api-reference/presets/restore-a-preset): Restore a preset
+- [`POST /credits/purchases`](/api/api-reference/credits/buy-credits-with-a-machine-payment): Buy credits with a machine payment
+- [`GET /credits/purchases/{id}`](/api/api-reference/credits/get-a-credit-purchase): Get a credit purchase
+- [`GET /credits/purchases/SKILL.md`](/api/api-reference/credits/agent-skill-for-buying-openrouter-credits): Agent skill for buying OpenRouter credits
+- [`GET /credits/purchases/setup`](/api/api-reference/credits/agent-setup-guide-for-buying-credits-with-a-machine-payment): Agent setup guide for buying credits with a machine payment
+
+## Modified endpoints
+
+- [`GET /presets`](/api/api-reference/presets/list-presets): new parameter `workspace_id`
+- [`GET /presets/{slug}`](/api/api-reference/presets/get-a-preset): new parameter `workspace_id`
+- [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body): description updated
+- [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body): description updated
+- [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body): description updated
+- [`GET /presets/{slug}/versions`](/api/api-reference/presets/list-versions-of-a-preset): new parameter `workspace_id`
+- [`GET /presets/{slug}/versions/{version}`](/api/api-reference/presets/get-a-specific-version-of-a-preset): new parameter `workspace_id`
+- [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials): description updated
+- [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential): description updated
+- [`DELETE /byok/{id}`](/api/api-reference/byok/delete-a-byok-provider-credential): description updated
+- [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential): description updated
+- [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential): description updated
+- [`POST /credits/purchases`](/api/api-reference/credits/buy-credits-with-a-machine-payment): response schema updated; description updated
+- [`GET /analytics/meta`](/api/api-reference/analytics/get-available-analytics-metrics-and-dimensions): description updated
+- [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data): description updated
+
+## New response codes
+
+- [`GET /presets`](/api/api-reference/presets/list-presets): now returns `404`
+- [`POST /auth/keys/code`](/api/api-reference/oauth/create-authorization-code): now returns `503`
+
+## New schemas
+
+- `CreateCreditPurchaseRequest`
+  - Used by [`POST /credits/purchases`](/api/api-reference/credits/buy-credits-with-a-machine-payment)
+- `CreditPurchase`
+  - Used by [`GET /credits/purchases/{id}`](/api/api-reference/credits/get-a-credit-purchase), [`POST /credits/purchases`](/api/api-reference/credits/buy-credits-with-a-machine-payment)
+- `CreditPurchaseResponse`
+  - Used by [`GET /credits/purchases/{id}`](/api/api-reference/credits/get-a-credit-purchase), [`POST /credits/purchases`](/api/api-reference/credits/buy-credits-with-a-machine-payment)
+- `CreditPurchasePaymentRequired`
+  - Used by [`POST /credits/purchases`](/api/api-reference/credits/buy-credits-with-a-machine-payment)
+
+## Modified schemas
+
+- `DeferredBm25Search`: description updated
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredRegexSearch`: description updated
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `ImageGenerationRequest`: enum property_added
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+- `ReasoningFormat`: enum property_added
+
+  <Expandable title="6 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `BYOKKey`: description updated
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials)
+    - [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential)
+    - [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+    - [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+  </Expandable>
+- `CreateBYOKKeyRequest`: description updated
+  - Used by [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+- `UpdateBYOKKeyRequest`: description updated
+  - Used by [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+- `ExtractionListAnswer`: description updated
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+
+</Update>
+
+<Update label="November 9, 2026" tags={["Anthropic Messages","Breaking","Chat","MCP","Presets","Responses","Schemas"]} rss="1 breaking change, 5 modified schemas.">
+
+## Breaking changes
+
+- `DeferredToolsControl.scope`: enum `client` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - **Migration: remove `"scope": "client"` from `deferred_tools`.** `deferred_tools.scope` now accepts only `"all"` (the default when omitted) or `"mcp"`; requests or saved presets sending `"scope": "client"` now return 400. Omit `scope` or set `"scope": "all"` to defer across all eligible tools, or set `"scope": "mcp"` to defer MCP tools only.
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+
+## Modified schemas
+
+- `DeferredBm25Search`: description updated
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredRegexSearch`: description updated
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredToolsControl`: description updated
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `OpenResponsesErrorField`: enum property_added
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `ResponsesErrorField`: enum property_added
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+
+</Update>
+
+<Update label="November 8, 2026" tags={["MCP","Schemas"]} rss="8 modified schemas.">
+
+## Modified schemas
+
+- `DeferredBm25Search`: new property `spread`
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredToolsControl`: description updated; new property `announce_catalog_changes`
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `OutputToolSearchServerToolItem`: new property `catalog_changes`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredBm25Search`: new property `miss_sources`
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredRegexSearch`: new property `miss_sources`
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredToolsControl`: new property `min_deferred_tools`; description updated
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredBm25Search`: description updated
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredRegexSearch`: description updated
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+
+</Update>
+
+<Update label="November 7, 2026" tags={["MCP","Schemas"]} rss="9 modified schemas.">
+
+## Modified schemas
+
+- `ImageGenerationServerToolConfig`: example modified; description updated
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `ImageGenerationServerTool_OpenRouter`: example modified
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `CodeInterpreterServerTool`: description updated
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredToolsControl`: new property `cascade_mode`; description updated; enum property_added
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `FileSearchServerTool`: description updated
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredBm25Search`: new property `siblings`
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredRegexSearch`: new property `siblings`
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DeferredToolsControl`: new property `hint`
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `OutputToolSearchServerToolItem`: new property `sources`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+
+</Update>
+
+<Update label="November 6, 2026" tags={["Guardrail Policies","Presets","Private Endpoints","Schemas"]} rss="23 new endpoints, 4 modified endpoints, 44 new schemas, 3 modified schemas.">
+
+## New endpoints
+
+- [`GET /guardrails/policies/account`](/api/api-reference/guardrail-policies/list-workspace-wide-policies): List workspace-wide policies
+- [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy): Create a workspace-wide policy
+- [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy): Update a workspace-wide policy
+- [`DELETE /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/delete-a-workspace-wide-policy): Delete a workspace-wide policy
+- [`GET /guardrails/policies/assignments/api-keys/{hash}`](/api/api-reference/guardrail-policies/get-an-api-key-policy-assignment): Get an API key policy assignment
+- [`PUT /guardrails/policies/assignments/api-keys/{hash}`](/api/api-reference/guardrail-policies/change-an-api-key-policy-assignment): Change an API key policy assignment
+- [`GET /guardrails/policies/assignments/members/{member_id}`](/api/api-reference/guardrail-policies/get-a-member-policy-assignment): Get a member policy assignment
+- [`PUT /guardrails/policies/assignments/members/{member_id}`](/api/api-reference/guardrail-policies/change-a-member-policy-assignment): Change a member policy assignment
+- [`GET /guardrails/policies/budget`](/api/api-reference/guardrail-policies/list-budget-policies): List budget policies
+- [`POST /guardrails/policies/budget`](/api/api-reference/guardrail-policies/create-a-budget-policy): Create a budget policy
+- [`GET /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/get-a-budget-policy): Get a budget policy
+- [`PUT /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/update-a-budget-policy): Update a budget policy
+- [`DELETE /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/delete-a-budget-policy): Delete a budget policy
+- [`GET /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/list-model-availability-policies): List model availability policies
+- [`POST /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/create-a-model-availability-policy): Create a model availability policy
+- [`GET /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/get-a-model-availability-policy): Get a model availability policy
+- [`PUT /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/update-a-model-availability-policy): Update a model availability policy
+- [`DELETE /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/delete-a-model-availability-policy): Delete a model availability policy
+- [`GET /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/list-moderation-policies): List moderation policies
+- [`POST /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/create-a-moderation-policy): Create a moderation policy
+- [`GET /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/get-a-moderation-policy): Get a moderation policy
+- [`PUT /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/update-a-moderation-policy): Update a moderation policy
+- [`DELETE /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/delete-a-moderation-policy): Delete a moderation policy
+
+## Modified endpoints
+
+- [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint): description updated
+- [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body): description updated; new parameter `workspace_id`
+- [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body): description updated; new parameter `workspace_id`
+- [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body): description updated; new parameter `workspace_id`
+
+## New schemas
+
+- `AccountGuardrailPolicy`
+  - Used by [`GET /guardrails/policies/account`](/api/api-reference/guardrail-policies/list-workspace-wide-policies), [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy), [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+- `AccountGuardrailPolicyRequest`
+  - Used by [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy), [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+- `AccountGuardrailPolicyResponse`
+  - Used by [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy), [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+- `BudgetAccountGuardrailPolicy`
+  - Used by [`GET /guardrails/policies/account`](/api/api-reference/guardrail-policies/list-workspace-wide-policies), [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy), [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+- `BudgetAccountGuardrailPolicyRequest`
+  - Used by [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy), [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+- `BudgetGuardrailPolicy`
+  - Used by [`POST /guardrails/policies/budget`](/api/api-reference/guardrail-policies/create-a-budget-policy), [`PUT /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/update-a-budget-policy)
+- `BudgetGuardrailPolicyDetail`
+  - Used by [`GET /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/get-a-budget-policy)
+- `BudgetGuardrailPolicyDetailResponse`
+  - Used by [`GET /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/get-a-budget-policy)
+- `BudgetGuardrailPolicyResponse`
+  - Used by [`POST /guardrails/policies/budget`](/api/api-reference/guardrail-policies/create-a-budget-policy), [`PUT /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/update-a-budget-policy)
+- `BudgetGuardrailPolicySummary`
+  - Used by [`GET /guardrails/policies/budget`](/api/api-reference/guardrail-policies/list-budget-policies)
+- `ChangeGuardrailPolicyAssignmentRequest`
+  - Used by [`PUT /guardrails/policies/assignments/api-keys/{hash}`](/api/api-reference/guardrail-policies/change-an-api-key-policy-assignment), [`PUT /guardrails/policies/assignments/members/{member_id}`](/api/api-reference/guardrail-policies/change-a-member-policy-assignment)
+- `ChangeGuardrailPolicyAssignmentResponse`
+  - Used by [`PUT /guardrails/policies/assignments/api-keys/{hash}`](/api/api-reference/guardrail-policies/change-an-api-key-policy-assignment), [`PUT /guardrails/policies/assignments/members/{member_id}`](/api/api-reference/guardrail-policies/change-a-member-policy-assignment)
+- `CreateBudgetGuardrailPolicyRequest`
+  - Used by [`POST /guardrails/policies/budget`](/api/api-reference/guardrail-policies/create-a-budget-policy)
+- `CreateModelAvailabilityGuardrailPolicyRequest`
+  - Used by [`POST /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/create-a-model-availability-policy)
+- `CreateModerationGuardrailPolicyRequest`
+  - Used by [`POST /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/create-a-moderation-policy)
+- `DeleteGuardrailPolicyResponse`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`DELETE /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/delete-a-workspace-wide-policy)
+    - [`DELETE /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/delete-a-budget-policy)
+    - [`DELETE /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/delete-a-model-availability-policy)
+    - [`DELETE /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/delete-a-moderation-policy)
+  </Expandable>
+- `GuardrailBudgetPolicyAuthoringConfig`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy)
+    - [`POST /guardrails/policies/budget`](/api/api-reference/guardrail-policies/create-a-budget-policy)
+    - [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+    - [`PUT /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/update-a-budget-policy)
+  </Expandable>
+- `GuardrailBudgetPolicyConfig`
+
+  <Expandable title="7 endpoints using this schema">
+    - [`GET /guardrails/policies/account`](/api/api-reference/guardrail-policies/list-workspace-wide-policies)
+    - [`GET /guardrails/policies/budget`](/api/api-reference/guardrail-policies/list-budget-policies)
+    - [`GET /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/get-a-budget-policy)
+    - [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy)
+    - [`POST /guardrails/policies/budget`](/api/api-reference/guardrail-policies/create-a-budget-policy)
+    - [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+    - [`PUT /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/update-a-budget-policy)
+  </Expandable>
+- `GuardrailModelAvailabilityPolicyAuthoringConfig`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy)
+    - [`POST /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/create-a-model-availability-policy)
+    - [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+    - [`PUT /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/update-a-model-availability-policy)
+  </Expandable>
+- `GuardrailModelAvailabilityPolicyConfig`
+
+  <Expandable title="7 endpoints using this schema">
+    - [`GET /guardrails/policies/account`](/api/api-reference/guardrail-policies/list-workspace-wide-policies)
+    - [`GET /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/list-model-availability-policies)
+    - [`GET /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/get-a-model-availability-policy)
+    - [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy)
+    - [`POST /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/create-a-model-availability-policy)
+    - [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+    - [`PUT /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/update-a-model-availability-policy)
+  </Expandable>
+- `GuardrailModerationPolicyConfig`
+
+  <Expandable title="7 endpoints using this schema">
+    - [`GET /guardrails/policies/account`](/api/api-reference/guardrail-policies/list-workspace-wide-policies)
+    - [`GET /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/list-moderation-policies)
+    - [`GET /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/get-a-moderation-policy)
+    - [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy)
+    - [`POST /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/create-a-moderation-policy)
+    - [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+    - [`PUT /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/update-a-moderation-policy)
+  </Expandable>
+- `GuardrailPolicyAssignmentResponse`
+  - Used by [`GET /guardrails/policies/assignments/api-keys/{hash}`](/api/api-reference/guardrail-policies/get-an-api-key-policy-assignment), [`GET /guardrails/policies/assignments/members/{member_id}`](/api/api-reference/guardrail-policies/get-a-member-policy-assignment)
+- `GuardrailPolicyAssignmentState`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /guardrails/policies/assignments/api-keys/{hash}`](/api/api-reference/guardrail-policies/get-an-api-key-policy-assignment)
+    - [`GET /guardrails/policies/assignments/members/{member_id}`](/api/api-reference/guardrail-policies/get-a-member-policy-assignment)
+    - [`PUT /guardrails/policies/assignments/api-keys/{hash}`](/api/api-reference/guardrail-policies/change-an-api-key-policy-assignment)
+    - [`PUT /guardrails/policies/assignments/members/{member_id}`](/api/api-reference/guardrail-policies/change-a-member-policy-assignment)
+  </Expandable>
+- `ListAccountGuardrailPoliciesResponse`
+  - Used by [`GET /guardrails/policies/account`](/api/api-reference/guardrail-policies/list-workspace-wide-policies)
+- `ListBudgetGuardrailPoliciesResponse`
+  - Used by [`GET /guardrails/policies/budget`](/api/api-reference/guardrail-policies/list-budget-policies)
+- `ListModelAvailabilityGuardrailPoliciesResponse`
+  - Used by [`GET /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/list-model-availability-policies)
+- `ListModerationGuardrailPoliciesResponse`
+  - Used by [`GET /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/list-moderation-policies)
+- `ModelAvailabilityAccountGuardrailPolicy`
+  - Used by [`GET /guardrails/policies/account`](/api/api-reference/guardrail-policies/list-workspace-wide-policies), [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy), [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+- `ModelAvailabilityAccountGuardrailPolicyRequest`
+  - Used by [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy), [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+- `ModelAvailabilityGuardrailPolicy`
+  - Used by [`POST /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/create-a-model-availability-policy), [`PUT /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/update-a-model-availability-policy)
+- `ModelAvailabilityGuardrailPolicyDetail`
+  - Used by [`GET /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/get-a-model-availability-policy)
+- `ModelAvailabilityGuardrailPolicyDetailResponse`
+  - Used by [`GET /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/get-a-model-availability-policy)
+- `ModelAvailabilityGuardrailPolicyResponse`
+  - Used by [`POST /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/create-a-model-availability-policy), [`PUT /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/update-a-model-availability-policy)
+- `ModelAvailabilityGuardrailPolicySummary`
+  - Used by [`GET /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/list-model-availability-policies)
+- `ModerationAccountGuardrailPolicy`
+  - Used by [`GET /guardrails/policies/account`](/api/api-reference/guardrail-policies/list-workspace-wide-policies), [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy), [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+- `ModerationAccountGuardrailPolicyRequest`
+  - Used by [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy), [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+- `ModerationGuardrailPolicy`
+  - Used by [`POST /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/create-a-moderation-policy), [`PUT /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/update-a-moderation-policy)
+- `ModerationGuardrailPolicyDetail`
+  - Used by [`GET /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/get-a-moderation-policy)
+- `ModerationGuardrailPolicyDetailResponse`
+  - Used by [`GET /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/get-a-moderation-policy)
+- `ModerationGuardrailPolicyResponse`
+  - Used by [`POST /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/create-a-moderation-policy), [`PUT /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/update-a-moderation-policy)
+- `ModerationGuardrailPolicySummary`
+  - Used by [`GET /guardrails/policies/moderation`](/api/api-reference/guardrail-policies/list-moderation-policies)
+- `UpdateBudgetGuardrailPolicyRequest`
+  - Used by [`PUT /guardrails/policies/budget/{id}`](/api/api-reference/guardrail-policies/update-a-budget-policy)
+- `UpdateModelAvailabilityGuardrailPolicyRequest`
+  - Used by [`PUT /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/update-a-model-availability-policy)
+- `UpdateModerationGuardrailPolicyRequest`
+  - Used by [`PUT /guardrails/policies/moderation/{id}`](/api/api-reference/guardrail-policies/update-a-moderation-policy)
+
+## Modified schemas
+
+- `UpdatePrivateEndpointRequest`: description updated
+  - Used by [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
+- `DeferredToolsControl`: new property `interface`; new property `scope`
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DecisionsNoulAnswer`: new property `confidence`
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+
+</Update>
+
+<Update label="November 5, 2026" tags={["API Keys","BYOK","Breaking","MCP","OAuth","Organization","Schemas"]} rss="14 breaking changes, 3 modified endpoints, 15 new schemas, 34 modified schemas.">
+
+## Breaking changes
+
+- spec: OutputMcpServerToolItem object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `OutputMcpServerToolItem`: schema object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `OutputItems`: openrouter:mcp `#/components/schemas/OutputMcpServerToolItem` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - These types were never returned or used, so no migration should be necessary, other than handling exhaustive switch statements.
+- spec: additionalProperties object added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- spec: removed enum from `connector_id` <Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `DecisionsChoiceQuestion`: required `instructions` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+  - `instructions` is now optional and nullable. Requests that omit it, or send `null`, are accepted instead of rejected with a 400 before routing.
+- `DecisionsNoulQuestion`: required `instructions` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+  - `instructions` is now optional and nullable; callers that still send it are unaffected.
+- `DecisionsNoulQuestion.criteria`: required `false` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+  - The `false` side is now optional and nullable, so a question can supply one side only.
+- `DecisionsNoulQuestion.criteria`: required `true` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+  - The `true` side is now optional and nullable, so a question can supply one side only.
+- `DecisionsScoreQuestion`: required `instructions` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+  - `instructions` is now optional and nullable; callers that still send it are unaffected.
+- `McpServerTool`: additionalProperties `additionalProperties` object added<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `McpServerTool.connector_id`: removed enum from `connector_id` <Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - `connector_id` now accepts any string instead of a fixed enum, so existing connector IDs continue to work and new provider-defined connectors are forwarded as written. Only generated SDK type names move: the closed `connector_id` enum is replaced by a plain string, so typed SDK callers pass connector IDs as string literals instead of enum members.
+- [`POST /auth/keys/code`](/api/api-reference/oauth/create-authorization-code): properties `spawn_agent` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`POST /auth/keys/code`](/api/api-reference/oauth/create-authorization-code): properties `spawn_cloud` object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+
+## Modified endpoints
+- [`GET /organization/members`](/api/api-reference/organization/list-organization-members): description updated; response schema updated
+- [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials): parameter `provider` updated
+- [`GET /keys`](/api/api-reference/api-keys/list-api-keys): extension `x-speakeasy-pagination` added
+
+## New schemas
+
+- `DeferredToolsDetails`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `McpCallArgumentsDeltaEvent`
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `McpCallArgumentsDoneEvent`
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `McpCallCompletedEvent`
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `McpCallFailedEvent`
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `McpCallInProgressEvent`
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `McpListToolsCompletedEvent`
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `McpListToolsFailedEvent`
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `McpListToolsInProgressEvent`
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `McpServerToolParameters`
+  - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `McpServerTool_OpenRouter`
+  - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `OutputItemMcpApprovalRequest`
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `OutputItemMcpCall`
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `OutputItemMcpListTools`
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `ToolChoiceMcp`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+
+## Modified schemas
+
+- `ChatUsage`: new property `deferred_tools_details`
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+- `DeferredToolsControl`: description updated; enum property_added
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `OutputToolSearchServerToolItem`:
+  - new property `arguments`
+  - new property `call_id`
+  - new property `catalog_index`
+  - new property `format`
+  - new property `hint`
+  - new property `turn_call_ids`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `PrivateEndpointCheck`: deprecated property_added; description updated
+  - Used by [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint), [`POST /private-endpoints/{id}/validate`](/api/api-reference/private-endpoints/validate-a-draft-private-endpoint)
+- `RangeCapability`: format property_added
+  - Used by [`GET /images/models`](/api/api-reference/images/list-image-generation-models), [`GET /images/models/{author}/{slug}/endpoints`](/api/api-reference/images/list-endpoints-for-an-image-model)
+- `VideoGenerationRequest`: format property_added
+  - Used by [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+- `OutputItems`: new union variant added
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `StreamEvents`: new union variant added
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `SpeechInputReference`: example property_added
+  - Used by [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+- `SpeechInputReferenceAudioInput`: example property_added
+  - Used by [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+- `SpeechInputReferenceImageInput`: example property_added
+  - Used by [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+- `ImageGenerationRequest`:
+  - new property `frame_count`
+  - new property `frame_duration_ms`
+  - new property `markup`
+  - description updated
+  - enum property_added
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+- `AdditionalToolsItem`: new union variant added
+  - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `AlignmentResponsesRejected`: new union variant added
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `BYOKProviderSlug`: enum property_added
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials)
+    - [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential)
+    - [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+    - [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+  </Expandable>
+- `BaseResponsesResult`: new union variant added
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `CreateWorkspaceRequest`: enum property_added
+  - Used by [`POST /workspaces`](/api/api-reference/workspaces/create-a-workspace)
+- `DecisionsChoiceQuestion`: new union variant added
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+- `DecisionsNoulQuestion`: new union variant added
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+- `DecisionsScoreQuestion`: new union variant added
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+- `ImageGenerationRequest`: description updated
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+- `McpCallItem`: new property `approval_request_id`; new property `status`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `MessagesStartEvent`: property `provider` updated
+  - Used by [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+- `OpenAIResponsesToolChoice`: new union variant added
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `OutputItemAddedEvent`: new union variant added
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `OutputItemDoneEvent`: new union variant added
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `ProviderName`: enum property_added
+
+  <Expandable title="18 endpoints using this schema">
+    - [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints)
+    - [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model)
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+    - [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+    - [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+    - [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+  </Expandable>
+- `ProviderOptions`: new property `river`
+
+  <Expandable title="15 endpoints using this schema">
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+    - [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+    - [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+    - [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+  </Expandable>
+- `ProviderResponse`: enum property_added
+  - Used by [`GET /generation`](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation)
+- `ResponsesRequest`: new union variant added
+  - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `ToolSearchOutputItem`: new union variant added
+  - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `UpdateWorkspaceRequest`: enum property_added
+  - Used by [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+- `DecisionsResponse`: new property `usage.cost_details`; new property `usage.is_byok`; property `cost` updated
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+- `ChatRequest`: new property `reasoning.max_tokens`
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion), [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+
+</Update>
+
+<Update label="November 4, 2026" tags={["API Keys","BYOK","Breaking","Private Endpoints","Private Providers","Providers","Schemas"]} rss="14 breaking changes, 1 new endpoint, 4 modified endpoints, 14 new schemas, 17 modified schemas.">
+
+## Breaking changes
+
+- `UpdatePrivateEndpointParametersRequest`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - **Migration: use [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint) with `declared_parameters`.** The deprecated `PUT /private-endpoints/{id}/parameters` endpoint and its `UpdatePrivateEndpointParametersRequest` schema have been removed and now return 404. Send `{ "declared_parameters": [...] }` to [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint) (`UpdatePrivateEndpointRequest`) instead.
+- `UpdatePrivateEndpointPricingRequest`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - **Migration: use [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint) with `pricing`.** The deprecated `PUT /private-endpoints/{id}/pricing` endpoint and its `UpdatePrivateEndpointPricingRequest` schema have been removed and now return 404. Send `{ "pricing": { ... } }` to [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint) (`UpdatePrivateEndpointRequest`) instead.
+- `CreatePrivateEndpointRequest`: properties `max_completion_tokens` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
+  - **Migration: move `max_completion_tokens` to `settings.max_completion_tokens`.** `POST /private-endpoints` no longer reads a top-level `max_completion_tokens` field (a top-level value is ignored). Pass `{ "settings": { "max_completion_tokens": ... } }` instead, matching [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint). Response objects continue to include `max_completion_tokens`.
+- `/private-endpoints/{id}/parameters`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - **Migration: use [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint) with `declared_parameters`.** The deprecated `PUT /private-endpoints/{id}/parameters` endpoint has been removed and now returns 404. Send `{ "declared_parameters": [...] }` to [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint) instead.
+- `/private-endpoints/{id}/pricing`: endpoint object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - **Migration: use [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint) with `pricing`.** The deprecated `PUT /private-endpoints/{id}/pricing` endpoint has been removed and now returns 404. Send `{ "pricing": { ... } }` to [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint) instead.
+- `EndpointRef`: schema object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `EndpointSummary`: schema object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `EndpointTestProfile`: schema object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `ProviderEndpointStats`: schema object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `ProviderEndpointStatsAvailable`: schema object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `ProviderEndpointStatsUnavailable`: schema object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `ProviderEndpoints`: schema object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `ProviderEndpointsResponse`: schema object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `/providers/{provider_slug}/endpoints`: endpoint object removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+
+## New endpoints
+- `GET /providers/{provider_slug}/endpoints`: List a provider's endpoints with provider-wide stats
+
+## Modified endpoints
+
+- [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint): description updated
+- [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials): parameter `provider` updated
+- [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider): description updated
+- [`POST /keys`](/api/api-reference/api-keys/create-a-new-api-key): description updated
+
+## New schemas
+
+- `Extractions`
+  - Used by [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints), [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model)
+- `EndpointRef`
+  - Used by `GET /providers/{provider_slug}/endpoints`
+- `EndpointSummary`
+  - Used by `GET /providers/{provider_slug}/endpoints`
+- `EndpointTestProfile`
+  - Used by `GET /providers/{provider_slug}/endpoints`
+- `ProviderEndpointStats`
+  - Used by `GET /providers/{provider_slug}/endpoints`
+- `ProviderEndpointStatsAvailable`
+  - Used by `GET /providers/{provider_slug}/endpoints`
+- `ProviderEndpointStatsUnavailable`
+  - Used by `GET /providers/{provider_slug}/endpoints`
+- `ProviderEndpoints`
+  - Used by `GET /providers/{provider_slug}/endpoints`
+- `ProviderEndpointsResponse`
+  - Used by `GET /providers/{provider_slug}/endpoints`
+- `DecisionsRefusalAnswer`
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+- `DecisionsUrlCitationAnnotation`
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+- `CompactionTriggerItem`
+  - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `OutputCompactionItem`
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `OutputItemCompaction`
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+
+## Modified schemas
+
+- `BYOKProviderSlug`: enum property_added
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials)
+    - [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential)
+    - [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+    - [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+  </Expandable>
+- `MessagesStartEvent`: property `provider` updated
+  - Used by [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+- `ProviderName`: enum property_added
+
+  <Expandable title="15 endpoints using this schema">
+    - [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints)
+    - [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model)
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+  </Expandable>
+- `ProviderOptions`: new property `parallel`
+
+  <Expandable title="15 endpoints using this schema">
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+    - [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+    - [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+    - [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+  </Expandable>
+- `ProviderResponse`: enum property_added
+  - Used by [`GET /generation`](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation)
+- `GenerationResponse`: property `api_type` updated
+  - Used by [`GET /generation`](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation)
+- `PerfLast30mByWorkload`: new property `extractions`
+  - Used by [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints), [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model)
+- `DecisionsResponse`: new property `annotations`; description updated; new union variant added
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+- `STTRequest`:
+  - description updated
+  - new property `provider.allow_fallbacks`
+  - new property `provider.ignore`
+  - new property `provider.only`
+  - new property `provider.order`
+  - Used by [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+- `SpeechRequest`:
+  - description updated
+  - new property `provider.allow_fallbacks`
+  - new property `provider.ignore`
+  - new property `provider.only`
+  - new property `provider.order`
+  - Used by [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+- `VideoGenerationRequest`:
+  - description updated
+  - new property `provider.ignore`
+  - new property `provider.only`
+  - new property `provider.order`
+  - Used by [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+- `WorkspaceMember`: description updated; enum property_added
+  - Used by [`GET /workspaces/{id}/members`](/api/api-reference/workspaces/list-workspace-members), [`POST /workspaces/{id}/members/add`](/api/api-reference/workspaces/bulk-add-members-to-a-workspace)
+- `AlignmentResponsesRejected`: new union variant added
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `BaseResponsesResult`: new union variant added
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `OutputItemAddedEvent`: new union variant added
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `OutputItemDoneEvent`: new union variant added
+  - Used by [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `OutputItems`: new union variant added
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+
+</Update>
+
+<Update label="November 3, 2026" tags={["BYOK","Models","Schemas","alpha.decisions"]} rss="3 modified endpoints, 1 new schema, 11 modified schemas.">
+
+## Modified endpoints
+
+- [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request): description updated
+- [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials): parameter `provider` updated
+- [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties): new parameter `endpoints`
+
+## New schemas
+
+- `DecisionsUsageInputTokensDetails`
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+
+## Modified schemas
+
+- `DecisionsBoxQuestion`: description updated
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+- `DecisionsRequest`: description updated
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+- `ReasoningFormat`: enum property_added
+
+  <Expandable title="6 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `DecisionsResponse`: new property `usage.input_tokens_details`
+  - Used by [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request), [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+- `ResponseIncludesEnum`: enum property_added
+  - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `BYOKProviderSlug`: enum property_added
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials)
+    - [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential)
+    - [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+    - [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+  </Expandable>
+- `MessagesStartEvent`: property `provider` updated
+  - Used by [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+- `ProviderName`: enum property_added
+
+  <Expandable title="15 endpoints using this schema">
+    - [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints)
+    - [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model)
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+  </Expandable>
+- `ProviderOptions`: new property `pearl-research`
+
+  <Expandable title="15 endpoints using this schema">
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+    - [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+    - [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+    - [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+  </Expandable>
+- `ProviderResponse`: enum property_added
+  - Used by [`GET /generation`](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation)
+- `ProviderOptions`: new property `antdigital`
+
+  <Expandable title="15 endpoints using this schema">
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+    - [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+    - [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+    - [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+  </Expandable>
+
+</Update>
+
+<Update label="November 2, 2026" tags={["Schemas"]} rss="3 modified schemas.">
+
+## Modified schemas
+
+- `CreateGuardrailRequest`: description updated
+  - Used by [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail)
+- `Guardrail`: description updated
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /guardrails`](/api/api-reference/guardrails/list-guardrails)
+    - [`GET /guardrails/{id}`](/api/api-reference/guardrails/get-a-guardrail)
+    - [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail)
+    - [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail)
+  </Expandable>
+- `UpdateGuardrailRequest`: description updated
+  - Used by [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail)
+
+</Update>
+
+<Update label="October 31, 2026" tags={["Breaking","Private Providers"]} rss="5 breaking changes, 1 modified endpoint, 2 modified schemas.">
+
+## Breaking changes
+
+- `PrivateProviderDataPolicy`: schema object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - **Migration: remove references to `PrivateProviderDataPolicy` and `data_policy`.** Private providers no longer accept or return a configurable `data_policy`; newly created private providers automatically apply a permissive policy (no prompt retention, training, or publication) so their endpoints pass account and guardrail data-policy filters.
+- `CreatePrivateProviderRequest`: properties `data_policy` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider)
+  - **Migration: omit `data_policy` when creating a private provider.** Generated SDKs and Terraform configurations remove `data_policy` from `POST /private-providers` (raw HTTP `POST` requests that still include `data_policy` succeed and ignore the field). Newly created private providers are automatically recorded as not retaining, training on, or publishing prompts.
+- `PrivateProvider`: properties `data_policy` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - **Migration: stop reading `data_policy` from private provider responses.** `GET /private-providers`, `GET /private-providers/{slug}`, `POST /private-providers`, and `PATCH /private-providers/{slug}` no longer include `data_policy` on `PrivateProvider` objects. Existing private providers retain the routing policy they were created with.
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /private-providers`](/api/api-reference/private-providers/list-private-providers)
+    - [`GET /private-providers/{slug}`](/api/api-reference/private-providers/get-a-private-provider)
+    - [`PATCH /private-providers/{slug}`](/api/api-reference/private-providers/update-a-private-provider)
+    - [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider)
+  </Expandable>
+- `PrivateProvider`: required `data_policy` property removed<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Companion to the `PrivateProvider` `data_policy` removal above.
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /private-providers`](/api/api-reference/private-providers/list-private-providers)
+    - [`GET /private-providers/{slug}`](/api/api-reference/private-providers/get-a-private-provider)
+    - [`PATCH /private-providers/{slug}`](/api/api-reference/private-providers/update-a-private-provider)
+    - [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider)
+  </Expandable>
+- `UpdatePrivateProviderRequest`: properties `data_policy` object removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`PATCH /private-providers/{slug}`](/api/api-reference/private-providers/update-a-private-provider)
+  - **Migration: remove `data_policy` from `PATCH /private-providers/{slug}` requests.** `data_policy` is ignored on updates, and a `PATCH` body containing only `data_policy` now returns 400 (`Provide at least one field to update`) instead of 200. Remove `PATCH` calls that only updated `data_policy`, or include another updatable field such as `display_name` or `base_url`.
+
+## Modified endpoints
+
+- [`PATCH /private-providers/{slug}`](/api/api-reference/private-providers/update-a-private-provider): description updated
+
+## Modified schemas
+
+- `CreatePrivateProviderRequest`: description updated; example property_added
+  - Used by [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider)
+- `PrivateProvider`: example modified
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /private-providers`](/api/api-reference/private-providers/list-private-providers)
+    - [`GET /private-providers/{slug}`](/api/api-reference/private-providers/get-a-private-provider)
+    - [`PATCH /private-providers/{slug}`](/api/api-reference/private-providers/update-a-private-provider)
+    - [`POST /private-providers`](/api/api-reference/private-providers/create-a-private-provider)
+  </Expandable>
+
+</Update>
+
+<Update label="October 30, 2026" tags={["API Keys","Analytics","Breaking","Embeddings","External Users","Models","STT","Schemas","Vault","alpha.extractions"]} rss="17 breaking changes, 1 new endpoint, 14 modified endpoints, 3 new response codes, 34 new schemas, 17 modified schemas.">
+
+## Breaking changes
+
+- `CreateExternalUserRequest.user`: pattern `^[^\u0000]+$` modified<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /external-users`](/api/api-reference/external-users/register-an-external-user)
+- `ExternalUser.user`: pattern `^[^\u0000]+$` modified<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /external-users`](/api/api-reference/external-users/list-registered-external-users)
+    - [`GET /external-users/{user}`](/api/api-reference/external-users/get-a-registered-external-user)
+    - [`PATCH /external-users/{user}`](/api/api-reference/external-users/update-a-registered-external-user)
+    - [`POST /external-users`](/api/api-reference/external-users/register-an-external-user)
+  </Expandable>
+- `VaultSecretWriteRequest.value`: maxLength `65536` modified<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`PUT /vault/interns/{internId}/secrets/{name}`](/api/api-reference/vault/store-an-intern-secret), [`PUT /vault/secrets/{name}`](/api/api-reference/vault/store-a-workspace-secret)
+- [`GET /external-users`](/api/api-reference/external-users/list-registered-external-users): pattern `^[^\u0000]+$` modified<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`DELETE /external-users/{user}`](/api/api-reference/external-users/deactivate-a-registered-external-user): pattern `^[^\u0000]+$` modified<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`GET /external-users/{user}`](/api/api-reference/external-users/get-a-registered-external-user): pattern `^[^\u0000]+$` modified<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- [`PATCH /external-users/{user}`](/api/api-reference/external-users/update-a-registered-external-user): pattern `^[^\u0000]+$` modified<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+- `ExtractionDateField`: additionalProperties `false` object added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+  - **Migration: remove keys that are not in the field schema.** Each entry in `fields` now rejects unknown keys instead of dropping them silently. Before this release a per-field key such as `top_n`, `threshold`, or a misspelled `descripton` returned 200 and had no effect; it now returns 400 with a validation error naming the key. The accepted keys per field type are unchanged, so a request that already validated against the documented schema needs no change.
+- `ExtractionDatetimeField`: additionalProperties `false` object added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+  - **Migration: remove keys that are not in the field schema.** Each entry in `fields` now rejects unknown keys instead of dropping them silently. Before this release a per-field key such as `top_n`, `threshold`, or a misspelled `descripton` returned 200 and had no effect; it now returns 400 with a validation error naming the key. The accepted keys per field type are unchanged, so a request that already validated against the documented schema needs no change.
+- `ExtractionDurationField`: additionalProperties `false` object added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+  - **Migration: remove keys that are not in the field schema.** Each entry in `fields` now rejects unknown keys instead of dropping them silently. Before this release a per-field key such as `top_n`, `threshold`, or a misspelled `descripton` returned 200 and had no effect; it now returns 400 with a validation error naming the key. The accepted keys per field type are unchanged, so a request that already validated against the documented schema needs no change.
+- `ExtractionEstimateField`: additionalProperties `false` object added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+  - **Migration: remove keys that are not in the field schema.** Each entry in `fields` now rejects unknown keys instead of dropping them silently. Before this release a per-field key such as `top_n`, `threshold`, or a misspelled `descripton` returned 200 and had no effect; it now returns 400 with a validation error naming the key. The accepted keys per field type are unchanged, so a request that already validated against the documented schema needs no change.
+- `ExtractionForecastField`: additionalProperties `false` object added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+  - **Migration: remove keys that are not in the field schema.** Each entry in `fields` now rejects unknown keys instead of dropping them silently. Before this release a per-field key such as `top_n`, `threshold`, or a misspelled `descripton` returned 200 and had no effect; it now returns 400 with a validation error naming the key. The accepted keys per field type are unchanged, so a request that already validated against the documented schema needs no change.
+- `ExtractionListField`: additionalProperties `false` object added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+  - **Migration: remove keys that are not in the field schema.** Each entry in `fields` now rejects unknown keys instead of dropping them silently. Before this release a per-field key such as `top_n`, `threshold`, or a misspelled `descripton` returned 200 and had no effect; it now returns 400 with a validation error naming the key. The accepted keys per field type are unchanged, so a request that already validated against the documented schema needs no change.
+- `ExtractionNumberField`: additionalProperties `false` object added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+  - **Migration: remove keys that are not in the field schema.** Each entry in `fields` now rejects unknown keys instead of dropping them silently. Before this release a per-field key such as `top_n`, `threshold`, or a misspelled `descripton` returned 200 and had no effect; it now returns 400 with a validation error naming the key. The accepted keys per field type are unchanged, so a request that already validated against the documented schema needs no change.
+- `ExtractionTextField`: additionalProperties `false` object added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+  - **Migration: remove keys that are not in the field schema.** Each entry in `fields` now rejects unknown keys instead of dropping them silently. Before this release a per-field key such as `top_n`, `threshold`, or a misspelled `descripton` returned 200 and had no effect; it now returns 400 with a validation error naming the key. The accepted keys per field type are unchanged, so a request that already validated against the documented schema needs no change.
+- `ExtractionTimeField`: additionalProperties `false` object added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+  - **Migration: remove keys that are not in the field schema.** Each entry in `fields` now rejects unknown keys instead of dropping them silently. Before this release a per-field key such as `top_n`, `threshold`, or a misspelled `descripton` returned 200 and had no effect; it now returns 400 with a validation error naming the key. The accepted keys per field type are unchanged, so a request that already validated against the documented schema needs no change.
+- `ExtractionsRequest`: additionalProperties `false` object added<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+  - **Migration: remove keys that are not in the request schema.** The top level of the request body now rejects unknown keys instead of dropping them silently; such a request returns 400 with a validation error naming the key. Also removed in this release: `provider.options.scaledown.context_chars`, which was accepted but never changed the response (`context` is not returned); delete it from ScaleDown requests. Additive changes you may opt into: list answers now carry a per-item `confidences` array, ScaleDown accepts `format: "pdf"` assets and answers read from them report `source: "document"`, and Inception Mercury can extract every text field in one upstream question with `provider.options.inception.group_fields: true` (default stays one question per field).
+
+## New endpoints
+
+- [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request): Submit an Extractions request
+
+## Modified endpoints
+
+- [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data): request schema updated
+- [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription): request schema updated
+- [`POST /vault/interns/{internId}/secrets/copy`](/api/api-reference/vault/copy-workspace-secrets-to-an-intern): description updated
+- [`DELETE /vault/interns/{internId}/secrets/{name}`](/api/api-reference/vault/delete-an-intern-secret): description updated; parameter `name` updated
+- [`PUT /vault/interns/{internId}/secrets/{name}`](/api/api-reference/vault/store-an-intern-secret): description updated
+- [`DELETE /vault/secrets/{name}`](/api/api-reference/vault/delete-a-workspace-secret): description updated; parameter `name` updated
+- [`PUT /vault/secrets/{name}`](/api/api-reference/vault/store-a-workspace-secret): description updated
+- [`GET /models/user`](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails): new parameter `client`
+- [`GET /embeddings/models`](/api/api-reference/embeddings/list-all-embeddings-models): response schema updated
+- [`GET /model/{author}/{slug}`](/api/api-reference/models/get-a-model-by-its-slug): response schema updated
+- [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties): response schema updated
+- [`GET /models/user`](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails): description updated; response schema updated
+- [`GET /keys`](/api/api-reference/api-keys/list-api-keys): description updated
+- [`POST /keys`](/api/api-reference/api-keys/create-a-new-api-key): description updated
+
+## New response codes
+
+- [`GET /keys`](/api/api-reference/api-keys/list-api-keys): now returns `403`
+- [`DELETE /keys/{hash}`](/api/api-reference/api-keys/delete-an-api-key): now returns `403`
+- [`GET /keys/{hash}`](/api/api-reference/api-keys/get-a-single-api-key): now returns `403`
+
+## New schemas
+
+- `ClassifierFiltersFilter`
+  - Used by [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data)
+- `ClassifierScalarFilter`
+  - Used by [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data)
+- `ClassifierScalarFilterOperator`
+  - Used by [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data)
+- `ClassifierSetFilter`
+  - Used by [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data)
+- `ClassifierSetFilterOperator`
+  - Used by [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data)
+- `Filter`
+  - Used by [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data)
+- `Operator`
+  - Used by [`GET /analytics/meta`](/api/api-reference/analytics/get-available-analytics-metrics-and-dimensions)
+- `ScalarFilter`
+  - Used by [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data)
+- `ScalarFilterOperator`
+  - Used by [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data)
+- `SetFilter`
+  - Used by [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data)
+- `SetFilterOperator`
+  - Used by [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data)
+- `ExtractionDateAnswer`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDateField`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDatetimeAnswer`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDatetimeField`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDurationAnswer`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDurationField`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionEstimateAnswer`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionEstimateField`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionForecastAnswer`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionForecastField`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionForecastStep`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionListAnswer`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionListField`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionNumberAnswer`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionNumberField`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionTextAnswer`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionTextField`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionTimeAnswer`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionTimeField`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionsRequest`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionsResponse`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionsUsage`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionAsset`
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+
+## Modified schemas
+
+- `ImageGenerationRequest`: description updated
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+- `VaultSecretWriteRequest`: description updated
+  - Used by [`PUT /vault/interns/{internId}/secrets/{name}`](/api/api-reference/vault/store-an-intern-secret), [`PUT /vault/secrets/{name}`](/api/api-reference/vault/store-a-workspace-secret)
+- `GenerationResponse`: property `api_type` updated
+  - Used by [`GET /generation`](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation)
+- `ProviderOptions`: description updated
+
+  <Expandable title="15 endpoints using this schema">
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+    - [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+    - [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+    - [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+  </Expandable>
+- `ResponsesRequest`: new property `access_programs`
+  - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `ExtractionDateAnswer`: description updated; enum property_added
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDatetimeAnswer`: description updated; enum property_added
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionDurationAnswer`: description updated; enum property_added
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionEstimateAnswer`: description updated; enum property_added
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionForecastAnswer`: description updated; enum property_added
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionListAnswer`: new property `confidences`; description updated; enum property_added
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionNumberAnswer`: description updated; enum property_added
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionTextAnswer`: description updated; enum property_added
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionTimeAnswer`: description updated; enum property_added
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `ExtractionsRequest`: description updated; $ref modified
+  - Used by [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+- `Model`: new property `endpoints` (always present)
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /embeddings/models`](/api/api-reference/embeddings/list-all-embeddings-models)
+    - [`GET /model/{author}/{slug}`](/api/api-reference/models/get-a-model-by-its-slug)
+    - [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties)
+    - [`GET /models/user`](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails)
+  </Expandable>
+- `ModelResponse`: example modified
+  - Used by [`GET /model/{author}/{slug}`](/api/api-reference/models/get-a-model-by-its-slug)
+
+</Update>
+
 <Update label="October 29, 2026" tags={["API Keys","BYOK","Breaking","Private Endpoints","Private Providers","Schemas"]} rss="1 breaking change, 5 new endpoints, 5 modified endpoints, 8 new schemas, 13 modified schemas.">
 
 ## Breaking changes

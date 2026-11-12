@@ -348,9 +348,6 @@ html.dark .changelog-status-badge[data-color="gray"] {
 .pr-bg-speed { background: #7b68ee; }
 .pr-bg-rel { background: #ff2d55; }
 .pr-bg-429 { background: #ff8042; }
-.pr-bg-received { background: var(--pr-ink); }
-/* Learned capacity is a limit, not a cost part, so its heading swatch is neutral. */
-.pr-bg-capacity { background: rgb(var(--gray-400)); }
 
 .pr-fill-ttft { fill: #ffbb28; }
 .pr-fill-speed { fill: #7b68ee; }
@@ -374,9 +371,6 @@ html.dark .changelog-status-badge[data-color="gray"] {
 .pr-fig .dot-in { fill: #00bf6f; stroke: var(--pr-surface); stroke-width: 1.5; }
 .pr-fig .got { fill: none; stroke: var(--pr-ink); stroke-width: 2; }
 .pr-fig .got-fill { fill: var(--pr-ink); opacity: 0.06; }
-.pr-fig .cap { fill: none; stroke: #da70d6; stroke-width: 2.5; }
-.pr-fig .real { fill: none; stroke: var(--pr-muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
-.pr-fig .rate { fill: #ff8042; }
 
 .pr-legend {
   display: flex;
@@ -393,15 +387,6 @@ html.dark .changelog-status-badge[data-color="gray"] {
   align-items: center;
   gap: 0.375rem;
 }
-
-.pr-ln {
-  display: inline-block;
-  width: 18px;
-  height: 0;
-}
-
-.pr-ln-cap { border-top: 2.5px solid #da70d6; }
-.pr-ln-real { border-top: 1.5px dashed var(--pr-muted); }
 
 /* Endpoint table under the tradeoff chart */
 .pr-table {
