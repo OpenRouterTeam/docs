@@ -19,6 +19,8 @@ models:
   - cloudflare/clairic
   - inception/mercury-decide
   - levanto/sage-2
+  - perplexity/pplx-decider-v1.3
+  - perplexity/pplx-decider-flash-v1.3
   - scaledown/extract
 ---
 
@@ -35,6 +37,7 @@ The route is alpha and its shape can change. It takes the [Decisions](/api/api-r
 | [`cloudflare/clairic`](https://openrouter.ai/cloudflare/clairic) | Text and up to 4 PNG, JPEG, or WebP images | Every type in the table below (no `null_threshold` on `list`, `estimate`, or `forecast`) | `include_quantiles`, `return_state_text` under `provider.options.cloudflare` |
 | [`inception/mercury-decide`](https://openrouter.ai/inception/mercury-decide) | Text only | `text`, and `list` with `items: "text"` | `snap_to_words`, `threshold`, `group_fields` under `provider.options.inception` |
 | [`levanto/sage-2`](https://openrouter.ai/levanto/sage-2) | Text only | `text`, `number` (as stated: no `unit`), `date`, `time`, `datetime`, `duration`, and `list` of any item type (no `null_threshold` on lists); no `reference_date` | None |
+| [`perplexity/pplx-decider-v1.3`](https://openrouter.ai/perplexity/pplx-decider-v1.3), [`perplexity/pplx-decider-flash-v1.3`](https://openrouter.ai/perplexity/pplx-decider-flash-v1.3) | Text only | `text`, and `list` with `items: "text"` (no `null_threshold`); no `reference_date`; up to 128 fields | None |
 | [`scaledown/extract`](https://openrouter.ai/scaledown/extract) | Text, or one PDF or image | `text`, and `list` with `items: "text"` | `threshold`, `top_n` under `provider.options.scaledown` |
 
 A request a model cannot serve (a `date` field on Mercury Decide, an image on a text-only model, a fifth image on Clairic) fails with a `400` from OpenRouter before anything is sent to the provider. The response `provider` field names the provider that answered.
@@ -149,7 +152,7 @@ Images and PDFs go in a top-level `assets` map, each sent once and referenced by
 ```
 
 - ScaleDown Extract reads one PDF, PNG, or JPEG per request (a WebP fails with a `400`), and reads either the text or the document, not both: send the file-only form of `state` or omit `state`.
-- Mercury Decide and Sage read text only; any asset fails with a `400`.
+- Mercury Decide, Perplexity Decider and Sage read text only; any asset fails with a `400`.
 
 ## Provider options
 
