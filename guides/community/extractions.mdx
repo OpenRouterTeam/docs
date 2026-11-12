@@ -18,6 +18,8 @@ icon: table-list
 models:
   - cloudflare/clairic
   - inception/mercury-decide
+  - inference-net/schematron-v2-small
+  - inference-net/schematron-v2-turbo
   - levanto/sage-2
   - perplexity/pplx-decider-v1.3
   - perplexity/pplx-decider-flash-v1.3
@@ -36,6 +38,7 @@ The route is alpha and its shape can change. It takes the [Decisions](/api/api-r
 | --- | --- | --- | --- |
 | [`cloudflare/clairic`](https://openrouter.ai/cloudflare/clairic) | Text and up to 4 PNG, JPEG, or WebP images | Every type in the table below (no `null_threshold` on `list`, `estimate`, or `forecast`) | `include_quantiles`, `return_state_text` under `provider.options.cloudflare` |
 | [`inception/mercury-decide`](https://openrouter.ai/inception/mercury-decide) | Text only | `text`, and `list` with `items: "text"` | `snap_to_words`, `threshold`, `group_fields` under `provider.options.inception` |
+| [`inference-net/schematron-v2-small`](https://openrouter.ai/inference-net/schematron-v2-small), [`inference-net/schematron-v2-turbo`](https://openrouter.ai/inference-net/schematron-v2-turbo) | Text only | `text`, `number` (as stated: no `unit`), `date`, `time`, `datetime`, and `list` of `text`, `number`, or `date` items; no `null_threshold` or `reference_date` | None |
 | [`levanto/sage-2`](https://openrouter.ai/levanto/sage-2) | Text only | `text`, `number` (as stated: no `unit`), `date`, `time`, `datetime`, `duration`, and `list` of any item type (no `null_threshold` on lists); no `reference_date` | None |
 | [`perplexity/pplx-decider-v1.3`](https://openrouter.ai/perplexity/pplx-decider-v1.3), [`perplexity/pplx-decider-flash-v1.3`](https://openrouter.ai/perplexity/pplx-decider-flash-v1.3) | Text only | `text`, and `list` with `items: "text"` (no `null_threshold`); no `reference_date`; up to 128 fields | None |
 | [`scaledown/extract`](https://openrouter.ai/scaledown/extract) | Text, or one PDF or image | `text`, and `list` with `items: "text"` | `threshold`, `top_n` under `provider.options.scaledown` |
@@ -114,6 +117,7 @@ Every field takes `type`, an optional `instructions` string saying what the fiel
 - `p_null` is the probability that the state contains nothing for the field; `confidence` is the model's confidence in `value`.
 - `span` (`spans` for lists, one per item) is `[start, end)` as Unicode code point offsets into the state text, so an emoji or an accented letter counts once. Both are optional: an answer read from an image or a document can come without one. When `spans` is present, an item with no offsets has `null` at its position, so check each entry before indexing into it. When ScaleDown returns offsets that are inside the state but don't delimit the returned text, the answer keeps its `value` and `confidence` and has no `span` (`null` in `spans`). This happens for an entity that crosses a line break, which ScaleDown returns with its whitespace normalized. Set `return_state_text` on Clairic to get the exact text the offsets index into back as `state_text`.
 - `source` is `image` or `document` when the answer was read from an asset rather than the state text; `spell_confidence` then reports how sure the model is of the spelling.
+- Schematron answers carry only `type` and `value`: no `guess`, `p_null`, `confidence` or `span`. In our tests, its `datetime` answers carried an offset even when the state gave none, and Schematron returned such times as UTC (`Z`). Don't rely on that offset unless the state names one.
 - `estimate` and `forecast` answers carry the distribution: `mean`, `median`, `p10`, `p90`, `p_below` and `p_above` (probability mass outside `min` and `max`), `quantiles` when asked for, and per-step values under `steps` for forecasts.
 - `truncated` is `true` when the provider read only a prefix of the state. `usage.passes` counts the upstream calls the fields needed when they did not fit in one.
 
@@ -154,7 +158,7 @@ Images and PDFs go in a top-level `assets` map, each sent once and referenced by
 ```
 
 - ScaleDown Extract reads one PDF, PNG, or JPEG per request (a WebP fails with a `400`), and reads either the text or the document, not both: send the file-only form of `state` or omit `state`.
-- Mercury Decide, Perplexity Decider and Sage read text only; any asset fails with a `400`.
+- Mercury Decide, Perplexity Decider, Sage and Schematron read text only; any asset fails with a `400`.
 
 ## Provider options
 
