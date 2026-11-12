@@ -40,6 +40,8 @@ The route is alpha and its shape can change. It takes the [Decisions](/api/api-r
 | [`perplexity/pplx-decider-v1.3`](https://openrouter.ai/perplexity/pplx-decider-v1.3), [`perplexity/pplx-decider-flash-v1.3`](https://openrouter.ai/perplexity/pplx-decider-flash-v1.3) | Text only | `text`, and `list` with `items: "text"` (no `null_threshold`); no `reference_date`; up to 128 fields | None |
 | [`scaledown/extract`](https://openrouter.ai/scaledown/extract) | Text, or one PDF or image | `text`, and `list` with `items: "text"` | `threshold`, `top_n` under `provider.options.scaledown` |
 
+Perplexity Decider v1.3 and Flash v1.3 serve Perplexity's `locate` capability on this route: each `text` answer is a passage from `state` with its character `span`, and each `list` answer carries one `spans` entry per item. The same models answer Decisions questions on [`/api/alpha/decisions`](/guides/community/multimodal-decisions); the URL you call picks the capability.
+
 A request a model cannot serve (a `date` field on Mercury Decide, an image on a text-only model, a fifth image on Clairic) fails with a `400` from OpenRouter before anything is sent to the provider. The response `provider` field names the provider that answered.
 
 To list these models programmatically, filter the Models API by the request path they serve; `output_modalities` cannot select them because Extractions is served by text and decisions models alike:
