@@ -16,7 +16,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="November 12, 2026" tags={["Credits","Embeddings","Responses","Schemas","Workspaces"]} rss="4 modified endpoints, 4 new schemas, 8 modified schemas.">
+<Update label="November 12, 2026" tags={["Credits","Embeddings","Responses","Schemas","Workspaces"]} rss="4 modified endpoints, 4 new schemas, 9 modified schemas.">
 
 ## Modified endpoints
 
@@ -77,6 +77,14 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
     - [`GET /guardrails/{id}`](/api/api-reference/guardrails/get-a-guardrail)
     - [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail)
     - [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail)
+  </Expandable>
+- `OutputWebFetchServerToolItem`: new property `retrieved_at`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
   </Expandable>
 
 </Update>
