@@ -82,8 +82,17 @@ When an exact subject is too narrow, write a **Condition** in [CEL](https://cel.
 | `scopes` | `list<string>` | `scopes` (empty list when absent) |
 | `token_type` | `string` | `token_type` (empty string when absent) |
 
+Read the `sub` claim from a real token before you write a condition. Issuers differ in the form they use, and a condition written against the wrong form never matches, which then surfaces only as the generic `invalid_grant` described under Errors.
+
+GitHub Actions emits two formats. Repositories created, renamed, or transferred after July 15, 2026 use an immutable subject that carries the permanent owner and repository IDs. Existing repositories can also opt in at the organization or repository level through the OIDC settings UI or REST API. Those IDs stay in place even when the subject claim is customized with `include_claim_keys`. A condition written for the older name-only form cannot match such a token. See [GitHub’s OpenID Connect reference](https://docs.github.com/en/actions/reference/security/oidc#immutable-subject-claims) for the transition rules, and check the actual token rather than relying on the repository’s creation date. GitHub Enterprise Server always uses the name-only form.
+
 ```text title="Example conditions"
+# Default name-only subject, for a repository that has not switched to immutable subjects
 subject.startsWith("repo:acme/")
+
+# Default immutable subject, with the repository identity anchored to the repo field
+subject.startsWith("repo:acme@123456/payments-api@456789:") && subject.endsWith(":ref:refs/heads/main")
+
 "inference" in scopes && audience.size() == 1
 token_type == "service_account" || subject.endsWith("@ci.acme.dev")
 ```
@@ -137,6 +146,27 @@ curl https://openrouter.ai/api/v1/workspaces \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
+### Use an access token with the Terraform provider
+
+The [OpenRouter Terraform provider](https://registry.terraform.io/providers/OpenRouterTeam/openrouter/latest) performs the exchange itself, so no API key is stored in the configuration or the environment. Point it at the policy and at the file holding the workload's JWT:
+
+```hcl
+terraform {
+  required_providers {
+    openrouter = {
+      source = "OpenRouterTeam/openrouter"
+    }
+  }
+}
+
+provider "openrouter" {
+  federation_policy_id = "4b2f7d1e-8c3a-4e5f-9a6b-1c2d3e4f5a6b"
+  oidc_token_file      = "/path/to/oidc-token"
+}
+```
+
+Both values can also come from the environment, as `OPENROUTER_FEDERATION_POLICY_ID` and `OPENROUTER_OIDC_TOKEN_FILE`. The provider requests the `management` scope, so its policy must act as a management key; a policy acting as a workspace key is refused. Setting `api_key` or `OPENROUTER_MANAGEMENT_KEY` together with `federation_policy_id` is a configuration error, so a plan cannot fall back to a stored key. The token file is re-read on every exchange, so a rotated token is picked up without a restart.
+
 ### Requirements on the subject token
 
 - Signed with `ES256` or `RS256` by a key published at the issuer's JWKS.
@@ -153,7 +183,7 @@ Errors follow [RFC 6749 §5.2](https://www.rfc-editor.org/rfc/rfc6749#section-5.
 | 400 | `invalid_request` | A required field is missing or malformed, or `subject_token` is not a JWT. |
 | 400 | `unsupported_grant_type` | `grant_type` is not the token-exchange grant. |
 | 400 | `invalid_scope` | The requested scope is not `inference` or `management`, or is not the scope the policy grants. |
-| 400 | `invalid_grant` | The token was not accepted: the policy does not exist or is paused, the token's claims do not satisfy the policy, the signature is bad, or the token is expired. One generic message covers all of these so a caller cannot probe another organization's configuration. |
+| 400 | `invalid_grant` | The token was not accepted: the policy does not exist or is paused, the token's claims do not satisfy the policy, the signature is bad, or the token is expired. One generic message covers all of these so a caller cannot probe another organization's configuration. Because the message is intentionally undifferentiated, debug it by decoding your own token and comparing its `iss`, `sub` and `aud` with the policy; the response cannot tell you which claim did not match. |
 | 413 | `invalid_request` | The request body is larger than 32 KB. |
 | 429 | `invalid_request` | Too many exchanges from one address; retry after the `Retry-After` header. |
 | 503 | `temporarily_unavailable` | The issuer's discovery document or JWKS could not be fetched; retry shortly. |
