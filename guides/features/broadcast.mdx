@@ -61,6 +61,7 @@ The following destinations are currently available:
 - [S3 / S3-Compatible](/guides/features/broadcast/s3)
 - [Sentry](/guides/features/broadcast/sentry)
 - [Snowflake](/guides/features/broadcast/snowflake)
+- [Vantage](/guides/features/broadcast/vantage) (beta)
 - [W&B Weave](/guides/features/broadcast/weave)
 - [Webhook](/guides/features/broadcast/webhook)
 
@@ -379,6 +380,7 @@ Each observability platform may recognize different metadata keys. See the desti
 - [Raindrop](/guides/features/broadcast/raindrop#custom-metadata) - Supports custom event properties for AI observability
 - [Ramp](/guides/features/broadcast/ramp#custom-metadata) - Supports OTLP span attributes for AI cost tracking
 - [Snowflake](/guides/features/broadcast/snowflake#custom-metadata) - Queryable via VARIANT column functions
+- [Vantage](/guides/features/broadcast/vantage#custom-metadata) - Supports OTLP span attributes for LLM cost allocation
 - [ClickHouse](/guides/features/broadcast/clickhouse#custom-metadata) - Queryable via JSONExtract functions
 - [Google BigQuery](/guides/features/broadcast/bigquery#custom-metadata) - Queryable via JSON functions
 - [S3](/guides/features/broadcast/s3#custom-metadata) - Stored in trace JSON files
@@ -392,7 +394,7 @@ OpenRouter builds one trace per request, but not every destination stores every 
 
 ## Additional generation metadata
 
-Each destination has four **Additional generation metadata** toggles. They're off by default, and each adds a different set of fields to the trace's metadata, so turn on only what your destination needs. Set them under **Additional generation metadata** when you add or edit a destination, or with the matching field in the [destinations API](/api/api-reference/observability/create-an-observability-destination).
+Each destination has four **Additional generation metadata** toggles. They're off by default (a new [Vantage](/guides/features/broadcast/vantage) destination starts with **Cost** and **Cost allocation** on), and each adds a different set of fields to the trace's metadata, so turn on only what your destination needs. Set them under **Additional generation metadata** when you add or edit a destination, or with the matching field in the [destinations API](/api/api-reference/observability/create-an-observability-destination).
 
 | Toggle | API field | What it adds | Where it appears |
 | --- | --- | --- | --- |
@@ -611,7 +613,7 @@ Counts and per-kind costs are emitted only when OpenRouter can show they match w
 }
 ```
 
-This field is in beta: its shape may change before a dedicated cost-allocation destination ships.
+This field is in beta: its shape may change. The [Vantage](/guides/features/broadcast/vantage) destination, also in beta, reads it and turns it on by default.
 
 ## API Key Filtering
 
@@ -683,5 +685,6 @@ Step-by-step guides for configuring specific observability destinations:
 - [S3 / S3-Compatible](/guides/features/broadcast/s3) - Store traces in S3, R2, or compatible storage
 - [Sentry](/guides/features/broadcast/sentry) - Application monitoring and error tracking
 - [Snowflake](/guides/features/broadcast/snowflake) - Cloud data warehouse for analytics
+- [Vantage](/guides/features/broadcast/vantage) - LLM cost allocation (beta)
 - [W&B Weave](/guides/features/broadcast/weave) - LLM observability and tracking
 - [Webhook](/guides/features/broadcast/webhook) - Send traces to any HTTP endpoint
