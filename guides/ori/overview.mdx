@@ -2,10 +2,10 @@
 publish: true
 title: Ori
 description: Ori is OpenRouter's family of tools for putting agents to work with any model, in your terminal, in Slack, and on your desktop
-seoTitle: 'Ori | OpenRouter Agent Tools: Harness, Code, Eval, Intern, and Desktop'
+seoTitle: 'Ori | OpenRouter Agent Tools: Harness, Code, Intern, and Desktop'
 og:site_name: OpenRouter Documentation
 og:title: 'Ori - OpenRouter Agent Tools'
-og:description: "Ori is OpenRouter's family of tools for putting agents to work with any model. Run your coding agent on OpenRouter with Ori Harness, find the best model with Ori Eval, and more."
+og:description: "Ori is OpenRouter's family of tools for putting agents to work with any model. Run your coding agent on OpenRouter with Ori Harness, OpenRouter's own coding agent with Ori Code, and more."
 og:image: https://openrouter.ai/dynamic-og?title=Ori&description=OpenRouter%27s%20family%20of%20agent%20tools
 og:image:width: 1200
 og:image:height: 630
@@ -23,7 +23,6 @@ icon: terminal
 | --- | --- | --- |
 | [Ori Harness](https://openrouter.ai/ori/harness) | Runs the agent CLI you already use, such as Claude Code, Codex, OpenCode, or Hermes, on OpenRouter with one command. See the [Ori Harness guide](/guides/ori/harness). | Available |
 | Ori Code | OpenRouter's native terminal coding agent, built for working with many models. | Available |
-| [Ori Eval](https://openrouter.ai/ori/eval) | Finds the best model for your project by running your agent on your own prompts and grading the results. See the [Ori Eval guide](/guides/ori/eval). | Available |
 | Ori Intern | Slack agents that learn skills and run on any model. | Waitlist |
 | Ori Desktop | Send tasks to any OpenRouter model from the Mac menu bar. | Waitlist |
 
@@ -55,14 +54,13 @@ Then run the tool you want:
 
 ```sh
 ori claude          # Claude Code on OpenRouter (or codex, opencode, hermes, ...)
-ori code -p "What is the best model for my support agent?"   # writes and runs an eval, then recommends a model
+ori code            # Ori Code, OpenRouter's native coding agent
 ```
 
-After the agent writes the eval, `ori eval` runs every `*.eval.ts` file in your project again, locally or in CI.
+Without a model setting, Ori Code uses `openrouter/auto`. Pass `--model` with any OpenRouter model ID to choose one.
 
 ## Next steps
 
 - [Ori Harness](/guides/ori/harness): run your agent CLI on OpenRouter.
-- [Ori Eval](/guides/ori/eval): write and run evals that pick the best model.
 - [Configuration](/guides/ori/configuration): settings, models, and defaults for every Ori tool.
 - [Changelog](/guides/ori/changelog): what changed in each Ori release.

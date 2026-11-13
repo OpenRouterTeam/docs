@@ -51,7 +51,7 @@ To run the Codex CLI on OpenRouter for one session, launch it through Ori:
 ori codex
 ```
 
-Ori uses the Codex CLI on your `PATH`, and asks to install it if it's missing. To choose a model, pass `--model` with any OpenRouter model ID. See [Any agent, any model](/guides/ori/harness#any-agent-any-model).
+Ori uses the Codex CLI on your `PATH`, and asks to install it if it's missing. Ori needs Codex 0.164.0 or later. With an older Codex, `ori codex` and `ori harness setup codex` stop with `ORI_CLI_HARNESS_VERSION_UNSUPPORTED` and tell you how to upgrade. To choose a model, pass `--model` with any OpenRouter model ID. See [Any agent, any model](/guides/ori/harness#any-agent-any-model).
 
 ## Set up Codex Desktop
 
@@ -99,9 +99,11 @@ Ori uses the Codex CLI on your `PATH`, and asks to install it if it's missing. T
    ori harness setup codex
    ```
 
-4. Open Codex Desktop and pick a model from the model picker. The picker lists models from the OpenRouter catalog.
+4. Open Codex Desktop and pick a model from the model picker. Codex fetches the picker's list from OpenRouter, so it shows the models you can use. If your organization sets a Codex model list, the picker shows only those models. See [Model lists served by OpenRouter](/guides/ori/harness#model-lists-served-by-openrouter).
 
-The setup stays in place until you reset it, so your plain `codex` command also runs on OpenRouter. You don't need to launch Codex Desktop through Ori.
+The setup stays in place until you reset it, so your plain `codex` command also runs on OpenRouter. You don't need to launch Codex Desktop through Ori. `ori codex`, the plain `codex` command, and Codex Desktop share the same OpenRouter provider and thread list.
+
+Setup hides any login saved in `~/.codex/auth.json`, as `ori codex` does, so Codex uses OpenRouter instead of a ChatGPT login. If you also want to use a ChatGPT plan in plain Codex, setup and `ori doctor codex` tell you how.
 
 ## Go back to your own Codex setup
 

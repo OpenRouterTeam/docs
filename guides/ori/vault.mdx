@@ -78,7 +78,16 @@ Use `PUT /api/v1/vault/interns/{internId}/secrets/{name}` with the same body to 
 
 **Names** are 1 to 255 characters, start with a lowercase letter, and contain only lowercase letters, digits, and single underscores. A name cannot end with an underscore or contain `__`. `github_token` and `db2_password` are valid, `GitHub-Token`, `_token`, and `a__b` are not.
 
-**Values** are 1 to 65,536 characters. The whole request body must stay under 425,000 bytes or the request fails with `413`.
+**Values** are 1 to 65,536 characters. A header-set credential, a JSON object that maps HTTP header names to values, can be longer: up to 20 headers, with names up to 128 characters and values up to 8,192 characters. The whole request body must stay under 1,309,643 bytes or the request fails with `413`.
+
+Send a header-set credential as a JSON-encoded string in `value`, not as a nested object:
+
+```json
+{
+  "value": "{\"X-Api-Key\":\"example-key\",\"X-Api-Secret\":\"example-secret\"}",
+  "hosts": ["api.example.com"]
+}
+```
 
 **Hosts** must be present with 1 to 100 entries. The rules are in [Host rules](#host-rules).
 
@@ -229,7 +238,7 @@ Errors use the standard OpenRouter shape.
 | `404` | The key is outside the Intern API programme, the intern is not in the key's workspace, the named secret does not exist in that scope, or the intern's attached vault is no longer available. |
 | `408` | The request or its body took too long to arrive. |
 | `409` | Copy conflict, or the intern is being transferred. See [Copy workspace secrets to an intern](#copy-workspace-secrets-to-an-intern). |
-| `413` | The request body exceeds 425,000 bytes. |
+| `413` | The request body exceeds 1,309,643 bytes. |
 | `429` | Too many vault requests. Retry with backoff. |
 | `500` | An internal error. |
 | `502` | The vault service returned an unexpected response. |

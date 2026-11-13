@@ -36,22 +36,6 @@ Ori uses this directory for data shared by commands and workspaces:
 
 It can contain downloaded templates, installed dependencies, caches, `config.json`, and `telemetry.json`. Templates, dependencies, and caches can be deleted when you want Ori to download them again. Keep `config.json` if you want to keep your settings. Delete `telemetry.json` only if you do not need the local telemetry state.
 
-## Eval scratch files
+## Session history
 
-Eval commands can create temporary workspaces under the system temporary directory. Common names include:
-
-```text
-$TMPDIR/ori-eval-scratch-*
-$TMPDIR/ori-eval-results-*
-$TMPDIR/ori-eval-sdk-*
-```
-
-These directories hold eval files, exported data, reports, and installed dependencies. They are throwaway workspaces. You can delete them after the eval finishes.
-
-The `create-eval` workflow also keeps a run tracker at a path like:
-
-```text
-/tmp/ori-create-eval-<hash>/
-```
-
-The tracker stores the prompt, step progress, answers, and error logs so a workflow can continue. Delete it after the workflow finishes and you no longer need its record. If a workflow is active, do not delete its tracker.
+Ori keeps the history of each built-in harness session so you can resume it. A session stays resumable for 30 days after its last turn, and Ori removes older history. To change the window, set `ORI_SESSION_HISTORY_RETENTION_DAYS` to a number of days. See the [settings reference](/guides/ori/configuration#files).
