@@ -66,7 +66,7 @@ Each key carries its own setting, so a fleet of per-service keys is configured k
 - **Low balance alert.** A dollar amount, $100 by default. The alert fires when the balance drops below it. A balance hovering near the line does not re-alert — it has to rise clearly above the amount first.
 - **Workspace budget limit and API key spend limit.** A percentage of an already-configured limit. The defaults are 80% and 100% — a heads-up with room to spare, then a message when the limit is reached. Thresholds can be changed, removed, or added.
 - **Model deprecation alert.** Nothing to set. When a recently used model is scheduled to be retired, the alert names the model, when it goes, and what to move to.
-- **Model price drop alert.** Nothing to set. Price drops on recently used model endpoints are collected into a daily digest that shows each old and new price per million tokens.
+- **Model price drop alert.** Nothing to set. Price drops on recently used model endpoints are collected into a daily digest, ordered by how much of your traffic each endpoint carries. The first five price drops, busiest endpoints first, show each old and new price per million tokens; the rest are listed by name on one line. Webhook payloads always carry every item in full.
 - **New model available.** Nothing to set. The alert fires when a new model becomes available through OpenRouter.
 
 ## Who gets an alert

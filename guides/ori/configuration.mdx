@@ -259,7 +259,7 @@ These settings work only in macOS managed preferences and the machine policy fil
 
 | Setting | Accepts | What it does |
 | --- | --- | --- |
-| `ORI_MODEL` | model slug | Default model for `ori harness` and `ori code`. |
+| `ORI_MODEL` | model slug | Default model for the built-in Ori harness and `ori code`. Without it, Ori uses `openrouter/auto`. |
 | `ORI_OPENROUTER_REGION` | `global`, `us`, `eu` | OpenRouter data region to route requests through. Overrides the `region` that `ori login` and `ori auth region` save. Defaults to `global`. |
 | `ORI_OPENROUTER_BASE_URL` | URL | OpenRouter API base URL to send inference to, for a gateway, a proxy, or a regional host such as `https://us.openrouter.ai/api/v1`. Takes precedence over the region. Ignored in a project's `.ori/config.json`. |
 | `ORI_OPENROUTER_ENDPOINT` | URL | Same as `ORI_OPENROUTER_BASE_URL`, used when that setting is empty. Ignored in a project's `.ori/config.json`. |
@@ -267,6 +267,18 @@ These settings work only in macOS managed preferences and the machine policy fil
 | `ORI_MAX_TURNS` | count | Tool-turn limit for each native harness run. No limit by default. |
 | `ORI_OUTPUT` | `human`, `json` | Output mode for commands that support both. Ori otherwise picks `human` for a terminal. |
 | `ORI_TELEMETRY` | `0` or `false` to disable | Turns off Ori's usage telemetry. |
+| `ORI_TELEMETRY_LEVEL` | `full`, `no-content`, `off` | What telemetry leaves the machine. `full` sends Ori's and every harness's traces, metrics, and logs to your collector, including prompts, answers, tool calls, and file contents. `no-content` sends the same with every content option turned off. `off` sends nothing but model requests and the config download, and also turns off Ori's usage telemetry. |
+
+### Claude Code and Codex
+
+| Setting | Accepts | What it does |
+| --- | --- | --- |
+| `ORI_CLAUDE_MODELS` | comma-separated model IDs | The only models OpenRouter serves to Claude Code and Claude Desktop, in this order, for example `anthropic/claude-sonnet-4.5,openai/*`. Use exact OpenRouter model IDs, or `<provider>/*` for every model from one provider. OpenRouter hides every other model from the pickers and refuses it, also when it's named with `--model` or `/model`. Empty serves every model the key can use. |
+| `ORI_CLAUDE_DEFAULT_MODEL` | model ID | The model Claude Code starts on, with or without a model list. Ori writes it as `model` in the Claude Code settings when they hold no model or the one Ori wrote, and `ori claude` starts on it. A model picked with `/model` stays. |
+| `ORI_CODEX_MODELS` | comma-separated model IDs | The only models OpenRouter serves to the Codex CLI and Codex Desktop, in this order, with the same rules as `ORI_CLAUDE_MODELS`. |
+| `ORI_CODEX_TOOL_SEARCH` | switch | Turns on Codex tool search for every model, which loads MCP tools and `spawn_agent` on demand. On by default. |
+
+`ori doctor` names any listed model that your key can't use. Ori 0.17.0 retired `ORI_CLAUDE_CROSS_FAMILY_MODELS` and `ORI_CODEX_CROSS_FAMILY_MODELS`; they no longer have an effect, and `ori doctor` warns when one is still set.
 
 ### Terminal appearance
 
@@ -286,3 +298,4 @@ These settings work only in macOS managed preferences and the machine policy fil
 | --- | --- | --- |
 | `ORI_STATE_DIR` | directory path | Where Ori keeps its local state database. See [where Ori writes files](/guides/ori/files). |
 | `ORI_LOG_MAX_RUNS` | count | How many run logs Ori keeps before pruning the oldest. |
+| `ORI_SESSION_HISTORY_RETENTION_DAYS` | days | How long a built-in harness session stays resumable after its last turn. Defaults to `30`. |

@@ -62,22 +62,31 @@ ori update
 
 ## Bring your own agent
 
-Run Claude Code, Cline, Codex, Grok Build, Hermes, Kilo Code, Muse Code, omp, OpenCode, Pi, Prime Agent, or DeepSeek Harness with commands you already know:
+Run Antigravity CLI, Claude Code, Cline, Codex, Crush, Factory Droid, fx, Grok Build, Hermes, Kilo Code, Muse Code, omp, OpenCode, OpenWork, Pi, Prime Agent, Unreal Agent, ZCode, or DeepSeek Harness with commands you already know:
 
 ```text
+ori antigravity
 ori claude
 ori cline
 ori codex
+ori crush
+ori droid
 ori dsh
+ori fx
 ori grok
 ori hermes
 ori kilo
 ori muse
 ori omp
 ori opencode
+ori openwork
 ori pi
 ori prime-agent
+ori unreal
+ori zcode
 ```
+
+Run `ori --help` to see the full list for the version you have installed.
 
 Each command starts the real agent CLI on your machine. Ori uses the CLI on your `PATH`, and asks to install it if it's missing. `ori dsh` is the one exception: it sets up DeepSeek Harness instead of starting it. See [DeepSeek Harness](#deepseek-harness).
 
@@ -113,6 +122,22 @@ ori harness reset codex
 Each setup needs a saved login from `ori login`. A key that's set only in your shell doesn't work, because the agent's app reads its settings later, outside your shell.
 
 Setup covers the harnesses in the table above and no other app or IDE. If your organization manages Claude settings, setup stops and names the file; use `ori claude` instead.
+
+## Move a Claude Code setup to Codex
+
+`ori harness migrate` reads your Claude Code setup and writes the Codex equivalent. Without `--apply`, it only reports what it would write:
+
+```sh
+ori harness migrate --from claude --to codex
+ori harness migrate --from claude --to codex --apply
+```
+
+- `CLAUDE.md` becomes `AGENTS.md`, with each `@`-imported file appended after it.
+- Skills are copied with their files.
+- MCP servers are appended to Codex's `config.toml`. MCP env and header values aren't copied; each becomes a variable that Codex forwards by name, so export it before you start Codex.
+- Hooks, plugins, permissions, slash commands, subagents, and output styles are reported as unsupported.
+
+By default, the command reads and writes the current project. Add `--scope user` to migrate `~/.claude` and `~/.claude.json` into your user-level Codex setup instead. `--apply` never replaces an existing Codex file or MCP server, and it backs up any file it appends to.
 
 ## Sign in instead of managing keys
 
@@ -177,12 +202,16 @@ Grok Build (`ori grok`) loads the same catalog into its own model picker, so you
 
 Muse Code (`ori muse`) also gets your catalog: Ori seeds Muse Code's model cache from OpenRouter before it starts, so its in-session model picker lists OpenRouter model IDs. Muse Code has no `/fast` or `/zdr` toggles either.
 
+### Model lists served by OpenRouter
+
+For Claude Code (`ori claude`) and Codex (`ori codex`), OpenRouter serves the model list that the agent's own picker shows. If your organization sets a model list for the agent, the picker shows only the listed models you can use, in list order, and OpenRouter refuses any other model, including one you name with `--model` or `/model`. Without a list, the picker shows every model your key can use. See [Claude Code and Codex](/guides/ori/configuration#claude-code-and-codex) for the settings.
+
 ### Launch-time catalog validation
 
-The other agents — Claude Code, Cline, Codex, Hermes, Kilo Code, omp, and OpenCode — don't have the in-session toggles, because they don't expose an extension surface Ori can write into. You pick a model with `--model` instead, and Ori validates the model ID against your catalog at launch: near-miss slugs are corrected (with a notice), and unknown IDs pass through untouched.
+The other agents don't have the in-session toggles, because they don't expose an extension surface Ori can write into. You pick a model with `--model` instead, and Ori validates the model ID against your catalog at launch: near-miss slugs are corrected (with a notice), and unknown IDs pass through untouched.
 
 ```sh
-ori codex --model openai/gpt-5.3-codex
+ori hermes --model openai/gpt-5.3-codex
 ```
 
 All OpenRouter organization guardrails, workspace budgets, routing, and billing apply identically at both levels.
@@ -207,4 +236,4 @@ No. Keep the same agent, commands, and flags.
 
 ### Which agents are supported?
 
-Claude Code (`ori claude`), Cline (`ori cline`), Codex (`ori codex`), Grok Build (`ori grok`), Hermes (`ori hermes`), Kilo Code (`ori kilo`), Muse Code (`ori muse`), omp (`ori omp`), OpenCode (`ori opencode`), Pi (`ori pi`), Prime Agent (`ori prime-agent`), and DeepSeek Harness (`ori dsh`) work today, and more harnesses are coming.
+Antigravity CLI (`ori antigravity`), Claude Code (`ori claude`), Cline (`ori cline`), Codex (`ori codex`), Crush (`ori crush`), Factory Droid (`ori droid`), fx (`ori fx`), Grok Build (`ori grok`), Hermes (`ori hermes`), Kilo Code (`ori kilo`), Muse Code (`ori muse`), omp (`ori omp`), OpenCode (`ori opencode`), OpenWork (`ori openwork`), Pi (`ori pi`), Prime Agent (`ori prime-agent`), Unreal Agent (`ori unreal`), ZCode (`ori zcode`), and DeepSeek Harness (`ori dsh`) work today. Run `ori --help` for the list in your installed version.
