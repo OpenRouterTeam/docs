@@ -337,7 +337,7 @@ export const PromptInjectionEvasionKeywords = () => {
 };
 
 export const PromptInjectionEncodingDetectors = () => {
-  const ITEMS = ["base64_encoded_injection","hex_encoded_injection"];
+  const ITEMS = ["base64_encoded_injection","hex_encoded_injection","unicode_obfuscated_injection","unicode_tag_characters"];
   return (
     <>
       {ITEMS.map((item, index) => (
