@@ -104,6 +104,7 @@
             "pages": [
               "quickstart",
               "guides/overview/principles",
+              "guides/features/compatibility",
               "guides/overview/models",
               {
                 "group": "Multimodal",
@@ -222,6 +223,7 @@
               "guides/features/classifiers",
               "guides/features/response-caching",
               "guides/features/structured-outputs",
+              "guides/features/decisions",
               "guides/features/message-transforms",
               "guides/features/zero-completion-insurance",
               "app-attribution",
@@ -412,8 +414,10 @@
             "icon": "code",
             "pages": [
               "api_reference/overview",
+              "api_reference/models",
               "api_reference/streaming",
               "api_reference/embeddings",
+              "api_reference/videos",
               "api_reference/limits",
               "api_reference/authentication",
               "api_reference/parameters",
@@ -689,6 +693,66 @@
     ]
   },
   "redirects": [
+    {
+      "source": "/features/compatibility",
+      "destination": "/guides/features/compatibility"
+    },
+    {
+      "source": "/api-reference/compatibility",
+      "destination": "/guides/features/compatibility"
+    },
+    {
+      "source": "/guides/overview/compatibility",
+      "destination": "/guides/features/compatibility"
+    },
+    {
+      "source": "/api/reference/videos",
+      "destination": "/api_reference/videos"
+    },
+    {
+      "source": "/api/api-reference/videos",
+      "destination": "/api_reference/videos"
+    },
+    {
+      "source": "/api/api-reference/videos/create-videos",
+      "destination": "/api/api-reference/video-generation/submit-a-video-generation-request"
+    },
+    {
+      "source": "/api-reference/videos",
+      "destination": "/api_reference/videos"
+    },
+    {
+      "source": "/api-reference/video-generation",
+      "destination": "/api_reference/videos"
+    },
+    {
+      "source": "/api-reference/decisions",
+      "destination": "/guides/features/decisions"
+    },
+    {
+      "source": "/api/reference/decisions",
+      "destination": "/guides/features/decisions"
+    },
+    {
+      "source": "/api-reference/endpoint/decisions",
+      "destination": "/guides/features/decisions"
+    },
+    {
+      "source": "/api-reference/list-available-models",
+      "destination": "/api_reference/models"
+    },
+    {
+      "source": "/guides/community/system-one",
+      "destination": "/guides/features/decisions"
+    },
+    {
+      "source": "/api-reference/models",
+      "destination": "/api_reference/models"
+    },
+    {
+      "source": "/api/reference/models",
+      "destination": "/api_reference/models"
+    },
     {
       "source": "/guides/routing/routers/body-builder",
       "destination": "/guides/features/body-builder"
@@ -3010,44 +3074,12 @@
       "destination": "/guides/community/multimodal-decisions"
     },
     {
-      "source": "/api/reference/videos",
-      "destination": "/api/api-reference/video-generation/submit-a-video-generation-request"
-    },
-    {
-      "source": "/api/api-reference/videos",
-      "destination": "/api/api-reference/video-generation/submit-a-video-generation-request"
-    },
-    {
-      "source": "/api/api-reference/videos/create-videos",
-      "destination": "/api/api-reference/video-generation/submit-a-video-generation-request"
-    },
-    {
-      "source": "/api-reference/video-generation",
-      "destination": "/api/api-reference/video-generation/submit-a-video-generation-request"
-    },
-    {
       "source": "/api/api-reference/video-generation/list-videos-models",
       "destination": "/api/api-reference/video-generation/list-all-video-generation-models"
     },
     {
-      "source": "/api-reference/decisions",
-      "destination": "/api/api-reference/alphadecisions/submit-a-decisions-request"
-    },
-    {
-      "source": "/api/reference/decisions",
-      "destination": "/api/api-reference/alphadecisions/submit-a-decisions-request"
-    },
-    {
-      "source": "/api-reference/endpoint/decisions",
-      "destination": "/api/api-reference/alphadecisions/submit-a-decisions-request"
-    },
-    {
       "source": "/api/api-reference/responses/create-responses",
       "destination": "/api/api-reference/responses/create-a-response"
-    },
-    {
-      "source": "/api-reference/list-available-models",
-      "destination": "/api/api-reference/models/list-all-models-and-their-properties"
     },
     {
       "source": "/api/api-reference/models/list-endpoints",

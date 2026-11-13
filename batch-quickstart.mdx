@@ -386,6 +386,8 @@ The status moves through `validating`, `in_progress`, and `finalizing` before it
 
 This example waits for `results` on a `completed` batch. Do not use it as written for a Google Vertex BYOK batch submitted with an `input` file or table: its `results` stay `null`, so the loop never ends. For that kind of batch, stop as soon as the status is final. See [BYOK](#byok).
 
+While a batch is `in_progress`, `request_counts.completed` and `request_counts.failed` can rise as the provider reports finished requests. Treat them as an estimate: not every provider reports progress, the numbers can lag by several minutes, and they can briefly return to `0`. The counts are final once the batch reaches a final status.
+
 To check many batches at once, list them. List items have metadata only, and `results` is always `null`.
 
 ```shell title="List batches still running" lines
@@ -420,7 +422,7 @@ curl 'https://openrouter.ai/api/v1/batches?status=validating&status=in_progress&
 }
 ```
 
-Batches are listed newest first. Every API key in a workspace sees the same batches, including batches submitted with other keys.
+Batches are listed newest first. Every API key in a workspace sees the same batches, including batches submitted with other keys. The exception is a key created by a member who is limited to their own activity in that workspace, or by someone who has since left the organization: that key lists, retrieves, and deletes only the batches attributed to its creator, and other batches in the workspace return `404`. If you pass one of those other batches as `after`, the list returns `400`; start again from the first page.
 
 <Note>
   Page with `after` only; offset and `before` are unsupported. Use the ID cursor rather than timestamps: `created_at` has whole-second precision, while `created_after` preserves subsecond precision. A batch created later in the same second can still match `created_after=<created_at>`.
@@ -593,12 +595,14 @@ Deleting a batch does not refund it. Billing, generation, and audit records stay
 
 A batch runs on one provider. By default, OpenRouter picks the cheapest provider that serves the model in batch mode, after your account's provider allowlist, data policy, [guardrails](/guides/features/guardrails), and BYOK keys apply. Guardrail model lists match a batch model by its base model, so allowing `openai/gpt-5-nano` also allows `openai/gpt-5-nano:batch`. Providers at the same price share traffic, and a BYOK key is preferred over cheaper platform providers. If the chosen provider has no capacity, OpenRouter moves the batch to the next cheapest allowed provider and bills that provider's price.
 
+OpenRouter can also spread batches across the providers priced close to the cheapest one, so that one provider does not take every batch. By default, a provider qualifies when its price is at most twice the cheapest allowed provider's price, compared on a typical batch mix of five prompt tokens to one completion token, and when each other price that both providers charge (such as per request, per image, or for cached tokens) is inside the same limit at its highest tier. Among those providers, a cheaper one usually gets more batches, and a provider that already holds many requests in batches in progress usually gets fewer. You pay the price of the provider that runs the batch, shown as `provider` on the batch. The limit applies to that typical mix, not to each batch, so a batch with far more completion tokens than the mix can cost more than twice the cheapest provider's price. This never applies to batches on your own provider key (BYOK), and a batch whose `provider.only` leaves one provider stays on it. A model with one provider in that price range starts on that provider, and the share counts the requests a provider holds, not how its batches ended.
+
 | Option | Batch | What it does |
 |--------|-------|--------------|
 | `provider.only` | Supported | Use only these [provider slugs](/guides/routing/provider-selection), for example `["google-vertex"]`. |
 | `provider.allow_fallbacks` | Supported | Set to `false` to keep the batch on the provider chosen at submit. If that provider has no capacity, or can't take the batch's inline files, the batch fails. |
 | `provider.order` | Rejected | Put only the provider you want in `only`. |
-| `provider.sort` | Rejected | Batch always picks the lowest price first. |
+| `provider.sort` | Rejected | Batch always routes by price, as described above. |
 | Other sync preferences | Rejected | Remove them. |
 
 ```json title="Pin to Google Vertex" lines
