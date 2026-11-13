@@ -31,12 +31,7 @@ To use the key management API, you first need to create a Management API key:
 
 Management keys cannot be used to make API calls to OpenRouter's completion endpoints - they are exclusively for administrative operations.
 
-### Scope and Permissions
-
-Management API keys operate at the account level and, for organizations, can only be created by **Organization Admins**. They are unscoped: one key covers administrative actions across all of the account's workspaces.
-
-- **Programmatic Management:** Endpoints for managing workspace members (`POST /api/v1/workspaces/{id}/members/add`), keys, and budgets require a Management API key. Members added via the API automatically inherit their organization role (Org Admins become Workspace Admins; Org Members become Workspace Members).
-- **Dashboard UI:** Within the OpenRouter dashboard, **Workspace Admins** can add members on the workspace Members page without requiring a Management API key. Assigning workspace roles there additionally requires a Pro or Enterprise plan.
+A management key's [scope](#scope) and [permissions](#permissions) are fixed when it is created. To change either, create a new key and delete the old one.
 
 ### Expiration
 
@@ -48,6 +43,78 @@ We recommend setting an expiration date on every management key. A leaked manage
 <Warning>
   Automations that call the key management API with an expiring management key must be given a new key before the old one expires, or they will start receiving `401 API key expired` responses. Schedule rotation ahead of the expiration date shown next to the key.
 </Warning>
+
+## Scope
+
+A management key is scoped either to the whole organization or to one workspace.
+
+### Organization-scoped keys
+
+Organization-scoped keys cover administrative actions across all of the account's workspaces. For organizations, only **Organization Admins** can create them, on the [Management API Keys page](https://openrouter.ai/settings/management-keys).
+
+### Workspace-scoped keys
+
+Workspace-scoped keys act only on their own workspace. To create one:
+
+1. Open the workspace, go to **Keys** and select the **Management keys** tab. **Workspace Admins** of that workspace can create keys here; Organization Admins can create them in any workspace.
+2. Click "New management key". The dialog shows which workspace the key is scoped to.
+3. Enter a name, choose an expiration and an access level.
+4. Copy the key when it is shown.
+
+A Workspace Admin can create, list and delete management keys for their own workspace only. They cannot create organization-scoped keys or keys for another workspace.
+
+A workspace-scoped key can call only the routes below, and only for its own workspace. When a route takes an optional `workspace_id`, it defaults to the key's own workspace. Naming another workspace, or a resource that belongs to one, is refused.
+
+| Area | Routes | Notes |
+| --- | --- | --- |
+| API keys | `GET`, `POST /api/v1/keys`<br />`GET`, `PATCH`, `DELETE /api/v1/keys/{hash}` | Only the workspace's keys. A `creator_user_id`, when set, must be a member of the workspace. |
+| Workspace | `GET`, `PATCH /api/v1/workspaces/{id}`<br />`GET /api/v1/workspaces/{id}/members`<br />`POST /api/v1/workspaces/{id}/members/add`<br />`POST /api/v1/workspaces/{id}/members/remove` | |
+| Budgets | `GET /api/v1/workspaces/{workspace_ref}/budgets`<br />`GET /api/v1/workspaces/{workspace_ref}/budgets/{interval}` | Read only. Setting or deleting a workspace budget (`PUT`, `DELETE`) needs an organization-scoped key, matching the dashboard, where only Organization Admins can edit workspace budgets. |
+| Guardrails | `GET`, `POST /api/v1/guardrails`<br />`GET`, `PATCH`, `DELETE /api/v1/guardrails/{id}`<br />`GET /api/v1/guardrails/assignments/keys`<br />`GET /api/v1/guardrails/assignments/members`<br />`GET`, `POST /api/v1/guardrails/{id}/assignments/keys`<br />`POST /api/v1/guardrails/{id}/assignments/keys/remove`<br />`GET /api/v1/guardrails/{id}/assignments/members` | Assigning or unassigning organization members needs an organization-scoped key. A key-assignment batch that names a key outside the workspace is rejected before anything changes. |
+| Guardrail policies | `GET`, `POST /api/v1/guardrails/policies/{type}`<br />`GET`, `PUT`, `DELETE /api/v1/guardrails/policies/{type}/{id}`<br />`GET`, `PUT /api/v1/guardrails/policies/assignments/api-keys/{hash}`<br />`GET`, `PUT /api/v1/guardrails/policies/assignments/members/{member_id}` | `{type}` is `budget`, `moderation` or `model-availability`. Account policies (`/api/v1/guardrails/policies/account`) need an organization-scoped key. |
+| BYOK | `GET`, `POST /api/v1/byok`<br />`GET`, `PATCH`, `DELETE /api/v1/byok/{id}` | `allowed_api_key_hashes` can name only keys in the workspace. |
+| Observability | `GET`, `POST /api/v1/observability/destinations`<br />`GET`, `PATCH`, `DELETE /api/v1/observability/destinations/{id}` | `api_key_hashes` can name only keys in the destination's workspace. |
+| Analytics | `GET /api/v1/analytics/meta`<br />`POST /api/v1/analytics/query` | The key needs `activity:view_all` on its workspace. Results cover only the workspace and exclude legacy rows with no workspace. Possible-cache metrics such as `possible_cached_tokens` return `400`. |
+| Activity | `GET /api/v1/activity` | The key needs `activity:view_all` on its workspace. `api_key_hash` and `user_id` match only keys and members of the workspace. Results exclude legacy rows with no workspace, including for the default workspace. |
+| Presets | `POST /api/v1/presets/{slug}/chat/completions`<br />`POST /api/v1/presets/{slug}/messages`<br />`POST /api/v1/presets/{slug}/responses`<br />`DELETE /api/v1/presets/{slug}`<br />`POST /api/v1/presets/{slug}/restore` | Creates, archives and restores presets in the workspace. |
+
+Every other route in [Routes That Require a Management Key](#routes-that-require-a-management-key) needs an organization-scoped key and returns `403 Forbidden` to a workspace-scoped key. This includes listing, creating and deleting workspaces, setting and deleting workspace budgets, credits, organization settings and members, SCIM, private endpoints and providers, external users and datasets.
+
+### Workspace members
+
+- **Programmatic Management:** Endpoints for managing workspace members (`POST /api/v1/workspaces/{id}/members/add`), keys, and budgets require a Management API key. Members added via the API automatically inherit their organization role (Org Admins become Workspace Admins; Org Members become Workspace Members).
+- **Dashboard UI:** Within the OpenRouter dashboard, **Workspace Admins** can add members on the workspace Members page without requiring a Management API key. Assigning workspace roles there additionally requires a Pro or Enterprise plan.
+
+## Permissions
+
+Organizations choose a management key's access level when creating it, under **Access level**:
+
+- **Read/write** keys can call every management route their scope allows.
+- **Read only** keys can call every read (`GET`, and read-only queries such as `POST /api/v1/analytics/query`) that a read/write key of the same scope can call, and nothing else. Any request that would create, change or delete something returns `403 Forbidden`. One exception: `GET /api/v1/guardrails/policies/assignments/members/{member_id}` and `GET /api/v1/guardrails/policies/assignments/api-keys/{hash}` need a read/write key, because reading an assignment creates it if it doesn't exist yet.
+
+Use read-only keys for monitoring, reporting and auditing: listing API keys and their usage, reading activity and analytics, checking guardrails, budgets and BYOK credentials, and listing workspaces and their members.
+
+```bash title="cURL"
+# Works with a read-only key
+curl https://openrouter.ai/api/v1/keys \
+  -H "Authorization: Bearer $READ_ONLY_MANAGEMENT_KEY"
+
+# Returns 403 Forbidden with a read-only key
+curl -X POST https://openrouter.ai/api/v1/keys \
+  -H "Authorization: Bearer $READ_ONLY_MANAGEMENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "New key"}'
+```
+
+## Errors
+
+| Status | Message                                                                                                | Meaning                                                                          |
+| ------ | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `401`  | `Invalid management key`                                                                               | The key or its account was deleted, or it is missing or not a management key. Some routes return `Missing Authentication header` when no key is sent, or `Invalid API key` when the key doesn't exist or was deleted. |
+| `401`  | `API key expired`                                                                                      | The key's expiration has passed.                                                 |
+| `403`  | `Management key does not have permission for this request`                                             | A read-only key made a write, or the key's scope does not include this resource. |
+| `403`  | `Management key is scoped to a workspace; this request requires an organization-scoped management key` | A workspace-scoped key called an organization-level route.                       |
+| `403`  | `Management key is scoped to a different workspace`                                                    | A workspace-scoped key named another workspace in its organization.              |
 
 ## Use Cases
 

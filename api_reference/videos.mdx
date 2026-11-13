@@ -1,0 +1,503 @@
+---
+publish: true
+title: Video Generation API
+sidebarTitle: Video Generation
+description: Complete API reference for OpenRouter's dedicated asynchronous Video Generation API. Submit jobs, poll status, stream video content, discover models, and configure webhooks.
+seoTitle: 'Video Generation API | Asynchronous Video Generation on OpenRouter'
+og:site_name: OpenRouter Documentation
+og:title: 'Video Generation API - Asynchronous Video Generation on OpenRouter'
+og:description: 'Submit video generation requests, poll job status, download video content, and configure webhooks with OpenRouter video generation models.'
+og:image: https://openrouter.ai/dynamic-og?title=Video%20Generation%20API&description=Asynchronous%20Video%20Generation%20API%20Reference
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: film
+models: []
+---
+
+OpenRouter provides a dedicated asynchronous API for generating videos from text prompts, start and end frame images, and multimodal references. Because video generation takes significantly longer than text or image generation (typically 30 seconds to several minutes), requests follow an asynchronous submit-poll-download lifecycle.
+
+## Endpoints
+
+The Video Generation API consists of four endpoints:
+
+| Method | Endpoint | Description | Response |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/videos` | Submits a video generation job | `202 Accepted` with job ID and polling URL |
+| `GET` | `/api/v1/videos/{jobId}` | Polls job status, progress, and download URLs | `200 OK` with status and video URLs |
+| `GET` | `/api/v1/videos/{jobId}/content` | Streams video binary bytes from the provider | `200 video/mp4` binary stream |
+| `GET` | `/api/v1/videos/models` | Lists video generation models and capabilities | `200 OK` with model parameter metadata |
+
+## End-to-end workflow
+
+Video generation follows three sequential steps:
+
+1. **Submit**: Send a generation request with a video model and prompt to `POST /api/v1/videos`. Receive a job ID (`id`) and relative polling URL (`polling_url`).
+2. **Poll**: Query `GET /api/v1/videos/{jobId}` at regular intervals (recommended: every 10–30 seconds) until `status` becomes `completed` or `failed`. Alternatively, supply a `callback_url` to receive a webhook notification upon completion.
+3. **Download**: Once completed, retrieve the generated video using either the signed storage URL (`urls[0]`) or the authenticated content proxy endpoint (`unsigned_urls[0]`).
+
+In a multi-user app, one API key can poll, download, and continue every job the app created. Record which end user owns each job ID, and check that ownership before you act on a job ID supplied by a client.
+
+### cURL example
+
+```bash
+# Step 1: Submit a video generation job (Veo 3.1 supports durations: 4, 6, 8)
+SUBMIT_RESPONSE=$(curl -fsS -X POST "https://openrouter.ai/api/v1/videos" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "google/veo-3.1",
+    "prompt": "A drone shot flying through a mist-shrouded redwood forest at sunrise, cinematic lighting, 4k",
+    "duration": 6,
+    "resolution": "720p",
+    "aspect_ratio": "16:9"
+  }')
+
+JOB_ID=$(echo "$SUBMIT_RESPONSE" | bun -e 'const j = await Bun.stdin.json(); console.log(j.id ?? "");')
+if [ -z "$JOB_ID" ] || [ "$JOB_ID" = "null" ]; then
+  echo "Submission failed: $SUBMIT_RESPONSE" >&2
+  exit 1
+fi
+echo "Submitted job: $JOB_ID"
+
+# Step 2: Poll until completion (capped at 40 iterations = 10 minutes)
+POLL_COUNT=0
+while [ "$POLL_COUNT" -lt 40 ]; do
+  sleep 15
+  POLL_COUNT=$((POLL_COUNT + 1))
+  STATUS_RESPONSE=$(curl -fsS "https://openrouter.ai/api/v1/videos/$JOB_ID" \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY") || {
+      echo "Polling request failed (HTTP error)" >&2
+      exit 1
+    }
+
+  STATUS=$(echo "$STATUS_RESPONSE" | bun -e 'const j = await Bun.stdin.json(); console.log(j.status ?? "");')
+  echo "Current status: $STATUS"
+
+  if [ "$STATUS" = "completed" ]; then
+    break
+  elif [ "$STATUS" = "failed" ] || [ "$STATUS" = "cancelled" ] || [ "$STATUS" = "expired" ]; then
+    echo "Job terminated with status $STATUS" >&2
+    exit 1
+  fi
+done
+
+if [ "$STATUS" != "completed" ]; then
+  echo "Timed out waiting for video generation" >&2
+  exit 1
+fi
+
+# Step 3: Download video using the authenticated content endpoint
+curl -fsS "https://openrouter.ai/api/v1/videos/$JOB_ID/content" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -o output.mp4
+
+echo "Saved video to output.mp4"
+```
+
+### TypeScript example
+
+```typescript
+const apiKey = process.env.OPENROUTER_API_KEY;
+if (!apiKey) {
+  throw new Error('OPENROUTER_API_KEY environment variable is required');
+}
+
+const headers = {
+  Authorization: `Bearer ${apiKey}`,
+  'Content-Type': 'application/json',
+};
+
+type VideoJobStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled' | 'expired';
+
+interface VideoJobResponse {
+  id: string;
+  generation_id?: string;
+  status: VideoJobStatus;
+  polling_url: string;
+  urls?: string[];
+  expires_at?: number;
+  unsigned_urls?: string[];
+  error?: string;
+  usage?: {
+    cost: number | null;
+    is_byok?: boolean;
+  };
+}
+
+// Step 1: Submit job (Veo 3.1 supports durations: 4, 6, 8)
+const submitRes = await fetch('https://openrouter.ai/api/v1/videos', {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({
+    model: 'google/veo-3.1',
+    prompt: 'A gentle ocean wave washing over golden sand in slow motion',
+    duration: 6,
+    resolution: '720p',
+    aspect_ratio: '16:9',
+  }),
+});
+
+if (!submitRes.ok) {
+  const errorText = await submitRes.text();
+  throw new Error(`Video submission failed (${submitRes.status}): ${errorText}`);
+}
+
+const job = (await submitRes.json()) as VideoJobResponse;
+console.log(`Job submitted: ${job.id}`);
+
+// Step 2: Poll status with a 10-minute deadline
+const deadline = Date.now() + 10 * 60_000;
+let completedJob: VideoJobResponse | null = null;
+
+while (!completedJob) {
+  if (Date.now() > deadline) {
+    throw new Error(`Timed out waiting for video job ${job.id} to complete`);
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 15000));
+  const pollRes = await fetch(`https://openrouter.ai/api/v1/videos/${job.id}`, { headers });
+  if (!pollRes.ok) {
+    const errorText = await pollRes.text();
+    throw new Error(`Polling failed with HTTP ${pollRes.status}: ${errorText}`);
+  }
+
+  const statusData = (await pollRes.json()) as VideoJobResponse;
+  console.log(`Status: ${statusData.status}`);
+
+  if (statusData.status === 'completed') {
+    completedJob = statusData;
+  } else if (['failed', 'cancelled', 'expired'].includes(statusData.status)) {
+    throw new Error(`Job ended with status ${statusData.status}: ${statusData.error ?? 'Unknown error'}`);
+  }
+}
+
+// Step 3: Stream video bytes to file or downstream response
+const videoRes = await fetch(`https://openrouter.ai/api/v1/videos/${job.id}/content`, {
+  headers: { Authorization: `Bearer ${apiKey}` },
+});
+
+if (!videoRes.ok) {
+  throw new Error(`Video download failed (${videoRes.status})`);
+}
+
+const videoBytes = await videoRes.arrayBuffer();
+console.log(`Downloaded video (${videoBytes.byteLength} bytes)`);
+```
+
+### Python example
+
+```python
+import os
+import time
+import requests
+
+api_key = os.getenv("OPENROUTER_API_KEY")
+if not api_key:
+    raise ValueError("OPENROUTER_API_KEY environment variable is required")
+
+headers = {
+    "Authorization": f"Bearer {api_key}",
+    "Content-Type": "application/json",
+}
+
+# Step 1: Submit video job (Veo 3.1 supports durations: 4, 6, 8)
+submit_res = requests.post(
+    "https://openrouter.ai/api/v1/videos",
+    headers=headers,
+    json={
+        "model": "google/veo-3.1",
+        "prompt": "An architect sketching a modern house on parchment, pencil strokes forming 3D walls",
+        "duration": 6,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+    },
+)
+submit_res.raise_for_status()
+job = submit_res.json()
+job_id = job["id"]
+print(f"Submitted video job: {job_id}")
+
+# Step 2: Poll until finished (capped at 40 iterations = 10 minutes)
+max_polls = 40
+polls = 0
+while polls < max_polls:
+    time.sleep(15)
+    polls += 1
+    poll_res = requests.get(f"https://openrouter.ai/api/v1/videos/{job_id}", headers=headers)
+    poll_res.raise_for_status()
+    poll_data = poll_res.json()
+    status = poll_data["status"]
+    print(f"Job status: {status}")
+
+    if status == "completed":
+        break
+    if status in ("failed", "cancelled", "expired"):
+        raise RuntimeError(f"Video job failed with status {status}: {poll_data.get('error')}")
+else:
+    raise TimeoutError(f"Video job {job_id} did not finish within 10 minutes")
+
+# Step 3: Download video binary
+download_res = requests.get(
+    f"https://openrouter.ai/api/v1/videos/{job_id}/content",
+    headers={"Authorization": f"Bearer {api_key}"},
+)
+download_res.raise_for_status()
+
+with open("output.mp4", "wb") as f:
+    f.write(download_res.content)
+print("Saved output.mp4")
+```
+
+## Job lifecycle and statuses
+
+The `status` field on `GET /api/v1/videos/{jobId}` reflects the current state of generation:
+
+| Status | Type | Meaning | Next action |
+| --- | --- | --- | --- |
+| `pending` | In-flight | The request was admitted and queued for processing | Continue polling |
+| `in_progress` | In-flight | The provider is actively rendering the video frames | Continue polling |
+| `completed` | Terminal | Video rendering succeeded and output assets are ready | Retrieve output using `urls` or `unsigned_urls` |
+| `failed` | Terminal | The provider or validation failed; `error` explains the reason | Inspect `error` message and do not retry without parameter changes |
+| `cancelled` | Terminal | The job was cancelled before rendering completed | Terminal state |
+| `expired` | Terminal | The job exceeded maximum allowed time-to-live before settlement | Terminal state |
+
+## Downloading outputs: `urls` vs `unsigned_urls`
+
+When a job reaches `status: "completed"`, the response payload provides two distinct ways to access the generated video:
+
+```json
+{
+  "id": "gen-vid-1789480874-Ab3dEf9hIjKlMnOpQrSt",
+  "generation_id": "gen-vid-1789480874-Ab3dEf9hIjKlMnOpQrSt",
+  "status": "completed",
+  "polling_url": "/api/v1/videos/gen-vid-1789480874-Ab3dEf9hIjKlMnOpQrSt",
+  "urls": [
+    "https://storage.openrouter.ai/generated-media/video-sample.mp4?token=..."
+  ],
+  "expires_at": 1789567274,
+  "unsigned_urls": [
+    "/api/v1/videos/gen-vid-1789480874-Ab3dEf9hIjKlMnOpQrSt/content?index=0"
+  ],
+  "usage": {
+    "cost": 0.5,
+    "is_byok": false
+  }
+}
+```
+
+### 1. Pre-signed storage URLs (`urls`)
+
+- **Authentication**: No `Authorization` header required.
+- **Validity**: Temporary, valid until the Unix timestamp in `expires_at`.
+- **Use case**: Safe for direct client browser playback (`<video src={urls[0]}>`) or direct download links without exposing your OpenRouter API key.
+- **Availability**: Present when OpenRouter's edge media storage has cached the output. Because these URLs grant direct read access while valid, treat them as bearer secrets.
+- **Multi-user apps**: Your API key can read every job your app created, so before returning `urls` to an end user, check that the requested job belongs to that user. Otherwise one user can play another user's video by passing its job ID.
+
+### 2. Authenticated content endpoint (`unsigned_urls`)
+
+- **Authentication**: Requires `Authorization: Bearer <OPENROUTER_API_KEY>`.
+- **Validity**: Permanent for as long as the generation record is retained.
+- **Use case**: Server-side processing, archival pipelines, or backend streaming proxies when `urls` is absent or expired.
+- **Streaming in web apps**: Because browser `<video>` tags cannot attach custom `Authorization` headers, never send `unsigned_urls` directly to the client browser with client-side API keys. Instead, implement a thin server-side proxy route in your web framework (e.g., Next.js `app/api/videos/[id]/route.ts`) that verifies the user session, checks that the requested job belongs to that user (your API key can read every job your app created), fetches `GET /api/v1/videos/{jobId}/content` using your server's `OPENROUTER_API_KEY`, and pipes the `video/mp4` response back to the client.
+
+## Request parameters
+
+`POST /api/v1/videos` accepts the following parameters:
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `model` | string | Yes | Model slug (e.g. `google/veo-3.1`, `bytedance-seed/seedance-2`, `minimax/hailuo-3`). |
+| `prompt` | string | Conditional | Description of the scene and motion. Required unless the selected model supports video generation from image inputs alone. |
+| `duration` | integer | No | Length of the generated video in seconds (e.g., `4`, `6`, `8`). Must be one of the model's `supported_durations`. |
+| `resolution` | string | No | Resolution tier (e.g., `480p`, `720p`, `1080p`, `1K`, `2K`, `4K`). Must match the model's `supported_resolutions`. |
+| `aspect_ratio` | string | No | Aspect ratio (e.g., `16:9`, `9:16`, `1:1`, `4:3`, `3:4`, `21:9`). Must match the model's `supported_aspect_ratios`. |
+| `size` | string | No | Exact pixel dimensions in `WIDTHxHEIGHT` format (e.g., `1280x720`). Interchangeable with `resolution` + `aspect_ratio`. |
+| `frame_images` | array | No | First and last frame images for image-to-video generation. Each item specifies `frame_type: "first_frame"` or `"last_frame"`. |
+| `input_references` | array | No | Reference images, audio, or video for reference-to-video style guidance. |
+| `generate_audio` | boolean | No | Whether to generate synchronized audio alongside the video. Defaults to `true` for models that support audio output. |
+| `previous_job_id` | string | No | Job ID of a completed video generation to continue or extend using the same model and provider endpoint. Your API key can continue every job your app created, so verify that the referenced job belongs to the requesting end user before forwarding a client-supplied ID; otherwise one user can extend another user's video and receive the combined clip. |
+| `seed` | integer | No | Integer seed for deterministic generation (supported by select providers). |
+| `callback_url` | string | No | HTTPS URL to receive a webhook notification when generation completes. Overrides the workspace-level default webhook. |
+| `provider` | object | No | Provider routing preferences (`order`, `only`, `ignore`) and provider-specific passthrough options. |
+| `session_id` | string | No | Identifier for grouping related requests in observability tools and Broadcast. |
+| `user` | string | No | End-user identifier for rate limiting and audit logging. |
+
+### Image-to-video (`frame_images`)
+
+To animate an existing image into a video, supply one or two frame images in `frame_images`. Supported frame types are `first_frame` (starts the clip from this image) and `last_frame` (ends the clip at this image):
+
+```json
+{
+  "model": "google/veo-3.1",
+  "prompt": "The camera pans around the statue as dust motes float through sunbeams",
+  "frame_images": [
+    {
+      "type": "image_url",
+      "image_url": {
+        "url": "https://example.com/character-start.png"
+      },
+      "frame_type": "first_frame"
+    }
+  ],
+  "duration": 6,
+  "resolution": "720p",
+  "aspect_ratio": "16:9"
+}
+```
+
+### Reference-to-video (`input_references`)
+
+Reference-to-video guides character consistency, aesthetic style, or scene composition without locking the video to an exact starting pixel frame:
+
+```json
+{
+  "model": "google/veo-3.1",
+  "prompt": "A cinematic shot of the character walking through a neon-lit cyberpunk alley in the rain",
+  "input_references": [
+    {
+      "type": "image_url",
+      "image_url": {
+        "url": "https://example.com/character-sheet.png"
+      }
+    }
+  ],
+  "duration": 6,
+  "resolution": "1080p",
+  "aspect_ratio": "16:9"
+}
+```
+
+## Model discovery
+
+Query the dedicated Video Models endpoint to retrieve supported parameters, resolutions, durations, and pricing SKUs for every video model currently deployed:
+
+```bash
+curl -fsS "https://openrouter.ai/api/v1/videos/models"
+```
+
+Each model entry includes capability matrices and pricing units:
+
+```json
+{
+  "data": [
+    {
+      "id": "google/veo-3.1",
+      "canonical_slug": "google/veo-3.1-20260320",
+      "name": "Google: Veo 3.1",
+      "description": "Google state-of-the-art video generation model supporting 720p, 1080p, and 4K outputs.",
+      "created": 1774277148,
+      "supported_durations": [4, 6, 8],
+      "supported_resolutions": ["720p", "1080p", "4K"],
+      "supported_aspect_ratios": ["16:9", "9:16"],
+      "supported_frame_images": ["first_frame", "last_frame"],
+      "generate_audio": true,
+      "pricing_skus": {
+        "duration_seconds_with_audio": "0.40",
+        "duration_seconds_with_audio_4k": "0.60",
+        "duration_seconds_without_audio": "0.20",
+        "duration_seconds_without_audio_4k": "0.40"
+      },
+      "allowed_passthrough_parameters": [
+        "personGeneration",
+        "aspectRatio",
+        "negativePrompt",
+        "conditioningScale",
+        "enhancePrompt"
+      ]
+    }
+  ]
+}
+```
+
+## Webhooks and signature verification
+
+When `callback_url` is configured on the request (or set as the workspace default in [Workspace Settings](/guides/features/workspaces)), OpenRouter sends an HTTPS `POST` payload upon job completion, failure, expiration, or cancellation.
+
+### Webhook payload example
+
+```json
+{
+  "type": "video.generation.completed",
+  "created_at": "2026-11-10T22:30:00.000Z",
+  "data": {
+    "id": "gen-vid-1789480874-Ab3dEf9hIjKlMnOpQrSt",
+    "generation_id": "gen-vid-1789480874-Ab3dEf9hIjKlMnOpQrSt",
+    "model": "google/veo-3.1",
+    "status": "completed",
+    "urls": [
+      "https://storage.openrouter.ai/generated-media/video-sample.mp4?token=..."
+    ],
+    "expires_at": 1789567274,
+    "unsigned_urls": [
+      "/api/v1/videos/gen-vid-1789480874-Ab3dEf9hIjKlMnOpQrSt/content?index=0"
+    ],
+    "usage": {
+      "cost": 0.5,
+      "is_byok": false
+    }
+  }
+}
+```
+
+### Verifying signatures
+
+Setting a `callback_url` doesn't create a signing secret. To get one, open your workspace settings and select **Generate signing secret** under **Webhook signing secret**; video and batch deliveries share it. With a secret configured, OpenRouter includes an `X-OpenRouter-Signature` header on every delivery containing a timestamp (`t`) and HMAC-SHA256 hash (`v1`). Without one, deliveries are unsigned and can't be told apart from a forged request, so reject any delivery whose signature header is missing or invalid with a non-`2xx` response:
+
+```lines
+X-OpenRouter-Signature: t=1789480874,v1=9f83c18b76...
+```
+
+Verify signatures using the raw, unparsed request body:
+
+```typescript
+import crypto from 'node:crypto';
+
+function verifyWebhook(rawBody: string, signatureHeader: string, secret: string): boolean {
+  // An empty secret produces an HMAC anyone can compute, so treat it as misconfiguration.
+  if (!secret) {
+    return false;
+  }
+
+  const parts = signatureHeader.split(',');
+  const timestamp = parts.find((p) => p.startsWith('t='))?.slice(2);
+  const hash = parts.find((p) => p.startsWith('v1='))?.slice(3);
+
+  if (!timestamp || !hash) {
+    return false;
+  }
+
+  const tsSeconds = Number(timestamp);
+  if (!Number.isFinite(tsSeconds)) {
+    return false;
+  }
+
+  // Reject replay attempts older than 5 minutes
+  if (Math.abs(Math.floor(Date.now() / 1000) - tsSeconds) > 300) {
+    return false;
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(`${timestamp},${rawBody}`)
+    .digest('hex');
+
+  const expectedBuf = Buffer.from(expectedSignature, 'utf8');
+  const receivedBuf = Buffer.from(hash, 'utf8');
+
+  if (expectedBuf.length !== receivedBuf.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(expectedBuf, receivedBuf);
+}
+```
+
+Each delivery also carries an `X-OpenRouter-Idempotency-Key` header of the form `<jobId>-<status>`. Failed deliveries are retried, so use the key to deduplicate them. Record it in the same transaction that applies the event, return a non-`2xx` response if processing fails so the retry can recover, and acknowledge a key you've already recorded without acting on it again.
+
+## Zero Data Retention (ZDR) policy
+
+Video generation is **not eligible** for [Zero Data Retention (ZDR)](/guides/features/zdr). Because video generation is asynchronous, provider endpoints must temporarily retain the generated media artifact so your application can retrieve it via the polling or content download endpoints. If your account or API key enforces ZDR mode, video generation requests will be rejected with an HTTP `400` error.

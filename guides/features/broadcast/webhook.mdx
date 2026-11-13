@@ -64,6 +64,40 @@ Your endpoint should return a 2xx status code for the test to pass. A 400 status
 
 Make an API request through OpenRouter and verify that your webhook endpoint receives the trace data.
 
+## mTLS client certificate
+
+If your endpoint requires mutual TLS (mTLS), OpenRouter can present a client certificate when it sends traces to it.
+
+<Note>
+mTLS client certificates are available on request. Contact your OpenRouter account team to enable them for your organization. Until then, the Webhook editor does not show the mTLS section.
+</Note>
+
+Once mTLS is enabled, the Webhook editor shows an **mTLS client certificate** section. Paste each value in PEM format, or upload it from a `.pem` file:
+
+- **Client certificate**: the certificate OpenRouter presents, optionally followed by its intermediate certificates.
+- **Private key**: the certificate's private key, unencrypted, in PKCS#8 (`BEGIN PRIVATE KEY`), PKCS#1 RSA (`BEGIN RSA PRIVATE KEY`) or SEC1 EC (`BEGIN EC PRIVATE KEY`) format.
+- **Server CA certificates** (optional): CA certificates to trust for your endpoint's server certificate, for example when it is signed by a private CA. They are added to the public root certificates, not used instead of them.
+
+Encrypted private keys are not accepted. Decrypt the key first:
+
+```bash
+openssl pkey -in client-key.pem -out client-key-decrypted.pem
+```
+
+If you export the certificate and key from a PKCS#12 bundle with `openssl pkcs12 -nodes`, you can paste each block as exported: the `Bag Attributes` and `subject=` lines around it are ignored. Paste the certificate blocks into **Client certificate** and the key block into **Private key**.
+
+After you save, the certificate and key are stored encrypted and never shown again. The editor shows when the certificate expires, warns once it is within 30 days of expiry, and offers **Replace** and **Remove**. Remove deletes the certificate, private key and server CA certificates together.
+
+### How mTLS changes delivery
+
+- The endpoint URL must use `https://`.
+- Redirects to a different origin are not followed while a client certificate is set.
+- Traces to this destination are sent from OpenRouter's queue workers in each data region (Global, US and EU) instead of inline, with a single delivery attempt.
+- Queued messages are limited to 5 MB, so a very large trace payload can be truncated or dropped.
+- **Test Connection** and **Send Trace** cannot present the certificate from the dashboard. Instead of contacting your endpoint, they check that the certificate and key are valid PEM, belong together and have not expired. The TLS handshake with your endpoint is first tested by a real delivery, so make a request through OpenRouter and confirm that your endpoint receives the trace.
+- Replace the certificate before it expires: deliveries fail once it has expired.
+- If mTLS access is removed from your organization, the saved certificate stays in place but the destination cannot be turned on or kept on. Remove the certificate or turn the destination off before saving other changes to it.
+
 ## Payload format
 
 Traces are sent in OTLP JSON format. Each request contains a `resourceSpans` array with span data including:

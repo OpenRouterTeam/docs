@@ -1,0 +1,236 @@
+---
+publish: true
+title: OpenAI Compatibility
+sidebarTitle: OpenAI Compatibility
+description: Use OpenRouter as a drop-in replacement for OpenAI SDKs and REST clients. Complete compatibility matrix, base URL configuration, the OPENAI_API_KEY fallback trap, and routing options.
+seoTitle: 'OpenAI Compatibility | Drop-in OpenAI SDK Replacement on OpenRouter'
+og:site_name: OpenRouter Documentation
+og:title: 'OpenAI Compatibility - Drop-in OpenAI SDK Replacement on OpenRouter'
+og:description: 'Point the official OpenAI SDK in TypeScript or Python at OpenRouter with a one-line baseURL change. Complete compatibility matrix, parameters, and migration guide.'
+og:image: https://openrouter.ai/dynamic-og?title=OpenAI%20Compatibility&description=Drop-in%20OpenAI%20SDK%20Replacement
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: puzzle-piece
+models: []
+---
+
+OpenRouter is wire-compatible with OpenAI's REST API and official client SDKs (`openai` for TypeScript/JavaScript and Python). You can route model calls through OpenRouter by updating three settings: the base URL, the API key, and the model slug.
+
+## 3-step quickstart
+
+1. **Base URL**: Point the client at `https://openrouter.ai/api/v1`.
+2. **API Key**: Supply an [OpenRouter API key](https://openrouter.ai/settings/keys) from the `OPENROUTER_API_KEY` environment variable.
+3. **Model ID**: Prefix the model slug with its author organization (e.g. `openai/gpt-4o`, `anthropic/claude-3.5-sonnet`, `meta-llama/llama-3.3-70b-instruct`).
+
+### TypeScript (`npm i openai`)
+
+```typescript
+import OpenAI from 'openai';
+
+const apiKey = process.env.OPENROUTER_API_KEY;
+if (!apiKey) {
+  throw new Error('OPENROUTER_API_KEY environment variable is required');
+}
+
+const client = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey,
+  defaultHeaders: {
+    'HTTP-Referer': 'https://my-app.example.com', // Optional: for app rankings on openrouter.ai
+    'X-OpenRouter-Title': 'My App Name', // Optional: title shown in openrouter.ai rankings
+  },
+});
+
+async function main() {
+  const completion = await client.chat.completions.create({
+    model: 'openai/gpt-4o-mini',
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: 'Explain quantum computing in one sentence.' },
+    ],
+  });
+
+  console.log(completion.choices[0].message.content);
+}
+
+main();
+```
+
+### Python (`pip install openai`)
+
+```python
+import os
+from openai import OpenAI
+
+api_key = os.getenv("OPENROUTER_API_KEY")
+if not api_key:
+    raise ValueError("OPENROUTER_API_KEY environment variable is required")
+
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=api_key,
+    default_headers={
+        "HTTP-Referer": "https://my-app.example.com",
+        "X-OpenRouter-Title": "My App Name",
+    },
+)
+
+completion = client.chat.completions.create(
+    model="openai/gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Explain quantum computing in one sentence."},
+    ],
+)
+
+print(completion.choices[0].message.content)
+```
+
+## Important: the `OPENAI_API_KEY` fallback trap
+
+When migrating an existing app from OpenAI to OpenRouter, watch out for client fallback behavior:
+
+```typescript
+// INSECURE: If process.env.OPENROUTER_API_KEY is undefined, the SDK silently falls back!
+const client = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+```
+
+In both the TypeScript and Python `openai` SDKs, passing `undefined` or `None` to `apiKey` causes the constructor to read `process.env.OPENAI_API_KEY` from the environment. If your `.env` file still contains an old OpenAI API key, the SDK will send that OpenAI key (`sk-proj-...`) to `openrouter.ai`, and OpenRouter rejects it with `401 Unauthorized` and the message `Invalid API key: this is not an OpenRouter API key`. See [Troubleshooting 401 errors](/api_reference/authentication#troubleshooting-401-errors) for the other 401 messages. Alternatively, if no key is found, the SDK throws `"The OPENAI_API_KEY environment variable is missing"`, misleadingly naming OpenAI instead of OpenRouter.
+
+**Best practice**: Always validate `OPENROUTER_API_KEY` explicitly before instantiating the client:
+
+```typescript
+const apiKey = process.env.OPENROUTER_API_KEY;
+if (!apiKey) {
+  throw new Error('OPENROUTER_API_KEY environment variable is missing or empty');
+}
+const client = new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey });
+```
+
+## Endpoint compatibility matrix
+
+OpenRouter supports the majority of OpenAI SDK surfaces and methods:
+
+| Service / SDK method | OpenAI path | OpenRouter status | Notes |
+| --- | --- | --- | --- |
+| **Chat Completions** (`client.chat.completions.create`) | `/v1/chat/completions` | Supported | Full support for streaming, tools, structured outputs, and vision across 400+ models. |
+| **Responses API** (`client.responses.create`) | `/v1/responses` | Supported | Next-generation request format supporting multimodal inputs and unified routing. |
+| **Embeddings** (`client.embeddings.create`) | `/v1/embeddings` | Supported | Generates text and image vectors across multiple embedding models. |
+| **Image Generation** (`client.images.generate`) | `/v1/images/generations` | Supported | Mounted at both `/api/v1/images` and `/api/v1/images/generations`. Returns base64 or partial SSE images. |
+| **Text to Speech** (`client.audio.speech.create`) | `/v1/audio/speech` | Supported | Streams binary MP3, WAV, or PCM audio from dedicated voice models. |
+| **Audio Transcription** (`client.audio.transcriptions.create`) | `/v1/audio/transcriptions` | Supported | Accepts multipart form uploads up to 25 MB or JSON `input_audio`. |
+| **Models List** (`client.models.list`) | `/v1/models` | Supported | Returns OpenRouter model catalog with pricing and modality metadata. |
+| **Files API** (`client.files.*`) | `/v1/files` | Supported | Document and asset upload management. |
+| **Batch API** (`client.batches.*`) | `/v1/batches` | Supported | Asynchronous discounted batch processing. |
+| **Video Generation** | None (OpenAI has no public API) | Dedicated API | OpenRouter provides `POST /api/v1/videos`. See [Video Generation API](/api_reference/videos). |
+| **Assistants / Threads** (`client.beta.assistants.*`) | `/v1/assistants`, `/v1/threads` | Not supported | Use the [Responses API](/api_reference/responses/overview) or [OpenRouter Agent SDK](/agent-sdk/overview). |
+| **Realtime WebSockets** | `/v1/realtime` | Not supported | Use streaming Chat Completions or dedicated voice models. |
+| **Moderations** (`client.moderations.create`) | `/v1/moderations` | Use Guardrails | Use [OpenRouter Guardrails](/guides/features/guardrails) to enforce content filtering directly in model routing. |
+| **Fine-tuning** (`client.fine_tuning.*`) | `/v1/fine_tuning` | Not supported | Connect fine-tuned models hosted on supported providers via [BYOK](/guides/overview/auth/byok) or [Private Endpoints](/guides/routing/private-endpoints). |
+
+## Key differences from direct OpenAI API calls
+
+While the wire protocol is identical, OpenRouter provides additional multi-provider capabilities and routing features:
+
+### 1. Prefixed model identifiers
+
+Model IDs must specify the provider or author prefix (e.g. `openai/gpt-4o`, `anthropic/claude-3.5-sonnet`, `google/gemini-2.5-flash`). Do not hardcode raw model names like `gpt-4o` without the `openai/` namespace.
+
+**Tip**: Store the model slug in an environment variable (e.g. `process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini'`) so your team can switch models or test alternatives without redeploying code.
+
+### 2. Passing OpenRouter routing options and provider requirements
+
+OpenRouter accepts optional routing configuration via the `provider` field. In the official Python SDK, pass custom fields using `extra_body`. In TypeScript, pass custom fields with `// @ts-expect-error` to preserve full strict type-checking on all standard parameters:
+
+```typescript
+const response = await client.chat.completions.create({
+  model: 'meta-llama/llama-3.3-70b-instruct',
+  messages: [{ role: 'user', content: 'Extract invoice total as JSON.' }],
+  response_format: {
+    type: 'json_schema',
+    json_schema: {
+      name: 'invoice',
+      strict: true,
+      schema: {
+        type: 'object',
+        properties: { total: { type: 'number' } },
+        required: ['total'],
+      },
+    },
+  },
+  // @ts-expect-error provider is an OpenRouter routing extension
+  provider: {
+    require_parameters: true, // Only route to providers that support json_schema
+    sort: 'latency', // Prioritize lowest latency providers
+  },
+});
+```
+
+```python
+response = client.chat.completions.create(
+    model="meta-llama/llama-3.3-70b-instruct",
+    messages=[{"role": "user", "content": "Extract invoice total as JSON."}],
+    response_format={
+        "type": "json_schema",
+        "json_schema": {
+            "name": "invoice",
+            "strict": True,
+            "schema": {"type": "object", "properties": {"total": {"type": "number"}}, "required": ["total"]},
+        },
+    },
+    extra_body={
+        "provider": {
+            "require_parameters": True,
+            "sort": "latency",
+        }
+    },
+)
+```
+
+Setting `provider: { require_parameters: true }` ensures OpenRouter never routes requests with `json_schema` or `tools` to backend providers that don't support those parameters: if no endpoint supports them, the request fails instead of falling back to one that would drop them. It doesn't guarantee that the selected provider enforces `strict: true` exactly. Some providers translate the schema into their own format or treat it as a strong hint, so validate the parsed object against your schema before you use it. See [Structured Outputs](/guides/features/structured-outputs) for details.
+
+### 3. Streaming keepalive comments and mid-stream errors
+
+When streaming completions from models that have a long time-to-first-token, OpenRouter sends periodic SSE comment lines to prevent intermediate proxies and cloud load balancers from timing out:
+
+```lines
+: OPENROUTER PROCESSING
+```
+
+The official OpenAI SDKs parse and ignore SSE comment lines automatically. If you write custom raw SSE streaming parsers, ignore lines starting with a colon (`:`).
+
+If a backend provider experiences a hardware failure mid-stream after HTTP `200 OK` headers have already been transmitted, OpenRouter emits an error chunk before terminating the stream:
+
+```json
+data: {"error": {"code": 502, "message": "Provider disconnected mid-stream"}}
+```
+
+Your streaming loop should verify whether incoming chunks contain an `error` key. See [Errors and Debugging](/api_reference/errors-and-debugging) for full error schemas.
+
+### 4. Zero Data Retention (ZDR)
+
+If your application requires zero data retention, pass `"zdr": true` under `provider` to restrict routing to endpoints whose data policy does not retain prompts. Safety Retention endpoints, which may retain prompts and responses to prevent abuse, stay eligible if your privacy settings or guardrail allow Safety Retention; see [Allowing or excluding Safety Retention](/guides/features/zdr#allowing-or-excluding-safety-retention) to exclude them:
+
+```typescript
+const response = await client.chat.completions.create({
+  model: 'openai/gpt-4o',
+  messages: [{ role: 'user', content: 'Sensitive enterprise data' }],
+  // @ts-expect-error provider is an OpenRouter routing extension
+  provider: { zdr: true },
+});
+```
+
+See the [Zero Data Retention guide](/guides/features/zdr) for eligible models and workspace-level defaults.
+
+## Automated codebase migration
+
+To migrate an entire existing codebase (including multi-file projects, Vercel AI SDK apps, Mastra agents, or Anthropic SDK integrations) in a single step, hand the instructions in our cookbook recipe to your coding agent:
+
+👉 [Migrate to OpenRouter in One Prompt](/cookbook/get-started/migrate-to-openrouter)
