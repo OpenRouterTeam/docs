@@ -262,7 +262,7 @@ curl "https://openrouter.ai/api/v1/videos/<job_id>" \
 | `generate_audio` | boolean | No | Whether to generate audio alongside the video. Defaults to `true` for models that support audio output |
 | `seed` | integer | No | Seed for deterministic generation (not guaranteed by all providers) |
 | `callback_url` | string | No | URL to receive a webhook notification when the job completes. Overrides the workspace-level default callback URL if set. Must be HTTPS |
-| `provider` | object | No | Provider-specific passthrough configuration |
+| `provider` | object | No | Routing preferences (`order`, `only`, `ignore`), data policy preferences (`zdr`, `data_collection`), and provider-specific passthrough configuration under `options`. `data_collection` takes `allow` (default) or `deny`; `deny` excludes endpoints that train on your data, but not endpoints that retain prompts. No video endpoint currently offers Zero Data Retention, so `zdr: true` fails routing. |
 
 ### Supported Resolutions
 

@@ -347,6 +347,8 @@ The Image API supports these routing fields:
 - `ignore` &mdash; exclude the listed provider slugs.
 - `sort` &mdash; sort eligible endpoints by `price`, `throughput`, or `latency`.
 - `allow_fallbacks` &mdash; when `false`, stop after the primary provider instead of trying another eligible provider.
+- `zdr` &mdash; when `true`, route only to [Zero Data Retention](/guides/features/zdr) endpoints. If no endpoint qualifies, the request fails.
+- `data_collection` &mdash; `allow` (default) or `deny`. When `deny`, route only to endpoints that don't train on your data. Those endpoints may still retain prompts; use `zdr` to exclude retention.
 
 Use `provider_tag` from the [per-endpoint records](#per-endpoint-records) as the base provider slug. See [Provider Routing](/guides/routing/provider-selection) for the routing behavior shared across OpenRouter APIs.
 
