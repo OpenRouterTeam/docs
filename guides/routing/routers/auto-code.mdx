@@ -92,15 +92,23 @@ See [Allowed models](/guides/routing/routers/auto-router#allowed-models) for the
 
 ## Change the cost tier
 
-Auto Code ignores the `auto-router` plugin's `cost_tier` and runs on its own coding tier. To route a request on a general tier instead, set `cost_tier` on a `jev-router` plugin entry to `low`, `medium`, or `high`:
+Auto Code has three cost tiers, all built on its coding policy. OpenRouter tunes the low and high tiers against benchmark data:
+
+- `low`: an Auto Code tuned to spend less per task.
+- `medium`: the default Auto Code policy, which also applies when neither the request nor your workspace sets a tier.
+- `high`: an Auto Code tuned for reliability over cost.
+
+Set `cost_tier` on the `auto-router` plugin entry, or save it on your workspace's [Routing page](https://openrouter.ai/settings/routing) so harnesses that can't send plugin settings pick it up too. A `cost_tier` on a `jev-router` entry takes precedence. `xhigh` and `max` route as `high`. A cost tier never swaps Auto Code for the Auto Router's general policy, and a tier that isn't available yet runs on the default Auto Code policy.
 
 ```json
 {
   "model": "openrouter/auto-code",
   "messages": [{"role": "user", "content": "Rename this variable everywhere in the file."}],
-  "plugins": [{"id": "jev-router", "cost_tier": "medium"}]
+  "plugins": [{"id": "auto-router", "cost_tier": "low"}]
 }
 ```
+
+The tier a request ran on is the `cost_tier` field of the `jev-router` stage in [router metadata](#inspect-routing-decisions): `auto-code-low`, `auto-code`, or `auto-code-high`. Changing tiers starts a new routing session, so the next turn can pick a different model.
 
 ## Inspect routing decisions
 
