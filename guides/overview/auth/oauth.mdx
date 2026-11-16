@@ -84,6 +84,10 @@ const generatedCodeChallenge = await createSHA256CodeChallenge(codeVerifier);
 
 </CodeGroup>
 
+<Note>
+A plain `http://` callback to a non-localhost host must send both a `code_challenge` and `code_challenge_method=S256`. Without them, `/auth` redirects the user to the OpenRouter homepage instead of showing consent, and the code-creation API returns 400. Prefer `https://` anyway: S256 stops a stolen code from being exchanged, but it cannot protect JavaScript served over plain HTTP. Custom schemes (for example `vscode://`) and localhost callbacks are unaffected.
+</Note>
+
 #### Localhost Apps
 
 Localhost callbacks are supported on **any port**. This is useful for CLI tools and local-first apps that bind to an arbitrary free OS port for the OAuth callback (e.g. `http://localhost:51423/callback`).
