@@ -220,7 +220,7 @@ The same object is accepted as `parameters.x_search` on the [`openrouter:web_sea
 
 The web search plugin supports the following options for the `engine` parameter:
 
-- **`native`**: Always uses the model provider's built-in web search capabilities
+- **`native`**: Uses the model provider's built-in web search. This path substitutes no other engine, so a model without native search runs its request without a search rather than falling back to Exa
 - **`exa`**: Uses Exa's search API for web results
 - **`firecrawl`**: Uses [Firecrawl](https://firecrawl.dev)'s search API
 - **`parallel`**: Uses [Parallel](https://parallel.ai)'s search API for web results
@@ -234,7 +234,7 @@ When the `engine` parameter is not specified:
 - **Native search is used by default** for OpenAI, Anthropic, Google, Perplexity, and SpaceXAI models that support it
 - **Exa search is used** for all other models or when native search is not supported
 
-When you explicitly specify `"engine": "native"`, it will always attempt to use the provider's native search, even if the model doesn't support it (which may result in an error).
+Specifying `"engine": "native"` sends the provider's own search tool and substitutes no other engine. The engine list on the Server Tools page governs `openrouter:web_search` requests, not this plugin's `engine` setting; see [Engine Selection](/guides/features/server-tools/web-search#engine-selection) for that path.
 
 ### Forcing Engine Selection
 
