@@ -417,7 +417,7 @@ response = requests.post(
 
 Instead of sending these settings on every request, you can save them for your account on your workspace's [Routing page](https://openrouter.ai/settings/routing), where the Auto Router section stores allowed models, excluded models, and a cost preference. Saved exclusions use the same pattern syntax as the allow list and win over it: an excluded model is never selected even when it matches an allowed pattern. Saved values apply to every Auto Router request unless that request sets the same field, in which case the request wins — unless you enable the section's "prevent overrides" toggle, which makes your saved values final.
 
-Saved allowed and excluded models apply to `openrouter/auto`, `openrouter/auto-beta`, and `openrouter/auto-code`. A saved cost preference applies to `openrouter/auto` and `openrouter/auto-beta`.
+Saved allowed and excluded models and a saved cost preference apply to `openrouter/auto`, `openrouter/auto-beta`, and `openrouter/auto-code`. On Auto Code, the cost preference picks one of [its own tiers](/guides/routing/routers/auto-code#change-the-cost-tier).
 
 ## Pricing
 
