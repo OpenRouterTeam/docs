@@ -27,7 +27,7 @@ Claude Fable 5.1 ships as [`anthropic/claude-fable-5.1`](https://openrouter.ai/a
 2. **Ephemeral mid-conversation system messages (beta)** — one-turn reminders via `clear_at` that never invalidate the prompt cache
 3. **Per-turn effort changes (beta)** — raise or lower effort mid-conversation without a cache bust
 4. **Mid-thinking display updates (beta)** — request real-time progress summaries during long tool-using turns
-5. **Prefix-locked thinking** — thinking blocks are bound to the transcript prefix that produced them; largely not enforced on requests through OpenRouter (see below)
+5. **Prefix-locked thinking** — thinking blocks are bound to the transcript prefix that produced them; enforcement through OpenRouter depends on the provider (see below)
 
 The new request controls are available on OpenRouter's [Messages API](/api/api-reference/anthropic-messages/create-a-message) (`/api/v1/messages`) only. You do **not** need to send the Anthropic beta headers for any of them: OpenRouter detects requests that use each feature, attaches the corresponding beta for you, and routes those requests only to providers that support it.
 
@@ -119,7 +119,7 @@ Relatedly, Fable 5.1 writes fewer progress notes between tool calls than Fable 5
 
 Upstream, Fable 5.1 can bind each thinking block to the transcript prefix that produced it: replaying a thinking block after editing earlier history (injected/removed messages, in-place summarization, a changed system prompt) returns a 400 `invalid_request_error` on enforced accounts.
 
-**Requests through OpenRouter are not subject to this enforcement**: history edits that would 400 against the Anthropic API directly succeed through OpenRouter. If you want to audit or drop mismatched thinking blocks anyway, set the opt-in mismatch handling below.
+Whether it is enforced through OpenRouter depends on the provider that serves the request. Some providers already return this 400 for requests through OpenRouter, and the rest can start enforcing it, so do not rely on history edits succeeding. OpenRouter passes the upstream error through and does not drop thinking blocks for you; set `drop_block` yourself if you want that. Keep your harness append-only, and use the opt-in mismatch handling below to audit it or to drop mismatched blocks instead of erroring.
 
 ```json lines
 // Messages API — drop mismatched thinking blocks instead of erroring
@@ -151,7 +151,7 @@ With `drop_block`, mismatched blocks are discarded upstream and each removal is 
 | --- | --- | --- |
 | `tool_choice: {"type": "any"}` or named tool | Allowed | Rejected upstream (400) |
 | Effort changes | Whole-conversation only | Per-turn via system `output_config` |
-| Replaying thinking blocks after a history edit | Allowed | Can be rejected (400) on enforced accounts; not enforced via OpenRouter's Anthropic endpoint |
+| Replaying thinking blocks after a history edit | Allowed | Rejected (400) by providers that enforce the prefix check, including through OpenRouter |
 
 ## Resources
 
