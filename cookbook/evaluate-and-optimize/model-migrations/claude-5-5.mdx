@@ -40,7 +40,7 @@ All three models share these changes:
 
 1. **Adaptive thinking runs by default.** Effort (`low`, `medium`, `high`, `xhigh`, `max`) controls how much the model thinks. Thinking budgets are not forwarded
 2. **Sampling parameters and assistant prefill are removed.** Non-default `temperature`, `top_p`, and `top_k` are not supported, and neither is a final assistant turn (already the case on Opus 5)
-3. **Preserved thinking.** Thinking blocks are bound to the transcript prefix that produced them. Not enforced on requests through OpenRouter, see [Preserved Thinking](#preserved-thinking). Sonnet 5.5 and Haiku 5.5 thinking blocks are also account-bound, and OpenRouter keeps replays on a provider that can read them
+3. **Preserved thinking.** Thinking blocks are bound to the transcript prefix that produced them. Enforcement through OpenRouter depends on the provider, see [Preserved Thinking](#preserved-thinking). Sonnet 5.5 and Haiku 5.5 thinking blocks are also account-bound, and OpenRouter keeps replays on a provider that can read them
 4. **Mid-conversation controls.** Mid-conversation system messages, `clear_at`, and per-turn effort
 5. **512-token minimum cacheable prompt.** See [Prompt Caching](/guides/best-practices/prompt-caching#minimum-token-requirements)
 
@@ -237,7 +237,7 @@ Haiku 5.5 thinking blocks are also bound to the transcript prefix that produced 
 
 Preserved thinking ties each thinking block to the conversation that produced it, meaning the system prompt, the tool list, and every message before it. This applies to all three models. Upstream, replaying a thinking block after editing any part of that prefix (injected or removed messages, in-place summarization, a changed system prompt, a changed tool list) returns a 400 `invalid_request_error` on enforced accounts (Anthropic API accounts created on or after August 31, 2026), or drops the affected blocks if you opt in to `drop_block`.
 
-**Requests through OpenRouter are not subject to this enforcement**, as with Fable 5.1. History edits that would 400 against the Anthropic API directly succeed through OpenRouter. Keep harnesses prefix-stable anyway, because a stable prefix also keeps the prompt cache valid. If your harness replays history exactly as received and only appends, nothing changes for you. Three kinds of edit break the prefix, and each has an append-only alternative:
+Whether it is enforced through OpenRouter depends on the provider that serves the request. Some providers already return this 400 for requests through OpenRouter, and the rest can start enforcing it, so do not rely on history edits succeeding. OpenRouter passes the upstream error through and does not drop thinking blocks for you; set `drop_block` yourself if you want that. A stable prefix also keeps the prompt cache valid. If your harness replays history exactly as received and only appends, nothing changes for you. Three kinds of edit break the prefix, and each has an append-only alternative:
 
 - **Per-turn reminders or mid-session system prompt changes**: append a mid-conversation system message instead of editing the system prompt, and mark a one-turn reminder with `clear_at: "next_user_message"` (see [Mid-Conversation Controls](#mid-conversation-controls)).
 - **Adding or removing tools**: declare the full set at session start and send a [mid-conversation tool-change block](/cookbook/evaluate-and-optimize/model-migrations/opus-5#mid-conversation-tool-changes-beta) instead of changing `tools`.
@@ -306,7 +306,7 @@ These Messages API controls work on all three models through OpenRouter's [Messa
 | Default effort when none is set | `high` | `medium` |
 | Forced `tool_choice` (`required`, named, `any`, `tool`) | Accepted | 400 upstream |
 | Progress notes between tool calls | Returned as text | Returned as thinking blocks, readable via `display: "updates"` |
-| Replaying thinking blocks after a history edit | Allowed | Can be rejected (400) on enforced accounts, not enforced via OpenRouter |
+| Replaying thinking blocks after a history edit | Allowed | Rejected (400) by providers that enforce the prefix check, including through OpenRouter |
 | `computer_20251124` on direct Anthropic requests | Accepted | 400, use `computer_toolset_20260801` |
 
 **Sonnet 5 → Sonnet 5.5**
