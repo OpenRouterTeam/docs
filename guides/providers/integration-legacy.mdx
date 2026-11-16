@@ -293,8 +293,9 @@ Behavior:
 - Tier endpoints appear to users as [service tier endpoints](/guides/features/service-tiers). They stay out of default routing, except priority endpoints of open-weight models, which compete for default traffic.
 - `service_tier` is OpenRouter's vocabulary, not your API's. If your API names a tier differently, still publish it as `flex` or `priority` here. The mapping to your wire format lives in OpenRouter's integration for your API.
 - An entry cannot combine `is_free: true` with `service_tier`.
+- If you publish a tier as its own model id with a tier suffix (`-fast`, `-turbo`, `-prime`, or `-flex`), omit `service_tier` from that entry. The suffix names the tier when you also publish the standard id as a public endpoint and the tier word isn't part of the model's own name; adding `service_tier` makes OpenRouter treat the entry as a different, hidden endpoint. See [Service tiers](/guides/providers/integration#service-tiers) in the current format.
 
-For OpenRouter to serve a tier endpoint, your inference API must accept `service_tier` on the request and report the tier that served the request in the response, and OpenRouter's integration for your API must forward it. Tier endpoints stay hidden until that integration is in place, so coordinate with us before publishing tier entries.
+For OpenRouter to serve a tier entry that sets `service_tier`, your inference API must accept `service_tier` on the request and report the tier that served the request in the response, and OpenRouter's integration for your API must forward it. Tier endpoints stay hidden until that integration is in place, so coordinate with us before publishing tier entries.
 
 #### Capacity with `capacity_tpm`
 
