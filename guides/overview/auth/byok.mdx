@@ -484,6 +484,33 @@ You can find these values in your Google Cloud Console:
 
 2. **region** (optional): Specify the region for your Vertex AI deployment. Use `"global"` to allow requests to run in any available region, or specify a specific region like `"us-central1"` or `"europe-west1"`. A `"global"` or empty region doesn't pin the key: when a request is routed to a regional endpoint, such as one on `us.openrouter.ai`, OpenRouter uses that endpoint's region instead. A specific region always takes precedence.
 
+#### Private Cloud Storage inputs
+
+On a Vertex BYOK request to a Gemini model, an image or PDF in a user message can be a `gs://bucket/object` reference instead of a URL or base64 data. OpenRouter forwards the reference to Vertex as-is and never downloads the object, so a private bucket works as long as Google can read it. Vertex reads the object as your project's Vertex AI service agent (`service-<PROJECT_NUMBER>@gcp-sa-aiplatform.iam.gserviceaccount.com`), not as the service account in your key, so grant that agent `roles/storage.objectViewer` on the bucket; if the agent doesn't exist yet, create it with `gcloud beta services identity create --service=aiplatform.googleapis.com --project=YOUR_PROJECT`. A request whose object the agent can't read fails with Google's own 403. The media type comes from the object name: images need a `.png`, `.jpg`, `.jpeg`, `.webp`, `.heic` or `.heif` suffix and files need `.pdf`. Pass the object name as-is, not percent-encoded; a reference with whitespace, `?` or `#` in it isn't recognized as a `gs://` reference.
+
+Because OpenRouter never sees the bytes, a few things follow:
+
+- The request has to run on your Vertex key. Pin the provider with `only` as below, and make sure the key is **Prioritized** with shared capacity disabled for the model (see [Key Priority and Fallback](#key-priority-and-fallback)); a `gs://` reference that reaches an OpenRouter-funded Vertex endpoint, or any other provider, is rejected with a 400 by OpenRouter or fails at the provider.
+- A `gs://` PDF is handed to Gemini directly, so the [file parser](/guides/overview/multimodal/pdfs) does not run on it. Leave `pdf.engine` unset or set it to `native`; selecting an OCR engine such as `mistral-ocr` with a `gs://` file returns a 400. The engine applies to the whole request, so when a `gs://` PDF is present every other PDF in the request is also handed to Gemini natively instead of being parsed. To OCR the document, send it as a base64 data URL or a public `https://` URL instead.
+- Only user messages can carry a `gs://` reference; one in a system or tool message returns a 400 rather than being dropped from the prompt.
+- Accounts under a forced content-screening restriction can't use `gs://` references, since there is nothing for OpenRouter to screen; those requests return a 400 and should send a base64 data URL.
+
+```json lines
+{
+  "model": "google/gemini-2.5-flash",
+  "provider": { "only": ["google-vertex"] },
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        { "type": "text", "text": "Describe this product photo." },
+        { "type": "image_url", "image_url": { "url": "gs://my-bucket/catalog/shoe.jpg" } }
+      ]
+    }
+  ]
+}
+```
+
 ### Vertex Batch storage
 
 [Batch API](/batch-quickstart) Vertex BYOK stages input and reads Vertex output from a bucket in your own project. The default is bucketless: omit `bucket`, and OpenRouter creates `or-batch-<project>-<region>` on the first batch in each region — uniform bucket-level access, public access prevention, 30-day object lifecycle, soft delete disabled — and reuses it afterwards. Synchronous requests ignore this field.
