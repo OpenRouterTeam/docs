@@ -205,7 +205,7 @@ You can check whether a specific model supports native search on its [model page
 The web search server tool supports multiple search engines:
 
 - **`auto`** (default): Uses native search if the provider supports it, otherwise falls back to Exa
-- **`native`**: Prefers the provider's built-in web search; falls back to Exa if the model doesn't support native search. When a workspace admin has set an engine list on the Server Tools page, the fallback is the first non-native engine in that list instead; a list of only `native` rejects the request with a 403 on models without native search
+- **`native`**: Prefers the provider's built-in web search; falls back to Exa if the model doesn't support native search. When a workspace admin has set an engine list on the Server Tools page, the fallback is the first non-native engine in that list that can serve the request's region. An unlocked list that leaves no eligible engine still falls back to Exa; a locked list that leaves no eligible engine fails the search call and returns an error result naming the Server Tools page
 - **`exa`**: Uses [Exa](https://exa.ai)'s search API, which combines keyword and embeddings-based search. Returns Exa [highlights](https://docs.exa.ai/reference/contents-retrieval-with-exa-api#highlights) (excerpts drawn from each page that are most relevant to the search query) rather than truncated page text. See the [Exa](#exa) section below.
 - **`firecrawl`**: Uses [Firecrawl](https://firecrawl.dev)'s search API with an OpenRouter-managed key
 - **`parallel`**: Uses [Parallel](https://parallel.ai)'s search API
