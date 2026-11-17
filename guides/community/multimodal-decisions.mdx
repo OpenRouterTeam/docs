@@ -37,6 +37,7 @@ models:
   - baseten/elephant-1
   - baseten/mammoth-1
   - baseten/joey-1
+  - microsoft/microsoft-decision-1.1
 ---
 
 import DecisionsAdapterCapabilities from '/snippets/exports/DecisionsAdapterCapabilities.mdx';
@@ -121,10 +122,10 @@ An image is an item of the `state` array with this shape, the same image part Ch
 { "type": "image_url", "image_url": { "url": "data:image/jpeg;base64,/9j/4AAQ..." } }
 ```
 
-- `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Jev accepts only `image/png` and `image/jpeg`. ScaleDown also accepts `image/tiff` and reads the image as its one document (see [Document parts](#document-parts)). Gemini Decision 1 accepts any `image/*` data URL and also a public `https://` URL, which Google fetches. Other models do not fetch remote `http(s)` URLs.
-- `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, Clef Omni, Mercury Decide, and the Baseten decision models (Elephant 1, Mammoth 1, Joey 1) ignore it. Gemini Decision 1 forwards `low` and `high` as Google's image resolution and drops `auto`.
-- Put image parts directly in the top-level `state` array. Only Jev reads image parts in other places (see [Image positions on Jev](#image-positions-on-jev)); on every other Decisions model, an image part nested inside a `state` object or placed in a question's `instructions` or `criteria` fails with a `400` rather than being sent to the model as text. The same rule applies to audio, video, and `file` parts on every model, Jev included.
-- Send at most 4 images per request to Clef, Clef Flash, and Clef Omni, at most 16 to Mercury Decide and the Baseten decision models, and at most 128 to GPT-6 Luna Decisions.
+- `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Jev and Microsoft-Decision-1.1 accept only `image/png` and `image/jpeg`. ScaleDown also accepts `image/tiff` and reads the image as its one document (see [Document parts](#document-parts)). Gemini Decision 1 accepts any `image/*` data URL and also a public `https://` URL, which Google fetches. Other models do not fetch remote `http(s)` URLs.
+- `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, Clef Omni, Mercury Decide, Microsoft-Decision-1.1, and the Baseten decision models (Elephant 1, Mammoth 1, Joey 1) ignore it. Gemini Decision 1 forwards `low` and `high` as Google's image resolution and drops `auto`.
+- Put image parts directly in the top-level `state` array. Only Jev and Microsoft-Decision-1.1 read image parts in other places (see [Image positions on Jev](#image-positions-on-jev)); on every other Decisions model, an image part nested inside a `state` object or placed in a question's `instructions` or `criteria` fails with a `400` rather than being sent to the model as text. The same rule applies to audio, video, and `file` parts on every model, Jev included.
+- Send at most 4 images per request to Clef, Clef Flash, and Clef Omni, at most 16 to Mercury Decide and the Baseten decision models, and at most 128 to GPT-6 Luna Decisions. Microsoft-Decision-1.1 reads at most 8 images per question (see [Limits](#limits)).
 - Text items in the array are plain strings, not `{ "type": "text" }` parts.
 - Jev 1.14 and [`~typesafe/jev-latest`](https://openrouter.ai/~typesafe/jev-latest) also answer [Box](/guides/community/jev#box-questions) questions about images.
 
@@ -159,7 +160,7 @@ Instead of placing image parts inline, list each image once in a top-level `asse
 
 - Each asset is `{ "type": "image", "format": "png" | "jpg" | "jpeg", "data_base64": "..." }`. `type` is optional; `data_base64` is the file in standard base64 with no `data:` prefix. The multipart `part` field is not accepted.
 - Every asset must be referenced somewhere in `state`, `instructions`, or `criteria`, or the request fails with a `400` naming the unused reference. Object keys (a `state` field name, a Choice option, a question ID) are never read as references.
-- On Jev, `assets` and references are sent to TypeSafe as written: a reference matches as a whole string value or inside longer text, and each occurrence adds the image again. A Score `legend` that echoes a criterion written as a reference returns the reference. Pick references that cannot occur in your text by accident, such as a UUID per image.
+- On Jev and Microsoft-Decision-1.1, `assets` and references are sent to the provider as written: a reference matches as a whole string value or inside longer text, and each occurrence adds the image again. A Score `legend` that echoes a criterion written as a reference returns the reference. Pick references that cannot occur in your text by accident, such as a UUID per image.
 - On every other Decisions model, a string that is exactly a reference is read as the `image_url` part for that asset, with the same limits as an inline image part, and only as a top-level `state` item: those models read images nowhere else. A reference nested inside a `state` object, placed in `instructions` or `criteria`, or written inside longer text fails with a `400` instead of sending the image to the model as text.
 
 `image_url` parts and `assets` can be mixed in one request.
@@ -186,7 +187,9 @@ An `image_url` part cannot sit inside a string. To name an image mid-sentence, u
 
 Each image part counts as its own image, so repeating the same part sends the image again and counts toward the [size limits](#limits) again. A Score answer whose `legend` names an image returns your original image part.
 
-TypeSafe marks image input as an early feature whose request format, answers, and limits can change between Jev releases. The positions above are what OpenRouter sends to Jev today, for inline image parts and for asset references alike; other Decisions models read images only in the top-level `state` array.
+TypeSafe marks image input as an early feature whose request format, answers, and limits can change between Jev releases. The positions above are what OpenRouter sends to Jev today, for inline image parts and for asset references alike.
+
+[`microsoft/microsoft-decision-1.1`](https://openrouter.ai/microsoft/microsoft-decision-1.1) reads image parts and asset references in the same positions. Every other Decisions model reads images only in the top-level `state` array.
 
 ## Audio and video parts (Clef Omni and Gemini Decision 1)
 
@@ -228,9 +231,9 @@ The table is generated from the adapter registry, so it is the current contract:
 <DecisionsAdapterCapabilities />
 
 - Question types: `noul`, `choice`, and `score` work everywhere. [Box](/guides/community/jev#box-questions) questions need a TypeSafe endpoint; Jev 1.13 also rejects them upstream with a `400`.
-- `assets` references: on TypeSafe the map is forwarded as written, so a reference matches anywhere in your text. Everywhere else, each whole-string reference becomes an `image_url` part before the request is sent, and it then has to be accepted where that adapter reads `image_url` parts.
+- `assets` references: on TypeSafe, and on Azure for a model that declares image input, the map is forwarded as written, so a reference matches anywhere in your text. Everywhere else, each whole-string reference becomes an `image_url` part before the request is sent, and it then has to be accepted where that adapter reads `image_url` parts.
 - Media parts: an `image_url`, `input_audio`, `video_url`, or `file` item in the top-level `state` array is lifted into the provider's image, audio, video, or document input when its type is listed, and rejected otherwise. A malformed part (a typo in `type`, a missing payload) is a `400` on every adapter rather than being sent to the model as text.
-- Image parts elsewhere: only TypeSafe reads image parts nested inside `state` objects or placed in `instructions` or `criteria`; see [Image positions on Jev](#image-positions-on-jev).
+- Image parts elsewhere: only TypeSafe, and Azure for a model that declares image input, read image parts nested inside `state` objects or placed in `instructions` or `criteria`; see [Image positions on Jev](#image-positions-on-jev).
 
 By default the adapter an endpoint uses follows from its provider (a Decisions adapter name stored on the provider wins over the default), so an `openai/gpt-6-luna-decisions` request served by OpenAI uses the OpenAI row, and a `typesafe/jev-1.14` request served by TypeSafe uses the TypeSafe row. Models whose endpoints are served by a provider not named in the table (Nace.AI, Upstage, Microsoft, and others) use the `TypeSafeDecisionsAdapter` row.
 
@@ -243,6 +246,7 @@ By default the adapter an endpoint uses follows from its provider (a Decisions a
 - **Images on Liquid d1 and d1-ultra.** Send at most 8 images per request, in a request body of at most 4.5 MB and at most 10,000 image patches in total. Each 32x32-pixel patch counts as 1.5 input tokens, rounded up, for every question in the request.
 - **Images on Liquid d1.2 and d1.2-ultra.** The same limits apply: at most 8 images per request, in a request body of at most 4.5 MB and at most 10,000 image patches in total. Each 32x32-pixel patch counts as 1.5 input tokens, rounded up per image, once per request however many questions it asks.
 - **Image size on Jev.** Each image must be 256 to 1,568 pixels on each side and 78,400 to 2,458,624 pixels in total, with inclusive limits. Images below the minimum dimensions return a `400`; images above the maximum dimensions or other size limits return a `413`. Each decoded PNG or JPEG file can be at most 16 MiB. TypeSafe also limits the request body (including base64), all processed images together, and the expanded request (text, questions, structure, and image occurrences) to 32 MiB each. Processing can make images larger than the uploaded files, so fitting the upload-body limit alone is not enough. See [TypeSafe's image limits](https://docs.typesafe.ai/images#limits) for details. Animated PNGs are rejected, and EXIF orientation is not applied, so rotate photos before encoding them. Images count as input tokens at the normal price, and every request with an image runs in TypeSafe's long-context mode.
+- **Images on Microsoft-Decision-1.1.** Each image must be a PNG or JPEG that is 280 to 1,568 pixels on each side, with inclusive limits. A smaller image fails with a `400` and a larger one with a `413`. Each question reads at most 8 images, counting the images in `state` and every repeat of the same image; a ninth fails with a `400`. Images count as input tokens at the normal price. Box questions fail with a `400`.
 - See each [model page](https://openrouter.ai/models) for the current context length and pricing.
 
 ## Related
