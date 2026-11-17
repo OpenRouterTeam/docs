@@ -18,6 +18,72 @@ rss: true
 
 Curated release notes for the Ori CLI, newest version first. If you are new to Ori, start with [Ori Harness](/guides/ori/harness), which covers installing Ori and running your existing agent CLI. [File Writing](/guides/ori/files) explains what Ori puts in your project.
 
+<Update label="0.17.1" description="November 16, 2026" tags={["Patch"]} rss={{ title: "Ori 0.17.1", description: "The desktop app gets a new layout with New chat, Made by Ori, Usage and Threads in the sidebar, and it can bring Claude Code and Codex sessions in as threads." }}>
+
+The desktop app gets a new layout with New chat, Made by Ori, Usage and Threads in the sidebar, and it can bring Claude Code and Codex sessions in as threads. Administrator command lists now shape `ori help` and every refusal hint. Ori Claude Code launches handle the workspace model list and default model more reliably. Security fixes harden project dotenv files, cloned key files, Windows launches and Slack credentials.
+
+## Desktop app
+
+- **New layout.** The sidebar holds New chat, Made by Ori, Usage and a Threads list with one status mark for each thread. An account menu at the foot replaces the interns view, and it holds Appearance with Light, Dark and Match my Mac. The current row and the Send button use the accent color.
+- **New chat.** New chat is one ask field above a Made recently list. Typing `@` reaches any intern that you can reach.
+- **Made by Ori.** The Made by Ori page lists what your interns made. A page from Made by Ori or Made recently opens as its own page in the main pane, with a breadcrumb and an ask field docked below it. The artifact side pane is gone.
+- **Imported sessions.** The desktop app brings Claude Code and Codex sessions in as threads. The import runs in the background and keeps the session titles.
+- **Usage.** The Usage page shows spend, chats, workflow runs, weekly spend, models and workflows. It shows the last data at once while it refreshes. The account menu checks for updates without closing.
+- **Settings.** You can search App settings, and the `/` key focuses the search. A new Follow-up behavior setting decides what a message sent during a turn does.
+- **Interns only.** The local folder mode and direct model chats are gone. File &gt; New chat and Start a chat now start a chat with your intern.
+- **Intern names.** An intern's name shows with the casing that its creator typed, also in Quick Ask, the tray and the greeting. Quick Ask routes an address typed with that casing.
+- **Rust interns.** A chat with a Rust intern signs each input as the signed-in user, so your own connections work there.
+- **Questions and approvals.** A question that its turn still waits on no longer shows as Not answered. The routine detail pane shows every word of a routine prompt as plain text beside Approve.
+- **Fixes.** The desktop app sends one notification for each finished turn. App shortcuts and menu commands do nothing while a modal is open, and Escape closes only the top surface. The wheel over the composer dock scrolls the conversation. A reply about a connected service no longer shows a connection chip. A new intern whose create timed out is matched to the intern the server made. A starting intern shows as starting. The Threads label no longer flashes when older history fails to load.
+
+## Managed commands
+
+- **Help follows the lists.** `ori help` and `ori --help` hide the commands, usage rows and subcommands that `ORI_ENABLED_COMMANDS` turns off. A hidden command still refuses by name.
+- **Hints follow the lists.** A mistyped command suggests only commands that the lists allow. A harness refusal names `ori harness list` only when the command list and `ORI_MINIMUM_VERSION` let it run.
+- **Refusals name their source.** A refusal from a launch settings list points to Allowed commands or Allowed harnesses on the Managed Machines page. A refusal from a machine list keeps the machine guidance.
+
+## Codex, Claude Code and other launchers
+
+- **Claude Code models.** `ori claude` refuses a `--model` that the workspace model list leaves out, before Claude Code starts. The workspace default model applies with or without a model list, and Ori removes a default it wrote once no default applies.
+- **Newer Claude Code.** A Claude Code newer than the tested range now launches with a warning instead of a refusal.
+- **Read-only home.** `ori claude` launches when `~/.ori` is read-only, instead of failing.
+- **Moved home folder.** Claude Code setup resets and sets up again after the home folder moves.
+- **Codex cleanup.** A Codex start removes the `model_catalog_json` line that setup from 0.15.6 and 0.15.7 wrote, and it restores a line that setup kept as a comment. Ori warns about a `model_catalog_json` line that you wrote outside the setup block.
+- **Codex tool search.** Codex setup writes the tool search setting.
+- **Cline and Cursor.** Cline setup keeps your other Cline providers. Cursor setup keeps the models that you removed out of later setups.
+- **Workspace skills.** A real `.claude/skills` folder that is its skill's source stays in place.
+
+## CLI and built-in harness
+
+- **Headless credentials.** Every headless command reads `.ori/start.json` before `.ori/credentials.json`. The code daemon uses the credential that its `ori code` launch picked.
+- **Login recovery.** `ori login --with-key` recovers from a missing credential database.
+- **Configuration.** Ori no longer reads the home user config as the workspace layer. When a config file denies access, Ori falls back to environment variables and defaults. Machine policy still fails closed.
+- **Approvals.** An approval prompt shows every argument in full, and allow always applies only to the exact call. Slack approval sections show `&`, `<` and `>` as typed.
+- **Chat TUI.** A slash command whose argument starts on the next line now runs. A clicked file link reveals the file in the file manager instead of opening it.
+- **Recall.** The built-in harness recalls only the current session's compacted context, and a fork recalls only what it inherited.
+- **Profiles.** The mutating profile commands print a JSON result envelope.
+- **Code daemon.** A failed heartbeat no longer ends the connection, so the daemon stays up under an open TUI. Requests to a hung daemon fail fast. IPv6 runtime hosts work in daemon URLs.
+- **Other fixes.** Fetching the docs bundle no longer waits out a long `429` retry delay. A backup no longer fails on a dirty nested repository. The state store recovers on the next call after a failed corruption recovery. Ori removes a launch settings cache that does not decode when no policy applies. Reported cache tokens are kept in harness events.
+
+## Hosted interns and webhooks
+
+- **Webhook verification.** The daemon verifies every webhook with no in-flight limit, so a busy daemon no longer refuses GitHub deliveries. A webhook with malformed signature headers is refused before its body is read.
+- **Webhook recipes.** A webhook can name a vault scheme or write its own recipe. A recipe can name a public key or a JWT.
+- **Reloads.** A reload applies at once, without waiting for the runs in flight.
+- **Self-development.** An intern that changes itself plans first and shows the plan with an Approve button. It builds the plan after the click.
+- **Slack questions.** Ori refuses a question with an empty choice, an empty prompt or an id too long for Slack.
+
+## Security
+
+- **Project dotenv.** Ori refuses every user-trust key and `ORI_DAEMON_TOKEN` from a project dotenv file, including `ORI_RELEASE_BASE_URL`.
+- **Cloned key files.** Ori refuses a workspace key file that came with a cloned repository.
+- **Windows launches.** Ori quotes `.cmd` preflight arguments and refuses `cmd.exe` metacharacters. A setup state directory is restricted by ACL on Windows.
+- **Claude Code settings.** Workspace Claude Code settings no longer pass proxy, CA or TLS verification variables.
+- **Slack credentials.** The vault tunnel mints a Slack turn credential only for the member who acted, and forwards the verified credential to the vault.
+- **Skill links.** Skill link updates stay inside the workspace and refuse symlinked `.ori`, `.agents` and `.claude` trees.
+- **Telemetry.** Exported log bodies no longer carry customer text.
+
+</Update>
 <Update label="0.17.0" description="November 7, 2026" tags={["Breaking","Minor"]} rss={{ title: "Ori 0.17.0", description: "OpenRouter now serves the Codex and Claude Code model lists, so `ori codex`, `ori claude` and their setups stop building or narrowing a list on the laptop." }}>
 
 OpenRouter now serves the Codex and Claude Code model lists, so `ori codex`, `ori claude` and their setups stop building or narrowing a list on the laptop. The desktop app gains chats on the local Ori Code agent, native routines and connections, and updates that install themselves. Slack replies hold together through long turns, lost responses and deleted messages. Backups become labeled versions that you list and restore by name. The built-in harness defaults to `openrouter/auto`, keeps session history for 30 days, and refuses more risky local inputs.
