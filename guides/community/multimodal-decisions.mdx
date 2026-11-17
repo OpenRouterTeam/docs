@@ -25,6 +25,8 @@ models:
   - cloudflare/clef-omni
   - openai/gpt-6-luna-decisions
   - google/gemini-decision-1
+  - heygen/heygen-decision-1
+  - heygen/heygen-decision-1-turbo
   - inception/mercury-decide
   - typesafe/jev-1.14
   - typesafe/jev-1.13
@@ -122,10 +124,10 @@ An image is an item of the `state` array with this shape, the same image part Ch
 { "type": "image_url", "image_url": { "url": "data:image/jpeg;base64,/9j/4AAQ..." } }
 ```
 
-- `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Jev and Microsoft-Decision-1.1 accept only `image/png` and `image/jpeg`. ScaleDown also accepts `image/tiff` and reads the image as its one document (see [Document parts](#document-parts)). Gemini Decision 1 accepts any `image/*` data URL and also a public `https://` URL, which Google fetches. Other models do not fetch remote `http(s)` URLs.
-- `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, Clef Omni, Mercury Decide, Microsoft-Decision-1.1, and the Baseten decision models (Elephant 1, Mammoth 1, Joey 1) ignore it. Gemini Decision 1 forwards `low` and `high` as Google's image resolution and drops `auto`.
+- `url` must be a base64 data URL with the type `image/png`, `image/jpeg`, or `image/webp`. Jev and Microsoft-Decision-1.1 accept only `image/png` and `image/jpeg`. ScaleDown also accepts `image/tiff` and reads the image as its one document (see [Document parts](#document-parts)). Gemini Decision 1 accepts any `image/*` data URL and also a public `https://` URL, which Google fetches. HeyGen Decision and HeyGen Decision Turbo also accept any `image/*` data URL or a public `https://` URL, which HeyGen fetches. Other models do not fetch remote `http(s)` URLs.
+- `detail` (`auto`, `low`, or `high`) is accepted, but Clef, Clef Flash, Clef Omni, Mercury Decide, Microsoft-Decision-1.1, the HeyGen Decision models, and the Baseten decision models (Elephant 1, Mammoth 1, Joey 1) ignore it. Gemini Decision 1 forwards `low` and `high` as Google's image resolution and drops `auto`.
 - Put image parts directly in the top-level `state` array. Only Jev and Microsoft-Decision-1.1 read image parts in other places (see [Image positions on Jev](#image-positions-on-jev)); on every other Decisions model, an image part nested inside a `state` object or placed in a question's `instructions` or `criteria` fails with a `400` rather than being sent to the model as text. The same rule applies to audio, video, and `file` parts on every model, Jev included.
-- Send at most 4 images per request to Clef, Clef Flash, and Clef Omni, at most 16 to Mercury Decide and the Baseten decision models, and at most 128 to GPT-6 Luna Decisions. Microsoft-Decision-1.1 reads at most 8 images per question (see [Limits](#limits)).
+- Send at most 4 images per request to Clef, Clef Flash, Clef Omni, and the HeyGen Decision models, at most 16 to Mercury Decide and the Baseten decision models, and at most 128 to GPT-6 Luna Decisions. Microsoft-Decision-1.1 reads at most 8 images per question (see [Limits](#limits)).
 - Text items in the array are plain strings, not `{ "type": "text" }` parts.
 - Jev 1.14 and [`~typesafe/jev-latest`](https://openrouter.ai/~typesafe/jev-latest) also answer [Box](/guides/community/jev#box-questions) questions about images.
 
@@ -191,9 +193,9 @@ TypeSafe marks image input as an early feature whose request format, answers, an
 
 [`microsoft/microsoft-decision-1.1`](https://openrouter.ai/microsoft/microsoft-decision-1.1) reads image parts and asset references in the same positions. Every other Decisions model reads images only in the top-level `state` array.
 
-## Audio and video parts (Clef Omni and Gemini Decision 1)
+## Audio and video parts
 
-[`cloudflare/clef-omni`](https://openrouter.ai/cloudflare/clef-omni) and [`google/gemini-decision-1`](https://openrouter.ai/google/gemini-decision-1) also take audio and video items in the top-level `state` array, using the same part shapes Chat Completions uses in message content:
+[`cloudflare/clef-omni`](https://openrouter.ai/cloudflare/clef-omni) and [`google/gemini-decision-1`](https://openrouter.ai/google/gemini-decision-1) also take audio and video items in the top-level `state` array. [`heygen/heygen-decision-1`](https://openrouter.ai/heygen/heygen-decision-1) and [`heygen/heygen-decision-1-turbo`](https://openrouter.ai/heygen/heygen-decision-1-turbo) take video, but not audio. All four use the same part shapes Chat Completions uses in message content:
 
 ```json
 { "type": "input_audio", "input_audio": { "data": "UklGRiQAAABXQVZF...", "format": "wav" } }
@@ -204,10 +206,11 @@ TypeSafe marks image input as an early feature whose request format, answers, an
 ```
 
 - `input_audio.data` is raw base64 (no `data:` prefix). `format` must be one of `wav`, `mp3`, `mpeg`, `m4a`, `mp4`, `aac`, `aiff`, `aif`, `flac`, `ogg`, `opus`, or `webm`.
-- `video_url.url` must be a base64 `data:video/...` URL. On Gemini Decision 1 it can also be a public `https://` URL, which Google fetches; Clef Omni does not fetch remote URLs. `processing` is accepted but ignored. Clef Omni samples every video at 2 frames per second regardless.
+- `video_url.url` must be a base64 `data:video/...` URL. On Gemini Decision 1 and the HeyGen Decision models it can also be a public `https://` URL, which the provider fetches; Clef Omni does not fetch remote URLs. `processing` is accepted but ignored. Clef Omni samples every video at 2 frames per second regardless.
 - On Clef Omni, send at most 4 audio clips and 2 videos per request. Each audio clip can be up to 8 MiB or 300 seconds, each video up to 16 MiB or 60 seconds, and all audio and video together up to 16 MiB decoded.
 - On Clef Omni, audio costs about 780 input tokens per minute; audio, video, and image tokens all count toward the 65,536-token context window. Gemini Decision 1 sets no shared count or size limit in OpenRouter; Google applies its own.
-- Only Clef Omni and Gemini Decision 1 read audio and video. Every other model in the [capability table](#what-each-endpoint-accepts) rejects a request that contains them with a `400` capability mismatch, so routing can try another endpoint.
+- On HeyGen Decision and HeyGen Decision Turbo, send at most 1 video per request; it can go in the same request as images. A second video or an audio part fails with a `400` from OpenRouter before anything is sent to HeyGen.
+- Only Clef Omni and Gemini Decision 1 read audio, and only those two and the HeyGen Decision models read video. Every other model in the [capability table](#what-each-endpoint-accepts) rejects a request that contains them with a `400` capability mismatch, so routing can try another endpoint.
 
 ## Document parts
 
@@ -243,6 +246,7 @@ By default the adapter an endpoint uses follows from its provider (a Decisions a
 - **Text length on Clef and Clef Flash.** Workers AI reads roughly the first 2,000 tokens of text in `state` and drops the rest without an error. Images are counted separately.
 - **Image size on Mercury Decide.** A 7 MB JPEG (a 10 MB request body) is accepted and billed as about 1,000 input tokens. A 12 MB image fails with a `422`, and a 16 MB image with a `413`, so keep each image under a few MB.
 - **Provider errors on Mercury Decide.** Image parts pass through to Inception as sent, so an image it can't read (a remote URL, a raw base64 string) or more than 16 images fails with a `422` from the provider rather than a `400` from OpenRouter.
+- **Media on HeyGen Decision and HeyGen Decision Turbo.** Send at most 4 images and 1 video per request. A base64 image can be up to 5 MiB decoded; a larger one fails with a `400` from HeyGen. The whole request body, base64 text included, can be at most 16 MiB, which leaves room for about 11 MiB of decoded base64 video; a larger body fails with a `400` from HeyGen. For a larger file, send a URL: HeyGen documents download limits of 32 MiB per image and 50 MiB per video. Images and video count as input tokens at the normal price.
 - **Images on Liquid d1 and d1-ultra.** Send at most 8 images per request, in a request body of at most 4.5 MB and at most 10,000 image patches in total. Each 32x32-pixel patch counts as 1.5 input tokens, rounded up, for every question in the request.
 - **Images on Liquid d1.2 and d1.2-ultra.** The same limits apply: at most 8 images per request, in a request body of at most 4.5 MB and at most 10,000 image patches in total. Each 32x32-pixel patch counts as 1.5 input tokens, rounded up per image, once per request however many questions it asks.
 - **Image size on Jev.** Each image must be 256 to 1,568 pixels on each side and 78,400 to 2,458,624 pixels in total, with inclusive limits. Images below the minimum dimensions return a `400`; images above the maximum dimensions or other size limits return a `413`. Each decoded PNG or JPEG file can be at most 16 MiB. TypeSafe also limits the request body (including base64), all processed images together, and the expanded request (text, questions, structure, and image occurrences) to 32 MiB each. Processing can make images larger than the uploaded files, so fitting the upload-body limit alone is not enough. See [TypeSafe's image limits](https://docs.typesafe.ai/images#limits) for details. Animated PNGs are rejected, and EXIF orientation is not applied, so rotate photos before encoding them. Images count as input tokens at the normal price, and every request with an image runs in TypeSafe's long-context mode.
