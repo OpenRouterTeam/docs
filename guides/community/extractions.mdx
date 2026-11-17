@@ -21,6 +21,8 @@ models:
   - inference-net/schematron-v2-small
   - inference-net/schematron-v2-turbo
   - levanto/sage-2
+  - liquid/d1.2
+  - liquid/d1.2-ultra
   - perplexity/pplx-decider-v1.3
   - perplexity/pplx-decider-flash-v1.3
   - scaledown/extract
@@ -40,10 +42,13 @@ The route is alpha and its shape can change. It takes the [Decisions](/api/api-r
 | [`inception/mercury-decide`](https://openrouter.ai/inception/mercury-decide) | Text only | `text`, and `list` with `items: "text"` | `snap_to_words`, `threshold`, `group_fields` under `provider.options.inception` |
 | [`inference-net/schematron-v2-small`](https://openrouter.ai/inference-net/schematron-v2-small), [`inference-net/schematron-v2-turbo`](https://openrouter.ai/inference-net/schematron-v2-turbo) | Text only | `text`, `number` (as stated: no `unit`), `date`, `time`, `datetime`, and `list` of `text`, `number`, or `date` items; no `null_threshold` or `reference_date` | None |
 | [`levanto/sage-2`](https://openrouter.ai/levanto/sage-2) | Text only | `text`, `number` (as stated: no `unit`), `date`, `time`, `datetime`, `duration`, and `list` of any item type (no `null_threshold` on lists); no `reference_date` | None |
+| [`liquid/d1.2`](https://openrouter.ai/liquid/d1.2), [`liquid/d1.2-ultra`](https://openrouter.ai/liquid/d1.2-ultra) | Text, or up to 8 PNG, JPEG, or WebP images with `estimate` fields only | `text`, `number`, `date`, `list` with `items: "text"`, and `estimate` over numbers on a linear scale; no `reference_date` | None |
 | [`perplexity/pplx-decider-v1.3`](https://openrouter.ai/perplexity/pplx-decider-v1.3), [`perplexity/pplx-decider-flash-v1.3`](https://openrouter.ai/perplexity/pplx-decider-flash-v1.3) | Text only | `text`, and `list` with `items: "text"` (no `null_threshold`); no `reference_date`; up to 128 fields | None |
 | [`scaledown/extract`](https://openrouter.ai/scaledown/extract) | Text, or one PDF or image | `text`, and `list` with `items: "text"` | `threshold`, `top_n` under `provider.options.scaledown` |
 
 Perplexity Decider v1.3 and Flash v1.3 serve Perplexity's `locate` capability on this route: each `text` answer is a passage from `state` with its character `span`, and each `list` answer carries one `spans` entry per item. The same models answer Decisions questions on [`/api/alpha/decisions`](/guides/community/multimodal-decisions); the URL you call picks the capability.
+
+Liquid d1.2 and d1.2-ultra work the same way: they answer Decisions questions on [`/api/alpha/decisions`](/guides/community/multimodal-decisions) and typed fields on this route. Each `text`, `number`, and `date` answer that has a value comes with its `span` in `state`, and each `list` answer carries one `spans` entry per item. An answer whose `value` is `null` has no `span`.
 
 A request a model cannot serve (a `date` field on Mercury Decide, an image on a text-only model, a fifth image on Clairic) fails with a `400` from OpenRouter before anything is sent to the provider. The response `provider` field names the provider that answered.
 
@@ -108,6 +113,7 @@ Every field takes `type`, an optional `instructions` string saying what the fiel
 
 - `number` and `duration` take `unit`, `integer`, and `decimals` (0 to 6 decimal places kept in `value`). A `duration` `unit` is `seconds`, `minutes`, `hours`, `days`, `weeks`, `months`, or `years`. A provider that returns durations in ISO 8601 form (Sage) has them converted to the requested unit: clock units (`seconds` to `weeks`) convert exactly among themselves, as do `months` and `years` (twelve months to the year); across that divide a month is 30 days and a year 365, so `P1Y` in `days` is `365` and `P12M` is `360`. Ask for `months` or `years` when the document states a calendar span and a precise day count matters.
 - `text`, `date`, `time`, and `datetime` take an optional `unit` label, which Clairic reads and the other models reject.
+- Liquid d1.2 and d1.2-ultra require a `null_threshold` above `0` on `text`, `number`, and `date` fields, and take none on a `list` or an `estimate`. A `list` takes only `items: "text"`, with no `unit`, `integer`, or `decimals`. An `estimate` takes numeric `min` and `max`, an optional numeric `step`, and an optional `unit`, on a linear scale only.
 - `list` takes `items`: `text`, `number`, or `date`. A list of numbers also takes `integer` and `decimals`. A list also takes an optional `unit` label, which Clairic reads and the other models reject.
 - `estimate` and `forecast` take `min` and `max` (numbers, or ISO dates for date-valued estimates), an optional `step` (a positive number, in days for date estimates, or `"month"` or `"year"`), and an optional `scale` of `linear` or `log`. A `forecast` also takes `horizon` (1 to 64 steps) and `interval` (`step`, `minute`, `hour`, `day`, `week`, `month`, `quarter`, or `year`).
 
@@ -157,6 +163,7 @@ Images and PDFs go in a top-level `assets` map, each sent once and referenced by
 }
 ```
 
+- Liquid d1.2 and d1.2-ultra read up to 8 PNG, JPEG, or WebP images and no PDFs. Only `estimate` fields read images: a request that sends an image with any other field type fails with a `400`, even when `state` has text for that field to read. Send those fields in a separate text-only request.
 - ScaleDown Extract reads one PDF, PNG, or JPEG per request (a WebP fails with a `400`), and reads either the text or the document, not both: send the file-only form of `state` or omit `state`.
 - Mercury Decide, Perplexity Decider, Sage and Schematron read text only; any asset fails with a `400`.
 
