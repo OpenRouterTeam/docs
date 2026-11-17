@@ -455,6 +455,33 @@ Example IAM policy:
 
 For enhanced security, we recommend creating dedicated IAM users with limited permissions specifically for use with OpenRouter.
 
+#### Choosing a Cross-Region Inference Profile
+
+Many Bedrock models are invoked through a [cross-region inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html), whose model ID starts with a prefix such as `global.`, `us.`, `eu.`, or `apac.`. A `global.` profile can process a request in any supported AWS commercial region; a geographic profile keeps it within that geography. If your AWS organization only allows some profiles, for example a service control policy that denies global cross-region inference, set the profile on your key.
+
+On the Amazon Bedrock provider page, both the **API Key** and **IAM Credentials** tabs have a **Cross-region inference profile** setting and an **Add override** button for per-model overrides. When you send the key as JSON (for example through the [BYOK management API](/api/api-reference/byok)), use the `crisScope` and `crisScopeOverrides` fields:
+
+```json lines
+{
+  "accessKeyId": "your-aws-access-key-id",
+  "secretAccessKey": "your-aws-secret-access-key",
+  "region": "us-east-1",
+  "crisScope": "us",
+  "crisScopeOverrides": [{ "modelSlug": "anthropic/claude-sonnet-4.6", "scope": "global" }]
+}
+```
+
+A Bedrock API key takes the same fields: `{"apiKey": "your-bedrock-api-key", "region": "us-east-1", "crisScope": "us"}`.
+
+- **`crisScope`**: one of `global`, `us`, `eu`, or `apac`, in lowercase. OpenRouter replaces the profile prefix of every model this key serves with this one, so `global.anthropic.claude-haiku-4-5-20251001-v1:0` is sent as `us.anthropic.claude-haiku-4-5-20251001-v1:0`. Models invoked by foundation model ID, without a prefix, are unchanged.
+- **`crisScopeOverrides`**: per-model exceptions to `crisScope`. `modelSlug` is the OpenRouter model ID, and each model can have one override.
+- A geographic scope must match the key's `region`: `us` needs a `us-` region, `eu` an `eu-` region, and `apac` an `ap-` region. `global` works with any region. The provider page rejects an incompatible pair. If one is stored anyway, OpenRouter uses the geographic profile for the key's region instead.
+- Without `crisScope`, requests on `openrouter.ai` keep `global.` profiles and match geographic profiles to the key's region. On `us.openrouter.ai` and `eu.openrouter.ai`, your key always uses the US or EU geographic profile, whatever `crisScope` says.
+- The profile must exist in your AWS account for that model. Some models only have a `global.` profile. Choosing a geographic scope for one of them makes AWS reject the request on your key, and OpenRouter moves on to the next endpoint as described in [Key Priority and Fallback](#key-priority-and-fallback). On `openrouter.ai`, use `crisScopeOverrides` to keep such a model on `global`. On `us.openrouter.ai` and `eu.openrouter.ai` the override is ignored, so a model with only a `global.` profile cannot be served on your key there.
+- `region` is optional for a Bedrock API key. Without it, requests on `openrouter.ai` go to the AWS region configured for the OpenRouter endpoint, and without `crisScope` the profile is sent unchanged. To control both, set `region` on the key.
+- OpenAI models served through the Bedrock Runtime OpenAI-compatible API ignore both settings: OpenRouter sends the profile configured for that endpoint unchanged.
+- The settings are stored with the encrypted key and are not shown after saving. To change them, enter the credential again with the new settings.
+
 Learn more in the [AWS Bedrock Getting Started with the API](https://docs.aws.amazon.com/bedrock/latest/userguide/getting-started-api.html) documentation, [IAM Permissions Setup](https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam.html) guide, or the [AWS Bedrock API Reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/welcome.html).
 
 ### Google Vertex API Keys
