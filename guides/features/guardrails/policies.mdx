@@ -76,6 +76,25 @@ When more than one level applies to a request, the stricter rule always wins:
 
 Account-wide privacy and provider settings under [Settings > Privacy](https://openrouter.ai/settings/privacy) always apply on top of every policy, and individual [API key credit limits](/api_reference/limits) still apply too.
 
+### Example: one request, every layer
+
+Each column is a layer, and each row is a setting. A request has to satisfy every layer at once. When layers set different values for the same setting, the strictest value wins, and the winner can come from a different layer for each setting. In this request from a key Alice created, each layer decides one setting. The strictest value for each setting is in bold.
+
+<div className="support-matrix">
+
+| Setting | Account settings | Workspace-wide | Member | API key | Applied |
+| --- | --- | --- | --- | --- | --- |
+| Monthly budget | None | **\$200** | \$500 | None | \$200 |
+| Zero Data Retention | **Anthropic** | Not set | Not set | Not set | Anthropic |
+| Sensitive info: emails | None | Redact | **Block** | None | Block |
+| Providers | Any | OpenAI,<br />Anthropic,<br />Google | Anthropic,<br />Google | **Anthropic** | Anthropic |
+
+</div>
+
+<Card title="Master policy inheritance in OpenRouter Learn" icon="graduation-cap" href="https://learn.openrouter.ai/courses/guardrails/how-policies-inherit">
+  Learn how policies inherit from workspaces to members and API keys, and how to override a default. Takes 9 minutes.
+</Card>
+
 ## Budget enforcement
 
 Budgets are tracked per person and per API key. They are never a shared pool for everyone assigned to the policy.
