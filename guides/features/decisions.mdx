@@ -424,6 +424,8 @@ For detailed per-provider adapter compatibility tables and media size limits, se
 | `session_id` | string | No | Grouping identifier for observability in Broadcast and logs. |
 | `user` | string | No | End-user identifier for analytics and rate limits. |
 
+`state`, each question's `instructions`, and each value in a question's `criteria` can nest objects and arrays at most 64 levels deep. A request that nests any of them deeper fails with a `400` that names the field.
+
 ## Handling provider refusals
 
 If a provider declines to answer an individual question (for instance, due to content safety policy), the response returns `type: "refusal"` for that question while successfully resolving all other questions in the same request:
