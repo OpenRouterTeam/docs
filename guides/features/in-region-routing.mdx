@@ -97,7 +97,7 @@ On a regional domain, OpenRouter filters the candidate endpoints for your reques
 
 Two categories of endpoints are always excluded from regional routing even if the model is otherwise available:
 
-- **Global / cross-region deployments.** Provider deployments that can process requests in any region (for example, Bedrock `global.` cross-region inference profiles or Vertex `global` locations) do not guarantee residency and are not eligible.
+- **Global / cross-region deployments.** Provider deployments that can process requests in any region (for example, Bedrock `global.` cross-region inference profiles or Vertex `global` locations) do not guarantee residency and are not eligible. For a Bedrock BYOK key on a regional domain, models invoked through a cross-region profile are sent the matching geographic profile (`us.` or `eu.`) instead. Models invoked by foundation model ID, and OpenAI models served through the Bedrock Runtime OpenAI-compatible API, are not rewritten; see [Choosing a Cross-Region Inference Profile](/guides/overview/auth/byok#choosing-a-cross-region-inference-profile).
 - **Multi-model routers.** Router-type models (such as the Auto Router) are excluded from regional model lists.
 
 ### Regional Endpoints on the Global Domain
