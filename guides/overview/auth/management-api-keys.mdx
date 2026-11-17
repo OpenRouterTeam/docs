@@ -1,12 +1,12 @@
 ---
 publish: true
 title: Management API Keys
-description: Manage API keys programmatically
-seoTitle: 'Management API Keys | Programmatic Control of OpenRouter API Keys'
+description: Manage API keys, members, budgets, guardrails, and more programmatically
+seoTitle: 'Management API Keys | Programmatic Control of Your OpenRouter Account'
 og:site_name: OpenRouter Documentation
-og:title: 'Management API Keys - Programmatic Control of OpenRouter API Keys'
-og:description: 'Manage OpenRouter API keys programmatically through dedicated management endpoints. Create, read, update, and delete API keys for automated key distribution and control.'
-og:image: https://openrouter.ai/dynamic-og?pathname=features/management-api-keys&title=Management%20API%20Keys&description=Programmatically%20manage%20OpenRouter%20API%20keys
+og:title: 'Management API Keys - Programmatic Control of Your OpenRouter Account'
+og:description: 'Manage your OpenRouter account programmatically with management API keys. Create and rotate API keys, manage members and workspaces, set budgets and guardrails, and configure settings like BYOK and observability.'
+og:image: https://openrouter.ai/dynamic-og?pathname=features/management-api-keys&title=Management%20API%20Keys&description=Manage%20API%20keys%2C%20members%2C%20budgets%2C%20guardrails%2C%20and%20more%20programmatically
 og:image:width: 1200
 og:image:height: 630
 twitter:card: summary_large_image
@@ -18,11 +18,11 @@ icon: key
 
 import ManagementKeyRoutes from '/snippets/exports/ManagementKeyRoutes.mdx';
 
-OpenRouter provides endpoints to programmatically manage your API keys, enabling key creation and management for applications that need to distribute or rotate keys automatically.
+Management API keys let you manage your OpenRouter account programmatically. Use them to create and rotate API keys, manage members and workspaces, set budgets and guardrails, and configure settings like BYOK and observability.
 
 ## Creating a Management API Key
 
-To use the key management API, you first need to create a Management API key:
+To use the management API, you first need to create a Management API key:
 
 1. Go to the [Management API Keys page](https://openrouter.ai/settings/management-keys)
 2. Click "Create New Key"
@@ -41,7 +41,7 @@ We recommend setting an expiration date on every management key. A leaked manage
 - Once a key's expiration passes, every request that uses it fails with `401 Unauthorized` and the message `API key expired`. Expired keys still appear on the [Management API Keys page](https://openrouter.ai/settings/management-keys) until you delete them.
 
 <Warning>
-  Automations that call the key management API with an expiring management key must be given a new key before the old one expires, or they will start receiving `401 API key expired` responses. Schedule rotation ahead of the expiration date shown next to the key.
+  Automations that call the management API with an expiring management key must be given a new key before the old one expires, or they will start receiving `401 API key expired` responses. Schedule rotation ahead of the expiration date shown next to the key.
 </Warning>
 
 ## Scope
