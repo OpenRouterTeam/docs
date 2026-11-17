@@ -316,7 +316,7 @@ for (const app of payload.data) {
 
 ## Benchmarks
 
-The `/api/v1/benchmarks` endpoint provides a unified interface to benchmark data from multiple sources. Filter by `source` to select a specific benchmark provider, or combine with `task_type` to find models suited for specific workloads (e.g. coding agents querying for the best coding models across all available benchmarks).
+The `/api/v1/benchmarks` endpoint provides a unified interface to benchmark data from multiple sources. Filter by `source` to select a specific benchmark provider, or combine with `task_type` to find models suited for specific workloads (e.g. an agent querying for the models that score highest on legal or engineering work).
 
 ### Endpoint
 
@@ -331,7 +331,7 @@ Authorization: Bearer <YOUR_OPENROUTER_API_KEY>
 | Parameter | Type | Required | Default | Example |
 |---|---|---|---|---|
 | `source` | `artificial-analysis \| design-arena \| openrouter` | No | (all sources) | `artificial-analysis` |
-| `task_type` | `coding \| intelligence \| agentic \| search` | No | (all tasks) | `coding` |
+| `task_type` | `intelligence \| finance-and-accounting \| strategy-and-ops \| legal \| healthcare-and-medical \| engineering \| economics \| cyber \| multilingual \| decision \| coding \| agentic \| search` | No | (all tasks) | `legal` |
 | `arena` | `models \| builders \| agents` | No | `models` | `models` |
 | `category` | string | No | (all categories) | `codecategories` |
 | `benchmark_type` | `gpqa_diamond \| tau_bench_verified_airline \| search_browsecomp \| search_hle \| search_dsqa \| search_widesearch` | No | (all benchmarks) | `search_widesearch` |
@@ -343,14 +343,38 @@ Authorization: Bearer <YOUR_OPENROUTER_API_KEY>
 Notes:
 
 - **`source`** determines the shape of items in the response. Each source has its own set of score fields.
-- **`task_type`** filters cross-source. For Artificial Analysis it returns only models with a non-null score for that task. For Design Arena it maps to the corresponding category (e.g. `coding` → `codecategories`). `search` returns OpenRouter search benchmark results only.
+- **`task_type`** filters cross-source. Every value except `search` names the Artificial Analysis index of the same name, and Artificial Analysis returns only models with a non-null score on it, best first. From Design Arena, `coding` maps to the `codecategories` category, `intelligence` and `agentic` leave it unfiltered, and any other value returns no Design Arena items. From OpenRouter's own evals, `intelligence` selects GPQA Diamond and `agentic` selects tau-bench; any other value returns none. `search` returns OpenRouter search benchmark results only. `coding` and `agentic` are deprecated for Artificial Analysis: it has retired its Coding Index and Agentic Index, so those values return the last scores it published.
 - **`arena`** and **`category`** apply only when `source=design-arena`.
 - **`benchmark_type`**, **`search_engine`**, and **`search_surface`** select among OpenRouter's own benchmarks (`source=openrouter`). `search_engine`, `search_surface`, and a `search_*` `benchmark_type` also narrow the response to search results only. A classic `benchmark_type` narrows the OpenRouter items and leaves items from other sources as they are.
 - **`include_run_config`** affects search items only. When `true`, each search item includes a `run_config` object containing only `max_agent_turns`, `reasoning_effort`, and `temperature`; it defaults to `false`, and classic OpenRouter, Artificial Analysis, and Design Arena items are unchanged. Other harness settings are intentionally not published.
 
 ### Response shape (Artificial Analysis)
 
-When `source=artificial-analysis`, each item carries composite index scores:
+When `source=artificial-analysis`, each item carries one score per Artificial Analysis index. A score is `null` when Artificial Analysis has not published one for the model.
+
+| Field | Index | Scale |
+|---|---|---|
+| `intelligence_index` | Intelligence Index | 0–100 |
+| `finance_and_accounting_index` | Finance & Accounting Index (Capability Index) | 0–100 |
+| `strategy_and_ops_index` | Strategy & Ops Index (Capability Index) | 0–100 |
+| `legal_index` | Legal Index (Capability Index) | 0–100 |
+| `healthcare_and_medical_index` | Healthcare & Medical Index (Capability Index) | 0–100 |
+| `engineering_index` | Engineering Index (Capability Index) | 0–100 |
+| `economics_index` | Economics Index (Capability Index) | 0–100 |
+| `cyber_index` | Cyber Index | 0–100 |
+| `openness_index` | Openness Index | 0–100 |
+| `multilingual_index` | Multilingual Index | 0–1 |
+| `decision_index` | Decision Index, published for decision models and the language models Artificial Analysis evaluates on decision tasks | 0–100 |
+| `coding_index` | Coding Index (deprecated) | 0–100 |
+| `agentic_index` | Agentic Index (deprecated) | 0–100 |
+
+<Warning>
+`coding_index` and `agentic_index` are deprecated. Artificial Analysis has retired both indexes and no longer publishes them. The fields hold the last score it published for each model and will become `null`.
+</Warning>
+
+Each score is the model's best on that index across the configurations Artificial Analysis evaluated (for example reasoning levels), so two indexes of one model can come from different configurations. The deprecated Coding and Agentic Index scores are the exception: both come from one configuration, the model's strongest by Intelligence Index, then Coding Index, then Agentic Index. With `task_type` set to `intelligence`, `coding` or `agentic`, the Intelligence, Coding and Agentic Index scores all come from the configuration that scores best on the index named.
+
+These scores are published by [Artificial Analysis](https://artificialanalysis.ai). When you republish them, attribute Artificial Analysis. A response limited to one source (`meta.source` is set) always carries the required wording in `meta.citation`. Otherwise `meta.citation` carries it when every returned item comes from one source, and is `null` when the items span sources or there are none; each item names its `source`.
 
 ```json expandable lines
 {
@@ -359,9 +383,19 @@ When `source=artificial-analysis`, each item carries composite index scores:
       "source": "artificial-analysis",
       "model_permaslug": "openai/gpt-4o",
       "display_name": "GPT-4o",
-      "intelligence_index": 71.2,
-      "coding_index": 65.8,
-      "agentic_index": 58.3,
+      "intelligence_index": 71.4,
+      "coding_index": 63.2,
+      "agentic_index": 55.8,
+      "finance_and_accounting_index": 58.1,
+      "strategy_and_ops_index": 61.7,
+      "legal_index": 52.3,
+      "healthcare_and_medical_index": 56.9,
+      "engineering_index": 60.4,
+      "economics_index": 57.2,
+      "cyber_index": 36.4,
+      "openness_index": 33.3,
+      "multilingual_index": 0.82,
+      "decision_index": null,
       "pricing": {
         "prompt": "0.0000025",
         "completion": "0.00001"
@@ -470,11 +504,11 @@ curl -G https://openrouter.ai/api/v1/benchmarks \
   --data-urlencode "source=artificial-analysis" \
   --data-urlencode "max_results=20"
 
-# Best coding models across Artificial Analysis
+# Models Artificial Analysis scores highest on legal work
 curl -G https://openrouter.ai/api/v1/benchmarks \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   --data-urlencode "source=artificial-analysis" \
-  --data-urlencode "task_type=coding"
+  --data-urlencode "task_type=legal"
 
 # Design Arena — models arena, all categories
 curl -G https://openrouter.ai/api/v1/benchmarks \
@@ -494,21 +528,21 @@ curl -G https://openrouter.ai/api/v1/benchmarks \
 import os
 import requests
 
-# Get top coding models from Artificial Analysis
+# Get the top models on the Artificial Analysis Legal Index
 resp = requests.get(
     "https://openrouter.ai/api/v1/benchmarks",
     headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
-    params={"source": "artificial-analysis", "task_type": "coding", "max_results": 10},
+    params={"source": "artificial-analysis", "task_type": "legal", "max_results": 10},
     timeout=30,
 )
 resp.raise_for_status()
 for model in resp.json()["data"]:
-    print(f"{model['display_name']}: coding={model['coding_index']}")
+    print(f"{model['display_name']}: legal={model['legal_index']}")
 ```
 
 ```typescript title="TypeScript" lines
 const res = await fetch(
-  "https://openrouter.ai/api/v1/benchmarks?source=artificial-analysis&task_type=coding&max_results=10",
+  "https://openrouter.ai/api/v1/benchmarks?source=artificial-analysis&task_type=legal&max_results=10",
   {
     headers: {
       Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -519,7 +553,7 @@ if (!res.ok) throw new Error(`Benchmarks request failed: ${res.status}`);
 
 const payload = await res.json();
 for (const model of payload.data) {
-  console.log(`${model.display_name}: coding=${model.coding_index}`);
+  console.log(`${model.display_name}: legal=${model.legal_index}`);
 }
 ```
 </CodeGroup>
