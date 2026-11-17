@@ -78,26 +78,26 @@ nav[aria-label="Pages"] a[aria-current="page"] {
 }
 
 /* ── Link styling per DESIGN.md ──
- * underline at 40% opacity of current color, full on hover, offset 2px */
+ * Mintlify tags content links class="link" and draws them with a 1px border in
+ * the accent (2px on hover). Replace that with the DESIGN.md underline: 1px,
+ * offset 2px, 40% of the link's own color at rest, full color on hover. */
+.prose a.link {
+  border-bottom-width: 0;
+  text-decoration-line: underline;
+}
+
+.prose a.link,
 a:not([class]) {
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
-  text-decoration-color: rgb(0 0 0 / 0.4);
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
 }
 
+.prose a.link:hover,
 a:not([class]):hover {
   text-decoration-color: currentColor;
 }
 
-.dark a:not([class]),
-html.dark a:not([class]) {
-  text-decoration-color: rgb(255 255 255 / 0.4);
-}
-
-.dark a:not([class]):hover,
-html.dark a:not([class]):hover {
-  text-decoration-color: currentColor;
-}
 
 /* ── Sidebar badges: outline style ── */
 .nav-tag-pill-text {
