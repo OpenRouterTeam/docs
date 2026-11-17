@@ -16,17 +16,23 @@ models:
   - openrouter/pareto-code
 ---
 
-The [Pareto Router](https://openrouter.ai/openrouter/pareto-code) (`openrouter/pareto-code`) selects a coding model based on benchmark scores. You set a single `min_coding_score` preference between `0` and `1`, and the router sends your request to one coding model that meets that bar. It picks one model per request by score and price and doesn't adapt its choice to each turn the way the [Auto Router](/guides/routing/routers/auto-router) does. [Session stickiness](#session-stickiness) keeps a session on the same model when it can.
+The [Pareto Router](https://openrouter.ai/openrouter/pareto-code) (`openrouter/pareto-code`) selects a coding model based on benchmark scores. You set a single `min_coding_score` preference between `0` and `1`, which selects one of three tiers of coding models, and the router sends your request to one model from that tier. The value picks a tier; it is not a score a model has to reach (see [The `min_coding_score` parameter](#the-min_coding_score-parameter)). The router picks one model per request by score and price and doesn't adapt its choice to each turn the way the [Auto Router](/guides/routing/routers/auto-router) does. [Session stickiness](#session-stickiness) keeps a session on the same model when it can.
 
 ## Overview
 
-The Pareto Router is tuned for coding use cases. It maintains a curated shortlist of strong coding models currently available on OpenRouter, ranked by their [Artificial Analysis](https://artificialanalysis.ai/) coding percentile (an integer between `0` and `100` that captures how a model ranks within AA's benchmarked coding field). Your `min_coding_score` picks the tier of models you want to route to. Within the chosen tier the router selects the cheapest model that is currently available (or the fastest, when you request the `:nitro` variant).
+The Pareto Router is tuned for coding use cases. It builds a shortlist from the models currently available on OpenRouter that have the highest [coding score](#coding-score). The router groups the shortlist into three tiers by score, and your `min_coding_score` picks the tier of models you want to route to. Within the chosen tier the router selects the cheapest model that is currently available (or the fastest, when you request the `:nitro` variant).
 
 The name comes from [Pareto efficiency](https://en.wikipedia.org/wiki/Pareto_efficiency): the goal is to give you a strong coder without overspending. The exact shortlist evolves over time as new models land and benchmarks shift.
 
+## Coding score
+
+A model's coding score is its FrontierCode-AA 2.0 result, as measured by [Artificial Analysis](https://artificialanalysis.ai/). FrontierCode-AA 2.0 is Artificial Analysis's run of Cognition's FrontierCode 2.0: 132 tasks that each ask an agent to make a change to a real open-source repository, graded with held-out tests and a rubric on whether the change is good enough for a maintainer to merge. An attempt that fails a blocking check scores zero, and a model's score is the average across the tasks, between `0` and `1`. Artificial Analysis describes the benchmark in its [methodology](https://artificialanalysis.ai/methodology/intelligence-benchmarking). The rest of this page calls it the coding score.
+
+A model that Artificial Analysis hasn't scored isn't on the shortlist, and no other benchmark stands in for a missing score. A score of `0` is a score: the model is ranked, last. When two models have the same coding score, the cheaper one ranks first.
+
 ## Usage
 
-Set your model to `openrouter/pareto-code` and optionally pass the `pareto-router` plugin to control the minimum coding score:
+Set your model to `openrouter/pareto-code` and optionally pass the `pareto-router` plugin to choose a tier with `min_coding_score`. The examples on this page pass `0.4`, which selects the medium tier, as any value from `0.33` up to `0.66` does; leave it out to get the high tier:
 
 <CodeGroup>
 
@@ -43,7 +49,7 @@ const response = await openRouter.responses.send({
     plugins: [
       {
         id: 'pareto-router',
-        minCodingScore: 0.8,
+        minCodingScore: 0.4,
       },
     ],
     input: 'Write a Python function that merges two sorted lists.',
@@ -68,7 +74,7 @@ curl https://openrouter.ai/api/v1/responses \
     "plugins": [
       {
         "id": "pareto-router",
-        "min_coding_score": 0.8
+        "min_coding_score": 0.4
       }
     ],
     "input": "Write a Python function that merges two sorted lists."
@@ -95,14 +101,14 @@ You can still override the default on a per-request basis by passing the `pareto
 
 ## The `min_coding_score` parameter
 
-`min_coding_score` is an optional number between `0` and `1`, where `1` is best. The router maps it to one of three quality tiers, and each tier corresponds to a percentile band on [Artificial Analysis](https://artificialanalysis.ai/) coding scores.
+`min_coding_score` is an optional number between `0` and `1`, where `1` is best. The router maps it to one of three quality tiers. The tiers come from the shortlist's [coding scores](#coding-score): the router clusters the shortlist into three groups of similar scores, and each tier includes every model in the tiers above it.
 
-| `min_coding_score` | Tier | AA coding percentile band |
+| `min_coding_score` | Tier | Models in the tier |
 | --- | --- | --- |
-| `>= 0.66` | high | top of AA's coding field |
-| `>= 0.33`, `< 0.66` | medium | strong modern flagships below the top |
-| `< 0.33` | low | capable coders that still beat AA's median |
-| omitted | high (default) | top of AA's coding field |
+| `>= 0.66` | high | the highest-scoring group |
+| `>= 0.33`, `< 0.66` | medium | the two highest-scoring groups |
+| `< 0.33` | low | the whole shortlist |
+| omitted | high (default) | the highest-scoring group |
 
 If you omit `min_coding_score`, the router defaults to the strongest available coders. Within a tier, the router picks the cheapest available model, or the fastest by p50 throughput when you request the `:nitro` variant.
 
@@ -111,7 +117,7 @@ The router resolves a primary coding model plus up to two same-tier fallbacks. T
 </Info>
 
 <Note>
-Because the scoring axis is a *percentile* within AA's benchmarked coding field, the capability bar implied by a given `min_coding_score` shifts as the frontier moves. A new strong release can push existing models down a percentile band, so `min_coding_score=0.66` always means "top of the current field" rather than "above an absolute capability score".
+`min_coding_score` selects a tier. It isn't a threshold on the [coding score](#coding-score), so `min_coding_score=0.66` doesn't mean "models with a coding score of at least 0.66". Tiers are relative to the current shortlist, and the capability bar implied by a given value shifts as the frontier moves: a new strong release can move existing models into a lower tier, so `min_coding_score=0.66` always means "the top group of the current shortlist" rather than "above an absolute capability score".
 </Note>
 
 ## Response
@@ -147,7 +153,7 @@ The response includes the `model` field showing which coding model was actually 
 ## How It Works
 
 1. **Tier resolution**: Your `min_coding_score` value is mapped to one of three tiers (`high`, `medium`, `low`) using the thresholds in the table above.
-2. **Candidate filtering**: The router takes the tier's curated shortlist and filters it to models that are currently published on OpenRouter.
+2. **Candidate filtering**: The router takes the tier's shortlist and filters it to models that are currently published on OpenRouter. If coding scores are unavailable, the router uses a fixed fallback shortlist for each tier instead.
 3. **Selection**: The filtered shortlist is sorted by price ascending, or by p50 throughput descending when you request the `:nitro` variant. The top entry becomes the primary model and the next two are kept as same-tier fallbacks.
 4. **Runtime fallback**: If the primary's endpoints are unavailable due to transient provider errors or rate limits, the request cascades through the same-tier fallbacks. Only when the entire tier is missing from the catalog does the router step into a neighboring tier.
 5. **Request forwarding**: Your request is forwarded to the selected model.
@@ -177,7 +183,7 @@ const response = await openRouter.responses.send({
     plugins: [
       {
         id: 'pareto-router',
-        minCodingScore: 0.8,
+        minCodingScore: 0.4,
       },
     ],
     input: 'Write a Python function that merges two sorted lists.',
@@ -211,7 +217,7 @@ const followUp = await openRouter.responses.send({
     plugins: [
       {
         id: 'pareto-router',
-        minCodingScore: 0.8,
+        minCodingScore: 0.4,
       },
     ],
     input: [
@@ -233,7 +239,7 @@ curl https://openrouter.ai/api/v1/responses \
     "plugins": [
       {
         "id": "pareto-router",
-        "min_coding_score": 0.8
+        "min_coding_score": 0.4
       }
     ],
     "input": "Write a Python function that merges two sorted lists."
@@ -253,7 +259,7 @@ The Pareto Router itself adds no fee. You pay only for the underlying model that
 ## Limitations
 
 - **Coding only**: `openrouter/pareto-code` is tuned for coding tasks. For other use cases, use a different router or choose a specific model.
-- **Model selection may change over time**: For a given `min_coding_score`, the same model is selected deterministically (sorted by price). However, the selected model may change when the underlying shortlist is updated (e.g. new models are added, benchmarks shift, or the percentile bands rebucket as the AA field evolves). Within a conversation, [session stickiness](#session-stickiness) keeps your requests on the same model and provider to maximize cache hits.
+- **Model selection may change over time**: For a given `min_coding_score`, the same model is selected deterministically (sorted by price). However, the selected model may change when the underlying shortlist is updated (e.g. new models are added, Artificial Analysis publishes new coding scores, or the tiers regroup as scores change). Within a conversation, [session stickiness](#session-stickiness) keeps your requests on the same model and provider to maximize cache hits.
 - **Coding score only**: `min_coding_score` is the only router parameter. You can't directly cap cost or latency per request.
 
 ## Related

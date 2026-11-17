@@ -106,9 +106,13 @@ The code is single-use and expires after 10 minutes.
 | `key_label`             | Prefills the label of the API key that will be created.                                                                                                                                                                                 |
 | `workspace_id`          | Preselects the workspace (UUID) for the new API key. The user can still change the selection. If the workspace is not in the user's active account, nothing is preselected and the user must pick one.                                 |
 | `required_workspace_id` | Requires the new API key to be created in this workspace (UUID). The picker is locked to it. If the workspace is not in the user's active account, the page shows an error and the user cannot authorize until they switch to an account that has it. |
+| `limit` | Prefills the credit limit of the new API key, in US dollars. Use a positive amount below 1,000,000 with at most two decimal places, such as `25` or `12.50`. The user can still change the limit. |
+| `expiration` | Prefills the expiry of the new API key. Use one of `1-hour`, `1-day`, `7-days`, `30-days`, `90-days`, `180-days`, `1-year`, or `never`. The user can still change the expiry. |
 | `state` | Returned unchanged as a `state` query parameter on the callback URL after the user authorizes, so you can match the response to the request and protect against CSRF. Not returned when the user denies access or in headless mode. |
 
 If both `workspace_id` and `required_workspace_id` are present, `required_workspace_id` takes precedence. Use `workspace_id` to suggest a workspace and `required_workspace_id` to enforce one (for example, an internal onboarding flow that must mint keys into a specific team workspace).
+
+If `limit` or `expiration` is missing or invalid, the form uses its default for that field, and the other parameter still applies. The defaults are no credit limit and no expiry.
 
 Workspace IDs are validated server-side against the account the user authorizes with. A workspace the user cannot access is rejected, regardless of what the URL asked for.
 
