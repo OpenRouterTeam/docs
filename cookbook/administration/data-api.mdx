@@ -343,14 +343,14 @@ Authorization: Bearer <YOUR_OPENROUTER_API_KEY>
 Notes:
 
 - **`source`** determines the shape of items in the response. Each source has its own set of score fields.
-- **`task_type`** filters cross-source. Every value except `search` names the Artificial Analysis index of the same name, and Artificial Analysis returns only models with a non-null score on it, best first. From Design Arena, `coding` maps to the `codecategories` category, `intelligence` and `agentic` leave it unfiltered, and any other value returns no Design Arena items. From OpenRouter's own evals, `intelligence` selects GPQA Diamond and `agentic` selects tau-bench; any other value returns none. `search` returns OpenRouter search benchmark results only. `coding` and `agentic` are deprecated for Artificial Analysis: it has retired its Coding Index and Agentic Index, so those values return the last scores it published.
+- **`task_type`** filters cross-source. Every value except `search` names the Artificial Analysis index of the same name, and Artificial Analysis returns only models with a non-null score on it, best first. From Design Arena, `coding` maps to the `codecategories` category, `intelligence` and `agentic` leave it unfiltered, and any other value returns no Design Arena items. From OpenRouter's own evals, `intelligence` selects GPQA Diamond and `agentic` selects tau-bench; any other value returns none. `search` returns OpenRouter search benchmark results only. `coding` and `agentic` are deprecated for Artificial Analysis: it has retired its Coding Index and Agentic Index, so those values return no Artificial Analysis item (with `source=artificial-analysis`, an empty list). Design Arena and OpenRouter's own evals still answer them.
 - **`arena`** and **`category`** apply only when `source=design-arena`.
 - **`benchmark_type`**, **`search_engine`**, and **`search_surface`** select among OpenRouter's own benchmarks (`source=openrouter`). `search_engine`, `search_surface`, and a `search_*` `benchmark_type` also narrow the response to search results only. A classic `benchmark_type` narrows the OpenRouter items and leaves items from other sources as they are.
 - **`include_run_config`** affects search items only. When `true`, each search item includes a `run_config` object containing only `max_agent_turns`, `reasoning_effort`, and `temperature`; it defaults to `false`, and classic OpenRouter, Artificial Analysis, and Design Arena items are unchanged. Other harness settings are intentionally not published.
 
 ### Response shape (Artificial Analysis)
 
-When `source=artificial-analysis`, each item carries one score per Artificial Analysis index. A score is `null` when Artificial Analysis has not published one for the model.
+When `source=artificial-analysis`, each item carries one score per Artificial Analysis index. A score is `null` when Artificial Analysis has not published one for the model. An item is a model with a score on at least one index it still publishes.
 
 | Field | Index | Scale |
 |---|---|---|
@@ -365,14 +365,14 @@ When `source=artificial-analysis`, each item carries one score per Artificial An
 | `openness_index` | Openness Index | 0–100 |
 | `multilingual_index` | Multilingual Index | 0–1 |
 | `decision_index` | Decision Index, published for decision models and the language models Artificial Analysis evaluates on decision tasks | 0–100 |
-| `coding_index` | Coding Index (deprecated) | 0–100 |
-| `agentic_index` | Agentic Index (deprecated) | 0–100 |
+| `coding_index` | Coding Index (deprecated) | always `null` |
+| `agentic_index` | Agentic Index (deprecated) | always `null` |
 
 <Warning>
-`coding_index` and `agentic_index` are deprecated. Artificial Analysis has retired both indexes and no longer publishes them. The fields hold the last score it published for each model and will become `null`.
+`coding_index` and `agentic_index` are deprecated and always `null`. Artificial Analysis has retired both indexes and no longer publishes them. The fields stay in the response so that existing clients keep parsing it.
 </Warning>
 
-Each score is the model's best on that index across the configurations Artificial Analysis evaluated (for example reasoning levels), so two indexes of one model can come from different configurations. The deprecated Coding and Agentic Index scores are the exception: both come from one configuration, the model's strongest by Intelligence Index, then Coding Index, then Agentic Index. With `task_type` set to `intelligence`, `coding` or `agentic`, the Intelligence, Coding and Agentic Index scores all come from the configuration that scores best on the index named.
+Each score is the model's best on that index across the configurations Artificial Analysis evaluated (for example reasoning levels), so two indexes of one model can come from different configurations.
 
 These scores are published by [Artificial Analysis](https://artificialanalysis.ai). When you republish them, attribute Artificial Analysis. A response limited to one source (`meta.source` is set) always carries the required wording in `meta.citation`. Otherwise `meta.citation` carries it when every returned item comes from one source, and is `null` when the items span sources or there are none; each item names its `source`.
 
@@ -384,8 +384,8 @@ These scores are published by [Artificial Analysis](https://artificialanalysis.a
       "model_permaslug": "openai/gpt-4o",
       "display_name": "GPT-4o",
       "intelligence_index": 71.4,
-      "coding_index": 63.2,
-      "agentic_index": 55.8,
+      "coding_index": null,
+      "agentic_index": null,
       "finance_and_accounting_index": 58.1,
       "strategy_and_ops_index": 61.7,
       "legal_index": 52.3,
