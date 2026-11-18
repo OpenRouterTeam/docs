@@ -552,7 +552,7 @@ Project scope is required because OpenRouter creates the bucket and verifies pro
 To manage storage yourself, set `bucket` to a bucket name or URI (`"my-batch-bucket"` or `"gs://my-batch-bucket"`; object paths like `"gs://my-batch-bucket/prefix"` are rejected). It must belong to the key's project. OpenRouter leaves location compatibility to Vertex for these user-managed overrides. Grant:
 
 - the key service account: object read/write, bucket get, and bucket list on the project (the list is how OpenRouter verifies ownership);
-- the project's Vertex AI service agent (`service-<PROJECT_NUMBER>@gcp-sa-aiplatform.iam.gserviceaccount.com`): object access and bucket metadata access, since Vertex reads input and writes prediction shards as this agent. Create the agent before the first batch if it does not exist yet:
+- both of the project's Vertex AI service agents, `service-<PROJECT_NUMBER>@gcp-sa-aiplatform.iam.gserviceaccount.com` and the batch prediction agent `service-<PROJECT_NUMBER>@gcp-sa-vertex-bp.iam.gserviceaccount.com`: object access and bucket metadata access, since Vertex reads input and writes prediction shards as a service agent, not as your key. If a grant fails because an agent does not exist yet, [create your project's Vertex AI service agents](https://cloud.google.com/iam/docs/create-service-agents) before the first batch. This command creates the first one:
 
 ```bash lines
 gcloud beta services identity create --service=aiplatform.googleapis.com --project=YOUR_PROJECT
