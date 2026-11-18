@@ -331,15 +331,15 @@ Document Processing (trace_id: workflow_12345)
 
 #### Linking to External Traces
 
-If you have your own tracing instrumentation (e.g., OpenTelemetry), you can use `parent_span_id` to nest OpenRouter calls under your existing spans:
+If you have your own tracing instrumentation (e.g., OpenTelemetry), you can use `trace_id` and `parent_span_id` to nest OpenRouter calls under your existing spans. Both are used verbatim when they are well-formed OTEL ids: 32 lowercase hexadecimal characters for `trace_id` and 16 for `parent_span_id`. Any other value, including an uppercase or shortened id and a human-readable label, is hashed with SHA-256 into the field, so it stays stable across requests but cannot match an id your tracing system minted:
 
 ```json lines
 {
   "model": "openai/gpt-4o",
   "messages": [{ "role": "user", "content": "Hello!" }],
   "trace": {
-    "trace_id": "your-existing-trace-id",
-    "parent_span_id": "your-existing-span-id"
+    "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+    "parent_span_id": "00f067aa0ba902b7"
   }
 }
 ```
@@ -351,6 +351,8 @@ Your Application Trace
 └── Your Application Span (parent_span_id)
     └── openai/gpt-4o (generation from OpenRouter)
 ```
+
+OpenRouter reads these two fields from the request body's `trace` object or from the `x-openrouter-trace*` headers, and does not read a W3C `traceparent` header. Without `trace_id` it uses the generation's own id, so a request that carries only `traceparent` starts its own trace. To join an existing trace, copy its trace id and span id into the fields above, or into `x-openrouter-trace-trace-id` and `x-openrouter-trace-parent-span-id`.
 
 This enables you to:
 - Track end-to-end workflows spanning multiple LLM calls
