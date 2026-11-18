@@ -13,7 +13,7 @@ This endpoint is in limited availability and only works for accounts that have i
 
 ## Flow
 
-1. Call `POST /api/v1/credits/purchases` with your management key, an `Idempotency-Key` header, and the amount of credits to buy, from $10 up to a $10,000 total charge.
+1. Call `POST /api/v1/credits/purchases` with your management key, an `Idempotency-Key` header, and the amount of credits to buy, from $10 up to a $10,000 total charge. The body is `{"credit_amount_usd": "25.00"}`: the amount is a string with at most two decimals, not a number.
 2. OpenRouter answers `402 Payment Required` with an MPP challenge in the `WWW-Authenticate: Payment ...` header. The challenge names the total to pay (credits plus the platform fee), the currency, and the deposit address.
 3. Sign a transfer for that challenge with an MPP client and retry the same request, with the same `Idempotency-Key`, sending the credential in `Payment-Authorization: Payment ...`. If you send the management key as `X-Api-Key`, you can send the credential in `Authorization: Payment ...` instead.
 4. The paid request answers `202`, and the credits arrive asynchronously. A USDC purchase starts at `status: awaiting_payment` until Stripe detects the deposit, then moves to `processing` while Stripe screens it; a card purchase starts at `processing`. Poll the URL in the `Location` header, `GET /api/v1/credits/purchases/{id}`, until `status` is `credited` or `failed`.
@@ -25,6 +25,10 @@ curl -i https://openrouter.ai/api/v1/credits/purchases \
   -H "Content-Type: application/json" \
   -d '{"credit_amount_usd": "25.00"}'
 ```
+
+## What a quote creates
+
+The first request, with no payment, charges nothing. It creates one Stripe payment for this purchase, with its own deposit address, and answers the `402`. The challenge expires 10 minutes after the `402`. If you haven't paid it, resend the same request with the same `Idempotency-Key` and no credential for a fresh challenge. For 24 hours, the same `Idempotency-Key` gets the same USDC deposit address. If you already sent a payment and don't know whether it went through, still recover with the same `Idempotency-Key` as the `503` steps under errors say, but don't pay any new challenge you get back. An unpaid quote is never charged, so you can leave it.
 
 ## Purchase status
 
