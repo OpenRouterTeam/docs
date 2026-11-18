@@ -426,6 +426,12 @@ For detailed per-provider adapter compatibility tables and media size limits, se
 
 `state`, each question's `instructions`, and each value in a question's `criteria` can nest objects and arrays at most 64 levels deep. A request that nests any of them deeper fails with a `400` that names the field.
 
+Some models restrict question keys and reject other keys with a `400`. A key of 1 to 64 ASCII letters, digits, underscores, and hyphens passes all of these rules:
+
+- **Gemini Decision 1.** Keys are 1 to 64 characters of `A-Z`, `a-z`, `0-9`, `_`, and `-`.
+- **Parallel Decisions Fast.** Keys contain only `A-Z`, `a-z`, `0-9`, `_`, and `-`.
+- **HeyGen Decision and HeyGen Decision Turbo.** Keys can't contain a colon or a newline (`\n`), and can't start or end with whitespace. Spaces inside a key are fine.
+
 ## Handling provider refusals
 
 If a provider declines to answer an individual question (for instance, due to content safety policy), the response returns `type: "refusal"` for that question while successfully resolving all other questions in the same request:
