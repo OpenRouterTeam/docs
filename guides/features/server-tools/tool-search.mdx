@@ -95,7 +95,7 @@ Client-side deferral on endpoints without native deferral is rolling out per acc
 
 The model supplies a regular expression, matched case-insensitively against each deferred tool's name, description, argument names, and argument descriptions. A pattern of `weather` finds a tool whose only mention of weather is in a parameter description.
 
-Patterns are capped at 200 characters. A malformed pattern, or one that would take pathologically long to evaluate, returns an error result to the model rather than failing the request — the model can simply search again with a simpler pattern.
+Patterns are capped at 200 characters. A malformed pattern, or one that uses unsupported syntax (backreferences and lookarounds), returns an error result to the model rather than failing the request — the model can simply search again with a simpler pattern.
 
 Writing tool descriptions in the words your users actually use makes them far easier to find. Consistent name prefixes help too: naming tools `github_issues_list` and `github_pulls_list` lets one search reach the whole group.
 
