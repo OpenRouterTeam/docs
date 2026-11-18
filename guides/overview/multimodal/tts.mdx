@@ -45,6 +45,8 @@ Send a `POST` request to `/api/v1/audio/speech` with the text you want to synthe
 
 ### Basic Example
 
+These examples use Voxtral Mini TTS with its `en_paul_neutral` voice. When choosing another model, check both its `endpoints` and `supported_voices` in the [speech catalog](https://openrouter.ai/api/v1/models?output_modalities=speech); voice identifiers are model-specific.
+
 <CodeGroup>
 
 ```typescript title="TypeScript SDK" expandable lines
@@ -56,10 +58,12 @@ const openRouter = new OpenRouter({
 });
 
 const stream = await openRouter.tts.createSpeech({
-  model: 'openai/gpt-4o-mini-tts-2025-12-15',
-  input: 'Hello! This is a text-to-speech test.',
-  voice: 'alloy',
-  responseFormat: 'mp3',
+  speechRequest: {
+    model: 'mistralai/voxtral-mini-tts-2603',
+    input: 'Hello! This is a text-to-speech test.',
+    voice: 'en_paul_neutral',
+    responseFormat: 'mp3',
+  },
 });
 
 // Collect the audio stream and save to a file
@@ -90,9 +94,9 @@ client = OpenAI(
 )
 
 with client.audio.speech.with_streaming_response.create(
-  model="openai/gpt-4o-mini-tts-2025-12-15",
+  model="mistralai/voxtral-mini-tts-2603",
   input="Hello! This is a text-to-speech test.",
-  voice="alloy",
+  voice="en_paul_neutral",
   response_format="mp3"
 ) as response:
   response.stream_to_file("output.mp3")
@@ -108,9 +112,9 @@ response = requests.post(
     "Content-Type": "application/json"
   },
   json={
-    "model": "openai/gpt-4o-mini-tts-2025-12-15",
+    "model": "mistralai/voxtral-mini-tts-2603",
     "input": "Hello! This is a text-to-speech test.",
-    "voice": "alloy",
+    "voice": "en_paul_neutral",
     "response_format": "mp3"
   }
 )
@@ -131,9 +135,9 @@ const response = await fetch('https://openrouter.ai/api/v1/audio/speech', {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'openai/gpt-4o-mini-tts-2025-12-15',
+    model: 'mistralai/voxtral-mini-tts-2603',
     input: 'Hello! This is a text-to-speech test.',
-    voice: 'alloy',
+    voice: 'en_paul_neutral',
     response_format: 'mp3',
   }),
 });
@@ -155,9 +159,9 @@ curl https://openrouter.ai/api/v1/audio/speech \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   --output output.mp3 \
   -d '{
-    "model": "openai/gpt-4o-mini-tts-2025-12-15",
+    "model": "mistralai/voxtral-mini-tts-2603",
     "input": "Hello! This is a text-to-speech test.",
-    "voice": "alloy",
+    "voice": "en_paul_neutral",
     "response_format": "mp3"
   }'
 ```
@@ -168,7 +172,7 @@ curl https://openrouter.ai/api/v1/audio/speech \
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `model` | string | Yes | The TTS model to use (e.g., `openai/gpt-4o-mini-tts-2025-12-15`, `mistralai/voxtral-mini-tts-2603`) |
+| `model` | string | Yes | The TTS model to use (e.g., `mistralai/voxtral-mini-tts-2603`) |
 | `input` | string or array | Yes | The text to synthesize into speech, or a list of turns for multi-speaker input. See [Multi-Speaker Input](#multi-speaker-input) below. Some models treat a string input as a prompt that can also describe non-speech audio; see [Non-Speech Prompts](#non-speech-prompts) below |
 | `voice` | string | Provider-dependent | Voice identifier. Available voices vary by model, so check each model's page on the [Models page](/guides/overview/models) for supported voices. Omit this parameter only when the selected provider documents a default voice; otherwise an explicit voice is required. |
 | `instructions` | string | No | Delivery instructions such as tone, pacing, or emotion, for example `Speak in a warm and friendly tone.` Supported by OpenAI `gpt-4o-mini-tts`, Gemini TTS, and Fish Audio models. Ignored by other providers |
@@ -324,13 +328,14 @@ You can pass provider-specific options using the `provider` parameter. Options a
 
 ```json lines
 {
-  "model": "openai/gpt-4o-mini-tts-2025-12-15",
+  "model": "google/gemini-3.8-flash-lite-tts",
   "input": "Hello world",
-  "voice": "alloy",
+  "voice": "Kore",
+  "response_format": "pcm",
   "provider": {
     "options": {
-      "openai": {
-        "stream_format": "audio"
+      "google-ai-studio": {
+        "temperature": 0.7
       }
     }
   }
@@ -443,18 +448,18 @@ client = OpenAI(
 
 # Non-streaming: get the full audio response
 response = client.audio.speech.create(
-  model="openai/gpt-4o-mini-tts-2025-12-15",
+  model="mistralai/voxtral-mini-tts-2603",
   input="The quick brown fox jumps over the lazy dog.",
-  voice="nova",
+  voice="en_paul_neutral",
   response_format="mp3"
 )
 response.write_to_file("output.mp3")
 
 # Streaming: process audio chunks as they arrive
 with client.audio.speech.with_streaming_response.create(
-  model="openai/gpt-4o-mini-tts-2025-12-15",
+  model="mistralai/voxtral-mini-tts-2603",
   input="The quick brown fox jumps over the lazy dog.",
-  voice="nova",
+  voice="en_paul_neutral",
   response_format="mp3"
 ) as response:
   response.stream_to_file("output.mp3")
@@ -470,9 +475,9 @@ const client = new OpenAI({
 });
 
 const response = await client.audio.speech.create({
-  model: 'openai/gpt-4o-mini-tts-2025-12-15',
+  model: 'mistralai/voxtral-mini-tts-2603',
   input: 'The quick brown fox jumps over the lazy dog.',
-  voice: 'nova',
+  voice: 'en_paul_neutral',
   response_format: 'mp3',
 });
 
@@ -498,7 +503,7 @@ console.log('Audio saved to output.mp3');
 
 **Model not found?**
 - Use the [Models page](/guides/overview/models) to find available TTS models
-- Verify the model slug is correct (e.g., `openai/gpt-4o-mini-tts-2025-12-15`, not `gpt-4o-mini-tts`)
+- Verify the model slug is correct (e.g., `mistralai/voxtral-mini-tts-2603`, not `voxtral-mini-tts-2603`)
 
 **Voice not available?**
 - Available voices vary by provider. Check the provider's documentation for supported voice identifiers
