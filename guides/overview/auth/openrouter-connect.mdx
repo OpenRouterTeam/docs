@@ -226,6 +226,28 @@ Read usage per customer organization to bill your customers.
 - Customer organizations hold no credits or payment methods of their own. Their usage accrues to your parent organization.
 - You bill your customers on whatever pricing model you choose, using the per-customer usage you read from OpenRouter.
 
+## Limitations
+
+### HIPAA
+
+HIPAA is not available for customer organizations. These limits do not apply to your parent organization, which can have HIPAA workspaces of its own. HIPAA on your parent organization does not extend to its customer organizations, so do not send protected health information through a customer organization.
+
+- **A customer organization can never enable HIPAA.** Any attempt to turn HIPAA on for a customer organization, or to create a HIPAA workspace in it, is refused with a message that HIPAA is not available for an organization provisioned through Connect. OpenRouter cannot enable it on the organization's behalf either.
+- **The restriction is permanent.** It applies to every organization that has ever been a customer organization, including one that is no longer linked to your parent organization.
+- **An organization with HIPAA enabled cannot become a customer organization.**
+
+If one of your customers needs HIPAA, they need their own OpenRouter organization, created outside Connect.
+
+### Organizations
+
+- **Connect creates new organizations only.** You cannot bring an existing OpenRouter organization under your parent organization, and the owner email must not already belong to an OpenRouter account. A request that uses an existing account's email fails with `409`.
+- **Connect does not nest.** A customer organization can never become a parent organization: it cannot receive the Connect entitlement, even after it is no longer linked to your parent organization. A parent organization cannot become a customer organization.
+
+### Credits and the startup program
+
+- **Credit transfers.** An admin of your parent organization cannot transfer credits from their personal account into a customer organization they manage through Connect. Customer organizations are billed through your parent organization, so they do not need credits of their own.
+- **Startup program.** OpenRouter grants startup program credits once per person, counting every organization that person belongs to. If one of your admins also belongs to a customer organization that is in the startup program or has redeemed startup credits, a startup grant for that admin's own organization is refused. Contact OpenRouter support if this affects you.
+
 ## Integration checklist
 
 1. Create a parent organization and ask the OpenRouter team to grant the Connect entitlement.
