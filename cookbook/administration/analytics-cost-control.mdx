@@ -116,7 +116,7 @@ The response lists every metric, dimension, filter operator, and granularity the
 
 Two things to know before reading any output: count metrics can come back as **strings** (the reference's example shows them as numbers, so parse defensively and accept both), and `metadata.truncated` tells you whether the result hit the row limit. If it's `true`, your totals are partial; raise `limit` or narrow the query before drawing conclusions.
 
-The API caps queries at 2 dimensions; a third returns a 400 (`dimensions: Too big: expected array to have <=2 items`, observed June 2026, and behavioral details like this can drift). If your agent needs another angle (say, model by key by day), it should run separate queries or add a time-axis `granularity` instead.
+The API caps queries at 3 dimensions. A third dimension works only when every metric, dimension, and filter in the query is served from the activity rollups (for example `model`, `api_key_id`, `endpoint`, `workspace`, `app`, `user`, `variant`), or for the token-kind metrics below from their daily rollup (`model`, `api_key_id`, `workspace`, `variant`, `endpoint`, `provider`, `data_region`, `billed_service_tier`, `long_context`); combining three with a dimension or metric that needs raw generations (such as `country`, or latency percentiles, or `provider` without a token-kind metric) returns a 400 naming the incompatible fields. For the token-kind metrics, a third dimension also needs a `time_range` whose start and end are UTC midnights; a range of 31 days or less that starts or ends mid-day returns a 400 naming the off-midnight bound. A fourth dimension always returns a 400. When the agent needs another angle beyond that, it should run separate queries or add a time-axis `granularity` instead.
 
 ## Recipe: which models burn the most?
 
@@ -244,6 +244,52 @@ Each row carries a time-series key named `date__<granularity>` or `created_at__<
 - `usage_web`, `usage_file`: web search and file parsing surcharges
 
 If `usage_web` or `usage_file` is a meaningful slice, the fix is gating those features. If `usage_cache` savings are near zero on a prompt-heavy workload, caching is your lever. And if cache rates are already high, skip the caching advice entirely; in the internal run, caching was near-maxed and the only real lever was model mix.
+
+### Separate batch traffic
+
+Batch API requests are recorded with the `batch` variant, so the `variant` dimension separates them from synchronous traffic at any time range:
+
+```json lines
+{
+  "metrics": ["total_usage", "usage_upstream", "request_count"],
+  "dimensions": ["variant"],
+  "granularity": "day",
+  "time_range": { "start": "2026-05-01T00:00:00Z", "end": "2026-06-01T00:00:00Z" }
+}
+```
+
+Rows with `"variant": "batch"` are batch traffic. Filter with `{ "field": "variant", "operator": "eq", "value": "batch" }` to keep only batch requests, or `neq` to exclude them.
+
+## Recipe: what did each token kind cost?
+
+`usage_upstream` and `byok_usage` are single numbers too. The token-kind metrics split them by the kind of token they paid for, at the rates actually billed (provider discounts included), not catalog prices:
+
+- `usage_upstream_uncached_input`, `usage_upstream_cache_read`, `usage_upstream_cache_write`, `usage_upstream_output`, `usage_upstream_reasoning`: upstream inference cost OpenRouter paid, in USD.
+- `byok_usage_uncached_input`, `byok_usage_cache_read`, `byok_usage_cache_write`, `byok_usage_output`, `byok_usage_reasoning`: the same split of BYOK inference cost billed by your provider.
+- `uncached_input_tokens` and `cache_write_tokens`: billed token counts for the two input kinds that have no other metric.
+- `token_kind_request_count`: the requests that carry the split, to compare against `request_count` when a row comes back `null`.
+- `usage_upstream_token_kind_total` and `byok_usage_token_kind_total`: the upstream cost the split adds up to over the same requests, so one query returns the parts and their total.
+
+Reasoning is its own kind only where the provider bills it at its own rate (Gemini and Perplexity today). Everywhere else, including OpenAI, Anthropic, and xAI, reasoning tokens are billed and reported as output, so `usage_upstream_reasoning` is `0` while `reasoning_tokens` is not. `tokens_completion` always includes reasoning tokens, and `cached_tokens` and `reasoning_tokens` are provider-reported counts over every request, so don't divide a per-kind cost by them to get a per-token rate.
+
+They are UTC-daily totals over any range up to a year. The same daily totals also serve `request_count`, `tokens_prompt`, `tokens_completion`, `reasoning_tokens`, `cached_tokens`, and `tokens_total`, with the same values as everywhere else, so one query can put the token counts next to the per-kind costs. The daily totals group by `model`, `api_key_id`, `workspace`, `variant`, `endpoint`, `provider`, `data_region`, `billed_service_tier`, and `long_context`, with `granularity` of `day`, `week`, `month`, or none. Any other dimension or filter (such as `app`, `user`, or `country`), `hour` or `minute` granularity, or a timezone reads raw generations instead, which allows at most 31 days; past that the query returns a 400 naming what kept it off the daily totals. A `time_range` of 31 days or less that starts or ends off a UTC midnight also reads raw generations, however far back it is, so it is not widened to whole days, and with three dimensions such a range returns a 400 instead, so use UTC midnight bounds; a longer one reads the daily totals for every whole UTC day it touches. Without a `time_range`, the default last 7 days is snapped out to whole UTC days on the daily totals, as it is on the other activity rollups.
+
+Group them by pricing qualifiers to see where the rate came from: `billed_service_tier` (the tier you were billed at, which can differ from the tier that served the request), `long_context` (`"true"` when a long-context price tier applied), `endpoint` (the endpoint UUID, the same `endpoint_id` that [GET /api/v1/activity](/api/api-reference/analytics/get-user-activity-grouped-by-endpoint) returns with its provider), `provider` (the provider that served the request), and `data_region` (`global`, or the region the request was routed in, such as `europe`). A daily pull by model and key with one qualifier looks like this:
+
+```json lines
+{
+  "metrics": ["usage_upstream_uncached_input", "usage_upstream_cache_read", "usage_upstream_cache_write", "usage_upstream_output", "usage_upstream_reasoning"],
+  "dimensions": ["model", "api_key_id", "billed_service_tier"],
+  "granularity": "day",
+  "time_range": { "start": "2026-12-01T00:00:00Z", "end": "2027-01-01T00:00:00Z" }
+}
+```
+
+Three things to know before summing them:
+
+- **They start on 20 November 2026 (UTC), and the first day reads `null`.** The split is recorded as requests are billed, from the release that added these metrics; there is no backfill. The daily totals treat their earliest day as incomplete, because it can hold only part of that day's traffic, so every metric of a row on or before that day (or of an ungranular query whose range starts on or before it) is `null`, including `request_count`. The rule relies on the daily totals being switched on before their first day begins, and on any later backfill filling one unbroken run of days up to and including that first day.
+- **A row is either complete or `null`.** A token-kind metric is `null` for a row unless every request in it carries the split, that is unless `token_kind_request_count` equals `request_count`. Requests whose billed rows can't be reconciled with what was charged (for example fallback pricing when a provider reports no usage, or batch estimates), or whose charged amount was not recorded, have no split, so a row containing one reads as `null` rather than as a partial total. Batch requests never carry the split, so keep `variant` in the grouping (or filter it out) when a model takes both batch and synchronous traffic.
+- **They don't always add up to `usage_upstream`.** Server tools billed by the provider (such as native web search), Anthropic advisor-model tokens, and other non-token charges belong to no token kind, so the five kinds can sum to less than `usage_upstream`. Pricing qualifiers are recorded on chat, Responses, and Messages requests; other request types (embeddings, images, batch) group under an empty value.
 
 ## Recipe: is my workload prompt-heavy?
 
