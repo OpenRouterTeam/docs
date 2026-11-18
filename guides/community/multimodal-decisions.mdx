@@ -238,7 +238,7 @@ The table is generated from the adapter registry, so it is the current contract:
 - Media parts: an `image_url`, `input_audio`, `video_url`, or `file` item in the top-level `state` array is lifted into the provider's image, audio, video, or document input when its type is listed, and rejected otherwise. A malformed part (a typo in `type`, a missing payload) is a `400` on every adapter rather than being sent to the model as text.
 - Image parts elsewhere: only TypeSafe, and Azure for a model that declares image input, read image parts nested inside `state` objects or placed in `instructions` or `criteria`; see [Image positions on Jev](#image-positions-on-jev).
 
-By default the adapter an endpoint uses follows from its provider (a Decisions adapter name stored on the provider wins over the default), so an `openai/gpt-6-luna-decisions` request served by OpenAI uses the OpenAI row, and a `typesafe/jev-1.14` request served by TypeSafe uses the TypeSafe row. Models whose endpoints are served by a provider not named in the table (Nace.AI, Upstage, Microsoft, and others) use the `TypeSafeDecisionsAdapter` row.
+By default the adapter an endpoint uses follows from its provider (a Decisions adapter name stored on the provider wins over the default), so an `openai/gpt-6-luna-decisions` request served by OpenAI uses the OpenAI row, and a `typesafe/jev-1.14` request served by TypeSafe uses the TypeSafe row. Models whose endpoints are served by a provider not named in the table (Nace.AI, Upstage, and others) use the `TypeSafeDecisionsAdapter` row.
 
 ## Limits
 
