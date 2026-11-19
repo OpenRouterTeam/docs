@@ -250,6 +250,37 @@ For non-PNG outputs (e.g., JPEG, WebP, or SVG from Recraft vector models), `medi
 }
 ```
 
+### Signed URLs Instead of Base64
+
+Set `response_format` to `url` to receive a download link for each image instead of base64. URLs expire after 24 hours.
+
+```json
+{
+  "model": "google/gemini-2.5-flash-image",
+  "prompt": "a red panda astronaut floating in space, studio lighting",
+  "response_format": "url"
+}
+```
+
+```json lines
+{
+  "created": 1748372400,
+  "data": [
+    {
+      "url": "https://example.com/generated-image.png",
+      "media_type": "image/png"
+    }
+  ],
+  "expires_at": 1748458800,
+  "usage": {
+    "prompt_tokens": 0,
+    "completion_tokens": 4175,
+    "total_tokens": 4175,
+    "cost": 0.04
+  }
+}
+```
+
 ## Image Configuration Options
 
 ### Resolution and Aspect Ratio
@@ -486,9 +517,10 @@ curl -N -X POST "https://openrouter.ai/api/v1/images" \
 Image generation billing is **all-or-nothing**. A generation is either completed and billed in full, or it fails and is not billed &mdash; there is no partial or fractional image billing. This differs from chat completions, where a cancelled stream still bills for the tokens produced before cancellation.
 
 - **Completed generations** are billed for the full image output based on the endpoint's pricing.
+- **`response_format: "url"`**: a completed generation is billed once its output is stored, even if the client disconnects before the response arrives. The signed URL is only delivered in the response, so a client that never receives the response cannot retrieve the stored copy; storage is not a recovery mechanism for a lost response.
 - **Failed or cancelled generations** are not billed. When a generation does not complete, the request returns a `502 Bad Gateway` rather than a partial result, and no charge is recorded.
 
-If a client disconnects mid-generation, the upstream provider may still finish rendering the image and charge OpenRouter for it. Regardless, the client only ever observes one of two outcomes: a fully-billed result, or an error. OpenRouter does not attempt to bill the user for work they did not receive.
+If a client disconnects mid-generation, the upstream provider may still finish rendering the image and charge OpenRouter for it. Regardless, the client only ever observes one of two outcomes: a fully-billed result, or an error. Apart from the `response_format: "url"` case above, OpenRouter does not attempt to bill the user for work they did not receive.
 
 For streaming requests, any partial preview images delivered before the stream ends do **not** create partial charges. Billing keys off completion of the final image, so a stream that terminates early (client disconnect or mid-stream error) is billed exactly as a failed generation: not at all.
 
@@ -510,6 +542,7 @@ For streaming requests, any partial preview images delivered before the stream e
 | `background` | string | No | `auto`, `transparent`, or `opaque` |
 | `output_compression` | integer | No | Compression level (0-100) for webp/jpeg |
 | `seed` | integer | No | Seed for deterministic generation (where supported) |
+| `response_format` | string | No | `b64_json` (default) returns inline bytes; `url` returns a [download URL](#signed-urls-instead-of-base64) that expires after 24 hours |
 | `stream` | boolean | No | Stream partial images via SSE |
 | `input_references` | array | No | Reference images for image-to-image generation |
 | `user` | string | No | Stable identifier for your end-user; folded into a hashed upstream identity and never sent raw (see [User Tracking](/cookbook/administration/user-tracking)) |
