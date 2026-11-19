@@ -68,12 +68,13 @@ The example below requests the `flex` tier from OpenAI's `gpt-5`; the flex endpo
 <CodeGroup>
 
 ```bash title="cURL" lines
-curl https://openrouter.ai/api/v1/responses \
+curl -sS https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer <OPENROUTER_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "openai/gpt-5",
+    "model": "openai/gpt-5-mini",
     "service_tier": "flex",
+    "provider": { "only": ["openai"] },
     "input": "What is the meaning of life?"
   }'
 ```
@@ -88,8 +89,9 @@ response = requests.post(
         "Content-Type": "application/json",
     },
     json={
-        "model": "openai/gpt-5",
+        "model": "openai/gpt-5-mini",
         "service_tier": "flex",
+        "provider": {"only": ["openai"]},
         "input": "What is the meaning of life?",
     },
 )
@@ -98,6 +100,7 @@ data = response.json()
 message = next(item for item in reversed(data["output"]) if item["type"] == "message")
 print(next(part["text"] for part in message["content"] if part["type"] == "output_text"))
 print("Served by tier:", data.get("service_tier"))
+
 ```
 
 ```typescript title="TypeScript (fetch)" lines
@@ -108,8 +111,9 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'openai/gpt-5',
+    model: 'openai/gpt-5-mini',
     service_tier: 'flex',
+    provider: { only: ['openai'] },
     input: 'What is the meaning of life?',
   }),
 });
@@ -118,6 +122,7 @@ const data = await response.json();
 const message = [...data.output].reverse().find((item: { type: string }) => item.type === 'message');
 console.log(message?.content.find((part: { type: string; text?: string }) => part.type === 'output_text')?.text);
 console.log('Served by tier:', data.service_tier);
+
 ```
 
 ```python title="Python (OpenAI SDK)" lines
@@ -129,13 +134,15 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="openai/gpt-5",
+    model="openai/gpt-5-mini",
     service_tier="flex",
     input="What is the meaning of life?",
+    extra_body={"provider": {"only": ["openai"]}},
 )
 
 print(response.output_text)
 print("Served by tier:", response.service_tier)
+
 ```
 
 ```typescript title="TypeScript (OpenAI SDK)" lines
@@ -147,16 +154,112 @@ const openai = new OpenAI({
 });
 
 const response = await openai.responses.create({
-  model: 'openai/gpt-5',
+  model: 'openai/gpt-5-mini',
   service_tier: 'flex',
+  // @ts-expect-error OpenRouter-specific routing field
+  provider: { only: ['openai'] },
   input: 'What is the meaning of life?',
 });
 
 console.log(response.output_text);
 console.log('Served by tier:', response.service_tier);
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":        "openai/gpt-5-mini",
+		"service_tier": "flex",
+		"provider":     map[string]any{"only": []string{"openai"}},
+		"input":        "What is the meaning of life?",
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+		ServiceTier string `json:"service_tier"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		panic(err)
+	}
+
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type == "message" {
+			for _, part := range data.Output[i].Content {
+				if part.Type == "output_text" {
+					fmt.Println(part.Text)
+					break
+				}
+			}
+			break
+		}
+	}
+	fmt.Println("Served by tier:", data.ServiceTier)
+}
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Short answer: there’s no single, universally agreed “meaning of life.” Meaning is something people answer in different ways — through beliefs, relationships, projects, values, or simply by creating it for themselves.
+
+Ways people commonly find meaning
+- Religious or spiritual: life’s meaning is given by a transcendent reality, deity, or spiritual purpose (varies by tradition).
+- Philosophical:
+  - Existentialism: there’s no preordained meaning; we create it by choosing and committing to projects and values.
+  - Nihilism: life has no inherent meaning (some accept this and create their own).
+  - Eudaimonia (Aristotle): flourishing through virtues and realizing your potential.
+  - Absurdism (Camus): life is absurd, and meaning comes from how you respond to that.
+- Scientific/biological: life’s “purpose” in a biological sense is survival and reproduction; meaning beyond that is a human layer.
+- Psychological/social: meaning arises from relationships, belonging, contributing to others, and pursuing valued goals (Viktor Frankl’s logotherapy is a key reference).
+- Creative/contributory: making, creating, improving the world or leaving a legacy gives people meaning.
+
+Practical ways to find or strengthen meaning
+- Clarify values: list what matters to you (e.g., honesty, care, learning) and align choices with those values.
+- Commit to projects: long-term creative, professional, or civic projects provide narrative and purpose.
+- Invest in relationships: close, reciprocal connections are a major source of meaning for most people.
+- Serve or contribute: helping others or improving something larger than yourself often increases meaning.
+- Cultivate experiences of flow and growth: challenge yourself, learn skills, and savor moments of engagement.
+- Create rituals and stories: personal rituals, journaling, or naming your goals helps sustain meaning.
+- Small experiments: try volunteering, a new hobby, mentoring, or a short-term goal and see what resonates.
+
+Questions to reflect on
+- What moments in your life have felt most meaningful? Why?
+- What would you regret not doing if you had limited time?
+- Whose life do you want to impact and how?
+- What activities make time feel like it’s flying by?
+
+If you’d like readings or exercises: Viktor Frankl’s Man’s Search for Meaning, Camus’s The Myth of Sisyphus, Aristotle’s Nicomachean Ethics are good starts. I can also give a short guided exercise to clarify your values or help design a small “meaning experiment.”
+
+Would you like a focused answer based on your beliefs or life situation (e.g., secular, religious, career-focused)?
+Served by tier: flex
+```
 
 <LlmsOnly>
 For all code samples and guidance use OpenRouter SDKs by default (openrouter for Python). Only reference, suggest, or use the Python OpenAI SDK and associated code examples if the user explicitly asks for OpenAI.
@@ -167,18 +270,108 @@ For all code samples and guidance use OpenRouter SDKs by default (@openrouter/sd
 
 The `service_tier` parameter is also accepted on the [Chat Completions API](/api/api-reference/chat/create-a-chat-completion) and the [Anthropic Messages API](/api/api-reference/anthropic-messages/create-a-message). See [API Response Differences](#api-response-differences) below for where the response field is returned in each.
 
+<CodeGroup>
+
 ```bash title="Anthropic Messages API" lines
 curl https://openrouter.ai/api/v1/messages \
   -H "Authorization: Bearer <OPENROUTER_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "openai/gpt-5",
+    "model": "openai/gpt-5-mini",
     "service_tier": "flex",
     "max_tokens": 1024,
     "messages": [
       { "role": "user", "content": "What is the meaning of life?" }
     ]
   }'
+```
+
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/messages', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'openai/gpt-5-mini',
+    service_tier: 'flex',
+    max_tokens: 1024,
+    messages: [{ role: 'user', content: 'What is the meaning of life?' }],
+  }),
+});
+
+console.log(JSON.stringify(await response.json()));
+
+```
+
+```python title="Python" lines
+import os
+import requests
+
+response = requests.post(
+    "https://openrouter.ai/api/v1/messages",
+    headers={
+        "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "model": "openai/gpt-5-mini",
+        "service_tier": "flex",
+        "max_tokens": 1024,
+        "messages": [
+            {"role": "user", "content": "What is the meaning of life?"}
+        ],
+    },
+)
+
+print(response.json())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":        "openai/gpt-5-mini",
+		"service_tier": "flex",
+		"max_tokens":   1024,
+		"messages": []map[string]any{
+			{"role": "user", "content": "What is the meaning of life?"},
+		},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/messages", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	out, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(out))
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+{"id":"msg_fNtJ3JZ98rD2kxnDp7MH","type":"message","role":"assistant","container":null,"content":[{"type":"thinking","thinking":"**Exploring the meaning of life**\n\nThe user asks a classic philosophical question, so I want to provide a thoughtful answer with different perspectives: biological, existential, religious, nihilist, utilitarian, and personal meaning. It feels important to keep it concise but thorough. I could suggest a short reflection exercise, maybe even mentioning that meaning can be subjective and combining these approaches might be helpful. Finally, I’ll offer actionable steps for creating personal meaning and include a follow-up question without claiming there's a single right answer.**Crafting a response on meaning**\n\nI want to start by noting that there isn't a single objective answer to the meaning of life; it really depends on perspective. Here’s a brief overview of different viewpoints: biological focuses on survival and reproduction, philosophical includes existentialism and nihilism, while psychological aspects look at coherence and purpose. I can suggest actionable steps like identifying values, setting goals, and practicing gratitude. Finally, I'll invite the user to share their thoughts or ask for personalized advice, summarizing with something like, \"For many people, meaning is what you make of it.\"","signature":""},{"type":"redacted_thinking","data":"gAAAAABq_MTy1Mv4EajDcTycXAwagO8z_cn4pKuwpXQUBZeUyZWS9TVPiKHDzAe4kiApAbnLp8OBGgo-SGh-4RZFWhCtPABBvVpV_2Sna3q6ZKeAlSRsKumUEUCpG_O2FJ9yzb4EwSodbh9fJ63Zb8Ug0YNiFLAYpg2dqIGqr6h2RKYMw2R0kUd-5-mOqMm-YBfcDm6LRON-DpxYTLUDW1-2CXtSvE8iBhViRnO_3C7JCIM_08xuWZyyiX_getlc8hGqyw3mQPB9ZrxbLx2Tv8EAYiVBFCpXxSA_MY-NQ96A_WFZlGiJRHwhsYuTXqDTzOnWUPo4MhEMBPDusnXWKxRdnTQE0SYNTuyhU9BSZBLuCVPSuB-lvTS3nm4bIr8gHqnwBuPwQrICJc2LCxuqimlu3nwekf9x0Sm9xHCqjpgFJ8gg5GtH8H-xKcRmbBzKq4MlPq0nvT6qsBmmu7nM-21Ol8bHNEFoT4AZLYePQwfmRSmUn7LL49210ibEyodAVcUi3eSHP1hqtq7__zCmGm86Upcwoi2JMnOxzM2i8MWDF9HUyWqR3KHNI5hOblk0f5ffjMiiz4zjfkojcNxmi_DCCqUrtnP5ALhIOwpfIb93cffe5BfMOyY8BYEKH-GqpCbpaSTH01lUVT0wal1fl5qj_vnzipeUdI3AWfbjpHe1W6PhxyJrL7CusQlBmjuFJQq33URRgqJTtKQ7HZQ556xU5WgFgtdjkCAyrlo-velHuaUykDr5hf5RuqimCLBxGYughzSuZ1g7o5rFKqI4JNQPfRe_CsoR5S_JlhOxngjop_2LQZiYzkcjwJzvD0YLiCzr-VXd6hRpQYqHv7us_0Z0vVBFV2XHPsxYCZg944brMCS1JyPwUH-vUKmHCTSgl1kwK2dYvOiZeLx2mUcBXNkss6lKZBCPaZGCXXMSP5468mGsnc0CG-OA43seMMAUKAkztESwo9ApumHLTuZ5yYbiBmMgBFnqr_lMTyQ2_WkqqwKz2tJMbe0LYcgOTSmrVLw2KbiDx1yHmlOz-5u5-hxdZAhiRWrTnxXfZRtJbYsziYLTvcppZKnOHCBMvLEHnTZX2MQ6vFRnWKOKns3er3Mb9L3SRAent16jyG50kKFCcXdzrtuV60UJSBd8Rvi9LSNVkhv_ngZjMrLkYKXzL40yVkkLRw7S5FN8euiMP8-d5UgVQWBcSuG7xU4jdnRSwkrSaxBZ_u2wIb10BHme8Nv-i9D3p24dovRq0w-zW4vNVBp10b6dp90NVXnpIRXjSRGI8R49bIQP8q16IbxwxM37zkv_34LuFAciAoDAS6IeqFgaCHc4uN5qzlOI793799mzGA6IAIUkSeQSP66uC3fcBhAtcOkmbQyz3R4C4crL5z2ltdDaq8dtm0O6RUjipqBQ3jzTlLS1MbaVUtsRPvybz6GpmjTUw5SZupoeHODnn0IdYYmQYQxhqAkK2LYoFAIxdzW6T1b1WTpzd-NFXqC_TnGtw4xf_IsiV7vioKFPYMxGk-YpW0LMPtFmZ4FQeAZehs3xwtWZCago1xJYE6YoKdViP0vAQ-QMElTpUETe0Ve1aI5elSee7hLkSQwt7elz9Bqbe3QDj9Jl5Ix4QSQaKtz_wNI_SX72AaxjzA-xhG2wN1MH2fcEfkGDxp4a0O5MqfsRIcHnQgVKExBrPvGIimyCpSfV3AHPUD6Pw9PKUPz_sfxL6TvuJ9Rumkqz-lYEK8qxJQmKUoIPzzyUOud6p1HqrEJ58sT4dXC7ytoLJqintYQ-VxVcqWAU9GUmteLhx142oWmtLxTW8ECn14tqUl6w4wLm4sbup3B2VYjQToDN-cy9FcLPCLYSJJCzXdE-FVjLNPvCnMX8a0MlnLiamBQ-oGdfB4UJkPxBOWaB_ygEv3BqfqjwlYXH4gN4fSEIyCW6VLotYoML4WdU_fiMy0Kyuuq6z-2I9oRAKamuICIkw1PsA7p_wTQqMku9f79n-VVyPWNPE5Ha1vfIK1T5bGl5gCP2v4oaHz1gf9VchKdw9CqY2us7hYUY13QUG4bSi9FaL4QRkjJpmaOyJfhtzs5-NwVBrdQw9YN5R2dlODUOwJbQ6qoU_opiI-mGQV18wwD_IA5fkVMA2g3ca31nNidcwd7kRqrHpR0TfBtTKgWLCcGD54DOErvgjjYJut-khhqeMWxGEsQgcG7SA9cEua39uzFxRV1Rplf7VEuYhnEB90eJHgzVyjys6Si3p15ElEOv7Dh8tyBYX1-mnjr_0yyUD71A8TUIOySqpaEt_WLXkb7pqNqzhMHdOM_R3cQcki4tiPeriq8R7e92xyj-JrqCdEvCJxDjpuVYOpxsdlwlX4MVFyBVKSd1XlWkLQjG3aD3TsiJrNb7lgXjITxxw5FTvr9nyJKGjVuKYDRe7pqNwWSb8cWYijmLJv7qD4o9G_AsucKa6KRAEJeD96YD5sbbhsGuTzgNKZS1Pl4zOQqGUfbIrSnsaAuJzPPF47gUT-SaNd6Jp45m-IEItRp8xbZ-X1cAGThpHXBUngnKoaFlqxkuCqQW9bwuCyV5Gbk1l3aHtrngQU7-qzI9J7SlF4CS4MSeTN
+…[2180 chars clipped]…
+pXRKhYxTkMO7A7gw3ZSK6Mfit888_9U6WjN2jhzZ3RXOU0RZlooPp9z6JpZGvIVXEcfYw7ZjJBxeF61MeISTpU3jHrioTtRAM49Ul25kk24WpVTq2XXsLNjLHBlfOaUuaH0N8D45bW_1iwxNwqDUZigQicbsJNTMw7XOuvd29wx6V34za-yyha2ggObhX_miHxu4buVp-3v87ULBJgrSj7FQBjWnCFl8HTSQzHYeZvB3JKnG7IB8qq3kM02zkhxIlN0YYrAGEl3j8aseKsTfjQgWU5SmzkCtI3sxsAvkCeGUNR1tKofJz-jFiDBgvjLEk8MwTeWj6u52Sa75YAt0JZxqXrXOwq555lkTWDgjOSGDe31wJnTDfkKt1QA1MWECyWx8ohJ1-8z44L-Yo9xkiDiDBOF7gujm_bbWvFP5FQB4zyrxfXGkTpxHxuAnlGmyfuaB2ZmLvYOmzBV9old6dSoSrHjIBXJQvaYrFRo6KRrAbY1CzBdi4yUn71omwNzfHFUnLN71gZZn8eOuEFydbgMyScqxnnPmRTr747BM7mIF0i21UeV5xxTlvFnjMbKKiesilaBFK9mnngEnK8XcsmrorkSpcaug6jyoxad3C_4ssM2PHHoHempWTOKW76oCyk3SR0EqjpEEG5Qz5XxwjaVwYd3qGJG59JHPmvv3yIynbLsG0tVL8aJmxwoYNeo1adxSNP9KE9ACzH4Dsx4Ne8qiLf6H3xscBsVAD-GoKOVnUIl1qs1Dnb-6-Bk_d_4T6hhod8u7xIS9NQHOVGRvYnRb5g9_rb5hvevEPVLL0axVTeLPQdZ235sTjLredvpFUQntHKTR_6icBdZV26fzifVuI0Rfi0D2ZRmvLTtUJhQJ_fEuochGg0ygGi3FYacs7bmLCjwaYYY5Owt0SgmYZhebq-Od7jkUCLHP5bz0TuDd8_0HQiKvQvtoFyzryHep7Ros1rrJGhUDKmwsHtrzWUuC_MziA_f64-ANEmHj3LFOhGixnNV5zEMAo4mrjz20l0LzGpx8aaFvURg1UoOdu-pBCKGpn00hBOhSioOMoQuHJX7woaVTCrr9TH7OXlnB1T0-txEhjV7sY-qA8wO61OritOVwMLcKcyoeeyjm1OJtYTnwWSu_IReuL4qrVKhi21DV2fJMpSesItMBoXkxXmhkaI3Nv7NxFkHE1m.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC01LW1pbmktMjAyNS0wOC0wN3xvcGVuYWkifQ"},{"type":"text","text":"There’s no single, objectively correct answer — “the meaning of life” depends on the lens you use. Here are several common ways people answer it, plus practical steps to find a meaningful life for yourself.\n\nCommon perspectives\n- Biological: life’s “purpose” is survival and reproduction — passing on genes and keeping the species going.\n- Religious/spiritual: meaning is given by a transcendent reality (God, the divine, enlightenment); living in alignment with that reality is the point.\n- Existentialist: life has no given meaning; you create meaning through choices, commitments, and projects.\n- Absurdist: the universe is indifferent; recognizing that can free you to live authentically despite it.\n- Nihilist: there is no inherent meaning at all — any meaning is human-made.\n- Ethical/social: meaning arises from contributing to others’ well‑being, improving society, or living virtuously.\n- Psychological: research and clinicians often describe meaning in terms of coherence (making sense of your life), purpose (future-directed goals), and significance (feeling your life matters).\n\nWhat tends to give people a sense of meaning\n- Deep relationships and belonging\n- Projects or work that use your strengths and contribute to something beyond yourself\n- Growth, learning, and self‑transcendence\n- Helping others or leaving a legacy\n- Values-driven action — living according to what you truly care about\n\nA short, practical way to approach it\n1. Name your values (2–6): what matters most to you? (e.g., honesty, care, creativity, learning, service)\n2. Choose one or two projects or relationships where you can express those values.\n3. Set small, consistent actions tied to those projects (daily/weekly).\n4. Reflect regularly: does this make life feel coherent and significant? Adjust as needed.\n\nIf you want a quote to carry with you: many find Viktor Frankl’s idea helpful — “Those who have a 'why' to live, can bear with almost any 'how.'”\n\nIf you’d like, tell me a few things you care about and I’ll help turn them into concrete steps to increase meaning in your life.","citations":[]}],"model":"openai/gpt-5-mini","stop_reason":"end_turn","stop_details":null,"stop_sequence":null,"usage":{"input_tokens":13,"output_tokens":750,"output_tokens_details":{"thinking_tokens":256},"cache_creation_input_tokens":null,"cache_read_input_tokens":0,"cache_creation":null,"inference_geo":null,"server_tool_use":null,"service_tier":"flex","speed":"standard","cost":0.000751625,"is_byok":false,"cost_details":{"upstream_inference_cost":0.000751625,"upstream_inference_prompt_cost":0.000001625,"upstream_inference_completions_cost":0.00075}},"context_management":null,"provider":"OpenAI"}
 ```
 
 ### Workspace Default Service Tier

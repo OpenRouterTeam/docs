@@ -58,15 +58,95 @@ const client = new TypeSafeClient({
 ```python title="client.py" lines
 import os
 
-from typesafe_sdk import TypeSafeClient
+from openai import OpenAI
 
-client = TypeSafeClient(
+# Point an existing OpenAI-compatible client at OpenRouter:
+# only the base URL and the API key change.
+client = OpenAI(
     api_key=os.environ["OPENROUTER_API_KEY"],
-    base_url="https://openrouter.ai/api",
+    base_url="https://openrouter.ai/api/v1",
 )
+
+completion = client.chat.completions.create(
+    model="openai/gpt-4o-mini",
+    messages=[{"role": "user", "content": "Say hello in one sentence."}],
+)
+
+print(completion.choices[0].message.content)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+// Point an existing OpenAI-compatible client at OpenRouter:
+// only the base URL and the API key change.
+const baseURL = "https://openrouter.ai/api/v1"
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o-mini",
+		"messages": []map[string]string{
+			{"role": "user", "content": "Say hello in one sentence."},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", baseURL+"/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var completion struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&completion); err != nil {
+		log.Fatal(err)
+	}
+	if len(completion.Choices) == 0 {
+		log.Fatalf("no choices returned (status %s)", resp.Status)
+	}
+
+	fmt.Println(completion.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+# Point an existing OpenAI-compatible request at OpenRouter:
+# only the base URL and the API key change.
+curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Say hello in one sentence."}]
+  }' | jq -r '.choices[0].message.content'
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Hello! How can I assist you today?
+```
 
 Both SDKs also read the base URL from the `TYPESAFE_BASE_URL` environment variable, so you can leave the constructor unchanged and set `TYPESAFE_BASE_URL=https://openrouter.ai/api` and `TYPESAFE_API_KEY=<your OpenRouter API key>` instead.
 
@@ -75,40 +155,223 @@ Both SDKs also read the base URL from the `TYPESAFE_BASE_URL` environment variab
 <CodeGroup>
 
 ```typescript title="triage.ts" lines
-const result = await client.systemOne({
-  model: 'jev-1.13',
-  state: 'I was charged twice for my subscription.',
-  questions: {
-    refund: { type: 'noul', instructions: 'Is the customer asking for money back?' },
-    department: {
-      type: 'choice',
-      instructions: 'Which team should handle this?',
-      criteria: { billing: 'Charges and refunds', technical: 'Bugs and outages' },
-    },
+// Evaluate a piece of state against typed questions using structured outputs.
+const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    'Content-Type': 'application/json',
   },
+  body: JSON.stringify({
+    model: 'openai/gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content:
+          'Evaluate the customer message. refund: probability (0 to 1) that the customer is asking for money back. ' +
+          'department: which team should handle this (billing = charges and refunds, technical = bugs and outages).',
+      },
+      { role: 'user', content: 'I was charged twice for my subscription.' },
+    ],
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'answers',
+        strict: true,
+        schema: {
+          type: 'object',
+          properties: {
+            refund: { type: 'number' },
+            department: { type: 'string', enum: ['billing', 'technical'] },
+          },
+          required: ['refund', 'department'],
+          additionalProperties: false,
+        },
+      },
+    },
+  }),
 });
 
-console.log(result.answers.refund); // { type: 'noul', noul: 0.98 }
+if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+const data: any = await res.json();
+const answers = JSON.parse(data.choices[0].message.content);
+
+console.log(answers); // e.g. { refund: 0.95, department: 'billing' }
+
 ```
 
 ```python title="triage.py" lines
-result = client.system_one(
-    model="jev-1.13",
-    state="I was charged twice for my subscription.",
-    questions={
-        "refund": {"type": "noul", "instructions": "Is the customer asking for money back?"},
-        "department": {
-            "type": "choice",
-            "instructions": "Which team should handle this?",
-            "criteria": {"billing": "Charges and refunds", "technical": "Bugs and outages"},
+import json
+import os
+
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.environ["OPENROUTER_API_KEY"],
+    base_url="https://openrouter.ai/api/v1",
+)
+
+# Evaluate a piece of state against typed questions using structured outputs.
+completion = client.chat.completions.create(
+    model="openai/gpt-4o-mini",
+    messages=[
+        {
+            "role": "system",
+            "content": (
+                "Evaluate the customer message. refund: probability (0 to 1) that the customer is asking for money back. "
+                "department: which team should handle this (billing = charges and refunds, technical = bugs and outages)."
+            ),
+        },
+        {"role": "user", "content": "I was charged twice for my subscription."},
+    ],
+    response_format={
+        "type": "json_schema",
+        "json_schema": {
+            "name": "answers",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "refund": {"type": "number"},
+                    "department": {"type": "string", "enum": ["billing", "technical"]},
+                },
+                "required": ["refund", "department"],
+                "additionalProperties": False,
+            },
         },
     },
 )
 
-print(result.answers["refund"])
+answers = json.loads(completion.choices[0].message.content)
+
+print(answers)  # e.g. {'refund': 0.95, 'department': 'billing'}
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+// Evaluate a piece of state against typed questions using structured outputs.
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o-mini",
+		"messages": []map[string]string{
+			{
+				"role": "system",
+				"content": "Evaluate the customer message. refund: probability (0 to 1) that the customer is asking for money back. " +
+					"department: which team should handle this (billing = charges and refunds, technical = bugs and outages).",
+			},
+			{"role": "user", "content": "I was charged twice for my subscription."},
+		},
+		"response_format": map[string]any{
+			"type": "json_schema",
+			"json_schema": map[string]any{
+				"name":   "answers",
+				"strict": true,
+				"schema": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"refund":     map[string]any{"type": "number"},
+						"department": map[string]any{"type": "string", "enum": []string{"billing", "technical"}},
+					},
+					"required":             []string{"refund", "department"},
+					"additionalProperties": false,
+				},
+			},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		log.Fatalf("HTTP %d: %s", resp.StatusCode, b)
+	}
+
+	var data struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Fatal(err)
+	}
+	if len(data.Choices) == 0 {
+		log.Fatal("no choices returned")
+	}
+
+	var answers struct {
+		Refund     float64 `json:"refund"`
+		Department string  `json:"department"`
+	}
+	if err := json.Unmarshal([]byte(data.Choices[0].Message.Content), &answers); err != nil {
+		log.Fatal(err)
+	}
+
+	out, _ := json.MarshalIndent(answers, "", "  ")
+	fmt.Println(string(out)) // e.g. {"refund": 0.95, "department": "billing"}
+}
+
+```
+
+```bash title="cURL" lines
+# Evaluate a piece of state against typed questions using structured outputs.
+curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o-mini",
+    "messages": [
+      {"role": "system", "content": "Evaluate the customer message. refund: probability (0 to 1) that the customer is asking for money back. department: which team should handle this (billing = charges and refunds, technical = bugs and outages)."},
+      {"role": "user", "content": "I was charged twice for my subscription."}
+    ],
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "answers",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "refund": {"type": "number"},
+            "department": {"type": "string", "enum": ["billing", "technical"]}
+          },
+          "required": ["refund", "department"],
+          "additionalProperties": false
+        }
+      }
+    }
+  }' | jq '.choices[0].message.content | fromjson'  # e.g. {"refund": 0.95, "department": "billing"}
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+{
+  refund: 0.9,
+  department: "billing",
+}
+```
 
 ### Model IDs
 
@@ -130,6 +393,8 @@ The TypeSafe SDK's model listing (`client.models.list()` in JavaScript) calls `G
 
 The System One API implements TypeSafe's request and response shapes. Requests require `model`, `state`, and `questions`, and responses contain `model`, `answers`, and `usage`. OpenRouter additionally returns `id`, `provider`, and `usage.cost`, which both SDKs pass through without error.
 
+<CodeGroup>
+
 ```bash title="systemone.sh" lines
 curl https://openrouter.ai/api/v1/systemone \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
@@ -145,6 +410,104 @@ curl https://openrouter.ai/api/v1/systemone \
     }
   }'
 ```
+
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/systemone', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'jev-1.13',
+    state: 'I was charged twice for my subscription.',
+    questions: {
+      refund: {
+        type: 'noul',
+        instructions: 'Is the customer asking for money back?',
+      },
+    },
+  }),
+});
+
+console.log(JSON.stringify(await response.json()));
+
+```
+
+```python title="Python" lines
+import os
+import requests
+
+response = requests.post(
+    "https://openrouter.ai/api/v1/systemone",
+    headers={
+        "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "model": "jev-1.13",
+        "state": "I was charged twice for my subscription.",
+        "questions": {
+            "refund": {
+                "type": "noul",
+                "instructions": "Is the customer asking for money back?",
+            }
+        },
+    },
+)
+response.raise_for_status()
+print(response.text)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "jev-1.13",
+		"state": "I was charged twice for my subscription.",
+		"questions": map[string]any{
+			"refund": map[string]any{
+				"type":         "noul",
+				"instructions": "Is the customer asking for money back?",
+			},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/systemone", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("HTTP %d: %s", resp.StatusCode, out)
+	}
+	fmt.Println(string(out))
+}
+
+```
+
+</CodeGroup>
 
 ```json title="Response"
 {

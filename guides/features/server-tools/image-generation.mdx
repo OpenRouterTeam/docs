@@ -65,8 +65,12 @@ const images = data.output.filter(
   (item: { type: string; result?: string }) => item.type === 'openrouter:image_generation',
 );
 for (const image of images) {
-  if (image.result) console.log(image.result);
+  if (image.result) {
+    // Print a short preview; the full data URL is very long
+    console.log(`${image.result.slice(0, 64)}... (${image.result.length} chars)`);
+  }
 }
+
 ```
 
 ```python title="Python" expandable lines
@@ -120,7 +124,82 @@ curl https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5.2",
+		"input": "Create an image of a futuristic city at sunset",
+		"tools": []map[string]any{
+			{"type": "openrouter:image_generation"},
+		},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		panic("API error: " + resp.Status)
+	}
+
+	var data struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Result  string `json:"result"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		panic(err)
+	}
+
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type == "message" {
+			for _, part := range data.Output[i].Content {
+				if part.Type == "output_text" {
+					fmt.Println(part.Text)
+					break
+				}
+			}
+			break
+		}
+	}
+
+	// The generated image is a separate output item, as a data: URL
+	for _, item := range data.Output {
+		if item.Type == "openrouter:image_generation" && item.Result != "" {
+			// Print a short preview; the full data URL is very long
+			fmt.Printf("%s... (%d chars)\n", item.Result[:min(64, len(item.Result))], len(item.Result))
+		}
+	}
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Here’s an image of a futuristic city at sunset:
+
+![Futuristic city at sunset](/mnt/data/0.png)
+data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABogAAAOtCAIAAAA95H... (4111094 chars)
+```
 
 ## Configuration
 
@@ -269,7 +348,116 @@ if not text and not any(image.get("result") for image in images):
   raise RuntimeError("Response contained neither text nor a generated image")
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5.2",
+		"input": "Generate an image of a mountain landscape",
+		"tools": []map[string]any{
+			{
+				"type":       "openrouter:image_generation",
+				"parameters": map[string]any{"quality": "high"},
+			},
+		},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		panic("API error: " + resp.Status)
+	}
+
+	var data struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Result  string `json:"result"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		panic(err)
+	}
+
+	text := ""
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type == "message" {
+			for _, part := range data.Output[i].Content {
+				if part.Type == "output_text" {
+					text = part.Text
+					break
+				}
+			}
+			break
+		}
+	}
+	if text != "" {
+		fmt.Println(text)
+	}
+
+	hasImage := false
+	for _, item := range data.Output {
+		if item.Type == "openrouter:image_generation" && item.Result != "" {
+			fmt.Println(item.Result)
+			hasImage = true
+		}
+	}
+	if text == "" && !hasImage {
+		panic("Response contained neither text nor a generated image")
+	}
+}
+
+```
+
+```bash title="cURL" lines
+curl -sS https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5.2",
+    "input": "Generate an image of a mountain landscape",
+    "tools": [
+      {
+        "type": "openrouter:image_generation",
+        "parameters": {"quality": "high"}
+      }
+    ]
+  }' | jq -r '
+    [ (.output | map(select(.type == "message")) | last | .content[]? | select(.type == "output_text") | .text),
+      # The generated image is a data: URL; print a short preview since the full value is very long
+      (.output[] | select(.type == "openrouter:image_generation") | .result // empty
+        | "\(.[0:64])... (\(length) chars)") ]
+    | if length == 0 then error("Response contained neither text nor a generated image") else .[] end'
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Here’s a generated mountain landscape image:
+
+![Mountain landscape](/mnt/data/0.png)
+data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABogAAAOtCAIAAAA95HBeAABVf2NhQlgAAFV/anVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAVVlqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjVlNGMyNDM4LTM1ZWYtNDAzZC1hMWM5LTI1YmQ2YmE4NzU2NQAAAAyCanVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAJ0Wp1bWIAAAA7anVtZEDLDDK7ikidpwsq1vR/Q2kTYzJwYS5pY29uAAAAABhjMnNoXUO8MYl4BmeftsrYIUQdcQAAABdiZmRiAGltYWdlL3N2Zyt4bWwAAAAJd2JpZGI8c3ZnIHdpZHRoPSI3MTYiIGhlaWdodD0iNzE2IiB2aWV3Qm94PSIwIDAgNzE2IDcxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUwOC43NDkgMzE3LjM5OUM1MTYuNzc3IDI4Ny4zMTQgNTA4Ljk5MSAyNTMuODg0IDQ4NS4zODkgMjMwLjI4MkM0NjEuNzg4IDIwNi42ODEgNDI4LjM2IDE5OC44OTUgMzk4LjI3MyAyMDYuOTIzQzM3Ni4yMzEgMTg0LjkyOCAzNDMuMzkgMTc0Ljk1NiAzMTEuMTQ4IDE4My41OTZDMjc4LjkwNiAxOTIuMjM0IDI1NS40NSAyMTcuMjkyIDI0Ny4zNiAyNDcuMzYxQzIxNy4yOTEgMjU1LjQ1MSAxOTIuMjMzIDI3OC45MSAxODMuNTk1IDMxMS4xNDlDMTc0Ljk1NyAzNDMuMzkxIDE4NC45MjcgMzc2LjIzMiAyMDYuOTI0IDM5OC4yNzRDMTk4Ljg5NiA0MjguMzU5IDIwNi42ODMgNDYxLjc4OSAyMzAuMjg0IDQ4NS4zOTFDMjUzLjg4NSA1MDguOTkyIDI4Ny4zMTMgNTE2Ljc3OSAzMTcuNDAxIDUwOC43NUMzMzkuNDQyIDUzMC43NDUgMzcyLjI4NiA1NDAuNzE3IDQwNC41MjUgNTMyLjA3OUM0MzYuNzY3IDUyMy40NDEgNDYwLjIyMyA0OTguMzg0IDQ2OC4zMTMgNDY4LjMxNUM0OTguMzgzIDQ2MC4yMjQgNTIzLjQ0IDQzNi43NjYgNTMyLjA3OCA0MDQuNTI2QzU0MC43MTYgMzcyLjI4NSA1MzAuNzQ3IDMzOS40NDMgNTA4Ljc0OSAzMTcuNDAyVjMxNy4zOTlaTTQ3MC44OTkgMjQ0Ljc3NkM0ODYuODkyIDI2MC43NyA0OTMuNDg4IDI4Mi42MDEgNDkwLjY4NyAzMDMuNDEyTDQxNS41NzcgMjYwLjA0NkM0MTIuNDExIDI1OC4yMTggNDA4LjUwOSAyNTguMjE4IDQwNS4zNDUgMjYwLjA0NkwzMTcuNDAxIDMxMC44MlYyNzcuNTI2QzMxNy40MDEgMjc1LjE5MSAzMTguNjUyIDI3My4wMDUgMzIwLjY3NiAyNzEuODM3TDM4Ny42NDQgMjMzLjE3NEM0MTQuMTc4IDIxOC4zNTMgNDQ4LjM0NiAyMjIuMjIzIDQ3MC45MDEgMjQ0Ljc3Nkg0NzAuODk5Wk0zNTcuODM3IDMxMS4xNDRMMzk4LjI3NSAzMzQuNDkxVjM4MS4xODVMMzU3LjgzNyA0MDQuNTMyTDMxNy4zOTggMzgxLjE4NVYzMzQuNDkxTDM1Ny44MzcgMzExLjE0NFpNMjY0Ljc3NiAyNjkuNjkzQzI2NS4yMDcgMjM5LjMwNSAyODUuNjQ0IDIxMS42NDkgMzE2LjQ1MyAyMDMuMzkzQzMzOC4zIDE5Ny41NCAzNjAuNTA1IDIwMi43NDQgMzc3LjEyNyAyMTUuNTczTDMwMi4wMTQgMjU4LjkzN0MyOTguODQ4IDI2MC43NjQgMjk2Ljg5OCAyNjQuMTQ0IDI5Ni44OTggMjY3Ljc5OFYzNjkuMzQ2TDI2OC4wNjUgMzUyLjY5OUMyNjYuMDQzIDM1MS41MzEgMjY0Ljc3NiAzNDkuMzUzIDI2NC43NzYgMzQ3LjAxN1YyNjkuNjkxVjI2OS42OTNaTTIwMy4zOTEgMzE2LjQ1NEMyMDkuMjQ0IDI5NC42MDggMjI0Ljg1NCAyNzcuOTc4IDI0NC4yNzYgMjY5Ljk5OVYzNTYuNzNDMjQ0LjI3NiAzNjAuMzg0IDI0Ni4yMjYgMzYzLjc2MyAyNDkuMzkyIDM2NS41OTFMMzM3LjMzNyA0MTYuMzY1TDMwOC41MDMgNDMzLjAxM0MzMDYuNDgxIDQzNC4xODEgMzAzLjk2MSA0MzQuMTg4IDMwMS45MzkgNDMzLjAyTDIzNC45NzEgMzk0LjM1N0MyMDguODY4IDM3OC43ODkgMTk1LjEzOCAzNDcuMjYxIDIwMy4zOTEgMzE2LjQ1NFpNMjQ0Ljc3NSA0NzAuOUMyMjguNzgxIDQ1NC45MDYgMjIyLjE4NiA0MzMuMDc1IDIyNC45ODYgNDEyLjI2NEwzMDAuMDk2IDQ1NS42M0MzMDMuMjYzIDQ1Ny40NTcgMzA3LjE2NCA0NTcuNDU3IDMxMC4zMjggNDU1LjYzTDM5OC4yNzMgNDA0Ljg1NlY0MzguMTQ5QzM5OC4yNzMgNDQwLjQ4NSAzOTcuMDIyIDQ0Mi42NzEgMzk0Ljk5NyA0NDMuODM5TDMyOC4wMjkgNDgyLjUwMkMzMDEuNDk1IDQ5Ny4zMjIgMjY3LjMyNyA0OTMuNDUyIDI0NC43NzIgNDcwLjlIMjQ0Ljc3NVpNNDUwLjg5NyA0NDUuOTgyQzQ1MC40NjYgNDc2LjM3MSA0MzAuMDI5IDUwNC4wMjcgMzk5LjIyIDUxMi4yODNDMzc3LjM3MyA1MTguMTM2IDM1NS4xNjggNTEyLjkzMiAzMzguNTQ3IDUwMC4xMDJMNDEzLjY1OSA0NTYuNzM4QzQxNi44MjYgNDU0LjkxMSA0MTguNzc1IDQ1MS41MzIgNDE4Ljc3NSA0NDcuODc3VjM0Ni4zMjlMNDQ3LjYwOSAzNjIuOTc3QzQ0OS42MzEgMzY0LjE0NSA0NTAuODk3IDM2Ni4zMjMgNDUwLjg5NyAzNjguNjU5VjQ0NS45ODVWNDQ1Ljk4MlpNNTEyLjI4MiAzOTkuMjIxQzUwNi40MjkgNDIxLjA2OCA0OTAuODE5IDQzNy42OTcgNDcxLjM5NyA0NDUuNjc2VjM1OC45NDZDNDcxLjM5NyAzNTUuMjkyIDQ2OS40NDggMzUxLjkxMiA0NjYuMjgxIDM1MC4wODVMMzc4LjMzNiAyOTkuMzExTDQwNy4xNyAyODIuNjYzQzQwOS4xOTIgMjgxLjQ5NSA0MTEuNzEyIDI4MS40ODcgNDEzLjczNCAyODIuNjU1TDQ4MC43MDIgMzIxLjMxOEM1MDYuODA1IDMzNi44ODcgNTIwLjUzNiAzNjguNDE1IDUxMi4yODIgMzk5LjIyMVoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgoAAAG9anVtYgAAAEFqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmFjdGlvbnMudjIAAAAAGGMyc2iSrv8WLClFXFmC/cTpZcrfAAABdGNib3KiZ2FjdGlvbnODpGZhY3Rpb25sYzJwYS5jcmVhdGVkZHdoZW7AeB4yMDI2LTExLTE3VDIxOjE2OjQ5LjA0MzY3MDM2NVptc29mdHdhcmVBZ2VudKJkbmFtZWNBUElndmVyc2lvbnNncHQtaW1hZ2UtMi42LWZsY
+…[192000 chars clipped]…
+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
+```
 
 ## Pricing
 

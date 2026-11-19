@@ -73,6 +73,8 @@ The rest of this page is for custom agents, where you can build your own 'auto' 
 
 A custom agent adds an `armor` entry to `plugins`, with its rules under `classifier_context`. This request on the Responses API gives the model a `bash` tool and one hard-deny rule against pushing, asks for `custom_item` output so the blocked call comes back as a typed item, then asks the model to push:
 
+<CodeGroup>
+
 ```bash
 curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
@@ -113,6 +115,183 @@ curl https://openrouter.ai/api/v1/responses \
     ]
   }'
 ```
+
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'openai/gpt-4.1',
+    input: 'Lint is fixed. Push the branch with git push origin main.',
+    tools: [
+      {
+        type: 'function',
+        name: 'bash',
+        description: 'Run a shell command in the project directory',
+        parameters: {
+          type: 'object',
+          properties: { command: { type: 'string' } },
+          required: ['command'],
+        },
+      },
+    ],
+    plugins: [
+      {
+        id: 'armor',
+        output_mode: 'custom_item',
+        classifier_context: {
+          v: 1,
+          auto_mode: {
+            environment: ['Trusted repository: github.com/acme/app'],
+            hard_deny: [
+              {
+                id: 'git-push',
+                name: 'Git Push',
+                instructions:
+                  'Running any git push command. The user reviews every change before it is pushed.',
+              },
+            ],
+          },
+        },
+      },
+    ],
+  }),
+});
+
+console.log(JSON.stringify(await response.json()));
+
+```
+
+```python title="Python" lines
+import os
+import requests
+
+response = requests.post(
+    "https://openrouter.ai/api/v1/responses",
+    headers={
+        "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "model": "openai/gpt-4.1",
+        "input": "Lint is fixed. Push the branch with git push origin main.",
+        "tools": [
+            {
+                "type": "function",
+                "name": "bash",
+                "description": "Run a shell command in the project directory",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"command": {"type": "string"}},
+                    "required": ["command"],
+                },
+            }
+        ],
+        "plugins": [
+            {
+                "id": "armor",
+                "output_mode": "custom_item",
+                "classifier_context": {
+                    "v": 1,
+                    "auto_mode": {
+                        "environment": ["Trusted repository: github.com/acme/app"],
+                        "hard_deny": [
+                            {
+                                "id": "git-push",
+                                "name": "Git Push",
+                                "instructions": "Running any git push command. The user reviews every change before it is pushed.",
+                            }
+                        ],
+                    },
+                },
+            }
+        ],
+    },
+)
+
+print(response.text)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func main() {
+	body := `{
+  "model": "openai/gpt-4.1",
+  "input": "Lint is fixed. Push the branch with git push origin main.",
+  "tools": [
+    {
+      "type": "function",
+      "name": "bash",
+      "description": "Run a shell command in the project directory",
+      "parameters": {
+        "type": "object",
+        "properties": { "command": { "type": "string" } },
+        "required": ["command"]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "id": "armor",
+      "output_mode": "custom_item",
+      "classifier_context": {
+        "v": 1,
+        "auto_mode": {
+          "environment": ["Trusted repository: github.com/acme/app"],
+          "hard_deny": [
+            {
+              "id": "git-push",
+              "name": "Git Push",
+              "instructions": "Running any git push command. The user reviews every change before it is pushed."
+            }
+          ]
+        }
+      }
+    }
+  ]
+}`
+
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", strings.NewReader(body))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(string(out))
+}
+
+```
+
+</CodeGroup>
+
+````json title="Output"
+{"id":"gen-1794949890-GbaR5hUCIM6Atg85486V","object":"response","created_at":1794949890,"model":"openai/gpt-4.1","status":"completed","completed_at":1794949892,"output":[{"type":"openrouter:armor_blocked","id":"st_tmp_394x58xwlya","status":"completed","call_id":"call_L9A0iUvTYW8j5R4hWBrujPfL","name":"bash","arguments":"{\"command\":\"git push origin main\"}","reason":"Tool call \"bash\" was blocked by OpenRouter Armor by the rule \"Git Push\" and was not executed. Do not retry it with the same arguments. If a narrower, safer call would still do what the user asked, make that call instead; otherwise explain the situation to the user.","explanation":"[Git Push]"},{"id":"msg_tmp_o884je708hb","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"I'm unable to execute git push commands for security reasons—this action is blocked for safety. However, you can push your branch to the remote repository by running the following command in your terminal:\n\n```bash\ngit push origin main\n```\n\nIf you need help with anything else related to Git, feel free to ask!","annotations":[],"logprobs":[]}]}],"error":null,"incomplete_details":null,"access_programs":null,"tools":[{"type":"function","name":"bash","description":"Run a shell command in the project directory","parameters":{"type":"object","properties":{"command":{"type":"string"}},"required":["command"]},"strict":null}],"tool_choice":"auto","parallel_tool_calls":true,"max_output_tokens":null,"temperature":1,"top_p":1,"presence_penalty":0,"frequency_penalty":0,"top_logprobs":0,"max_tool_calls":null,"metadata":{},"background":false,"previous_response_id":null,"service_tier":"auto","truncation":"disabled","store":false,"instructions":null,"text":{"format":{"type":"text"}},"reasoning":null,"safety_identifier":null,"prompt_cache_key":null,"prompt_cache_options":null,"usage":{"input_tokens":190,"input_tokens_details":{"cached_tokens":0},"output_tokens":84,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":274,"cost":0.001052,"cost_details":{"upstream_inference_cost":0.001052,"upstream_inference_input_cost":0.00037999999999999997,"upstream_inference_output_cost":0.0006720000000000001}},"safeguard_results":[{"type":"dangerous_tool_use","status":{"type":"available","tool_uses":{"call_L9A0iUvTYW8j5R4hWBrujPfL":{"type":"evaluated","outcome":"flagged","explanation":"[Git Push]"}}}}]}
+````
 
 The model calls `bash` with `git push origin main`. Armor blocks it. The response has no `function_call`; in its place is an `openrouter:armor_blocked` item carrying the call and the rule that fired, followed by the model's own text, and `safeguard_results` records the verdict under the call's id:
 

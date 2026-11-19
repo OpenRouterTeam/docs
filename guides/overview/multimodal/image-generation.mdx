@@ -44,9 +44,37 @@ OpenRouter provides a dedicated Image API for generating images from text prompt
 
 The dedicated image models endpoint lists every available image model with its capabilities:
 
+<CodeGroup>
+
 ```bash lines
 curl "https://openrouter.ai/api/v1/images/models"
 ```
+
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/images/models');
+const models = await response.json();
+```
+
+```python title="Python" lines
+response = requests.get("https://openrouter.ai/api/v1/images/models")
+models = response.json()
+```
+
+```go title="Go" lines
+res, err := http.Get("https://openrouter.ai/api/v1/images/models")
+if err != nil {
+	log.Fatal(err)
+}
+defer res.Body.Close()
+
+body, err := io.ReadAll(res.Body)
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(body))
+```
+
+</CodeGroup>
 
 Each entry in the `data` array includes:
 
@@ -85,9 +113,37 @@ Each entry in the `data` array includes:
 
 Each model may be served by multiple providers. To see the definitive capabilities, pricing, and passthrough options per endpoint:
 
+<CodeGroup>
+
 ```bash lines
 curl "https://openrouter.ai/api/v1/images/models/bytedance-seed/seedream-4.5/endpoints"
 ```
+
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/images/models/bytedance-seed/seedream-4.5/endpoints');
+const endpoints = await response.json();
+```
+
+```python title="Python" lines
+response = requests.get("https://openrouter.ai/api/v1/images/models/bytedance-seed/seedream-4.5/endpoints")
+endpoints = response.json()
+```
+
+```go title="Go" lines
+res, err := http.Get("https://openrouter.ai/api/v1/images/models/bytedance-seed/seedream-4.5/endpoints")
+if err != nil {
+	log.Fatal(err)
+}
+defer res.Body.Close()
+
+body, err := io.ReadAll(res.Body)
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(body))
+```
+
+</CodeGroup>
 
 ```json lines
 {
@@ -136,9 +192,37 @@ An absent key means the parameter is unsupported by that endpoint.
 
 You can also discover image models through the general [Models API](/api/api-reference/models/list-all-models-and-their-properties):
 
+<CodeGroup>
+
 ```bash lines
 curl "https://openrouter.ai/api/v1/models?output_modalities=image"
 ```
+
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/models?output_modalities=image');
+const models = await response.json();
+```
+
+```python title="Python" lines
+response = requests.get("https://openrouter.ai/api/v1/models?output_modalities=image")
+models = response.json()
+```
+
+```go title="Go" lines
+res, err := http.Get("https://openrouter.ai/api/v1/models?output_modalities=image")
+if err != nil {
+	log.Fatal(err)
+}
+defer res.Body.Close()
+
+body, err := io.ReadAll(res.Body)
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(body))
+```
+
+</CodeGroup>
 
 ### On the Models Page
 
@@ -151,12 +235,13 @@ Send a `POST` request to `/api/v1/images` with the model and prompt:
 <CodeGroup>
 
 ```python title="Python (requests)" lines
+import os
 import requests
 import json
 
 url = "https://openrouter.ai/api/v1/images"
 headers = {
-    "Authorization": f"Bearer {API_KEY_REF}",
+    "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
     "Content-Type": "application/json"
 }
 
@@ -171,13 +256,14 @@ result = response.json()
 for image in result["data"]:
     # image["b64_json"] contains the base64-encoded image
     print(f"Generated image ({len(image['b64_json'])} chars)")
+
 ```
 
 ```typescript title="TypeScript (fetch)" lines
 const response = await fetch('https://openrouter.ai/api/v1/images', {
   method: 'POST',
   headers: {
-    Authorization: `Bearer ${API_KEY_REF}`,
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
@@ -204,7 +290,65 @@ curl -X POST "https://openrouter.ai/api/v1/images" \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	payload, _ := json.Marshal(map[string]string{
+		"model":  "bytedance-seed/seedream-4.5",
+		"prompt": "a red panda astronaut floating in space, studio lighting",
+	})
+
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/images", bytes.NewReader(payload))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		body, _ := io.ReadAll(res.Body)
+		log.Fatalf("Request failed (%d): %s", res.StatusCode, body)
+	}
+
+	var result struct {
+		Data []struct {
+			B64JSON string `json:"b64_json"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, image := range result.Data {
+		// image.B64JSON contains the base64-encoded image
+		fmt.Printf("Generated image (%d chars)\n", len(image.B64JSON))
+	}
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Generated image (1391708 chars)
+```
 
 ### Response Format
 
@@ -445,72 +589,277 @@ The stream terminates with `data: [DONE]`.
 <CodeGroup>
 
 ```python title="Python (requests)" expandable lines
+import os
+import sys
+import json
 import requests
 
 url = "https://openrouter.ai/api/v1/images"
 headers = {
-    "Authorization": f"Bearer {API_KEY_REF}",
+    "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
     "Content-Type": "application/json"
 }
 
 response = requests.post(url, headers=headers, json={
-    "model": "openai/gpt-image-1",
+    "model": "bytedance-seed/seedream-4.5",
     "prompt": "a detailed landscape painting",
     "stream": True
 }, stream=True)
 
-for line in response.iter_lines():
-    if line:
-        decoded = line.decode("utf-8")
-        if decoded.startswith("data: ") and decoded != "data: [DONE]":
-            import json
-            event = json.loads(decoded[6:])
-            print(f"Event: {event['type']}")
+if not response.ok:
+    raise SystemExit(f"Request failed ({response.status_code}): {response.text}")
+
+raw_lines = []
+event_count = 0
+failed = False
+
+# iter_lines buffers partial lines, so large base64 events arrive whole
+for raw in response.iter_lines():
+    if not raw:
+        continue
+    line = raw.decode("utf-8").strip()
+    raw_lines.append(line)
+    if not line.startswith("data:"):
+        continue
+    data = line[5:].strip()
+    if data == "[DONE]":
+        break
+
+    event = json.loads(data)
+    event_count += 1
+    if event.get("type") == "error":
+        print(f"Error: {json.dumps(event.get('error', event))}", file=sys.stderr)
+        failed = True
+        break
+    b64 = event.get("b64_json")
+    size = f" ({len(b64)} chars)" if b64 else ""
+    print(f"Event: {event.get('type')}{size}")
+
+if event_count == 0 and raw_lines:
+    # The server answered with a non-streamed JSON body instead of SSE
+    result = json.loads("\n".join(raw_lines))
+    for image in result.get("data", []):
+        print(f"Generated image ({len(image.get('b64_json') or '')} chars)")
+
+print(f"Stream finished after {event_count} event(s)")
+
+if failed:
+    sys.exit(1)
+
 ```
 
 ```typescript title="TypeScript (fetch)" expandable lines
 const response = await fetch('https://openrouter.ai/api/v1/images', {
   method: 'POST',
   headers: {
-    Authorization: `Bearer ${API_KEY_REF}`,
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'openai/gpt-image-1',
+    model: 'bytedance-seed/seedream-4.5',
     prompt: 'a detailed landscape painting',
     stream: true,
   }),
 });
 
-const reader = response.body?.getReader();
-const decoder = new TextDecoder();
+if (!response.ok) {
+  throw new Error(`Request failed (${response.status}): ${await response.text()}`);
+}
 
-while (true) {
+const reader = response.body!.getReader();
+const decoder = new TextDecoder();
+let buffer = '';
+let raw = '';
+let eventCount = 0;
+let finished = false;
+
+// Returns true when the stream should stop
+function handleLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('data:')) return false;
+  const data = trimmed.slice(5).trim();
+  if (data === '[DONE]') return true;
+
+  const event = JSON.parse(data);
+  eventCount++;
+  if (event.type === 'error') {
+    console.error(`Error: ${JSON.stringify(event.error ?? event)}`);
+    process.exitCode = 1;
+    return true;
+  }
+  const size = event.b64_json ? ` (${event.b64_json.length} chars)` : '';
+  console.log(`Event: ${event.type}${size}`);
+  return false;
+}
+
+while (!finished) {
   const { done, value } = await reader.read();
   if (done) break;
 
-  const chunk = decoder.decode(value);
-  for (const line of chunk.split('\n')) {
-    if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-      const event = JSON.parse(line.slice(6));
-      console.log(`Event: ${event.type}`);
+  // SSE events can be split across network chunks, so buffer partial lines
+  const chunk = decoder.decode(value, { stream: true });
+  raw += chunk;
+  buffer += chunk;
+  const lines = buffer.split('\n');
+  buffer = lines.pop() ?? '';
+
+  for (const line of lines) {
+    if (handleLine(line)) {
+      finished = true;
+      break;
     }
   }
 }
+
+// Process any final line that arrived without a trailing newline
+if (!finished && buffer) handleLine(buffer);
+
+if (eventCount === 0 && raw.trim()) {
+  // The server answered with a non-streamed JSON body instead of SSE
+  const result = JSON.parse(raw);
+  for (const image of result.data ?? []) {
+    console.log(`Generated image (${image.b64_json?.length ?? 0} chars)`);
+  }
+}
+
+console.log(`Stream finished after ${eventCount} event(s)`);
+
 ```
 
 ```bash title="cURL" lines
-curl -N -X POST "https://openrouter.ai/api/v1/images" \
+set -o pipefail
+
+curl -sS -N -X POST "https://openrouter.ai/api/v1/images" \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "openai/gpt-image-1",
+    "model": "bytedance-seed/seedream-4.5",
     "prompt": "a detailed landscape painting",
     "stream": true
-  }'
+  }' | while IFS= read -r line || [ -n "$line" ]; do
+  case "$line" in
+    data:*)
+      data="${line#data:}"
+      data="${data# }"
+      [ "$data" = "[DONE]" ] && break
+      # Summarize each SSE event instead of dumping base64
+      printf '%s\n' "$data" | jq -r 'if .type == "error" then "Error: \(.error // . | tostring)" | halt_error(1) else "Event: \(.type)" + (if .b64_json then " (\(.b64_json | length) chars)" else "" end) end' || exit 1
+      ;;
+    ""|:*) ;;
+    *)
+      # The server answered with a non-streamed JSON body instead of SSE
+      printf '%s\n' "$line" | jq -r 'if .error then "Error: \(.error | tostring)" | halt_error(1) else .data[]? | "Generated image (\(.b64_json | length) chars)" end' || exit 1
+      ;;
+  esac
+done || exit 1 # Stop with a nonzero status when the stream or the response reported an error
+echo "Stream finished"
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func main() {
+	payload, _ := json.Marshal(map[string]any{
+		"model":  "bytedance-seed/seedream-4.5",
+		"prompt": "a detailed landscape painting",
+		"stream": true,
+	})
+
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/images", bytes.NewReader(payload))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		body, _ := io.ReadAll(res.Body)
+		log.Fatalf("Request failed (%d): %s", res.StatusCode, body)
+	}
+
+	// Models that do not stream return a single JSON body instead of SSE events
+	if !strings.HasPrefix(res.Header.Get("Content-Type"), "text/event-stream") {
+		var result struct {
+			Data []struct {
+				B64JSON string `json:"b64_json"`
+			} `json:"data"`
+		}
+		if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
+			log.Fatal(err)
+		}
+		for _, image := range result.Data {
+			fmt.Printf("Generated image (%d chars)\n", len(image.B64JSON))
+		}
+		return
+	}
+
+	// bufio.Reader handles arbitrarily long lines (base64 payloads can be megabytes)
+	reader := bufio.NewReader(res.Body)
+	eventCount := 0
+	for {
+		line, readErr := reader.ReadString('\n')
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "data:") {
+			data := strings.TrimSpace(strings.TrimPrefix(trimmed, "data:"))
+			if data == "[DONE]" {
+				break
+			}
+
+			var event struct {
+				Type    string          `json:"type"`
+				B64JSON string          `json:"b64_json"`
+				Error   json.RawMessage `json:"error"`
+			}
+			if err := json.Unmarshal([]byte(data), &event); err != nil {
+				log.Fatal(err)
+			}
+			eventCount++
+			if event.Type == "error" {
+				log.Fatalf("Error: %s", event.Error)
+			}
+			if event.B64JSON != "" {
+				fmt.Printf("Event: %s (%d chars)\n", event.Type, len(event.B64JSON))
+			} else {
+				fmt.Printf("Event: %s\n", event.Type)
+			}
+		}
+
+		if readErr == io.EOF {
+			break
+		} else if readErr != nil {
+			log.Fatal(readErr)
+		}
+	}
+	fmt.Printf("Stream finished after %d event(s)\n", eventCount)
+}
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Generated image (1908076 chars)
+Stream finished after 0 event(s)
+```
 
 ## Billing and Cancellation
 

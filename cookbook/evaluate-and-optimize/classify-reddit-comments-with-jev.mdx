@@ -137,6 +137,8 @@ Both responses are paginated. Reddit search returns an `after` cursor passed bac
 
 So to get topic relevance and sentiment for each comment, we send it to Jev with two questions: how relevant is the comment to your topic, and what's the author feeling. Jev returns a probability for the first, and `negative`, `neutral`, or `positive` for the second. Further, the sentiment response includes a confidence value, so the next step can decide by number instead of parsed text. The function also returns the request cost, and throws when any of the answer parts are missing. A bad judgment will fail loud and fast instead of being quietly recorded. To reach the right endpoint, the client sets `serverURL` to `https://openrouter.ai`, because the Decisions API lives under `/api/alpha`, a different path prefix than the SDK's default `/api/v1`.
 
+<CodeGroup>
+
 ```typescript
 const openrouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY, serverURL: 'https://openrouter.ai' });
 
@@ -192,6 +194,218 @@ async function judgeComment(comment: Comment): Promise<Judgment> {
     cost: response.usage.cost,
   };
 }
+
+const judgment = await judgeComment({
+  source: 'reddit',
+  id: 'example-1',
+  url: 'https://www.reddit.com/r/LocalLLaMA/comments/example/',
+  created_at: '2026-01-01T00:00:00Z',
+  text: 'Switched our app to OpenRouter last month and failover between providers has been seamless. Pricing is the same as going direct.',
+});
+console.log(judgment);
+```
+
+```python title="Python" lines
+import os
+import requests
+
+TOPIC = 'OpenRouter, the API that routes requests to many LLM providers through one endpoint'
+SENTIMENTS = ('negative', 'neutral', 'positive')
+
+
+def judge_comment(comment: dict) -> dict:
+    response = requests.post(
+        'https://openrouter.ai/api/alpha/decisions',
+        headers={'Authorization': f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+        json={
+            'model': 'typesafe/jev-1.13',
+            'state': {'topic': TOPIC, 'source': comment['source'], 'comment': comment['text']},
+            'questions': {
+                'relevant': {
+                    'type': 'noul',
+                    'instructions': '`comment` discusses `topic` itself: the product, its pricing, reliability, features, or the company behind it. A comment that only uses the product incidentally, or mentions a different product, is not relevant.',
+                },
+                'sentiment': {
+                    'type': 'choice',
+                    'instructions': 'What is the attitude of `comment` toward `topic`?',
+                    'criteria': {
+                        'negative': 'The author complains about, criticizes, or warns others away from `topic`.',
+                        'neutral': 'The author asks a question, states facts, or expresses no clear attitude toward `topic`.',
+                        'positive': 'The author praises, recommends, or reports a good experience with `topic`.',
+                    },
+                },
+            },
+        },
+    )
+    response.raise_for_status()
+    data = response.json()
+    relevant = data.get('answers', {}).get('relevant') or {}
+    sentiment = data.get('answers', {}).get('sentiment') or {}
+    if relevant.get('type') != 'noul' or sentiment.get('type') != 'choice' or sentiment.get('choice') not in SENTIMENTS:
+        raise ValueError(f"Unexpected Decisions answers for {comment['id']}")
+    cost = data.get('usage', {}).get('cost')
+    if sentiment.get('confidence') is None or cost is None:
+        raise ValueError(f"Decisions response for {comment['id']} is missing confidence or cost")
+    return {
+        'relevant': relevant['noul'],
+        'sentiment': sentiment['choice'],
+        'sentiment_confidence': sentiment['confidence'],
+        'cost': cost,
+    }
+
+
+judgment = judge_comment({
+    'id': 'example-1',
+    'source': 'r/LocalLLaMA',
+    'text': 'Switched our app to OpenRouter last month and failover between providers has been seamless. Pricing is the same as going direct.',
+})
+print(judgment)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+const topic = "OpenRouter, the API that routes requests to many LLM providers through one endpoint"
+
+type Comment struct{ ID, Source, Text string }
+
+type Judgment struct {
+	Relevant            float64 `json:"relevant"`
+	Sentiment           string  `json:"sentiment"`
+	SentimentConfidence float64 `json:"sentiment_confidence"`
+	Cost                float64 `json:"cost"`
+}
+
+type answer struct {
+	Type       string   `json:"type"`
+	Noul       *float64 `json:"noul"`
+	Choice     string   `json:"choice"`
+	Confidence *float64 `json:"confidence"`
+}
+
+func judgeComment(c Comment) (Judgment, error) {
+	body, _ := json.Marshal(map[string]any{
+		"model": "typesafe/jev-1.13",
+		"state": map[string]string{"topic": topic, "source": c.Source, "comment": c.Text},
+		"questions": map[string]any{
+			"relevant": map[string]any{
+				"type":         "noul",
+				"instructions": "`comment` discusses `topic` itself: the product, its pricing, reliability, features, or the company behind it. A comment that only uses the product incidentally, or mentions a different product, is not relevant.",
+			},
+			"sentiment": map[string]any{
+				"type":         "choice",
+				"instructions": "What is the attitude of `comment` toward `topic`?",
+				"criteria": map[string]string{
+					"negative": "The author complains about, criticizes, or warns others away from `topic`.",
+					"neutral":  "The author asks a question, states facts, or expresses no clear attitude toward `topic`.",
+					"positive": "The author praises, recommends, or reports a good experience with `topic`.",
+				},
+			},
+		},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/alpha/decisions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return Judgment{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return Judgment{}, fmt.Errorf("Decisions request for %s failed: %s", c.ID, resp.Status)
+	}
+	var out struct {
+		Answers map[string]answer `json:"answers"`
+		Usage   struct {
+			Cost *float64 `json:"cost"`
+		} `json:"usage"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return Judgment{}, err
+	}
+	rel, sen := out.Answers["relevant"], out.Answers["sentiment"]
+	valid := map[string]bool{"negative": true, "neutral": true, "positive": true}
+	if rel.Type != "noul" || rel.Noul == nil || sen.Type != "choice" || !valid[sen.Choice] {
+		return Judgment{}, fmt.Errorf("unexpected Decisions answers for %s", c.ID)
+	}
+	if sen.Confidence == nil || out.Usage.Cost == nil {
+		return Judgment{}, fmt.Errorf("Decisions response for %s is missing confidence or cost", c.ID)
+	}
+	return Judgment{*rel.Noul, sen.Choice, *sen.Confidence, *out.Usage.Cost}, nil
+}
+
+func main() {
+	j, err := judgeComment(Comment{
+		ID:     "example-1",
+		Source: "r/LocalLLaMA",
+		Text:   "Switched our app to OpenRouter last month and failover between providers has been seamless. Pricing is the same as going direct.",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	out, _ := json.MarshalIndent(j, "", "  ")
+	fmt.Println(string(out))
+}
+
+```
+
+```bash title="cURL" lines
+#!/bin/bash
+# Fail the script when curl fails, even though jq is the last command in the pipeline
+set -o pipefail
+# The Decisions API lives under /api/alpha, not /api/v1
+curl -sS --fail-with-body https://openrouter.ai/api/alpha/decisions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @- <<'JSON' | jq 'if .answers.relevant.type != "noul" or .answers.sentiment.type != "choice" or (.answers.sentiment.choice | IN("negative", "neutral", "positive") | not) or .answers.sentiment.confidence == null or .usage.cost == null
+  then error("Unexpected or incomplete Decisions answers for example-1")
+  else {relevant: .answers.relevant.noul, sentiment: .answers.sentiment.choice, sentiment_confidence: .answers.sentiment.confidence, cost: .usage.cost} end'
+{
+  "model": "typesafe/jev-1.13",
+  "state": {
+    "topic": "OpenRouter, the API that routes requests to many LLM providers through one endpoint",
+    "source": "r/LocalLLaMA",
+    "comment": "Switched our app to OpenRouter last month and failover between providers has been seamless. Pricing is the same as going direct."
+  },
+  "questions": {
+    "relevant": {
+      "type": "noul",
+      "instructions": "`comment` discusses `topic` itself: the product, its pricing, reliability, features, or the company behind it. A comment that only uses the product incidentally, or mentions a different product, is not relevant."
+    },
+    "sentiment": {
+      "type": "choice",
+      "instructions": "What is the attitude of `comment` toward `topic`?",
+      "criteria": {
+        "negative": "The author complains about, criticizes, or warns others away from `topic`.",
+        "neutral": "The author asks a question, states facts, or expresses no clear attitude toward `topic`.",
+        "positive": "The author praises, recommends, or reports a good experience with `topic`."
+      }
+    }
+  }
+}
+JSON
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+{
+  relevant: 0.97,
+  sentiment: "positive",
+  sentiment_confidence: 1,
+  cost: 0.000021,
+}
 ```
 
 <Warning>
@@ -201,6 +415,8 @@ Each `decisions.create` call is one paid request billed to your OpenRouter accou
 ## 3. Set the human-review threshold and route each comment
 
 The routing rule runs a series of tests on every judgment. If the relevance is at or below `0.2`, then the comment is ignored. If it's between `0.2` and `0.8`, then it's sent to a human for review because Jev isn't sure it's even on topic. If it's at or above `0.8`, then the comment is recorded automatically only if the sentiment confidence is at least `0.7`. If not, it goes to review too. Every decision also keeps the reason and the full judgment so a human reviewer can see why an item was queued.
+
+<CodeGroup>
 
 ```typescript
 const RELEVANT_AT = 0.8;
@@ -228,11 +444,88 @@ function decide(comment: Comment, judgment: Judgment): Decision {
 }
 ```
 
+```python title="Python" lines
+RELEVANT_AT = 0.8
+IRRELEVANT_AT = 0.2
+SENTIMENT_CONFIDENCE_AT = 0.7
+
+
+class Decision(TypedDict):
+    action: Literal["record", "review", "ignore"]
+    reason: str
+    comment: Comment
+    judgment: Judgment
+
+
+def decide(comment: Comment, judgment: Judgment) -> Decision:
+    relevant = judgment["relevant"]
+    sentiment = judgment["sentiment"]
+    confidence = judgment["sentiment_confidence"]
+    if relevant <= IRRELEVANT_AT:
+        return {"action": "ignore", "reason": f"relevant={relevant:.2f}", "comment": comment, "judgment": judgment}
+    if relevant < RELEVANT_AT:
+        return {"action": "review", "reason": f"relevance unclear at {relevant:.2f}", "comment": comment, "judgment": judgment}
+    if confidence < SENTIMENT_CONFIDENCE_AT:
+        return {"action": "review", "reason": f"sentiment {sentiment} at confidence {confidence:.2f}", "comment": comment, "judgment": judgment}
+    return {"action": "record", "reason": f"{sentiment} at confidence {confidence:.2f}", "comment": comment, "judgment": judgment}
+```
+
+```go title="Go" lines
+const (
+	RelevantAt            = 0.8
+	IrrelevantAt          = 0.2
+	SentimentConfidenceAt = 0.7
+)
+
+type Decision struct {
+	Action   string   `json:"action"` // "record", "review", or "ignore"
+	Reason   string   `json:"reason"`
+	Comment  Comment  `json:"comment"`
+	Judgment Judgment `json:"judgment"`
+}
+
+func decide(c Comment, j Judgment) Decision {
+	if j.Relevant <= IrrelevantAt {
+		return Decision{"ignore", fmt.Sprintf("relevant=%.2f", j.Relevant), c, j}
+	}
+	if j.Relevant < RelevantAt {
+		return Decision{"review", fmt.Sprintf("relevance unclear at %.2f", j.Relevant), c, j}
+	}
+	if j.SentimentConfidence < SentimentConfidenceAt {
+		return Decision{"review", fmt.Sprintf("sentiment %s at confidence %.2f", j.Sentiment, j.SentimentConfidence), c, j}
+	}
+	return Decision{"record", fmt.Sprintf("%s at confidence %.2f", j.Sentiment, j.SentimentConfidence), c, j}
+}
+```
+
+```bash title="cURL" lines
+RELEVANT_AT=0.8
+IRRELEVANT_AT=0.2
+SENTIMENT_CONFIDENCE_AT=0.7
+
+# decide COMMENT_JSON JUDGMENT_JSON -> prints {action, reason, comment, judgment}
+decide() {
+  jq -n --argjson comment "$1" --argjson judgment "$2" \
+    --argjson rel_at "$RELEVANT_AT" --argjson irr_at "$IRRELEVANT_AT" --argjson conf_at "$SENTIMENT_CONFIDENCE_AT" '
+    def fixed2: (. * 100 | round) as $n | "\($n / 100 | floor).\($n % 100 | tostring | if length < 2 then "0" + . else . end)";
+    $judgment.relevant as $r | $judgment.sentiment_confidence as $c |
+    (if $r <= $irr_at then {action: "ignore", reason: "relevant=\($r | fixed2)"}
+     elif $r < $rel_at then {action: "review", reason: "relevance unclear at \($r | fixed2)"}
+     elif $c < $conf_at then {action: "review", reason: "sentiment \($judgment.sentiment) at confidence \($c | fixed2)"}
+     else {action: "record", reason: "\($judgment.sentiment) at confidence \($c | fixed2)"} end)
+    + {comment: $comment, judgment: $judgment}'
+}
+```
+
+</CodeGroup>
+
 To tune the thresholds, start from the review queue. If reviewers agree with Jev's sentiment on nearly every item that landed in review for low confidence, lower `SENTIMENT_CONFIDENCE_AT` to `0.5`. If recorded comments turn out to be off topic, raise `RELEVANT_AT` to `0.9`. The `judgment` stays on every decision, so you can re-run `decide` with new thresholds against the stored judgments without paying for Jev again.
 
 ## 4. Produce the decision list
 
 The last step runs the whole batch and prints the result. `triage` judges every comment in parallel and routes each one with the rule from step 3. After that the script prints one summary line with the number of comments in the batch, the ScrapeCreators credits spent to fetch them, the total Jev cost, and the Jev cost per 1,000 comments. Then the decisions follow, grouped by action. The empty-batch check makes a fetch that returns nothing fail plainly, instead of printing a meaningless cost per 1,000.
+
+<CodeGroup>
 
 ```typescript
 async function triage(comments: Comment[]): Promise<Decision[]> {
@@ -255,6 +548,111 @@ for (const action of ['record', 'review', 'ignore'] as const) {
   }
 }
 ```
+
+```python title="Python" lines
+import asyncio
+import json
+
+
+async def triage(comments: list[Comment]) -> list[Decision]:
+    # judge_comment is a blocking function, so run each call in a worker thread
+    judgments = await asyncio.gather(*(asyncio.to_thread(judge_comment, comment) for comment in comments))
+    return [decide(comment, judgment) for comment, judgment in zip(comments, judgments)]
+
+
+reddit = fetch_reddit_comments("openrouter")
+youtube = fetch_youtube_comments("https://www.youtube.com/watch?v=3nM_gAVnOBo")
+decisions = asyncio.run(triage(reddit["comments"] + youtube["comments"]))
+if not decisions:
+    raise RuntimeError("No comments fetched, so there is nothing to triage")
+total_cost = sum(d["judgment"]["cost"] for d in decisions)
+print(json.dumps({"comments": len(decisions), "scrapecreators_credits": reddit["credits"] + youtube["credits"], "jev_cost_usd": total_cost, "per_1k_usd": total_cost / len(decisions) * 1000}, indent=2))
+for action in ("record", "review", "ignore"):
+    group = [d for d in decisions if d["action"] == action]
+    print(f"\n== {action} ({len(group)})")
+    for d in group:
+        print(json.dumps({"source": d["comment"]["source"], "url": d["comment"]["url"], "reason": d["reason"], "judgment": d["judgment"], "text": d["comment"]["text"][:160]}, indent=1))
+
+```
+
+```go title="Go" lines
+func triage(ctx context.Context, comments []Comment) ([]Decision, error) {
+	judgments := make([]Judgment, len(comments))
+	errs := make([]error, len(comments))
+	var wg sync.WaitGroup
+	for i, c := range comments {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			judgments[i], errs[i] = judgeComment(ctx, c)
+		}()
+	}
+	wg.Wait()
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
+	}
+	list := make([]Decision, len(comments))
+	for i, c := range comments {
+		list[i] = decide(c, judgments[i])
+	}
+	return list, nil
+}
+
+func main() {
+	ctx := context.Background()
+	reddit, err := fetchRedditComments(ctx, "openrouter")
+	if err != nil {
+		log.Fatal(err)
+	}
+	youtube, err := fetchYouTubeComments(ctx, "https://www.youtube.com/watch?v=3nM_gAVnOBo")
+	if err != nil {
+		log.Fatal(err)
+	}
+	list, err := triage(ctx, append(reddit.Comments, youtube.Comments...))
+	if err != nil {
+		log.Fatal(err)
+	}
+	if len(list) == 0 {
+		log.Fatal("No comments fetched, so there is nothing to triage")
+	}
+	totalCost := 0.0
+	for _, d := range list {
+		totalCost += d.Judgment.Cost
+	}
+	summary, _ := json.MarshalIndent(struct {
+		Comments              int     `json:"comments"`
+		ScrapeCreatorsCredits int     `json:"scrapecreators_credits"`
+		JevCostUSD            float64 `json:"jev_cost_usd"`
+		Per1kUSD              float64 `json:"per_1k_usd"`
+	}{len(list), reddit.Credits + youtube.Credits, totalCost, totalCost / float64(len(list)) * 1000}, "", "  ")
+	fmt.Println(string(summary))
+	for _, action := range []string{"record", "review", "ignore"} {
+		var group []Decision
+		for _, d := range list {
+			if d.Action == action {
+				group = append(group, d)
+			}
+		}
+		fmt.Printf("\n== %s (%d)\n", action, len(group))
+		for _, d := range group {
+			text := []rune(d.Comment.Text)
+			if len(text) > 160 {
+				text = text[:160]
+			}
+			out, _ := json.MarshalIndent(struct {
+				Source   string   `json:"source"`
+				URL      string   `json:"url"`
+				Reason   string   `json:"reason"`
+				Judgment Judgment `json:"judgment"`
+				Text     string   `json:"text"`
+			}{d.Comment.Source, d.Comment.URL, d.Reason, d.Judgment, string(text)}, "", " ")
+			fmt.Println(string(out))
+		}
+	}
+}
+```
+
+</CodeGroup>
 
 ## Worked example
 

@@ -86,25 +86,143 @@ Do not strip every suffix. Stripping `:free` resolves to the paid entry, which c
 
 The single-model and endpoint lookup routes accept any suffix and apply this rule server-side, so a client can pass the requested ID through unchanged:
 
+<CodeGroup>
+
 ```bash lines
 # Routing variants resolve to the base entry
 curl "https://openrouter.ai/api/v1/model/openai/gpt-5.2:nitro"
 # -> { "data": { "id": "openai/gpt-5.2", ... } }
 
+# Pick a catalog variant (a :free entry) from the live model list
+FREE_ID=$(curl -s "https://openrouter.ai/api/v1/models" | jq -r '[.data[].id | select(endswith(":free"))][0]')
+
 # Catalog variants resolve to their own entry
-curl "https://openrouter.ai/api/v1/model/poolside/laguna-s-2.1:free"
-# -> { "data": { "id": "poolside/laguna-s-2.1:free", ... } }
+curl "https://openrouter.ai/api/v1/model/$FREE_ID"
+# -> { "data": { "id": "<vendor>/<model>:free", ... } }
 
 # Mixed IDs keep the catalog variant and drop the routing variants
-curl "https://openrouter.ai/api/v1/model/poolside/laguna-s-2.1:free:nitro"
-# -> { "data": { "id": "poolside/laguna-s-2.1:free", ... } }
+curl "https://openrouter.ai/api/v1/model/$FREE_ID:nitro"
+# -> { "data": { "id": "<vendor>/<model>:free", ... } }
 
 # Endpoint listings behave the same way
 curl "https://openrouter.ai/api/v1/models/openai/gpt-5.2:nitro/endpoints"
 # -> { "data": { "id": "openai/gpt-5.2", "endpoints": [ ... ] } }
 ```
 
+```typescript title="TypeScript" lines
+const get = async (path: string) =>
+  (await fetch(`https://openrouter.ai/api/v1${path}`)).json();
+
+// Routing variants resolve to the base entry
+console.log(JSON.stringify(await get("/model/openai/gpt-5.2:nitro")));
+// -> { "data": { "id": "openai/gpt-5.2", ... } }
+
+// Pick a catalog variant (a :free entry) from the live model list
+const { data: models } = await get("/models");
+const freeId: string = models
+  .map((m: { id: string }) => m.id)
+  .find((id: string) => id.endsWith(":free"));
+
+// Catalog variants resolve to their own entry
+console.log(JSON.stringify(await get(`/model/${freeId}`)));
+// -> { "data": { "id": "<vendor>/<model>:free", ... } }
+
+// Mixed IDs keep the catalog variant and drop the routing variants
+console.log(JSON.stringify(await get(`/model/${freeId}:nitro`)));
+// -> { "data": { "id": "<vendor>/<model>:free", ... } }
+
+// Endpoint listings behave the same way
+console.log(JSON.stringify(await get("/models/openai/gpt-5.2:nitro/endpoints")));
+// -> { "data": { "id": "openai/gpt-5.2", "endpoints": [ ... ] } }
+```
+
+```python title="Python" lines
+import requests
+
+BASE = "https://openrouter.ai/api/v1"
+
+# Routing variants resolve to the base entry
+print(requests.get(f"{BASE}/model/openai/gpt-5.2:nitro").text)
+# -> { "data": { "id": "openai/gpt-5.2", ... } }
+
+# Pick a catalog variant (a :free entry) from the live model list
+models = requests.get(f"{BASE}/models").json()["data"]
+free_id = next(m["id"] for m in models if m["id"].endswith(":free"))
+
+# Catalog variants resolve to their own entry
+print(requests.get(f"{BASE}/model/{free_id}").text)
+# -> { "data": { "id": "<vendor>/<model>:free", ... } }
+
+# Mixed IDs keep the catalog variant and drop the routing variants
+print(requests.get(f"{BASE}/model/{free_id}:nitro").text)
+# -> { "data": { "id": "<vendor>/<model>:free", ... } }
+
+# Endpoint listings behave the same way
+print(requests.get(f"{BASE}/models/openai/gpt-5.2:nitro/endpoints").text)
+# -> { "data": { "id": "openai/gpt-5.2", "endpoints": [ ... ] } }
+```
+
+```go title="Go" lines
+get := func(path string) []byte {
+	resp, err := http.Get("https://openrouter.ai/api/v1" + path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return body
+}
+
+// Routing variants resolve to the base entry
+fmt.Print(string(get("/model/openai/gpt-5.2:nitro")))
+// -> { "data": { "id": "openai/gpt-5.2", ... } }
+
+// Pick a catalog variant (a :free entry) from the live model list
+var list struct {
+	Data []struct {
+		ID string `json:"id"`
+	} `json:"data"`
+}
+if err := json.Unmarshal(get("/models"), &list); err != nil {
+	log.Fatal(err)
+}
+freeID := ""
+for _, m := range list.Data {
+	if strings.HasSuffix(m.ID, ":free") {
+		freeID = m.ID
+		break
+	}
+}
+
+// Catalog variants resolve to their own entry
+fmt.Print(string(get("/model/" + freeID)))
+// -> { "data": { "id": "<vendor>/<model>:free", ... } }
+
+// Mixed IDs keep the catalog variant and drop the routing variants
+fmt.Print(string(get("/model/" + freeID + ":nitro")))
+// -> { "data": { "id": "<vendor>/<model>:free", ... } }
+
+// Endpoint listings behave the same way
+fmt.Print(string(get("/models/openai/gpt-5.2:nitro/endpoints")))
+// -> { "data": { "id": "openai/gpt-5.2", "endpoints": [ ... ] } }
+```
+
+</CodeGroup>
+
+```text title="Output"
+{"data":{"id":"openai/gpt-5.2","canonical_slug":"openai/gpt-5.2-20251211","hugging_face_id":"","name":"OpenAI: GPT-5.2","created":1765389775,"description":"GPT-5.2 is the latest frontier-grade model in the GPT-5 series, offering stronger agentic and long context perfomance compared to GPT-5.1. It uses adaptive reasoning to allocate computation dynamically, responding quickly...","context_length":400000,"architecture":{"modality":"text+image+file->text","input_modalities":["file","image","text"],"output_modalities":["text"],"tokenizer":"GPT","instruct_type":null},"pricing":{"prompt":"0.00000175","completion":"0.000014","web_search":"0.01","input_cache_read":"0.000000175"},"top_provider":{"context_length":400000,"max_completion_tokens":128000,"is_moderated":true},"per_request_limits":null,"supported_parameters":["include_reasoning","max_completion_tokens","max_tokens","reasoning","reasoning_effort","response_format","seed","structured_outputs","tool_choice","tools","verbosity"],"default_parameters":{"temperature":null,"top_p":null,"top_k":null,"frequency_penalty":null,"presence_penalty":null,"repetition_penalty":null},"supported_voices":null,"knowledge_cutoff":null,"expiration_date":null,"links":{"details":"/api/v1/models/openai/gpt-5.2-20251211/endpoints"},"endpoints":["/api/v1/chat/completions","/api/v1/completions","/api/v1/messages","/api/v1/responses"],"benchmarks":{"design_arena":[{"arena":"models","category":"website","elo":1186,"win_rate":54.4,"rank":71},{"arena":"agents","category":"androidnative","elo":1046,"win_rate":49.1,"rank":38},{"arena":"agents","category":"fullstack","elo":1016,"win_rate":44.2,"rank":40},{"arena":"agents","category":"godotgamedev","elo":1142,"win_rate":48.1,"rank":20},{"arena":"agents","category":"mobileapps","elo":1085,"win_rate":46.8,"rank":45},{"arena":"agents","category":"webapps","elo":1067,"win_rate":45.5,"rank":42},{"arena":"models","category":"3d","elo":1059,"win_rate":41.5,"rank":109},{"arena":"models","category":"codecategories","elo":1158,"win_rate":49.6,"rank":82},{"arena":"models","category":"dataviz","elo":1202,"win_rate":56.1,"rank":57},{"arena":"models","category":"gamedev","elo":1184,"win_rate":56,"rank":65},{"arena":"models","category":"uicomponent","elo":1179,"win_rate":51.3,"rank":71},{"arena":"models","category":"asciiart","elo":1136,"win_rate":50.7,"rank":46},{"arena":"models","category":"svg","elo":1128,"win_rate":53.7,"rank":60}]},"reasoning":{"mandatory":false,"supported_efforts":["xhigh","high","medium","low","none"],"default_effort":"medium"}}}
+{"data":{"id":"inclusionai/ling-3.2-flash:free","canonical_slug":"inclusionai/ling-3.2-flash-20261113","hugging_face_id":"inclusionAI/Ling-3.2-flash","name":"inclusionAI: Ling 3.2 Flash (free)","created":1794591958,"description":"Ling 3.2 Flash is a hybrid reasoning model from inclusionAI that accepts text and image input, with a 1M-token context window and up to 200 images per request. Thinking can...","context_length":1048576,"architecture":{"modality":"text+image->text","input_modalities":["text","image"],"output_modalities":["text"],"tokenizer":"Other","instruct_type":null},"pricing":{"prompt":"0","completion":"0"},"top_provider":{"context_length":1048576,"max_completion_tokens":262144,"is_moderated":false},"per_request_limits":null,"supported_parameters":["frequency_penalty","include_reasoning","max_tokens","presence_penalty","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_k","top_p"],"default_parameters":{},"supported_voices":null,"knowledge_cutoff":null,"expiration_date":null,"links":{"details":"/api/v1/models/inclusionai/ling-3.2-flash-20261113/endpoints"},"endpoints":["/api/v1/chat/completions","/api/v1/completions","/api/v1/messages","/api/v1/responses"],"reasoning":{"mandatory":false,"default_enabled":true}}}
+{"data":{"id":"inclusionai/ling-3.2-flash:free","canonical_slug":"inclusionai/ling-3.2-flash-20261113","hugging_face_id":"inclusionAI/Ling-3.2-flash","nam
+…[1825 chars clipped]…
+b_search":"0.01","input_cache_read":"0.0000000875","discount":0},"provider_name":"OpenAI","tag":"openai/flex","service_tier":"flex","quantization":"unknown","max_completion_tokens":128000,"max_prompt_tokens":272000,"supported_parameters":["reasoning","include_reasoning","seed","max_tokens","response_format","structured_outputs","tools","tool_choice","verbosity","reasoning_effort"],"supports_tool_choice":{"none":true,"auto":true,"required":true,"function":true},"status":0,"uptime_last_30m":null,"uptime_last_5m":null,"uptime_last_1d":100,"supports_implicit_caching":true,"native_tools":{"openrouter:web_search":{"type":"web_search"},"openrouter:apply_patch":{"type":"apply_patch"}},"supports_voice_cloning":false,"supports_multiple_audio_references":false,"supports_image_reference":false,"supports_diarization":false,"latency_last_30m":null,"throughput_last_30m":null},{"name":"Azure | openai/gpt-5.2-20251211","model_id":"openai/gpt-5.2","model_name":"OpenAI: GPT-5.2","context_length":400000,"pricing":{"prompt":"0.00000175","completion":"0.000014","web_search":"0.01","input_cache_read":"0.000000175","discount":0},"provider_name":"Azure","tag":"azure","service_tier":null,"quantization":"unknown","max_completion_tokens":128000,"max_prompt_tokens":272000,"supported_parameters":["reasoning","include_reasoning","structured_outputs","response_format","max_completion_tokens","tools","tool_choice","seed","verbosity","reasoning_effort"],"supports_tool_choice":{"none":true,"auto":true,"required":true,"function":true},"status":0,"uptime_last_30m":100,"uptime_last_5m":100,"uptime_last_1d":100,"supports_implicit_caching":true,"native_tools":{"openrouter:apply_patch":{"type":"apply_patch"}},"supports_voice_cloning":false,"supports_multiple_audio_references":false,"supports_image_reference":false,"supports_diarization":false,"latency_last_30m":null,"throughput_last_30m":null},{"name":"OpenAI | openai/gpt-5.2-20251211","model_id":"openai/gpt-5.2","model_name":"OpenAI: GPT-5.2","context_length":400000,"pricing":{"prompt":"0.00000175","completion":"0.000014","web_search":"0.01","input_cache_read":"0.000000175","discount":0},"provider_name":"OpenAI","tag":"openai","service_tier":null,"quantization":"unknown","max_completion_tokens":128000,"max_prompt_tokens":272000,"supported_parameters":["reasoning","include_reasoning","seed","max_tokens","response_format","structured_outputs","tools","tool_choice","verbosity","reasoning_effort"],"supports_tool_choice":{"none":true,"auto":true,"required":true,"function":true},"status":0,"uptime_last_30m":100,"uptime_last_5m":100,"uptime_last_1d":100,"supports_implicit_caching":true,"native_tools":{"openrouter:web_search":{"type":"web_search"},"openrouter:apply_patch":{"type":"apply_patch"}},"supports_voice_cloning":false,"supports_multiple_audio_references":false,"supports_image_reference":false,"supports_diarization":false,"latency_last_30m":null,"throughput_last_30m":null},{"name":"OpenAI | openai/gpt-5.2-20251211","model_id":"openai/gpt-5.2","model_name":"OpenAI: GPT-5.2","context_length":400000,"pricing":{"prompt":"0.0000035","completion":"0.000028","web_search":"0.01","input_cache_read":"0.00000035","discount":0},"provider_name":"OpenAI","tag":"openai/fast","service_tier":"priority","quantization":"unknown","max_completion_tokens":128000,"max_prompt_tokens":272000,"supported_parameters":["reasoning","include_reasoning","seed","max_tokens","response_format","structured_outputs","tools","tool_choice","verbosity","reasoning_effort"],"supports_tool_choice":{"none":true,"auto":true,"required":true,"function":true},"status":0,"uptime_last_30m":null,"uptime_last_5m":null,"uptime_last_1d":100,"supports_implicit_caching":true,"native_tools":{"openrouter:web_search":{"type":"web_search"},"openrouter:apply_patch":{"type":"apply_patch"}},"supports_voice_cloning":false,"supports_multiple_audio_references":false,"supports_image_reference":false,"supports_diarization":false,"latency_last_30m":null,"throughput_last_30m":null}]}}
+```
+
 When the resolved catalog entry does not exist, for example `:free` on a model with no free entry, the single-model route returns `404` and the endpoints route returns `200` with `"endpoints": []`. Treat either as an unavailable model, not as a signal to retry with the base slug.
+
+<CodeGroup>
 
 ```bash lines
 curl "https://openrouter.ai/api/v1/model/openai/gpt-5.2:free"
@@ -113,6 +231,55 @@ curl "https://openrouter.ai/api/v1/model/openai/gpt-5.2:free"
 curl "https://openrouter.ai/api/v1/models/openai/gpt-5.2:free/endpoints"
 # -> { "data": { "id": "openai/gpt-5.2:free", "endpoints": [] } }
 ```
+
+```typescript title="TypeScript" lines
+// Catalog variants that do not exist are unavailable, not a fallback to the base slug
+console.log(JSON.stringify(await get("/model/openai/gpt-5.2:free")));
+// -> 404
+
+console.log(JSON.stringify(await get("/models/openai/gpt-5.2:free/endpoints")));
+// -> { "data": { "id": "openai/gpt-5.2:free", "endpoints": [] } }
+```
+
+```python title="Python" lines
+import requests
+
+# Catalog variant with no entry: single-model route returns 404
+print(requests.get(f"{BASE}/model/openai/gpt-5.2:free").text)
+# -> 404
+
+# Endpoints route returns 200 with an empty endpoint list
+print(requests.get(f"{BASE}/models/openai/gpt-5.2:free/endpoints").text)
+# -> { "data": { "id": "openai/gpt-5.2:free", "endpoints": [] } }
+```
+
+```go title="Go" lines
+// Missing catalog entries: the single-model route returns 404
+fmt.Print(string(get("/model/openai/gpt-5.2:free")))
+// -> 404
+
+// The endpoints route returns 200 with an empty list
+fmt.Print(string(get("/models/openai/gpt-5.2:free/endpoints")))
+// -> { "data": { "id": "openai/gpt-5.2:free", "endpoints": [] } }
+
+// Check the HTTP status codes of both routes
+status := func(path string) int {
+	resp, err := http.Get("https://openrouter.ai/api/v1" + path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	resp.Body.Close()
+	return resp.StatusCode
+}
+fmt.Println()
+fmt.Println("single-model route:", status("/model/openai/gpt-5.2:free"))
+// -> 404
+fmt.Println("endpoints route:", status("/models/openai/gpt-5.2:free/endpoints"))
+// -> 200
+
+```
+
+</CodeGroup>
 
 ### Offering routing variants in a model picker
 

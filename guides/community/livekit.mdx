@@ -52,6 +52,15 @@ session = AgentSession(
 )
 ```
 
+```go title="Go" lines
+// LiveKit Agents has no Go SDK, so create the OpenRouter LLM client directly
+llm := openrouter.New(
+	openrouter.WithSecurity(os.Getenv("OPENROUTER_API_KEY")),
+)
+model := "anthropic/claude-sonnet-4.5"
+// ... pass llm and model to your agent along with tts, stt, vad, turn_detection, etc.
+```
+
 </CodeGroup>
 
 ### Advanced Features
@@ -63,18 +72,116 @@ Configure multiple fallback models to use if the primary model is unavailable:
 <CodeGroup>
 
 ```python title="Python" lines
-from livekit.plugins import openai
+# The LiveKit plugin can't run here, so call OpenRouter directly with the same fallback configuration
+import os
 
-llm = openai.LLM.with_openrouter(
-    model="openai/gpt-4o",
-    fallback_models=[
-        "~anthropic/claude-sonnet-latest",
-        "openai/gpt-5-mini",
+from openrouter import OpenRouter
+
+with OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"]) as client:
+    res = client.chat.send(
+        model="openai/gpt-4o",
+        # Fallback models are tried in order if the primary model is unavailable
+        models=[
+            "openai/gpt-4o",
+            "anthropic/claude-sonnet-4.5",
+            "openai/gpt-5-mini",
+        ],
+        messages=[{"role": "user", "content": "Say hello in one short sentence."}],
+    )
+
+    print("Model that answered:", res.model)
+    print(res.choices[0].message.content)
+
+```
+
+```typescript title="TypeScript" lines
+// The LiveKit plugin can't run here, so call OpenRouter directly with the same fallback configuration
+import { OpenRouter } from "@openrouter/sdk";
+
+const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const res = await client.chat.send({
+  chatRequest: {
+    model: "openai/gpt-4o",
+    // Fallback models are tried in order if the primary model is unavailable
+    models: [
+      "openai/gpt-4o",
+      "anthropic/claude-sonnet-4.5",
+      "openai/gpt-5-mini",
     ],
+    messages: [{ role: "user", content: "Say hello in one short sentence." }],
+  },
+});
+
+console.log("Model that answered:", res.model);
+console.log(res.choices[0].message.content);
+
+```
+
+```go title="Go" lines
+// The LiveKit plugin can't run here, so call OpenRouter directly with the same fallback configuration
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
 )
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o",
+		// Fallback models are tried in order if the primary model is unavailable
+		"models": []string{
+			"openai/gpt-4o",
+			"anthropic/claude-sonnet-4.5",
+			"openai/gpt-5-mini",
+		},
+		"messages": []map[string]string{
+			{"role": "user", "content": "Say hello in one short sentence."},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var res struct {
+		Model   string `json:"model"`
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		log.Fatal(err)
+	}
+	if len(res.Choices) == 0 {
+		log.Fatalf("no choices returned (status %d)", resp.StatusCode)
+	}
+
+	fmt.Println("Model that answered:", res.Model)
+	fmt.Println(res.Choices[0].Message.Content)
+}
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Model that answered: openai/gpt-4o
+Hello! How are you doing today?
+```
 
 #### Provider Routing
 
@@ -83,19 +190,130 @@ Control which providers are used for model inference:
 <CodeGroup>
 
 ```python title="Python" lines
-from livekit.plugins import openai
+# The LiveKit plugin can't run here, so call OpenRouter directly with the same provider routing configuration
+import os
 
-llm = openai.LLM.with_openrouter(
-    model="deepseek/deepseek-chat-v3.1",
-    provider={
-        "order": ["novita/fp8", "gmicloud/fp8", "google-vertex"],
-        "allow_fallbacks": True,
-        "sort": "latency",
+from openrouter import OpenRouter
+
+with OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"]) as client:
+    res = client.chat.send(
+        model="deepseek/deepseek-chat-v3.1",
+        provider={
+            "order": ["deepinfra/fp4", "siliconflow/fp8", "coreweave/fp8"],
+            "allow_fallbacks": True,
+            "sort": "latency",
+        },
+        messages=[{"role": "user", "content": "Say hello in one short sentence."}],
+    )
+
+    print("Model that answered:", res.model)
+    print(res.choices[0].message.content)
+
+```
+
+```typescript title="TypeScript" lines
+// The LiveKit plugin can't run here, so call OpenRouter directly with the same provider routing configuration
+import { OpenRouter } from "@openrouter/sdk";
+
+const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const res = await client.chat.send({
+  chatRequest: {
+    model: "deepseek/deepseek-chat-v3.1",
+    provider: {
+      order: ["deepinfra/fp4", "siliconflow/fp8", "coreweave/fp8"],
+      allowFallbacks: true,
+      sort: "latency",
     },
+    messages: [{ role: "user", content: "Say hello in one short sentence." }],
+  },
+});
+
+console.log("Model that answered:", res.model);
+console.log(res.choices[0].message.content);
+
+```
+
+```go title="Go" lines
+// The LiveKit plugin can't run here, so call OpenRouter directly with the same provider routing configuration
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
 )
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "deepseek/deepseek-chat-v3.1",
+		"provider": map[string]any{
+			"order":           []string{"deepinfra/fp4", "siliconflow/fp8", "coreweave/fp8"},
+			"allow_fallbacks": true,
+			"sort":            "latency",
+		},
+		"messages": []map[string]string{
+			{"role": "user", "content": "Say hello in one short sentence."},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var res struct {
+		Model   string `json:"model"`
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		log.Fatal(err)
+	}
+	if len(res.Choices) == 0 {
+		log.Fatalf("no choices returned (status %d)", resp.StatusCode)
+	}
+
+	fmt.Println("Model that answered:", res.Model)
+	fmt.Println(res.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+# The LiveKit plugin can't run here, so call OpenRouter directly with the same provider routing configuration
+curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "deepseek/deepseek-chat-v3.1",
+    "provider": {
+      "order": ["deepinfra/fp4", "siliconflow/fp8", "coreweave/fp8"],
+      "allow_fallbacks": true,
+      "sort": "latency"
+    },
+    "messages": [{"role": "user", "content": "Say hello in one short sentence."}]
+  }' | jq -r '"Model that answered: " + .model, .choices[0].message.content'
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Model that answered: deepseek/deepseek-chat-v3.1
+Hello!
+```
 
 #### Web Search Plugin
 
@@ -104,20 +322,114 @@ Enable OpenRouter's web search capabilities:
 <CodeGroup>
 
 ```python title="Python" lines
-from livekit.plugins import openai
+# The LiveKit plugin can't run here, so call OpenRouter directly with the same web search plugin configuration
+import os
 
-llm = openai.LLM.with_openrouter(
-    model="google/gemini-3-flash-preview",
-    plugins=[
-        openai.OpenRouterWebPlugin(
-            max_results=5,
-            search_prompt="Search for relevant information",
-        )
+from openrouter import OpenRouter
+
+with OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"]) as client:
+    res = client.chat.send(
+        model="google/gemini-3-flash-preview",
+        plugins=[
+            {
+                "id": "web",
+                "max_results": 5,
+                "search_prompt": "Search for relevant information",
+            }
+        ],
+        messages=[{"role": "user", "content": "What is the latest news about LiveKit? Answer in two sentences."}],
+    )
+
+    print(res.choices[0].message.content)
+
+```
+
+```typescript title="TypeScript" lines
+// The LiveKit plugin can't run here, so call OpenRouter directly with the same web search plugin configuration
+import { OpenRouter } from "@openrouter/sdk";
+
+const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const res = await client.chat.send({
+  chatRequest: {
+    model: "google/gemini-3-flash-preview",
+    plugins: [
+      {
+        id: "web",
+        maxResults: 5,
+        searchPrompt: "Search for relevant information",
+      },
     ],
+    messages: [{ role: "user", content: "What is the latest news about LiveKit? Answer in two sentences." }],
+  },
+});
+
+console.log(res.choices[0].message.content);
+
+```
+
+```go title="Go" lines
+// The LiveKit plugin can't run here, so call OpenRouter directly with the same web search plugin configuration
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
 )
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "google/gemini-3-flash-preview",
+		"plugins": []map[string]any{
+			{
+				"id":            "web",
+				"max_results":   5,
+				"search_prompt": "Search for relevant information",
+			},
+		},
+		"messages": []map[string]string{
+			{"role": "user", "content": "What is the latest news about LiveKit? Answer in two sentences."},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var res struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		log.Fatal(err)
+	}
+	if len(res.Choices) == 0 {
+		log.Fatalf("no choices returned (status %d)", resp.StatusCode)
+	}
+
+	fmt.Println(res.Choices[0].Message.Content)
+}
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+As of November 2026, LiveKit has reached a $1.45 billion valuation following a $40 million Series C-1 funding round in August, further solidifying its position as a leading open-source infrastructure for real-time AI agents. Recent technical updates include the release of **LiveKit Agents 1.8**, which introduced a high-performance audio turn detector and adaptive interruption handling, alongside the new **LiveKit Cloud API** that allows coding agents to manage cloud resources directly.
+```
 
 #### Analytics Integration
 
@@ -135,7 +447,98 @@ llm = openai.LLM.with_openrouter(
 )
 ```
 
+```typescript title="TypeScript" lines
+// The LiveKit plugin can't run here, so call OpenRouter directly with the same analytics configuration
+import { OpenRouter } from "@openrouter/sdk";
+
+const client = new OpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  httpReferer: "https://myapp.com",
+  appTitle: "My Voice Agent",
+});
+
+const res = await client.chat.send({
+  chatRequest: {
+    model: "openrouter/auto",
+    messages: [{ role: "user", content: "Say hello in one short sentence." }],
+  },
+});
+
+console.log(res.choices[0].message.content);
+
+```
+
+```go title="Go" lines
+// The LiveKit plugin can't run here, so call OpenRouter directly with the same analytics headers
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openrouter/auto",
+		"messages": []map[string]string{
+			{"role": "user", "content": "Say hello in one short sentence."},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("HTTP-Referer", "https://myapp.com") // site_url
+	req.Header.Set("X-Title", "My Voice Agent")         // app_name
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var res struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		log.Fatal(err)
+	}
+	if len(res.Choices) == 0 {
+		log.Fatalf("no choices returned (status %d)", resp.StatusCode)
+	}
+
+	fmt.Println(res.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+# The LiveKit plugin can't run here, so call OpenRouter directly with the same site and app attribution
+curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "HTTP-Referer: https://myapp.com" \
+  -H "X-Title: My Voice Agent" \
+  -d '{
+    "model": "openrouter/auto",
+    "messages": [{"role": "user", "content": "Say hello in one short sentence."}]
+  }' | jq -r '.choices[0].message.content'
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Hello!
+```
 
 ### Resources
 

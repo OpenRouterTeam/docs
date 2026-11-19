@@ -174,10 +174,38 @@ POST https://openrouter.ai/api/v1/batches
 <CodeGroup>
 
 ```shell title="Shell" lines
-curl https://openrouter.ai/api/v1/batches \
+# Demo requests go in a temporary file so the batch.json you built above is left alone.
+# To submit your own file instead, skip this step and pass -d @batch.json.
+demo_batch="$(mktemp)"
+trap 'rm -f "$demo_batch"' EXIT
+
+cat > "$demo_batch" <<'EOF'
+{
+  "endpoint": "/v1/responses",
+  "model": "anthropic/claude-haiku-5.5",
+  "requests": [
+    {
+      "custom_id": "request-1",
+      "body": {
+        "model": "anthropic/claude-haiku-5.5",
+        "input": "What is the capital of France?"
+      }
+    },
+    {
+      "custom_id": "request-2",
+      "body": {
+        "model": "anthropic/claude-haiku-5.5",
+        "input": "Write a haiku about the ocean."
+      }
+    }
+  ]
+}
+EOF
+
+curl --fail-with-body https://openrouter.ai/api/v1/batches \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
-  -d @batch.json
+  -d @"$demo_batch"
 ```
 
 ```typescript title="TypeScript (fetch)" lines
@@ -228,6 +256,47 @@ response = requests.post(
 )
 response.raise_for_status()
 batch = response.json()
+```
+
+```go title="Go" lines
+body := `{
+  "endpoint": "/v1/responses",
+  "model": "anthropic/claude-haiku-5.5",
+  "requests": [
+    {
+      "custom_id": "request-1",
+      "body": {
+        "model": "anthropic/claude-haiku-5.5",
+        "input": "What is the capital of France?"
+      }
+    },
+    {
+      "custom_id": "request-2",
+      "body": {
+        "model": "anthropic/claude-haiku-5.5",
+        "input": "Write a haiku about the ocean."
+      }
+    }
+  ]
+}`
+
+req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/batches", strings.NewReader(body))
+req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+req.Header.Set("Content-Type", "application/json")
+
+resp, err := http.DefaultClient.Do(req)
+if err != nil {
+	log.Fatal(err)
+}
+defer resp.Body.Close()
+out, err := io.ReadAll(resp.Body)
+if err != nil {
+	log.Fatal(err) // a partial body is not a usable response
+}
+if resp.StatusCode >= 400 {
+	log.Fatalf("%s: %s", resp.Status, out)
+}
+fmt.Println(string(out))
 ```
 
 </CodeGroup>
@@ -307,7 +376,9 @@ const app = express();
 const signingSecret = process.env.OPENROUTER_WEBHOOK_SECRET;
 if (!signingSecret) throw new Error('Set OPENROUTER_WEBHOOK_SECRET');
 
-function isValidSignature(rawBody: Buffer, header: string): boolean {
+function isValidSignature(rawBody: unknown, header: string): boolean {
+  // express.raw only parses application/json, so any other Content-Type leaves a non-Buffer body.
+  if (!Buffer.isBuffer(rawBody)) return false;
   const parts = header.split(',').map((part) => part.trim());
   const timestamp = parts.find((part) => part.startsWith('t='))?.slice(2);
   const signature = parts.find((part) => part.startsWith('v1='))?.slice(3);
@@ -320,7 +391,9 @@ function isValidSignature(rawBody: Buffer, header: string): boolean {
     .createHmac('sha256', signingSecret)
     .update(Buffer.concat([Buffer.from(`${timestamp},`, 'utf8'), rawBody]))
     .digest('hex');
-  if (expected.length !== signature.length) return false;
+  // The v1 value must be a 64-character hex digest. Reject anything else before
+  // comparing, because timingSafeEqual throws when the byte lengths differ.
+  if (!/^[0-9a-f]{64}$/.test(signature)) return false;
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
 }
 
@@ -390,10 +463,51 @@ While a batch is `in_progress`, `request_counts.completed` and `request_counts.f
 
 To check many batches at once, list them. List items have metadata only, and `results` is always `null`.
 
+<CodeGroup>
+
 ```shell title="List batches still running" lines
 curl 'https://openrouter.ai/api/v1/batches?status=validating&status=in_progress&limit=100' \
   -H "Authorization: Bearer $OPENROUTER_API_KEY"
 ```
+
+```typescript title="TypeScript" lines
+const res = await fetch(
+  'https://openrouter.ai/api/v1/batches?status=validating&status=in_progress&limit=100',
+  { headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` } },
+);
+console.log(JSON.stringify(await res.json()));
+```
+
+```python title="Python" lines
+resp = requests.get(
+    "https://openrouter.ai/api/v1/batches",
+    headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+    params=[("status", "validating"), ("status", "in_progress"), ("limit", 100)],
+)
+resp.raise_for_status()
+batches = resp.json()
+```
+
+```go title="Go" lines
+req, _ := http.NewRequest("GET", "https://openrouter.ai/api/v1/batches?status=validating&status=in_progress&limit=100", nil)
+req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+
+resp, err := http.DefaultClient.Do(req)
+if err != nil {
+	log.Fatal(err)
+}
+defer resp.Body.Close()
+out, err := io.ReadAll(resp.Body)
+if err != nil {
+	log.Fatal(err) // a partial body is not a usable response
+}
+if resp.StatusCode >= 400 {
+	log.Fatalf("%s: %s", resp.Status, out)
+}
+fmt.Println(string(out))
+```
+
+</CodeGroup>
 
 | Parameter | Description |
 |-----------|-------------|

@@ -85,7 +85,131 @@ message = next(item for item in reversed(data["output"]) if item["type"] == "mes
 print(next(part["text"] for part in message["content"] if part["type"] == "output_text"))
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o-mini",
+		"input": "Build a concurrent worker pool in Go with graceful shutdown.",
+		"tools": []map[string]any{
+			{
+				"type":       "openrouter:advisor",
+				"parameters": map[string]any{"model": "~anthropic/claude-opus-latest"},
+			},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Output []struct {
+			Type    string          `json:"type"`
+			Content json.RawMessage `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Fatal(err)
+	}
+
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type != "message" {
+			continue
+		}
+		var parts []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		}
+		json.Unmarshal(data.Output[i].Content, &parts)
+		for _, p := range parts {
+			if p.Type == "output_text" {
+				fmt.Println(p.Text)
+				break
+			}
+		}
+		break
+	}
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o-mini",
+    "input": "Build a concurrent worker pool in Go with graceful shutdown.",
+    "tools": [
+      {
+        "type": "openrouter:advisor",
+        "parameters": { "model": "~anthropic/claude-opus-latest" }
+      }
+    ]
+  }' | jq -r '[.output[] | select(.type == "message")] | last | .content[] | select(.type == "output_text") | .text'
+
+```
+
 </CodeGroup>
+
+````text title="Output"
+To build a concurrent worker pool in Go with graceful shutdown, you can follow these steps:
+
+1. **Define the Worker Pool Structure**:
+   Create a struct that will manage the pool of workers, jobs, and signals for shutdown.
+
+2. **Worker Functionality**:
+   Each worker should process jobs from a shared channel, which the main routine provides.
+
+3. **Job Handling**:
+   The jobs should also come from a channel, allowing workers to take tasks as they become available.
+
+4. **Graceful Shutdown**:
+   Use signals to listen for termination requests and ensure that all workers finish processing current jobs before shutting down.
+
+Here's an example implementation:
+
+```go
+package main
+
+import (
+    "fmt"
+    "os"
+    "os/signal"
+    "sync"
+    "syscall"
+    "time"
+)
+
+// Job represents a task to be processed
+type Job struct {
+    ID int
+}
+
+// Worker is a struct that processes jobs
+type Worker struct {
+    WorkerPool chan chan Job
+    JobChannel chan Job
+    Quit       chan bool
+}
+````
 
 ## Choosing the advisor model
 

@@ -107,7 +107,87 @@ curl https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "anthropic/claude-sonnet-4.5",
+		"input": "List the files in the current directory and show me the OS version.",
+		"tools": []map[string]any{
+			{"type": "openrouter:shell", "parameters": map[string]any{"engine": "openrouter"}},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(data))
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+{
+  id: "gen-1794950012-qBvr66WsJzSUtilTdmHa",
+  object: "response",
+  created_at: 1794950012,
+  model: "anthropic/claude-sonnet-4.5",
+  status: "completed",
+  completed_at: 1794950028,
+  output: [
+    {
+      id: "msg_tmp_lk25kz4h0w",
+      type: "message",
+      role: "assistant",
+      status: "completed",
+      content: [Array ...],
+    }, {
+      type: "openrouter:shell",
+      id: "st_tmp_2foofw1c4sf",
+      status: "completed",
+      action: [Object ...],
+      output: [Array ...],
+      container_id: "gen_453fe7911d9a",
+      call_id: "toolu_01NiP9rEbn67fjNzu8Smb3QG",
+      arguments: "{\"commands\": [\"ls -la\", \"cat /etc/os-release\"]}",
+    }, {
+      id: "rs_server_tool_round_71vxtx453q7",
+      type: "reasoning",
+      status: "completed",
+      summary: [],
+      encrypted_content: "openrouter-server-tool.eyJzZXJ2ZXJfdG9vbF9yb3VuZCI6eyJ2IjoxLCJtZW1iZXJzIjpbeyJpdGVtX2lkIjoibXNnX3RtcF9sazI1a3o0aDB3In0seyJpdGVtX2lkIjoic3RfdG1wXzJmb29mdzFjNHNmIiwiY2FsbF9pZCI6InRvb2x1XzAxTmlQOXJFYm42N2ZqTnp1OFNtYjNRRyJ9XX19",
+    },
+    {
+      id: "msg_tmp_juaf1yqamvo",
+      type: "message",
+      role: "assistant",
+      status: "completed",
+      content: [Array ...],
+    }
+  ],
+  error: null,
+  incomplete_details: null,
+```
 
 ## Configuration
 

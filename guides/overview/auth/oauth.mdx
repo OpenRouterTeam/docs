@@ -69,9 +69,62 @@ async function createSHA256CodeChallenge(input: string) {
 
 const codeVerifier = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
 const generatedCodeChallenge = await createSHA256CodeChallenge(codeVerifier);
+
+console.log('code_challenge:', generatedCodeChallenge);
+
+```
+
+```python title="Python" lines
+import base64
+import hashlib
+import secrets
+
+
+def create_sha256_code_challenge(input: str) -> str:
+    digest = hashlib.sha256(input.encode()).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+
+
+code_verifier = secrets.token_urlsafe(32)
+generated_code_challenge = create_sha256_code_challenge(code_verifier)
+
+print("code_challenge:", generated_code_challenge)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
+)
+
+func createSHA256CodeChallenge(input string) string {
+	hash := sha256.Sum256([]byte(input))
+	return base64.RawURLEncoding.EncodeToString(hash[:])
+}
+
+func main() {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		panic(err)
+	}
+	codeVerifier := base64.RawURLEncoding.EncodeToString(b)
+	generatedCodeChallenge := createSHA256CodeChallenge(codeVerifier)
+
+	fmt.Println("code_challenge:", generatedCodeChallenge)
+}
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+code_challenge: lFetiRkkBKV31iPeryPw2tHrpg70HUHOQtxEhC_cUak
+```
 
 <Note>
 Use an `https://` callback URL for hosted apps. PKCE stops a stolen code from being exchanged, but it cannot protect a page served over plain HTTP.
@@ -177,7 +230,31 @@ const logsUrl = `https://openrouter.ai/logs?api_key_hash=${keyHash}`;
 const settingsUrl = `https://openrouter.ai/keys/${keyHash}`;
 ```
 
+```bash title="cURL" lines
+KEY_HASH=$(printf '%s' "$OPENROUTER_API_KEY" | sha256sum | cut -d' ' -f1)
+LOGS_URL="https://openrouter.ai/logs?api_key_hash=$KEY_HASH"
+SETTINGS_URL="https://openrouter.ai/keys/$KEY_HASH"
+
+echo "Key hash (SHA-256, lowercase hex): $KEY_HASH"
+echo "Activity page link: $LOGS_URL"
+echo "Key settings link:  $SETTINGS_URL"
+
+# Optional: confirm both deep links resolve
+for url in "$LOGS_URL" "$SETTINGS_URL"; do
+  curl -s -o /dev/null -w "HTTP %{http_code}  %{url_effective}\n" "$url"
+done
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Key hash (SHA-256, lowercase hex): <your-api-key-hash>
+Activity page link: https://openrouter.ai/logs?api_key_hash=<your-api-key-hash>
+Key settings link:  https://openrouter.ai/keys/<your-api-key-hash>
+HTTP 307  https://openrouter.ai/logs?api_key_hash=<your-api-key-hash>
+HTTP 307  https://openrouter.ai/keys/<your-api-key-hash>
+```
 
 The links only work for the signed-in owner of the API key. If the hash does not resolve for the viewer, the page returns a `404` rather than showing unfiltered data.
 
@@ -192,8 +269,11 @@ Use the API key to [make OpenRouter requests](/api_reference/overview). It is a 
 ```typescript title="TypeScript SDK" lines
 import { OpenRouter } from '@openrouter/sdk';
 
+// The key from Step 2, loaded from your encrypted server-side store
+const key = process.env.OPENROUTER_API_KEY;
+
 const openRouter = new OpenRouter({
-  apiKey: key, // The key from Step 2
+  apiKey: key,
 });
 
 const response = await openRouter.responses.send({
@@ -210,10 +290,14 @@ if (!('output' in response)) {
 
 const message = [...response.output].reverse().find((item) => item.type === 'message');
 console.log(message?.content.find((part) => part.type === 'output_text')?.text);
+
 ```
 
 ```typescript title="TypeScript (fetch)" lines
-fetch('https://openrouter.ai/api/v1/responses', {
+// The key from Step 2, loaded from your encrypted server-side store
+const key = process.env.OPENROUTER_API_KEY;
+
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     Authorization: `Bearer ${key}`,
@@ -224,9 +308,116 @@ fetch('https://openrouter.ai/api/v1/responses', {
     input: 'Hello!',
   }),
 });
+
+if (!response.ok) {
+  throw new Error(`Request failed: ${response.status} ${await response.text()}`);
+}
+
+const data = await response.json();
+const message = [...data.output].reverse().find((item: any) => item.type === 'message');
+console.log(message?.content.find((part: any) => part.type === 'output_text')?.text);
+
+```
+
+```python title="Python" lines
+import os
+
+from openrouter import OpenRouter
+
+# The key from Step 2, loaded from your encrypted server-side store
+key = os.environ["OPENROUTER_API_KEY"]
+
+with OpenRouter(api_key=key) as open_router:
+    response = open_router.responses.send(
+        model="~openai/gpt-sol-latest",
+        input="Hello!",
+        stream=False,
+    )
+
+message = next(item for item in reversed(response.output) if item.type == "message")
+print(next(part.text for part in message.content if part.type == "output_text"))
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	// The key from Step 2, loaded from your encrypted server-side store
+	key := os.Getenv("OPENROUTER_API_KEY")
+
+	body, _ := json.Marshal(map[string]any{
+		"model":  "~openai/gpt-sol-latest",
+		"input":  "Hello!",
+		"stream": false,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("API error: %s", resp.Status)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	for i := len(result.Output) - 1; i >= 0; i-- {
+		if result.Output[i].Type == "message" {
+			for _, part := range result.Output[i].Content {
+				if part.Type == "output_text" {
+					fmt.Println(part.Text)
+					return
+				}
+			}
+		}
+	}
+}
+
+```
+
+```bash title="cURL" lines
+# The key from Step 2, loaded from your encrypted server-side store
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "~openai/gpt-sol-latest",
+    "input": "Hello!",
+    "stream": false
+  }' | jq -r '[.output[] | select(.type == "message")] | last | .content[] | select(.type == "output_text") | .text'
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Hello! How can I help?
+```
 
 ## Error Codes
 

@@ -91,6 +91,8 @@ After setting up your Mastra project, you'll need to modify the agent files to u
 
 If you used `create-mastra`, you'll likely have a file at `src/mastra/agents/agent.ts` or similar. Replace its contents with:
 
+<CodeGroup>
+
 ```typescript lines
 import { Agent } from '@mastra/core/agent';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
@@ -109,6 +111,136 @@ export const assistant = new Agent({
 });
 ```
 
+```python title="Python" lines
+import os
+from openrouter import OpenRouter
+
+# Initialize OpenRouter client
+client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+# Create an agent
+instructions = "You are a helpful assistant with expertise in technology and science."
+
+def assistant(prompt: str) -> str:
+    res = client.chat.send(
+        model="~anthropic/claude-opus-latest",
+        messages=[
+            {"role": "system", "content": instructions},
+            {"role": "user", "content": prompt},
+        ],
+    )
+    return res.choices[0].message.content
+
+# Try the agent when you run this file directly
+if __name__ == "__main__":
+    print(assistant("What is quantum computing?"))
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	// Create an agent: model + instructions
+	body, _ := json.Marshal(map[string]any{
+		"model": "~anthropic/claude-opus-latest",
+		"messages": []map[string]string{
+			{"role": "system", "content": "You are a helpful assistant with expertise in technology and science."},
+			{"role": "user", "content": "What is quantum computing?"},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+	if len(result.Choices) == 0 {
+		log.Fatalf("no choices returned (status %s)", resp.Status)
+	}
+	fmt.Println(result.Choices[0].Message.Content)
+}
+
+```
+
+</CodeGroup>
+
+Keep the agent file free of model calls. Mastra imports it every time the server starts, so a call to `generate` at the top level would send a billable request on each startup, and a failed request would stop the server from starting. To try the agent, call it from a separate script such as `src/try-agent.ts`:
+
+```typescript title="src/try-agent.ts" lines
+import { assistant } from './mastra/agents/agent';
+
+const result = await assistant.generate('What is quantum computing?');
+console.log(result.text);
+```
+
+```text title="Output"
+# Quantum Computing
+
+**Quantum computing** is a type of computation that uses the principles of quantum mechanics to process information in ways that classical computers cannot.
+
+## The Basic Idea
+
+**Classical computers** (like your laptop or phone) store information in **bits**, which are always either **0 or 1**.
+
+**Quantum computers** use **quantum bits**, or **qubits**, which behave according to quantum physics.
+
+## Key Quantum Principles
+
+### 1. Superposition
+A qubit can exist in a combination of 0 and 1 at the same time, with each outcome having a certain probability. When you measure it, it "collapses" to either 0 or 1. This lets a quantum computer represent many possible states at once: describing *n* qubits requires 2ⁿ numbers.
+
+### 2. Entanglement
+Qubits can become **entangled**, meaning their states are correlated so strongly that measuring one tells you something about the other, even at a distance. This creates correlations that have no classical equivalent.
+
+### 3. Interference
+Quantum algorithms are designed so that the probabilities of wrong answers cancel out and the probabilities of right answers reinforce each other. This is where the real computational power comes from.
+
+## What Quantum Computers Might Be Good For
+
+- **Cryptography**: Shor's algorithm could break widely used encryption (like RSA), which is driving the development of "post-quantum" cryptography.
+- **Chemistry and materials science**: Simulating molecules for drug discovery, batteries, and catalysts.
+- **Optimization**: Logistics, finance, and scheduling problems, though the size of any advantage here is still uncertain.
+- **Searching**: Grover's algorithm speeds up unstructured search, but only quadratically.
+
+## Common Misconceptions
+
+- Quantum computers **don't simply try all answers at once**. Measurement gives you only one result, so algorithms must cleverly use interference.
+- They **won't replace classical computers**. They're specialized tools for specific problems.
+- They're **not faster at everything**. For most everyday tasks, classical computers are better.
+
+## Current Challenges
+
+- **Decoherence**: Qubits are extremely fragile and lose their quantum state when disturbed by heat, vibration, or electromagnetic noise.
+- **Error rates**: Current qubits make frequent errors, so practical machines will need **quantum error correction**, which requires many physical qubits for each reliable "logical" qubit.
+- **Scaling**: Building systems with millions of high-quality qubits remains a major engineering challenge.
+- **Extreme conditions**: Many designs require cooling to near absolute zero.
+```
+
 Also make sure to update your Mastra entry point at `src/mastra/index.ts` to use your renamed agent:
 
 ```typescript lines
@@ -120,6 +252,8 @@ export const mastra = new Mastra({
   agents: { assistant }, // Use the same name here as you exported from your agent file
 });
 ```
+
+This step is specific to Mastra, which is a TypeScript framework, so it has no Python, Go, or cURL equivalent. The samples in those languages on this page call the OpenRouter API directly and need no registration.
 
 ### Step 4: Running the Application
 
@@ -148,6 +282,8 @@ curl -X POST http://localhost:4111/api/agents/assistant/generate \
 
 The simplest way to integrate OpenRouter with Mastra is by using the OpenRouter AI provider with Mastra's Agent system:
 
+<CodeGroup>
+
 ```typescript expandable lines
 import { Agent } from '@mastra/core/agent';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
@@ -175,9 +311,150 @@ const response = await assistant.generate([
 console.log(response.text);
 ```
 
+```python title="Python" lines
+import os
+from openrouter import OpenRouter
+
+# Initialize the OpenRouter client
+client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+# Create an agent using OpenRouter
+instructions = "You are a helpful assistant."
+
+def assistant(messages: list[dict]) -> str:
+    res = client.chat.send(
+        model="~anthropic/claude-opus-latest",
+        messages=[{"role": "system", "content": instructions}, *messages],
+    )
+    return res.choices[0].message.content
+
+# Generate a response
+response = assistant([
+    {
+        "role": "user",
+        "content": "Tell me about renewable energy sources.",
+    },
+])
+
+print(response)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	// Create an agent using OpenRouter: model + instructions
+	body, _ := json.Marshal(map[string]any{
+		"model": "~anthropic/claude-opus-latest",
+		"messages": []map[string]string{
+			{"role": "system", "content": "You are a helpful assistant."},
+			{"role": "user", "content": "Tell me about renewable energy sources."},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Generate a response
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+	if len(result.Choices) == 0 {
+		log.Fatalf("no choices returned (status %s)", resp.Status)
+	}
+	fmt.Println(result.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "~anthropic/claude-opus-latest",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Tell me about renewable energy sources."}
+    ]
+  }' | jq -r '.choices[0].message.content'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+# Renewable Energy Sources
+
+Renewable energy comes from natural sources that replenish themselves on a human timescale, unlike fossil fuels (coal, oil, natural gas), which take millions of years to form. Here's an overview of the main types:
+
+## ☀️ Solar Energy
+- **How it works:** Photovoltaic (PV) panels convert sunlight directly into electricity, and solar thermal systems use the sun's heat to warm water or drive turbines.
+- **Pros:** Abundant, scalable from rooftops to large solar farms, low operating costs, and rapidly falling prices.
+- **Cons:** Produces power only in daylight and is affected by weather, so it often needs storage. Large installations require significant land.
+
+## 💨 Wind Energy
+- **How it works:** Turbines capture the kinetic energy of moving air and turn a generator.
+- **Types:** Onshore (on land) and offshore (at sea, where winds are stronger and steadier).
+- **Pros:** Among the cheapest sources of new electricity, with a small land footprint per turbine.
+- **Cons:** Output varies with wind, and turbines raise concerns about noise, visual impact, and bird and bat deaths.
+
+## 💧 Hydropower
+- **How it works:** Flowing or falling water spins turbines, usually at dams but also in run-of-river systems.
+- **Pros:** Currently the largest source of renewable electricity worldwide. It is reliable, can be dispatched on demand, and pumped hydro can store energy.
+- **Cons:** Dams can disrupt ecosystems, fish migration, and communities, and output is vulnerable to droughts.
+
+## 🌋 Geothermal Energy
+- **How it works:** Heat from beneath Earth's surface produces steam to generate electricity or directly heats buildings. Geothermal heat pumps use stable shallow-ground temperatures for heating and cooling.
+- **Pros:** Provides constant baseload power with a small land footprint.
+- **Cons:** Large-scale power generation works best in geologically active areas (e.g., Iceland, the western US, Kenya), and upfront drilling costs are high.
+
+## 🌱 Biomass and Bioenergy
+- **How it works:** Organic material such as wood, crop waste, and manure is burned or converted into biofuels (ethanol, biodiesel) or biogas.
+- **Pros:** Can use waste products, provides dispatchable power, and can replace liquid fuels.
+- **Cons:** Sustainability depends heavily on sourcing. Burning biomass emits pollutants, and energy crops can compete with food production and forests.
+
+## 🌊 Ocean Energy
+- **Types:** Tidal power (from tides), wave power, and ocean thermal energy conversion (from temperature differences in seawater).
+- **Pros:** Tides are highly predictable.
+- **Cons:** Still mostly experimental or small-scale, with high costs and harsh marine conditions.
+
+---
+
+## Key Challenges
+- **Intermittency:** Solar and wind vary, so grids need batteries, pumped hydro, demand management, or backup sources.
+- **Infrastructure:** Expanded transmission lines and grid modernization are needed.
+```
+
 ### Advanced Configuration
 
 For more control over your OpenRouter requests, you can pass additional configuration options:
+
+<CodeGroup>
 
 ```typescript expandable lines
 import { Agent } from '@mastra/core/agent';
@@ -205,11 +482,171 @@ const chefAgent = new Agent({
   name: 'Chef',
   instructions: 'You are a chef assistant specializing in French cuisine.',
 });
+
+// Generate a response
+const response = await chefAgent.generate([
+  {
+    role: 'user',
+    content: 'Suggest a classic French dish I can cook tonight.',
+  },
+]);
+
+console.log(response.text);
+
+```
+
+```python title="Python" lines
+import os
+import requests
+
+# Advanced options sent with every request
+extra_body = {
+    "reasoning": {
+        "max_tokens": 10,
+    },
+}
+
+# Create an agent with model-specific options
+instructions = "You are a chef assistant specializing in French cuisine."
+
+def chef_agent(messages: list[dict]) -> str:
+    res = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+        json={
+            "model": "~anthropic/claude-sonnet-latest",
+            "messages": [{"role": "system", "content": instructions}, *messages],
+            **extra_body,
+        },
+    )
+    res.raise_for_status()
+    return res.json()["choices"][0]["message"]["content"]
+
+# Generate a response
+response = chef_agent([
+    {
+        "role": "user",
+        "content": "Suggest a classic French dish I can cook tonight.",
+    },
+])
+
+print(response)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	// Create an agent with model-specific options: model + instructions + reasoning
+	body, _ := json.Marshal(map[string]any{
+		"model": "~anthropic/claude-sonnet-latest",
+		"reasoning": map[string]any{
+			"max_tokens": 10,
+		},
+		"messages": []map[string]string{
+			{"role": "system", "content": "You are a chef assistant specializing in French cuisine."},
+			{"role": "user", "content": "Suggest a classic French dish I can cook tonight."},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Generate a response
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+	if len(result.Choices) == 0 {
+		log.Fatalf("no choices returned (status %s)", resp.Status)
+	}
+	fmt.Println(result.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "~anthropic/claude-sonnet-latest",
+    "reasoning": {"max_tokens": 10},
+    "messages": [
+      {"role": "system", "content": "You are a chef assistant specializing in French cuisine."},
+      {"role": "user", "content": "Suggest a classic French dish I can cook tonight."}
+    ]
+  }' | jq -r '.choices[0].message.content'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+# Coq au Vin
+
+This is a cornerstone of French home cooking: chicken braised slowly in red wine with bacon, mushrooms, and pearl onions. It's rustic and deeply flavorful, and most of the cooking time is hands-off.
+
+## Ingredients (serves 4)
+- 4 bone-in, skin-on chicken thighs and 4 drumsticks
+- 150 g (5 oz) thick-cut bacon or lardons
+- 1 bottle (750 ml) dry red wine (Burgundy Pinot Noir is traditional)
+- 250 g (8 oz) cremini mushrooms, halved
+- 12 pearl onions, peeled (or small shallots)
+- 2 carrots, sliced
+- 3-4 garlic cloves, smashed
+- 2 tbsp tomato paste
+- 2 tbsp flour
+- 1 cup (240 ml) chicken stock
+- 3 thyme sprigs, 2 bay leaves, a handful of parsley
+- 2 tbsp butter, plus olive oil
+- Salt and pepper
+
+## Method
+1. **Brown the bacon** in a Dutch oven until crisp. Remove it, leaving the fat.
+2. **Sear the chicken**, seasoned well, in the bacon fat until deeply golden, about 4-5 minutes per side. Set aside.
+3. **Sauté the carrots and garlic** for a few minutes, then stir in the tomato paste and flour and cook for 1 minute.
+4. **Deglaze with the wine**, scraping up the browned bits. Add the stock, thyme, and bay leaves, then return the chicken and bacon to the pot.
+5. **Braise** covered at 160°C (325°F) or on low heat for about 45-60 minutes, until the chicken is tender.
+6. **Meanwhile**, brown the onions and mushrooms in butter until golden. Add them to the pot for the last 15 minutes.
+7. **Finish** by skimming the fat and simmering uncovered for a few minutes if you want a thicker sauce. Adjust the seasoning and top with parsley.
+
+## Serving
+Serve with buttery mashed potatoes, egg noodles, or a crusty baguette to mop up the sauce. A glass of the same wine you cooked with goes well alongside.
+
+**Tip:** Cook with a wine you'd enjoy drinking. If you have time, marinate the chicken in the wine overnight for even deeper flavor.
+
+If you'd prefer something quicker, like **steak frites**, **sole meunière**, or a **croque monsieur**, I can walk you through one of those instead. What do you have on hand?
 ```
 
 ### Provider-Specific Options
 
 You can also pass provider-specific options in your requests:
+
+<CodeGroup>
 
 ```typescript lines
 // Get a response with provider-specific options
@@ -232,9 +669,122 @@ const response = await chefAgent.generate([
 ]);
 ```
 
+```python title="Python" lines
+# Get a response with provider-specific options
+response = chef_agent([
+    {
+        "role": "system",
+        "content": [
+            {
+                "type": "text",
+                "text": "You are Chef Michel, a culinary expert specializing in ketogenic (keto) diet...",
+                # Provider-specific option: Anthropic prompt caching
+                "cache_control": {"type": "ephemeral"},
+            },
+        ],
+    },
+    {
+        "role": "user",
+        "content": "Can you suggest a keto breakfast?",
+    },
+])
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	// Get a response with provider-specific options
+	body, _ := json.Marshal(map[string]any{
+		"model":     "~anthropic/claude-sonnet-latest",
+		"reasoning": map[string]any{"max_tokens": 10},
+		"messages": []map[string]any{
+			{
+				"role": "system",
+				// Provider-specific options go on the content part, e.g. Anthropic prompt caching
+				"content": []map[string]any{{
+					"type":          "text",
+					"text":          "You are Chef Michel, a culinary expert specializing in ketogenic (keto) diet...",
+					"cache_control": map[string]any{"type": "ephemeral"},
+				}},
+			},
+			{
+				"role":    "user",
+				"content": "Can you suggest a keto breakfast?",
+			},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+	if len(result.Choices) == 0 {
+		log.Fatalf("no choices returned (status %s)", resp.Status)
+	}
+	response := result.Choices[0].Message.Content
+	fmt.Println(response)
+}
+
+```
+
+```bash title="cURL" lines
+# Get a response with provider-specific options
+response=$(curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "~anthropic/claude-sonnet-latest",
+    "reasoning": {"max_tokens": 10},
+    "messages": [
+      {
+        "role": "system",
+        "content": [
+          {
+            "type": "text",
+            "text": "You are Chef Michel, a culinary expert specializing in ketogenic (keto) diet...",
+            "cache_control": {"type": "ephemeral"}
+          }
+        ]
+      },
+      {"role": "user", "content": "Can you suggest a keto breakfast?"}
+    ]
+  }')
+```
+
+</CodeGroup>
+
 ### Using Multiple Models with OpenRouter
 
 OpenRouter gives you access to various models from different providers. Here's how to use multiple models:
+
+<CodeGroup>
 
 ```typescript expandable lines
 import { Agent } from '@mastra/core/agent';
@@ -273,6 +823,174 @@ const gptResponse = await gptAgent.generate([
   },
 ]);
 console.log(gptResponse.text);
+```
+
+```python title="Python" lines
+import os
+from openrouter import OpenRouter
+
+client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+
+# Create agents using different models
+def make_agent(model, instructions):
+    def generate(messages):
+        res = client.chat.send(
+            model=model,
+            messages=[{"role": "system", "content": instructions}, *messages],
+        )
+        return res.choices[0].message.content
+    return generate
+
+
+claude_agent = make_agent("~anthropic/claude-opus-latest", "You are a helpful assistant powered by Claude.")
+gpt_agent = make_agent("openai/gpt-4", "You are a helpful assistant powered by GPT-4.")
+
+# Use different agents based on your needs
+claude_response = claude_agent([
+    {"role": "user", "content": "Explain quantum mechanics simply."},
+])
+print(claude_response)
+
+gpt_response = gpt_agent([
+    {"role": "user", "content": "Explain quantum mechanics simply."},
+])
+print(gpt_response)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+// newAgent returns a function that chats with the given model and instructions
+func newAgent(model, instructions string) func(prompt string) string {
+	return func(prompt string) string {
+		body, _ := json.Marshal(map[string]any{
+			"model": model,
+			"messages": []map[string]string{
+				{"role": "system", "content": instructions},
+				{"role": "user", "content": prompt},
+			},
+		})
+
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		var result struct {
+			Choices []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
+			} `json:"choices"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			log.Fatal(err)
+		}
+		if len(result.Choices) == 0 {
+			log.Fatalf("no choices returned (status %s)", resp.Status)
+		}
+		return result.Choices[0].Message.Content
+	}
+}
+
+func main() {
+	// Create agents using different models
+	claudeAgent := newAgent("~anthropic/claude-opus-latest", "You are a helpful assistant powered by Claude.")
+	gptAgent := newAgent("openai/gpt-4", "You are a helpful assistant powered by GPT-4.")
+
+	// Use different agents based on your needs
+	fmt.Println(claudeAgent("Explain quantum mechanics simply."))
+	fmt.Println(gptAgent("Explain quantum mechanics simply."))
+}
+
+```
+
+```bash title="cURL" lines
+# Ask Claude
+curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "~anthropic/claude-opus-latest",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant powered by Claude."},
+      {"role": "user", "content": "Explain quantum mechanics simply."}
+    ]
+  }' | jq -r '.choices[0].message.content'
+
+# Ask GPT-4
+curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant powered by GPT-4."},
+      {"role": "user", "content": "Explain quantum mechanics simply."}
+    ]
+  }' | jq -r '.choices[0].message.content'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+# Quantum Mechanics, Simply Explained
+
+Quantum mechanics is the set of rules that describes how **very tiny things** behave: atoms, electrons, and particles of light (photons). At that scale, nature works very differently from what we see in everyday life.
+
+Here are the key ideas:
+
+## 1. Things come in tiny chunks ("quanta")
+Energy isn't smooth and continuous at the smallest scale. It comes in discrete packets. It's like a staircase rather than a ramp: an electron in an atom can sit on one step or another, but never in between. That's where the word "quantum" comes from.
+
+## 2. Particles act like waves (and waves act like particles)
+An electron can behave like a little ball in some experiments and like a spread-out wave in others. Light does the same thing. Neither "particle" nor "wave" fully captures what these things really are. They're something new that shows both behaviors.
+
+## 3. Superposition: being in multiple states at once
+Before you measure it, a quantum particle doesn't have one definite state. It exists in a combination of possibilities. An electron can be in a mix of "here" and "there." When you measure it, you get one definite answer.
+
+*Analogy:* A spinning coin isn't quite heads or tails until it lands. (This analogy is imperfect, because the quantum version is stranger, but it gives the flavor.)
+
+## 4. It's all about probability
+Quantum mechanics usually can't tell you exactly what will happen, only the **odds** of each outcome. This isn't because our instruments are bad. It seems to be built into nature itself.
+
+## 5. Uncertainty
+You can't know certain pairs of properties perfectly at the same time, such as a particle's exact position and its exact momentum. The more precisely you pin down one, the fuzzier the other becomes. This is Heisenberg's Uncertainty Principle.
+
+## 6. Entanglement: spooky connections
+Two particles can become linked so that measuring one instantly tells you something about the other, even if they're far apart. Einstein called this "spooky action at a distance." (It can't be used to send messages faster than light, though.)
+
+---
+
+## Why it matters
+Quantum mechanics might sound abstract, but it's behind much of modern technology:
+- **Computer chips and transistors**
+- **Lasers**
+- **MRI machines**
+- **LEDs and solar panels**
+- **Quantum computers**, which are emerging now
+
+## The bottom line
+At the tiniest scales, the universe is **chunky, fuzzy, probabilistic, and interconnected** in ways that defy common sense. Yet quantum mechanics is one of the most precisely tested theories in all of science.
+
+As physicist Richard Feynman said: *"If you think you understand quantum mechanics, you don't understand quantum mechanics."* So if it feels weird, you're getting it right!
 ```
 
 ### Resources

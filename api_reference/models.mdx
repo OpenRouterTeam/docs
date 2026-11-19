@@ -64,21 +64,180 @@ By default, `GET /api/v1/models` returns **text-output models only**. If you omi
 
 Pass `output_modalities=all` to receive the complete multi-modal catalog, or target specific capabilities:
 
+<CodeGroup>
+
 ```bash
+# Summarize each response: model count plus a few sample IDs
+summary='{model_count: (.data | length), sample_ids: [.data[:5][].id]}'
+
 # Text generation models only (default)
-curl -fsS "https://openrouter.ai/api/v1/models"
+curl -fsS "https://openrouter.ai/api/v1/models" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" | jq "$summary"
 
 # Every model across all modalities (image, video, text, speech, etc.)
-curl -fsS "https://openrouter.ai/api/v1/models?output_modalities=all"
+curl -fsS "https://openrouter.ai/api/v1/models?output_modalities=all" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" | jq "$summary"
 
 # Image generation models
-curl -fsS "https://openrouter.ai/api/v1/models?output_modalities=image"
+curl -fsS "https://openrouter.ai/api/v1/models?output_modalities=image" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" | jq "$summary"
 
 # Dedicated text-to-speech models
-curl -fsS "https://openrouter.ai/api/v1/models?output_modalities=speech"
+curl -fsS "https://openrouter.ai/api/v1/models?output_modalities=speech" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" | jq "$summary"
 
 # Dedicated speech-to-text models
-curl -fsS "https://openrouter.ai/api/v1/models?output_modalities=transcription"
+curl -fsS "https://openrouter.ai/api/v1/models?output_modalities=transcription" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" | jq "$summary"
+
+```
+
+```typescript title="TypeScript" lines
+const queries = ['', '?output_modalities=all', '?output_modalities=image', '?output_modalities=speech', '?output_modalities=transcription'];
+
+for (const query of queries) {
+  const response = await fetch(`https://openrouter.ai/api/v1/models${query}`, {
+    headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` },
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+  const { data } = await response.json();
+  // Summarize each response: model count plus a few sample IDs
+  console.log(JSON.stringify({
+    model_count: data.length,
+    sample_ids: data.slice(0, 5).map((m: { id: string }) => m.id),
+  }, null, 2));
+}
+
+```
+
+```python title="Python" lines
+import json
+import os
+
+import requests
+
+headers = {"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"}
+
+# None = text generation models only (default)
+# all = every model across all modalities (image, video, text, speech, etc.)
+# image = image generation models
+# speech = dedicated text-to-speech models
+# transcription = dedicated speech-to-text models
+for modality in [None, "all", "image", "speech", "transcription"]:
+    params = {"output_modalities": modality} if modality else {}
+    response = requests.get(
+        "https://openrouter.ai/api/v1/models", headers=headers, params=params
+    )
+    response.raise_for_status()
+    data = response.json()["data"]
+    # Summarize each response: model count plus a few sample IDs
+    summary = {"model_count": len(data), "sample_ids": [m["id"] for m in data[:5]]}
+    print(json.dumps(summary, indent=2))
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+type summary struct {
+	ModelCount int      `json:"model_count"`
+	SampleIDs  []string `json:"sample_ids"`
+}
+
+func main() {
+	queries := []string{
+		"",                                  // Text generation models only (default)
+		"?output_modalities=all",           // Every model across all modalities
+		"?output_modalities=image",         // Image generation models
+		"?output_modalities=speech",        // Dedicated text-to-speech models
+		"?output_modalities=transcription", // Dedicated speech-to-text models
+	}
+
+	for _, q := range queries {
+		req, _ := http.NewRequest("GET", "https://openrouter.ai/api/v1/models"+q, nil)
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if resp.StatusCode >= 400 {
+			log.Fatalf("request failed: %s", resp.Status)
+		}
+
+		var body struct {
+			Data []struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&body)
+		resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Summarize each response: model count plus a few sample IDs
+		s := summary{ModelCount: len(body.Data), SampleIDs: []string{}}
+		for i := 0; i < len(body.Data) && i < 5; i++ {
+			s.SampleIDs = append(s.SampleIDs, body.Data[i].ID)
+		}
+		out, _ := json.MarshalIndent(s, "", "  ")
+		fmt.Println(string(out))
+	}
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+{
+  "model_count": 518,
+  "sample_ids": [
+    "near-ai/qwen3.8-27b-cyber",
+    "near-ai/deepseek-v4.1-flash-1017-cyber",
+    "openai/gpt-6.2-astra-pro",
+    "openai/gpt-6.2-astra-pro:batch",
+    "openai/gpt-6.2-astra"
+  ]
+}
+{
+  "model_count": 774,
+  "sample_ids": [
+    "near-ai/qwen3.8-27b-cyber",
+    "near-ai/deepseek-v4.1-flash-1017-cyber",
+    "heygen/heygen-avatar-6-turbo",
+    "heygen/heygen-avatar-6",
+    "openai/gpt-6.2-astra-pro"
+  ]
+}
+{
+  "model_count": 73,
+  "sample_ids": [
+    "microsoft/mai-image-2.7-flash",
+    "microsoft/mai-image-2.7",
+    "recraft/recraft-v4.1-flash-v2",
+    "tencent/hy-world-2.1-panorama",
+    "bytedance-seed/seedream-5-5"
+  ]
+}
+{
+  "model_count": 41,
+  "sample_ids": [
+    "speechify/simba-3.5",
+    "assemblyai/assemblyai-tts-1",
+    "heygen/heygen-voice-1-turbo",
+    "heygen/heygen-voice-1-turbo:free",
+    "mistralai/voxtral-mini-tts-3-0"
+  ]
+}
 ```
 
 ### Important distinction: `audio` vs `speech` vs `transcription`
@@ -108,11 +267,45 @@ To query the cheapest paid production chat models server-side in one call, combi
 - `min_price=0.000001` (excludes `-1` dynamic routers and `$0` free variants)
 - `endpoints=/api/v1/chat/completions` (excludes models that only serve batches, embeddings, or media)
 
+<CodeGroup>
+
 ```bash
 curl -fsS "https://openrouter.ai/api/v1/models?sort=pricing-low-to-high&min_price=0.000001&endpoints=/api/v1/chat/completions"
 ```
 
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/models?sort=pricing-low-to-high&min_price=0.000001&endpoints=/api/v1/chat/completions');
+```
+
+```python title="Python" lines
+response = requests.get(
+    "https://openrouter.ai/api/v1/models",
+    params={
+        "sort": "pricing-low-to-high",
+        "min_price": "0.000001",
+        "endpoints": "/api/v1/chat/completions",
+    },
+)
+response.raise_for_status()
+
+```
+
+```go title="Go" lines
+resp, err := http.Get("https://openrouter.ai/api/v1/models?sort=pricing-low-to-high&min_price=0.000001&endpoints=/api/v1/chat/completions")
+if err != nil {
+	log.Fatal(err)
+}
+defer resp.Body.Close()
+if resp.StatusCode >= 400 {
+	log.Fatalf("request failed: %s", resp.Status)
+}
+```
+
+</CodeGroup>
+
 ### TypeScript client-side filtering example
+
+<CodeGroup>
 
 ```typescript
 interface OpenRouterModel {
@@ -152,6 +345,100 @@ async function getCheapestStableChatModel(): Promise<OpenRouterModel> {
 }
 ```
 
+```python title="Python" lines
+def get_cheapest_stable_chat_model() -> dict:
+    res = requests.get(
+        "https://openrouter.ai/api/v1/models",
+        params={
+            "sort": "pricing-low-to-high",
+            "min_price": "0.000001",
+            "endpoints": "/api/v1/chat/completions",
+        },
+    )
+    if not res.ok:
+        raise RuntimeError(f"Failed to fetch models: {res.status_code}")
+
+    data = res.json()["data"]
+
+    # Filter out rolling aliases (~ prefix) and non-standard variants if a pinned model is required
+    stable_models = [
+        m
+        for m in data
+        if float(m["pricing"]["prompt"]) > 0
+        and float(m["pricing"]["completion"]) >= 0
+        and not m["id"].endswith(":free")
+        and not m["id"].endswith(":batch")
+        and not m["id"].startswith("~")
+    ]
+
+    if not stable_models:
+        raise RuntimeError("No models matched the selection criteria")
+
+    return stable_models[0]
+
+```
+
+```go title="Go" lines
+type OpenRouterModel struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Pricing struct {
+		Prompt     string `json:"prompt"`
+		Completion string `json:"completion"`
+	} `json:"pricing"`
+	Endpoints []string `json:"endpoints,omitempty"`
+}
+
+func getCheapestStableChatModel() (*OpenRouterModel, error) {
+	resp, err := http.Get("https://openrouter.ai/api/v1/models?sort=pricing-low-to-high&min_price=0.000001&endpoints=/api/v1/chat/completions")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("failed to fetch models: %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Data []OpenRouterModel `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return nil, err
+	}
+
+	// Filter out rolling aliases (~ prefix) and non-standard variants if a pinned model is required
+	for _, m := range body.Data {
+		prompt, _ := strconv.ParseFloat(m.Pricing.Prompt, 64)
+		completion, _ := strconv.ParseFloat(m.Pricing.Completion, 64)
+		isPaid := prompt > 0 && completion >= 0
+		isNotFreeVariant := !strings.HasSuffix(m.ID, ":free")
+		isNotBatchVariant := !strings.HasSuffix(m.ID, ":batch")
+		isNotAlias := !strings.HasPrefix(m.ID, "~")
+		if isPaid && isNotFreeVariant && isNotBatchVariant && isNotAlias {
+			return &m, nil
+		}
+	}
+
+	return nil, errors.New("no models matched the selection criteria")
+}
+```
+
+```bash title="cURL" lines
+get_cheapest_stable_chat_model() {
+  curl -fsS "https://openrouter.ai/api/v1/models?sort=pricing-low-to-high&min_price=0.000001&endpoints=/api/v1/chat/completions" |
+    # Filter out rolling aliases (~ prefix) and non-standard variants if a pinned model is required
+    jq -e '[.data[] | select(
+        (.pricing.prompt | tonumber) > 0 and (.pricing.completion | tonumber) >= 0
+        and (.id | endswith(":free") | not)
+        and (.id | endswith(":batch") | not)
+        and (.id | startswith("~") | not)
+      )]
+      | if length == 0 then error("No models matched the selection criteria") else .[0] end'
+}
+```
+
+</CodeGroup>
+
 ## Model identifiers, aliases, and variants
 
 Model identifiers follow structured naming conventions (see [Model Variants](/guides/routing/model-variants/overview) for details):
@@ -188,9 +475,46 @@ OpenRouter distinguishes between catalog variants and request-time routing suffi
 
 A single model (such as `meta-llama/llama-3.3-70b-instruct`) is frequently hosted across dozens of backend providers (Together, Groq, Fireworks, DeepInfra, Lepton, etc.). To inspect the live providers, pricing, quantizations, and status for a model:
 
+<CodeGroup>
+
 ```bash
 curl -fsS "https://openrouter.ai/api/v1/models/meta-llama/llama-3.3-70b-instruct/endpoints"
 ```
+
+```typescript title="TypeScript" lines
+const res = await fetch(
+  'https://openrouter.ai/api/v1/models/meta-llama/llama-3.3-70b-instruct/endpoints',
+);
+if (!res.ok) {
+  throw new Error(`Failed to fetch endpoints: ${res.status}`);
+}
+
+const { data } = await res.json();
+```
+
+```python title="Python" lines
+res = requests.get("https://openrouter.ai/api/v1/models/meta-llama/llama-3.3-70b-instruct/endpoints")
+res.raise_for_status()
+endpoints = res.json()
+```
+
+```go title="Go" lines
+resp, err := http.Get("https://openrouter.ai/api/v1/models/meta-llama/llama-3.3-70b-instruct/endpoints")
+if err != nil {
+	log.Fatal(err)
+}
+defer resp.Body.Close()
+if resp.StatusCode >= 400 {
+	log.Fatalf("request failed: %d", resp.StatusCode)
+}
+body, err := io.ReadAll(resp.Body)
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(body))
+```
+
+</CodeGroup>
 
 The response nests the model record and endpoint records under the top-level `data` envelope:
 

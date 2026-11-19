@@ -232,44 +232,261 @@ results.forEach(({ model, content }) => {
 });
 ```
 
-```python title="Python" expandable lines
+````python title="Python" expandable lines
+# Requires the httpx package: pip install httpx
 import asyncio
-import aiohttp
+import httpx
 import json
 
-async def execute_request(session, request):
-    async with session.post(
+async def execute_request(client, request):
+    response = await client.post(
         "https://openrouter.ai/api/v1/chat/completions",
         headers={
             "Authorization": "Bearer <OPENROUTER_API_KEY>",
             "Content-Type": "application/json"
         },
-        data=json.dumps(request)
-    ) as response:
-        return await response.json()
+        json=request
+    )
+    return response.json()
+
+# Example of the request bodies Body Builder generates, used if it is unavailable
+FALLBACK_GENERATED = {
+    "requests": [
+        {"model": "google/gemini-2.5-flash", "messages": [{"role": "user", "content": "Explain gravity"}]},
+        {"model": "anthropic/claude-sonnet-4.5", "messages": [{"role": "user", "content": "Explain gravity"}]}
+    ]
+}
 
 async def main():
     # First, generate the requests
-    async with aiohttp.ClientSession() as session:
-        builder_response = await execute_request(session, {
-            "model": "openrouter/bodybuilder",
-            "messages": [{"role": "user", "content": "Explain gravity using Gemini and Claude"}]
-        })
+    async with httpx.AsyncClient(timeout=120) as client:
+        try:
+            builder_response = await execute_request(client, {
+                "model": "openrouter/bodybuilder",
+                "messages": [{"role": "user", "content": "Explain gravity using Gemini and Claude"}]
+            })
+        except (httpx.TimeoutException, ValueError) as err:
+            # Body Builder timed out or returned a non-JSON body: say why, then fall back below.
+            # A connection failure is not caught: the fallback requests use the same endpoint.
+            print(f"Body Builder request failed: {err!r}")
+            builder_response = {}
 
-        generated = json.loads(builder_response['choices'][0]['message']['content'])
+        generated = None
+        if "choices" in builder_response:
+            content = builder_response['choices'][0]['message']['content'].strip()
+            # Strip Markdown code fences if the model wrapped the JSON in them
+            if content.startswith("```"):
+                content = content.strip("`").removeprefix("json").strip()
+            try:
+                generated = json.loads(content)
+            except json.JSONDecodeError:
+                generated = None
+
+        if not generated or "requests" not in generated:
+            print("Body Builder unavailable; using example request bodies.\n")
+            generated = FALLBACK_GENERATED
 
         # Execute all requests in parallel
-        tasks = [execute_request(session, req) for req in generated['requests']]
+        tasks = [execute_request(client, req) for req in generated['requests']]
         results = await asyncio.gather(*tasks)
 
         for req, result in zip(generated['requests'], results):
             print(f"Model: {req['model']}")
-            print(f"Response: {result['choices'][0]['message']['content']}\n")
+            if "choices" in result:
+                print(f"Response: {result['choices'][0]['message']['content']}\n")
+            else:
+                print(f"Error: {json.dumps(result)}\n")
 
 asyncio.run(main())
-```
+
+````
+
+````go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
+	"time"
+)
+
+var client = &http.Client{Timeout: 120 * time.Second}
+
+func executeRequest(request any) map[string]any {
+	body, _ := json.Marshal(request)
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return map[string]any{"error": err.Error()}
+	}
+	defer resp.Body.Close()
+	result := map[string]any{}
+	json.NewDecoder(resp.Body).Decode(&result)
+	return result
+}
+
+// content returns the first choice's message content, if the response has choices
+func content(result map[string]any) (string, bool) {
+	choices, ok := result["choices"].([]any)
+	if !ok || len(choices) == 0 {
+		return "", false
+	}
+	choice, _ := choices[0].(map[string]any)
+	msg, _ := choice["message"].(map[string]any)
+	s, _ := msg["content"].(string)
+	return s, true
+}
+
+type Generated struct {
+	Requests []map[string]any `json:"requests"`
+}
+
+// Example of the request bodies Body Builder generates, used if it is unavailable
+const fallbackGenerated = `{"requests": [
+	{"model": "google/gemini-2.5-flash", "messages": [{"role": "user", "content": "Explain gravity"}]},
+	{"model": "anthropic/claude-sonnet-4.5", "messages": [{"role": "user", "content": "Explain gravity"}]}
+]}`
+
+func main() {
+	// First, generate the requests
+	builderResponse := executeRequest(map[string]any{
+		"model":    "openrouter/bodybuilder",
+		"messages": []map[string]string{{"role": "user", "content": "Explain gravity using Gemini and Claude"}},
+	})
+
+	var generated Generated
+	if c, ok := content(builderResponse); ok {
+		c = strings.TrimSpace(c)
+		// Strip Markdown code fences if the model wrapped the JSON in them
+		if strings.HasPrefix(c, "```") {
+			c = strings.TrimSpace(strings.TrimPrefix(strings.Trim(c, "`"), "json"))
+		}
+		if json.Unmarshal([]byte(c), &generated) != nil {
+			generated = Generated{}
+		}
+	}
+
+	if generated.Requests == nil {
+		fmt.Println("Body Builder unavailable; using example request bodies.\n")
+		json.Unmarshal([]byte(fallbackGenerated), &generated)
+	}
+
+	// Execute all requests in parallel
+	results := make([]map[string]any, len(generated.Requests))
+	var wg sync.WaitGroup
+	for i, req := range generated.Requests {
+		wg.Add(1)
+		go func(i int, req map[string]any) {
+			defer wg.Done()
+			results[i] = executeRequest(req)
+		}(i, req)
+	}
+	wg.Wait()
+
+	for i, req := range generated.Requests {
+		fmt.Printf("Model: %v\n", req["model"])
+		if c, ok := content(results[i]); ok {
+			fmt.Printf("Response: %s\n\n", c)
+		} else {
+			b, _ := json.Marshal(results[i])
+			fmt.Printf("Error: %s\n\n", b)
+		}
+	}
+}
+
+````
+
+````bash title="cURL" lines
+#!/bin/bash
+# First, generate the requests
+builder=$(curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "openrouter/bodybuilder", "messages": [{"role": "user", "content": "Explain gravity using Gemini and Claude"}]}')
+
+# Strip Markdown code fences if the model wrapped the JSON in them
+generated=$(echo "$builder" | jq -r '.choices[0].message.content // empty' | sed '/^```/d' \
+  | jq -c 'select(.requests)' 2>/dev/null || true)
+
+if [ -z "$generated" ]; then
+  printf 'Body Builder unavailable; using example request bodies.\n\n'
+  generated='{"requests": [
+    {"model": "google/gemini-2.5-flash", "messages": [{"role": "user", "content": "Explain gravity"}]},
+    {"model": "anthropic/claude-sonnet-4.5", "messages": [{"role": "user", "content": "Explain gravity"}]}
+  ]}'
+fi
+
+# Execute all requests in parallel
+dir=$(mktemp -d) || exit 1
+trap 'rm -rf "$dir"' EXIT
+count=$(echo "$generated" | jq '.requests | length')
+for ((i = 0; i < count; i++)); do
+  echo "$generated" | jq -c ".requests[$i]" | curl -s https://openrouter.ai/api/v1/chat/completions \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d @- > "$dir/$i.json" &
+done
+wait
+
+for ((i = 0; i < count; i++)); do
+  echo "Model: $(echo "$generated" | jq -r ".requests[$i].model")"
+  jq -r 'if .choices then "Response: " + .choices[0].message.content else "Error: " + tojson end' "$dir/$i.json"
+  echo
+done
+
+````
 
 </CodeGroup>
+
+```text title="Output"
+Body Builder unavailable; using example request bodies.
+
+Model: google/gemini-2.5-flash
+Response: Gravity is a fundamental force of nature that dictates how objects with mass or energy interact with each one another. It's what keeps your feet on the ground, the Earth orbiting the sun, and the galaxies clumping together.
+
+Here's a breakdown of its key aspects:
+
+**1. The Basics: Attraction Between Masses**
+
+* **Universal Attractor:** Every object in the universe that has mass (or energy, which is equivalent to mass according to E=mc²) exerts a gravitational pull on every other object that has mass.
+* **Proportional to Mass:** The more massive an object is, the greater its gravitational pull. A bowling ball pulls on you more than a feather does, and the Earth pulls on you far more than the bowling ball.
+* **Inverse Square Law:** The strength of gravity decreases rapidly with distance. If you double the distance between two objects, the gravitational force between them becomes four times weaker (1/2 squared = 1/4). This is why the Sun's gravity, while immense, doesn't pull you off the Earth; you're much closer to Earth.
+
+**2. How We Understand It: Einstein's General Relativity**
+
+While Isaac Newton famously described gravity with his law of universal gravitation (the "attraction between masses" idea), Albert Einstein's **General Theory of Relativity** provides our most accurate and complete understanding of gravity today.
+
+*   **Gravity as Curvature of Spacetime:** This is the core concept. Einstein proposed that gravity isn't a "force" in the traditional sense, but rather a manifestation of the **curvature of spacetime** caused by the presence of mass and energy.
+    *   Imagine spacetime as a giant, flexible trampoline.
+    *   If you place a bowling ball (representing a massive object like the Earth) in the center, it creates a dip or curve in the trampoline.
+    *   Now, if you roll a marble (representing a smaller object like the Moon) near the bowling ball, the marble doesn't get "pulled" by the bowling ball. Instead, it follows the curve in the trampoline created by the bowling ball. It's essentially taking the "easiest" path through the curved spacetime.
+*   **Objects Follow Geodesics:** In this analogy, the marble is following a "geodesic" – the shortest path between two points in curved space. Similarly, planets orbit stars because they are following the geodesics in the spacetime curved by the star's immense mass.
+*   **Time Dilation:** Another fascinating consequence of general relativity is that gravity affects time. Time runs slower in stronger gravitational fields. This is a real effect and is crucial for the accurate functioning of GPS satellites, which have to account for the slightly weaker gravity (and thus faster time) they experience compared to Earth's surface.
+*   **Gravitational Lensing:** Massive objects can bend light (which has no mass but is affected by spacetime curvature). This phenomenon, called gravitational lensing, allows astronomers to see distant objects that would otherwise be hidden behind foreground galaxies or galaxy clusters.
+
+**3. What Gravity Does (Its Manifestations):**
+
+*   **Keeps Us Grounded:** Prevents us from floating off into space.
+*   **Orbits:** Keeps planets orbiting stars, moons orbiting planets, and satellites orbiting Earth.
+*   **Tides:** The Moon's gravity pulls more strongly on the side of Earth closest to it, and less strongly on the far side, creating bulges of water that result in tides.
+*   **Formation of Stars and Galaxies:** Gravity is the driving force behind the collapse of vast clouds of gas and dust to form stars, and the assembly of stars and dark matter into galaxies.
+*   **Black Holes:** These are regions of spacetime where gravity is so strong that nothing, not even light, can escape.
+
+**4. The Unanswered Question: Quantum Gravity**
+
+While general relativity describes gravity beautifully on large scales, it doesn't mesh well with quantum mechanics, which describes the universe at very small, subatomic scales. Physicists are actively working on a theory of **quantum gravity** (like string theory or loop quantum gravity) that would unify these two fundamental theories and provide a complete description of gravity at all scales. This is one of the biggest challenges in modern physics.
+
+In summary, gravity is the force that governs the large-scale structure and evolution of the universe, and our best understanding of it comes from Einstein's mind-bending idea that mass and energy warp the fabric of spacetime itself.
+
+Model: anthropic/claude-sonnet-4.5
+```
 
 ## Use Cases
 

@@ -78,6 +78,7 @@ export const getWeather = async (modelName: string) => {
   const response = streamText({
     model: openrouter(modelName),
     prompt: 'What is the weather in San Francisco, CA in Fahrenheit?',
+    maxSteps: 5,
     tools: {
       getCurrentWeather: {
         description: 'Get the current weather in a given location',
@@ -114,9 +115,265 @@ export const getWeather = async (modelName: string) => {
   await response.consumeStream();
   return response.text;
 };
+
+console.log(await getLasagnaRecipe('openai/gpt-4o-mini'));
+console.log(await getWeather('openai/gpt-4o-mini'));
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+from typing import Literal, Optional
+
+from pydantic import BaseModel, Field
+from openrouter_agent import OpenRouter, call_model, step_count_is, tool
+
+client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+
+async def get_lasagna_recipe(model_name: str) -> str:
+    result = call_model(client, {
+        "model": model_name,
+        "input": "Write a vegetarian lasagna recipe for 4 people.",
+    })
+    return await result.get_text()
+
+
+class WeatherInput(BaseModel):
+    location: str = Field(description="The city and state, e.g. San Francisco, CA")
+    unit: Optional[Literal["celsius", "fahrenheit"]] = None
+
+
+def get_current_weather(params: WeatherInput, ctx) -> str:
+    # Mock response for the weather
+    weather_data = {
+        "Boston, MA": {"celsius": "15°C", "fahrenheit": "59°F"},
+        "San Francisco, CA": {"celsius": "18°C", "fahrenheit": "64°F"},
+    }
+    weather = weather_data.get(params.location)
+    if not weather:
+        return f"Weather data for {params.location} is not available."
+    return f"The current weather in {params.location} is {weather[params.unit or 'celsius']}."
+
+
+async def get_weather(model_name: str) -> str:
+    weather_tool = tool(
+        name="getCurrentWeather",
+        description="Get the current weather in a given location",
+        input_schema=WeatherInput,
+        execute=get_current_weather,
+    )
+    result = call_model(client, {
+        "model": model_name,
+        "input": "What is the weather in San Francisco, CA in Fahrenheit?",
+        "tools": [weather_tool],
+        "stop_when": step_count_is(5),
+    })
+    return await result.get_text()
+
+
+async def main() -> None:
+    print(await get_lasagna_recipe("openai/gpt-4o-mini"))
+    print(await get_weather("openai/gpt-4o-mini"))
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func post(body map[string]any) *http.Response {
+	b, _ := json.Marshal(body)
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(b))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		panic(resp.Status)
+	}
+	return resp
+}
+
+func getLasagnaRecipe(model string) string {
+	resp := post(map[string]any{
+		"model":    model,
+		"stream":   true,
+		"messages": []map[string]any{{"role": "user", "content": "Write a vegetarian lasagna recipe for 4 people."}},
+	})
+	defer resp.Body.Close()
+
+	var text strings.Builder
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
+	for sc.Scan() {
+		data, ok := strings.CutPrefix(sc.Text(), "data: ")
+		if !ok || data == "[DONE]" {
+			continue
+		}
+		var chunk struct {
+			Choices []struct {
+				Delta struct {
+					Content string `json:"content"`
+				} `json:"delta"`
+			} `json:"choices"`
+		}
+		if json.Unmarshal([]byte(data), &chunk) == nil && len(chunk.Choices) > 0 {
+			text.WriteString(chunk.Choices[0].Delta.Content)
+		}
+	}
+	// A read error mid-stream leaves a partial recipe: fail instead of returning it
+	if err := sc.Err(); err != nil {
+		panic(err)
+	}
+	return text.String()
+}
+
+type toolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+func getCurrentWeather(args string) string {
+	var a struct {
+		Location string `json:"location"`
+		Unit     string `json:"unit"`
+	}
+	json.Unmarshal([]byte(args), &a)
+	if a.Unit == "" {
+		a.Unit = "celsius"
+	}
+	// Mock response for the weather
+	weatherData := map[string]map[string]string{
+		"Boston, MA":        {"celsius": "15°C", "fahrenheit": "59°F"},
+		"San Francisco, CA": {"celsius": "18°C", "fahrenheit": "64°F"},
+	}
+	weather, ok := weatherData[a.Location]
+	if !ok {
+		return fmt.Sprintf("Weather data for %s is not available.", a.Location)
+	}
+	return fmt.Sprintf("The current weather in %s is %s.", a.Location, weather[a.Unit])
+}
+
+func getWeather(model string) string {
+	tools := []map[string]any{{
+		"type": "function",
+		"function": map[string]any{
+			"name":        "getCurrentWeather",
+			"description": "Get the current weather in a given location",
+			"parameters": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"location": map[string]any{"type": "string", "description": "The city and state, e.g. San Francisco, CA"},
+					"unit":     map[string]any{"type": "string", "enum": []string{"celsius", "fahrenheit"}},
+				},
+				"required": []string{"location"},
+			},
+		},
+	}}
+	messages := []any{map[string]any{"role": "user", "content": "What is the weather in San Francisco, CA in Fahrenheit?"}}
+
+	for step := 0; step < 5; step++ { // maxSteps: 5
+		resp := post(map[string]any{"model": model, "messages": messages, "tools": tools})
+		var out struct {
+			Choices []struct {
+				Message struct {
+					Content   string     `json:"content"`
+					ToolCalls []toolCall `json:"tool_calls"`
+				} `json:"message"`
+			} `json:"choices"`
+		}
+		err := json.NewDecoder(resp.Body).Decode(&out)
+		resp.Body.Close()
+		if err != nil || len(out.Choices) == 0 {
+			panic(fmt.Sprint("bad response: ", err))
+		}
+		msg := out.Choices[0].Message
+		if len(msg.ToolCalls) == 0 {
+			return msg.Content
+		}
+		messages = append(messages, map[string]any{"role": "assistant", "content": msg.Content, "tool_calls": msg.ToolCalls})
+		for _, tc := range msg.ToolCalls {
+			messages = append(messages, map[string]any{
+				"role":         "tool",
+				"tool_call_id": tc.ID,
+				"content":      getCurrentWeather(tc.Function.Arguments),
+			})
+		}
+	}
+	return ""
+}
+
+func main() {
+	fmt.Println(getLasagnaRecipe("openai/gpt-4o-mini"))
+	fmt.Println(getWeather("openai/gpt-4o-mini"))
+}
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Here's a delicious vegetarian lasagna recipe that serves 4 people. This recipe features layers of pasta, ricotta cheese, spinach, marinara sauce, and mozzarella cheese.
+
+### Vegetarian Lasagna Recipe
+
+#### Ingredients
+
+**For the Lasagna:**
+- 9 lasagna noodles (oven-ready or traditional; if traditional, cook according to package instructions)
+- 2 cups ricotta cheese
+- 1 egg
+- 2 cups fresh spinach (or 1 cup frozen spinach, thawed and drained)
+- 2 cups marinara sauce (homemade or store-bought)
+- 2 cups shredded mozzarella cheese
+- 1 cup grated Parmesan cheese
+- 1 teaspoon Italian seasoning
+- Salt and pepper to taste
+- Olive oil (for greasing the baking dish)
+
+**Optional:**
+- Sliced mushrooms
+- Zucchini, thinly sliced
+- Bell peppers, diced
+- Fresh basil or parsley for garnish
+
+#### Instructions
+
+1. **Preheat the Oven:**
+   Preheat your oven to 375°F (190°C).
+
+2. **Prepare the Cheese Mixture:**
+   In a mixing bowl, combine the ricotta cheese, egg, spinach, Italian seasoning, salt, and pepper. Mix until well combined.
+
+3. **Assemble the Lasagna:**
+   Grease a 9x13 inch baking dish with olive oil. 
+   Start by spreading a thin layer of marinara sauce on the bottom of the dish.
+   
+   - Place 3 lasagna noodles on top of the sauce.
+   - Spread half of the ricotta mixture over the noodles.
+   - Layer on a third of the marinara sauce, followed by a fourth of the mozzarella cheese.
+   - Repeat the layers: another 3 noodles, the remaining ricotta mixture, another third of the marinara sauce, and half of the remaining mozzarella cheese.
+```
 
 ## Video Generation
 

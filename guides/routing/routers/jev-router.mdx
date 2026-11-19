@@ -32,6 +32,8 @@ The available models and routing policies can change over time. A cost tier is a
 
 Set `model` to `typesafe/jev-router`. No plugin is required:
 
+<CodeGroup>
+
 ```bash title="cURL" lines
 curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
@@ -40,6 +42,165 @@ curl https://openrouter.ai/api/v1/responses \
     "model": "typesafe/jev-router",
     "input": "Explain the difference between a mutex and a semaphore."
   }'
+```
+
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'typesafe/jev-router',
+    input: 'Explain the difference between a mutex and a semaphore.',
+  }),
+});
+
+if (!response.ok) {
+  throw new Error(`Request failed (${response.status}): ${await response.text()}`);
+}
+
+const data = await response.json();
+
+// The router picks a concrete model; `data.model` shows which one served the request.
+console.log('Routed to:', data.model);
+
+const text = data.output
+  .filter((item: any) => item.type === 'message')
+  .flatMap((item: any) => item.content)
+  .filter((part: any) => part.type === 'output_text')
+  .map((part: any) => part.text)
+  .join('');
+console.log(text);
+
+```
+
+```python title="Python" lines
+import os
+import requests
+
+response = requests.post(
+    "https://openrouter.ai/api/v1/responses",
+    headers={
+        "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "model": "typesafe/jev-router",
+        "input": "Explain the difference between a mutex and a semaphore.",
+    },
+)
+response.raise_for_status()
+data = response.json()
+
+# The router picks the underlying model; the response reports which one served it
+print("Routed to:", data["model"])
+
+for item in data["output"]:
+    if item["type"] == "message":
+        for part in item["content"]:
+            if part["type"] == "output_text":
+                print(part["text"])
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"time"
+)
+
+func main() {
+	body, err := json.Marshal(map[string]any{
+		"model": "typesafe/jev-router",
+		"input": "Explain the difference between a mutex and a semaphore.",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("request failed: %s\n%s", resp.Status, raw)
+	}
+
+	var result struct {
+		Model  string          `json:"model"`
+		Status string          `json:"status"`
+		Error  json.RawMessage `json:"error"`
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		log.Fatal(err)
+	}
+	if len(result.Error) > 0 && string(result.Error) != "null" {
+		log.Fatalf("response error: %s", result.Error)
+	}
+
+	// The router picks a model for you; the response reports which one it used.
+	fmt.Printf("Routed to: %s (status: %s)\n\n", result.Model, result.Status)
+
+	printed := false
+	for _, item := range result.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				fmt.Println(c.Text)
+				printed = true
+			}
+		}
+	}
+	if !printed {
+		log.Fatalf("no output text in response: %s", raw)
+	}
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Routed to: openai/gpt-6-luna
+A **mutex** and a **semaphore** both coordinate access to shared resources, but they have different purposes:
+
+- **Mutex (mutual exclusion):** Lets only one thread at a time enter a protected section. The thread that locks it is expected to unlock it. Use it to protect shared data.
+- **Semaphore:** Maintains a counter representing how many units of a resource are available. A thread waits when the count is zero; another operation increases the count. Use it to limit access to a pool of resources or to signal between threads.
+
+A **binary semaphore** has a count of 0 or 1, so it can look like a mutex. The key distinction is ownership: mutexes are owned by the thread that locks them, while semaphores generally can be signaled by a different thread.
 ```
 
 The response `model` field reports the model that served the request. The router works with Chat Completions, Responses, and Messages, streaming and non-streaming.
@@ -99,7 +260,120 @@ curl https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```python title="Python" lines
+import os
+import requests
+
+response = requests.post(
+    "https://openrouter.ai/api/v1/responses",
+    headers={
+        "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "model": "typesafe/jev-router",
+        "plugins": [
+            {
+                "id": "jev-router",
+                "cost_tier": "medium",
+            },
+        ],
+        "input": "Summarize this incident report.",
+    },
+)
+
+data = response.json()
+print("Model used:", data["model"])
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"time"
+)
+
+func main() {
+	body, err := json.Marshal(map[string]any{
+		"model": "typesafe/jev-router",
+		"plugins": []map[string]any{
+			{
+				"id":        "jev-router",
+				"cost_tier": "medium",
+			},
+		},
+		"input": "Summarize this incident report in two sentences: At 14:02 UTC the checkout service began returning 502 errors after a config deploy removed a database connection pool limit. Connections were exhausted within minutes. The deploy was rolled back at 14:31 and error rates returned to normal by 14:40.",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("request failed: %s\n%s", resp.Status, raw)
+	}
+
+	var data struct {
+		Model  string `json:"model"`
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.Unmarshal(raw, &data); err != nil {
+		log.Fatal(err)
+	}
+
+	// Jev picks a model from the medium cost tier; the response reports which one.
+	fmt.Println("Model used:", data.Model)
+
+	for _, item := range data.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				fmt.Println(c.Text)
+			}
+		}
+	}
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Model used: deepseek/deepseek-v4.1-flash-1017
+```
 
 ## Cost tiers
 
@@ -185,6 +459,8 @@ The response's `model` field identifies the model that served the request. Send 
 | `list_tier_cap` | The tier the lists capped the request at, when they lowered it. |
 | `max_fallback` | `"deep"` when a request that would get an advisor was served without one. |
 
+<CodeGroup>
+
 ```bash title="cURL" lines
 curl https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
@@ -195,6 +471,185 @@ curl https://openrouter.ai/api/v1/responses \
     "plugins": [{"id": "jev-router", "cost_tier": "medium"}],
     "input": "Reply with ok"
   }' | jq '.openrouter_metadata.pipeline[] | select(.name == "jev-router") | .data | {resolved_models, candidates, reason, pipeline, advisor_model}'
+```
+
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    'Content-Type': 'application/json',
+    'X-OpenRouter-Metadata': 'enabled',
+  },
+  body: JSON.stringify({
+    model: 'typesafe/jev-router',
+    plugins: [{ id: 'jev-router', cost_tier: 'medium' }],
+    input: 'Reply with ok',
+  }),
+});
+
+const data = await response.json();
+const jev = data.openrouter_metadata?.pipeline?.find((step: any) => step.name === 'jev-router');
+const { resolved_models, candidates, reason, pipeline, advisor_model = null } = jev?.data ?? {};
+console.log(JSON.stringify({ resolved_models, candidates, reason, pipeline, advisor_model }, null, 2));
+
+```
+
+```python title="Python" lines
+import json
+import os
+import requests
+
+response = requests.post(
+    "https://openrouter.ai/api/v1/responses",
+    headers={
+        "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        "Content-Type": "application/json",
+        "X-OpenRouter-Metadata": "enabled",
+    },
+    json={
+        "model": "typesafe/jev-router",
+        "plugins": [{"id": "jev-router", "cost_tier": "medium"}],
+        "input": "Reply with ok",
+    },
+)
+
+data = response.json()
+for step in data["openrouter_metadata"]["pipeline"]:
+    if step["name"] == "jev-router":
+        d = step["data"]
+        keys = ["resolved_models", "candidates", "reason", "pipeline", "advisor_model"]
+        print(json.dumps({k: d.get(k) for k in keys}, indent=2))
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"time"
+)
+
+func main() {
+	body, err := json.Marshal(map[string]any{
+		"model":   "typesafe/jev-router",
+		"plugins": []map[string]any{{"id": "jev-router", "cost_tier": "medium"}},
+		"input":   "Reply with ok",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-OpenRouter-Metadata", "enabled")
+
+	resp, err := (&http.Client{Timeout: 120 * time.Second}).Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("request failed: %s\n%s", resp.Status, raw)
+	}
+
+	type routerData struct {
+		ResolvedModels json.RawMessage `json:"resolved_models"`
+		Candidates     json.RawMessage `json:"candidates"`
+		Reason         json.RawMessage `json:"reason"`
+		Pipeline       json.RawMessage `json:"pipeline"`
+		AdvisorModel   json.RawMessage `json:"advisor_model"`
+	}
+	var data struct {
+		OpenRouterMetadata struct {
+			Pipeline []struct {
+				Name string     `json:"name"`
+				Data routerData `json:"data"`
+			} `json:"pipeline"`
+		} `json:"openrouter_metadata"`
+	}
+	if err := json.Unmarshal(raw, &data); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, step := range data.OpenRouterMetadata.Pipeline {
+		if step.Name != "jev-router" {
+			continue
+		}
+		if step.Data.AdvisorModel == nil {
+			step.Data.AdvisorModel = json.RawMessage("null")
+		}
+		out, err := json.MarshalIndent(step.Data, "", "  ")
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(string(out))
+		return
+	}
+	log.Fatalf("no jev-router entry in openrouter_metadata.pipeline: %s", raw)
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+{
+  "resolved_models": [
+    "openai/gpt-6.1-terra-20261026",
+    "openai/gpt-6-luna-20260922",
+    "deepseek/deepseek-v4.1-flash-20261017"
+  ],
+  "candidates": [
+    {
+      "model": "openai/gpt-6.1-terra-20261026",
+      "effort": "low",
+      "tier": "basic",
+      "estimated_cost": 0.00072792
+    },
+    {
+      "model": "openai/gpt-6-luna-20260922",
+      "effort": "low",
+      "tier": "basic",
+      "estimated_cost": 0.00007189333333333333
+    },
+    {
+      "model": "deepseek/deepseek-v4.1-flash-20261017",
+      "effort": "low",
+      "tier": "basic",
+      "estimated_cost": 0.00010910958608695652
+    },
+    {
+      "model": "google/gemini-4-hydrogen-20261112",
+      "effort": "low",
+      "tier": "basic",
+      "estimated_cost": 0.00106155
+    },
+    {
+      "model": "google/gemini-4-carbon-20261110",
+      "effort": "low",
+      "tier": "basic",
+      "estimated_cost": 0.001348
+    },
+    {
+      "model": "anthropic/claude-sonnet-5.5-20260928",
+      "effort": "low",
 ```
 
 ## Availability and errors

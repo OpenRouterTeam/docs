@@ -141,7 +141,7 @@ const base64Audio = await encodeAudioToBase64(audioPath);
 const response = await fetch("https://openrouter.ai/api/v1/responses", {
   method: "POST",
   headers: {
-    Authorization: `Bearer ${API_KEY_REF}`,
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
@@ -171,7 +171,140 @@ const data = await response.json();
 console.log(data);
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	// Read and encode the audio file
+	audioPath := "path/to/your/audio.wav"
+	audioBytes, err := os.ReadFile(audioPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	base64Audio := base64.StdEncoding.EncodeToString(audioBytes)
+
+	body, _ := json.Marshal(map[string]any{
+		"model": "google/gemini-2.5-flash",
+		"input": []any{
+			map[string]any{
+				"role": "user",
+				"content": []any{
+					map[string]any{"type": "input_text", "text": "Please transcribe this audio file."},
+					map[string]any{
+						"type":        "input_audio",
+						"input_audio": map[string]any{"data": base64Audio, "format": "wav"},
+					},
+				},
+			},
+		},
+		"stream": false,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	result, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(result))
+}
+
+```
+
+```bash title="cURL" lines
+AUDIO_PATH="path/to/your/audio.wav"
+BASE64_AUDIO=$(base64 < "$AUDIO_PATH" | tr -d '\n')
+
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d @- <<EOF | jq .
+{
+  "model": "google/gemini-2.5-flash",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "Please transcribe this audio file."
+        },
+        {
+          "type": "input_audio",
+          "input_audio": {
+            "data": "$BASE64_AUDIO",
+            "format": "wav"
+          }
+        }
+      ]
+    }
+  ],
+  "stream": false
+}
+EOF
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+{
+  background: false,
+  completedAt: 1794950375,
+  createdAt: 1794950371,
+  error: null,
+  frequencyPenalty: 0,
+  id: "gen-1794950371-66aSkH2jJjcJz83iT5Xk",
+  incompleteDetails: null,
+  instructions: null,
+  maxOutputTokens: null,
+  maxToolCalls: null,
+  metadata: {},
+  model: "google/gemini-2.5-flash",
+  object: "response",
+  output: [
+    {
+      content: [Array ...],
+      id: "msg_tmp_kulh56l5ue",
+      role: "assistant",
+      status: "completed",
+      type: "message",
+    }
+  ],
+  parallelToolCalls: true,
+  presencePenalty: 0,
+  previousResponseId: null,
+  promptCacheKey: null,
+  promptCacheOptions: null,
+  reasoning: null,
+  safetyIdentifier: null,
+  serviceTier: "default",
+  status: "completed",
+  store: false,
+  temperature: 1,
+  text: {
+    format: {
+      type: "text",
+    },
+  },
+  toolChoice: "auto",
+```
 
 ### Supported Audio Input Formats
 
@@ -197,18 +330,19 @@ To receive audio output, set `modalities` to `["text", "audio"]` and provide the
 <CodeGroup>
 
 ```python Python expandable lines
+import os
 import requests
 import json
 import base64
 
 url = "https://openrouter.ai/api/v1/chat/completions"
 headers = {
-    "Authorization": f"Bearer {API_KEY_REF}",
+    "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
     "Content-Type": "application/json"
 }
 
 payload = {
-    "model": "openai/gpt-4o-audio-preview",
+    "model": "openai/gpt-audio",
     "messages": [
         {
             "role": "user",
@@ -218,29 +352,34 @@ payload = {
     "modalities": ["text", "audio"],
     "audio": {
         "voice": "alloy",
-        "format": "wav"
+        "format": "pcm16"
     },
     "stream": True
 }
 
 # Audio output requires streaming — the response is delivered as SSE chunks
 response = requests.post(url, headers=headers, json=payload, stream=True)
+if not response.ok:
+    raise RuntimeError(f"Request failed: {response.status_code} {response.text}")
+
+# SSE is UTF-8. Set it explicitly so a response without a charset is not decoded as ISO-8859-1
+response.encoding = "utf-8"
 
 audio_data_chunks = []
 transcript_chunks = []
 
-for line in response.iter_lines():
-    if not line:
+for line in response.iter_lines(decode_unicode=True):
+    if not line or not line.startswith("data: "):
         continue
-    decoded = line.decode("utf-8")
-    if not decoded.startswith("data: "):
-        continue
-    data = decoded[len("data: "):]
+    data = line[len("data: "):]
     if data.strip() == "[DONE]":
         break
     chunk = json.loads(data)
-    delta = chunk["choices"][0].get("delta", {})
-    audio = delta.get("audio", {})
+    choices = chunk.get("choices") or []
+    if not choices:
+        continue
+    delta = choices[0].get("delta") or {}
+    audio = delta.get("audio") or {}
     if audio.get("data"):
         audio_data_chunks.append(audio["data"])
     if audio.get("transcript"):
@@ -249,22 +388,24 @@ for line in response.iter_lines():
 transcript = "".join(transcript_chunks)
 print(f"Transcript: {transcript}")
 
-# Combine and decode the base64 audio chunks, then save
+# Combine and decode the base64 audio chunks (raw PCM16), then save
 full_audio_b64 = "".join(audio_data_chunks)
 audio_bytes = base64.b64decode(full_audio_b64)
-with open("output.wav", "wb") as f:
+with open("output.pcm", "wb") as f:
     f.write(audio_bytes)
+print(f"Saved {len(audio_bytes)} bytes of PCM16 audio to output.pcm")
+
 ```
 
 ```typescript title="TypeScript (fetch)" expandable lines
 const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
   method: "POST",
   headers: {
-    Authorization: `Bearer ${API_KEY_REF}`,
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: "openai/gpt-4o-audio-preview",
+    model: "openai/gpt-audio",
     messages: [
       {
         role: "user",
@@ -274,11 +415,15 @@ const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     modalities: ["text", "audio"],
     audio: {
       voice: "alloy",
-      format: "wav",
+      format: "pcm16",
     },
     stream: true,
   }),
 });
+
+if (!response.ok) {
+  throw new Error(`Request failed: ${response.status} ${await response.text()}`);
+}
 
 // Audio output requires streaming — parse the SSE chunks
 const reader = response.body!.getReader();
@@ -288,7 +433,7 @@ const audioDataChunks: string[] = [];
 const transcriptChunks: string[] = [];
 let buffer = "";
 
-while (true) {
+stream: while (true) {
   const { done, value } = await reader.read();
   if (done) break;
 
@@ -299,7 +444,7 @@ while (true) {
   for (const line of lines) {
     if (!line.startsWith("data: ")) continue;
     const data = line.slice("data: ".length).trim();
-    if (data === "[DONE]") break;
+    if (data === "[DONE]") break stream;
 
     const chunk = JSON.parse(data);
     const audio = chunk.choices?.[0]?.delta?.audio;
@@ -311,11 +456,133 @@ while (true) {
 const transcript = transcriptChunks.join("");
 console.log(`Transcript: ${transcript}`);
 
-// audioDataChunks joined together is the full base64-encoded audio
+// audioDataChunks joined together is the full base64-encoded audio (raw PCM16)
 const fullAudioB64 = audioDataChunks.join("");
+console.log(`Received ${fullAudioB64.length} base64 characters of audio`);
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-audio",
+		"messages": []any{
+			map[string]any{"role": "user", "content": "Say hello in a friendly tone."},
+		},
+		"modalities": []string{"text", "audio"},
+		"audio":      map[string]any{"voice": "alloy", "format": "pcm16"},
+		"stream":     true,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(resp.Body)
+		log.Fatalf("Request failed: %d %s", resp.StatusCode, msg)
+	}
+
+	// Audio output requires streaming — parse the SSE chunks
+	var audioData, transcript strings.Builder
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1024*1024), 16*1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		data := strings.TrimSpace(strings.TrimPrefix(line, "data: "))
+		if data == "[DONE]" {
+			break
+		}
+
+		var chunk struct {
+			Choices []struct {
+				Delta struct {
+					Audio struct {
+						Data       string `json:"data"`
+						Transcript string `json:"transcript"`
+					} `json:"audio"`
+				} `json:"delta"`
+			} `json:"choices"`
+		}
+		if err := json.Unmarshal([]byte(data), &chunk); err != nil || len(chunk.Choices) == 0 {
+			continue
+		}
+		audio := chunk.Choices[0].Delta.Audio
+		audioData.WriteString(audio.Data)
+		transcript.WriteString(audio.Transcript)
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Transcript: %s\n", transcript.String())
+
+	// audioData is the full base64-encoded audio (raw PCM16)
+	fmt.Printf("Received %d base64 characters of audio\n", audioData.Len())
+}
+
+```
+
+```bash title="cURL" lines
+RESPONSE=$(curl -sSfN https://openrouter.ai/api/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+  "model": "openai/gpt-audio",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Say hello in a friendly tone."
+    }
+  ],
+  "modalities": ["text", "audio"],
+  "audio": {
+    "voice": "alloy",
+    "format": "pcm16"
+  },
+  "stream": true
+}')
+
+# Audio output requires streaming: keep the JSON from each SSE "data:" line
+CHUNKS=$(printf '%s\n' "$RESPONSE" | sed -n 's/^data: //p' | grep -v '^\[DONE\]')
+
+TRANSCRIPT=$(printf '%s\n' "$CHUNKS" | jq -rj '.choices[0]?.delta?.audio?.transcript // empty')
+echo "Transcript: $TRANSCRIPT"
+
+# The joined data chunks are the full base64-encoded audio (raw PCM16)
+AUDIO_B64=$(printf '%s\n' "$CHUNKS" | jq -rj '.choices[0]?.delta?.audio?.data // empty')
+echo "Received ${#AUDIO_B64} base64 characters of audio"
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Transcript: Hello! It's great to meet you. How are you doing today?
+Received 252800 base64 characters of audio
+```
 
 ### Streaming Chunk Format
 

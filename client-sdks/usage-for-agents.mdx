@@ -80,6 +80,8 @@ After installing the skill, your AI assistant can help you with tasks like:
 
 The assistant will know to use:
 
+<CodeGroup>
+
 ```typescript lines
 import { OpenRouter } from '@openrouter/sdk';
 
@@ -96,11 +98,113 @@ const response = await client.responses.send({
 if (!('output' in response)) {
   throw new Error('Expected a non-streaming response');
 }
+
+console.log(JSON.stringify(response.output, null, 2));
+
+```
+
+```python title="Python" lines
+import json
+import os
+
+from openrouter import OpenRouter
+
+with OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"]) as client:
+    response = client.responses.send(
+        model="~anthropic/claude-sonnet-latest",
+        input="Hello!",
+        stream=False,
+    )
+
+    output = [item.model_dump(mode="json", by_alias=True, exclude_none=True) for item in response.output]
+    print(json.dumps(output, indent=2))
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":  "~anthropic/claude-sonnet-latest",
+		"input":  "Hello!",
+		"stream": false,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Output json.RawMessage `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+	if result.Output == nil {
+		log.Fatalf("Expected a non-streaming response (status %s)", resp.Status)
+	}
+
+	var out bytes.Buffer
+	json.Indent(&out, result.Output, "", "  ")
+	fmt.Println(out.String())
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "~anthropic/claude-sonnet-latest",
+    "input": "Hello!",
+    "stream": false
+  }' | jq '.output'
+
+```
+
+</CodeGroup>
+
+```json title="Output"
+[
+  {
+    "content": [
+      {
+        "annotations": [],
+        "logprobs": [],
+        "text": "Hello! How can I help you today?",
+        "type": "output_text"
+      }
+    ],
+    "id": "msg_tmp_9v8vv4xjn7k",
+    "role": "assistant",
+    "status": "completed",
+    "type": "message"
+  }
+]
 ```
 
 **"Add streaming to my OpenRouter call"**
 
 The assistant understands the streaming API:
+
+<CodeGroup>
 
 ```typescript lines
 import { OpenRouter } from '@openrouter/sdk';
@@ -124,6 +228,134 @@ for await (const event of stream) {
     process.stdout.write(event.delta);
   }
 }
+```
+
+```python title="Python" lines
+import os
+
+from openrouter import OpenRouter
+
+with OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"]) as client:
+    stream = client.responses.send(
+        model="~anthropic/claude-sonnet-latest",
+        input="Tell me a story",
+        stream=True,
+    )
+
+    with stream as events:
+        for event in events:
+            if event.type == "response.output_text.delta":
+                print(event.delta, end="", flush=True)
+    print()
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":  "~anthropic/claude-sonnet-latest",
+		"input":  "Tell me a story",
+		"stream": true,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("Expected a streaming response (status %s)", resp.Status)
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+	for scanner.Scan() {
+		data, ok := strings.CutPrefix(scanner.Text(), "data: ")
+		if !ok || data == "[DONE]" {
+			continue
+		}
+		var event struct {
+			Type  string `json:"type"`
+			Delta string `json:"delta"`
+		}
+		if json.Unmarshal([]byte(data), &event) == nil && event.Type == "response.output_text.delta" {
+			fmt.Print(event.Delta)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println()
+}
+
+```
+
+```bash title="cURL" lines
+curl -sN https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "~anthropic/claude-sonnet-latest",
+    "input": "Tell me a story",
+    "stream": true
+  }' | sed -un 's/^data: //p' \
+  | jq -Rrj --unbuffered 'fromjson? | select(.type == "response.output_text.delta") | .delta'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+# The Lighthouse Keeper's Last Lantern
+
+On a rocky edge of the world, where the sea hurled itself against the cliffs every night, there stood a lighthouse older than the village below it. Its keeper was an old woman named Marguerite, who had tended the light for forty-one years.
+
+Every evening she climbed the 212 steps to the lamp room, and every evening she talked to the lamp as though it were an old friend. "Well, my dear," she'd say, "let's keep them safe tonight."
+
+But the world was changing. The village now had a new automated beacon, a sleek white tower on the northern point that needed no keeper at all. The council had sent a letter, polite and apologetic: the old lighthouse would be switched off at the end of the month.
+
+On the last night, a storm rolled in, the worst in a decade. Marguerite climbed the stairs slowly, her knees complaining at each step, and lit the lamp one final time. Its golden beam swept across the black water.
+
+Around midnight, the automated beacon flickered and died. Lightning had struck its circuits, and the sleek white tower went dark.
+
+Out on the water, a fishing boat called the *Wren* was fighting its way home. Aboard were four fishermen, one of them just a boy of sixteen on his first season. The captain squinted into the darkness and saw nothing, no shore, no markers, only the roar of waves on hidden rocks.
+
+Then, through the rain, a golden beam swept past. Then again. Steady. Patient. Familiar.
+
+"The old light," the captain whispered. "She's still burning."
+
+He steered by it, sweep after sweep, threading the boat through the narrow channel between the rocks, until the hull scraped gently onto the sand of the harbor and the village came running with lanterns.
+
+Marguerite stayed at her post until dawn, feeding the lamp and murmuring encouragement. When the storm finally broke, she came down the 212 steps to find the entire village waiting at the base of the tower, the boy from the *Wren* at the front, soaking wet and grinning.
+
+The letter from the council was never mentioned again. The new beacon was repaired, and it shone beside the old one, but everyone agreed that some lights deserved a keeper.
+
+And every evening after that, Marguerite climbed her stairs and said to the lamp, "Well, my dear, let's keep them safe tonight."
+
+Eventually the boy from the *Wren* grew up and climbed those stairs beside her, and later, without her.
+
+But that, as they say, is another story.
+
+---
+
+Would you like another, perhaps something funnier, spookier, or more adventurous?
 ```
 
 <Note>

@@ -91,7 +91,102 @@ message = next(item for item in reversed(data['output']) if item['type'] == 'mes
 print(next(part['text'] for part in message['content'] if part['type'] == 'output_text'))
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"models": []string{"~anthropic/claude-sonnet-latest", "gryphe/mythomax-l2-13b"},
+		"input":  "What is the meaning of life?",
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("request failed: %s", resp.Status)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	for i := len(result.Output) - 1; i >= 0; i-- {
+		if result.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range result.Output[i].Content {
+			if part.Type == "output_text" {
+				fmt.Println(part.Text)
+				return
+			}
+		}
+		return
+	}
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+    "models": ["~anthropic/claude-sonnet-latest", "gryphe/mythomax-l2-13b"],
+    "input": "What is the meaning of life?"
+  }' | jq -r '[.output[] | select(.type == "message")] | last | .content[] | select(.type == "output_text") | .text'
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+There's no single agreed-upon answer, but here are the main ways people have approached it.
+
+**Major perspectives**
+- **Religious/spiritual:** Meaning comes from a source beyond us, such as serving God, achieving enlightenment, or fulfilling a divine purpose.
+- **Existentialist:** Life has no built-in meaning, so we create our own through our choices and commitments (Sartre, Camus). Camus added that we can live fully even while accepting the universe's silence.
+- **Humanist/ethical:** Meaning comes from human flourishing: caring for others, reducing suffering, and building a better world.
+- **Aristotelian:** The point is to live well, developing your capacities and virtues over a whole life (*eudaimonia*).
+- **Naturalistic/scientific:** Life evolved without a purpose, but that doesn't stop us from finding things worthwhile. Purpose can be real to us without being cosmic.
+- **Absurdist/humorous:** Douglas Adams said 42. Not entirely a joke, since it points out that we may be asking the wrong question.
+
+**What the research suggests**
+Psychologists who study meaning tend to find the same ingredients:
+- Close relationships and belonging
+- Work or projects that feel significant
+- A sense of coherence, that your life makes sense as a story
+- Connection to something larger than yourself, whether community, nature, or a cause
+
+**A way to think about it**
+"What is *the* meaning of life?" may be less useful than "What makes *my* life feel meaningful?" The first assumes one answer for everyone. The second is something you can explore, test, and revise.
+
+Are you asking out of curiosity, or is this something you're wrestling with personally? I'm happy to go deeper either way.
+```
 
 ## Fallback behavior
 
@@ -117,6 +212,8 @@ The Anthropic Messages API endpoint (`/api/v1/messages`) accepts the `fallbacks`
 OpenRouter handles this fallback routing itself. The `fallbacks` parameter does not use Anthropic's server-side fallback feature.
 </Note>
 
+<CodeGroup>
+
 ```typescript lines
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -131,6 +228,134 @@ const message = await anthropic.beta.messages.create({
   fallbacks: [{ model: 'anthropic/claude-opus-4.1' }],
   messages: [{ role: 'user', content: 'What is the meaning of life?' }],
 });
+
+for (const block of message.content) {
+  if (block.type === 'text') {
+    console.log(block.text);
+  }
+}
+
+```
+
+```python title="Python" lines
+import os
+
+import anthropic
+
+client = anthropic.Anthropic(
+    base_url="https://openrouter.ai/api",
+    api_key=os.environ["OPENROUTER_API_KEY"],
+)
+
+message = client.beta.messages.create(
+    model="anthropic/claude-sonnet-4.5",
+    max_tokens=1024,
+    extra_body={"fallbacks": [{"model": "anthropic/claude-opus-4.1"}]},
+    messages=[{"role": "user", "content": "What is the meaning of life?"}],
+)
+
+for block in message.content:
+    if block.type == "text":
+        print(block.text)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":      "anthropic/claude-sonnet-4.5",
+		"max_tokens": 1024,
+		"fallbacks":  []map[string]string{{"model": "anthropic/claude-opus-4.1"}},
+		"messages": []map[string]string{
+			{"role": "user", "content": "What is the meaning of life?"},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/messages", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("request failed: %s", resp.Status)
+	}
+
+	var message struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&message); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, block := range message.Content {
+		if block.Type == "text" {
+			fmt.Println(block.Text)
+		}
+	}
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+    "model": "anthropic/claude-sonnet-4.5",
+    "max_tokens": 1024,
+    "fallbacks": [{ "model": "anthropic/claude-opus-4.1" }],
+    "messages": [{ "role": "user", "content": "What is the meaning of life?" }]
+  }' | jq -r '.content[] | select(.type == "text") | .text'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+The meaning of life is one of humanity's oldest questions, and there's no single answer. Here are some common perspectives:
+
+**Philosophical views:**
+- Creating your own meaning through choices and actions (existentialism)
+- Pursuing happiness, virtue, or knowledge
+- Connecting with something greater than yourself
+
+**Religious perspectives:**
+- Serving or connecting with God/the divine
+- Preparing for an afterlife
+- Following spiritual teachings and principles
+
+**Secular approaches:**
+- Building relationships and loving others
+- Reducing suffering and increasing wellbeing
+- Learning, growing, and experiencing life
+- Contributing to society or leaving a legacy
+- Finding purpose through work, creativity, or passion
+
+**Biological view:**
+- Survival and reproduction (though humans often seek meaning beyond this)
+
+Many people find meaning through a combination of these—connection with others, personal growth, contributing to something meaningful, and experiencing joy and beauty.
+
+What resonates most with you? The question itself can be as valuable as any answer, prompting reflection on what makes *your* life feel worthwhile.
 ```
 
 ### Limitations
@@ -186,4 +411,84 @@ async function main() {
 main();
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":  "~openai/gpt-sol-latest",
+		"models": []string{"~anthropic/claude-sonnet-latest", "gryphe/mythomax-l2-13b"},
+		"input":  "What is the meaning of life?",
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("request failed: %s", resp.Status)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, item := range result.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, part := range item.Content {
+			if part.Type == "output_text" {
+				fmt.Print(part.Text)
+			}
+		}
+	}
+	fmt.Println()
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+    "model": "~openai/gpt-sol-latest",
+    "models": ["~anthropic/claude-sonnet-latest", "gryphe/mythomax-l2-13b"],
+    "input": "What is the meaning of life?"
+  }' | jq -r '[.output[] | select(.type == "message")] | last | .content[] | select(.type == "output_text") | .text'
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+There may be no single meaning of life, but that doesn’t mean life is meaningless.
+
+Some people understand meaning as a purpose they’re given by God or a spiritual tradition. Others think we create it through our choices. And often, meaning feels less like something we invent or discover than something that grows: a friendship deepens, a skill becomes a vocation, or someone comes to count on us.
+
+A practical answer is to pay attention to what you find worth caring for, even when it’s hard. You don’t need an answer for your whole life to know what matters today.
+```

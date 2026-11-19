@@ -35,11 +35,121 @@ import { openRouterText } from "@tanstack/ai-openrouter";
 
 const stream = chat({
   adapter: openRouterText("openai/gpt-5.2"),
+  threadId: "conversation-1",
   messages: [{ role: "user", content: "Hello!" }],
 });
+
+for await (const chunk of stream) {
+  if ("delta" in chunk && typeof chunk.delta === "string") {
+    process.stdout.write(chunk.delta);
+  }
+}
+console.log();
+
+```
+
+```python title="Python" lines
+import os
+from openrouter import OpenRouter
+
+with OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"]) as client:
+    stream = client.chat.send(
+        model="openai/gpt-5.2",
+        messages=[{"role": "user", "content": "Hello!"}],
+        stream=True,
+    )
+
+    for chunk in stream:
+        if chunk.choices and chunk.choices[0].delta.content:
+            print(chunk.choices[0].delta.content, end="", flush=True)
+    print()
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":    "openai/gpt-5.2",
+		"stream":   true,
+		"messages": []map[string]string{{"role": "user", "content": "Hello!"}},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		fmt.Fprintln(os.Stderr, resp.Status, string(b))
+		os.Exit(1)
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		data := strings.TrimPrefix(line, "data: ")
+		if data == "[DONE]" {
+			break
+		}
+		var chunk struct {
+			Choices []struct {
+				Delta struct {
+					Content string `json:"content"`
+				} `json:"delta"`
+			} `json:"choices"`
+		}
+		if json.Unmarshal([]byte(data), &chunk) == nil && len(chunk.Choices) > 0 {
+			fmt.Print(chunk.Choices[0].Delta.Content)
+		}
+	}
+	fmt.Println()
+}
+
+```
+
+```bash title="cURL" lines
+set -o pipefail
+
+# --fail with -S reports an HTTP error (such as 401) on stderr; pipefail keeps its nonzero exit status.
+curl -sSN --fail https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5.2",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }' | sed -un 's/^data: //p' | grep --line-buffered -v '^\[DONE\]$' \
+  | jq -j --unbuffered '.choices[0].delta.content // empty' \
+  && echo
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Hello! What can I help you with today?
+```
 
 ### Configuration
 
@@ -66,13 +176,47 @@ const adapter = createOpenRouter(config.apiKey, config);
 
 OpenRouter provides access to 400+ models from various providers. Models use the format `provider/model-name`:
 
+<CodeGroup>
+
 ```typescript lines
-model: "openai/gpt-5.2"
-model: "anthropic/claude-sonnet-4.5"
-model: "google/gemini-3.1-pro-preview"
-model: "z-ai/glm-4.7"
-model: "minimax/minimax-m2.1"
+const models = [
+  "openai/gpt-5.2",
+  "anthropic/claude-sonnet-4.5",
+  "google/gemini-3.1-pro-preview",
+  "z-ai/glm-4.7",
+];
 ```
+
+```python title="Python" lines
+models = [
+    "openai/gpt-5.2",
+    "anthropic/claude-sonnet-4.5",
+    "google/gemini-3.1-pro-preview",
+    "z-ai/glm-4.7",
+]
+
+```
+
+```go title="Go" lines
+models := []string{
+	"openai/gpt-5.2",
+	"anthropic/claude-sonnet-4.5",
+	"google/gemini-3.1-pro-preview",
+	"z-ai/glm-4.7",
+}
+```
+
+```bash title="cURL" lines
+models=(
+  "openai/gpt-5.2"
+  "anthropic/claude-sonnet-4.5"
+  "google/gemini-3.1-pro-preview"
+  "z-ai/glm-4.7"
+)
+
+```
+
+</CodeGroup>
 
 See the full list at [openrouter.ai/models](https://openrouter.ai/models).
 
@@ -96,7 +240,135 @@ export async function POST(request: Request) {
 }
 ```
 
+```python title="Python" lines
+import json
+import os
+from openrouter import OpenRouter
+
+client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+
+def post(request_body: str):
+    messages = json.loads(request_body)["messages"]
+
+    stream = client.chat.send(
+        model="openai/gpt-5.2",
+        messages=messages,
+        stream=True,
+    )
+
+    # Server-Sent Events body, one event per chunk
+    for chunk in stream:
+        yield f"data: {chunk.model_dump_json(exclude_none=True)}\n\n"
+    yield "data: [DONE]\n\n"
+
+
+if __name__ == "__main__":
+    body = json.dumps({"messages": [{"role": "user", "content": "Hello!"}]})
+    for event in post(body):
+        print(event, end="", flush=True)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
+)
+
+// chatHandler streams an OpenRouter chat completion back to the client as SSE.
+func chatHandler(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Messages []map[string]any `json:"messages"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"model":    "openai/gpt-5.2",
+		"stream":   true,
+		"messages": in.Messages,
+	})
+	req, _ := http.NewRequestWithContext(r.Context(), "POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.WriteHeader(resp.StatusCode)
+	flusher, _ := w.(http.Flusher)
+	buf := make([]byte, 4096)
+	for {
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			w.Write(buf[:n])
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+		if err != nil {
+			return
+		}
+	}
+}
+
+func main() {
+	// In production: http.HandleFunc("/api/chat", chatHandler); http.ListenAndServe(":8080", nil)
+	srv := httptest.NewServer(http.HandlerFunc(chatHandler))
+	defer srv.Close()
+
+	resp, err := http.Post(srv.URL, "application/json",
+		strings.NewReader(`{"messages":[{"role":"user","content":"Hello!"}]}`))
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	io.Copy(os.Stdout, resp.Body)
+}
+
+```
+
+```bash title="cURL" lines
+# Equivalent of the server route: forward the chat messages to OpenRouter
+# and relay the raw Server-Sent Events stream to stdout.
+curl -sN https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5.2",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }'
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+data: {"choices":[{"delta":{"content":"Hello! What can I help you with today?","role":"assistant"},"finish_reason":null,"index":0}],"created":1794949778,"id":"gen-1794949778-riLGFRdE0YzhPTQFTzBI","model":"openai/gpt-5.2","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{"content":"","role":"assistant"},"finish_reason":"stop","index":0}],"created":1794949778,"id":"gen-1794949778-riLGFRdE0YzhPTQFTzBI","model":"openai/gpt-5.2","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{"content":"","role":"assistant"},"finish_reason":"stop","index":0}],"created":1794949778,"id":"gen-1794949778-riLGFRdE0YzhPTQFTzBI","model":"openai/gpt-5.2","object":"chat.completion.chunk","service_tier":"default","usage":{"completion_tokens":14,"prompt_tokens":8,"total_tokens":22,"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":0},"cost":0.00021,"cost_details":{"upstream_inference_completions_cost":0.000196,"upstream_inference_prompt_cost":0.000014,"upstream_inference_cost":0.00021},"is_byok":false,"prompt_tokens_details":{"audio_tokens":0,"cache_write_tokens":0,"cached_tokens":0,"video_tokens":0}}}
+
+data: [DONE]
+```
 
 ### Using Tools
 
@@ -119,16 +391,147 @@ const getWeather = getWeatherDef.server(async ({ location }) => {
   return { temperature: 72, conditions: "sunny" };
 });
 
-const messages = [{ role: "user", content: "What's the weather in NYC?" }];
+const messages = [{ role: "user" as const, content: "What's the weather in NYC?" }];
 
 const stream = chat({
   adapter: openRouterText("openai/gpt-5.2"),
+  threadId: "weather-demo",
   messages,
   tools: [getWeather],
 });
+
+for await (const chunk of stream as AsyncIterable<any>) {
+  if ((chunk.type === "content" || chunk.type === "TEXT_MESSAGE_CONTENT") && chunk.delta) {
+    process.stdout.write(chunk.delta);
+  }
+}
+console.log();
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+from pydantic import BaseModel
+from openrouter_agent import OpenRouter, call_model, tool
+
+
+class WeatherInput(BaseModel):
+    location: str
+
+
+class WeatherOutput(BaseModel):
+    temperature: int
+    conditions: str
+
+
+get_weather = tool(
+    name="get_weather",
+    description="Get the current weather",
+    input_schema=WeatherInput,
+    output_schema=WeatherOutput,
+    execute=lambda params, ctx: WeatherOutput(temperature=72, conditions="sunny"),
+)
+
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5.2",
+            "input": "What's the weather in NYC?",
+            "tools": [get_weather],
+        },
+    )
+
+    async for delta in result.get_text_stream():
+        print(delta, end="", flush=True)
+    print()
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func getWeather(location string) map[string]any {
+	return map[string]any{"temperature": 72, "conditions": "sunny"}
+}
+
+func send(payload map[string]any) map[string]any {
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	var out map[string]any
+	json.NewDecoder(resp.Body).Decode(&out)
+	choices, ok := out["choices"].([]any)
+	if !ok || len(choices) == 0 {
+		panic(fmt.Sprintf("unexpected response: %v", out))
+	}
+	return choices[0].(map[string]any)["message"].(map[string]any)
+}
+
+func main() {
+	tools := []any{map[string]any{
+		"type": "function",
+		"function": map[string]any{
+			"name":        "get_weather",
+			"description": "Get the current weather",
+			"parameters": map[string]any{
+				"type":       "object",
+				"properties": map[string]any{"location": map[string]any{"type": "string"}},
+				"required":   []string{"location"},
+			},
+		},
+	}}
+	messages := []any{map[string]any{"role": "user", "content": "What's the weather in NYC?"}}
+
+	for {
+		msg := send(map[string]any{"model": "openai/gpt-5.2", "messages": messages, "tools": tools})
+		calls, _ := msg["tool_calls"].([]any)
+		if len(calls) == 0 {
+			fmt.Println(msg["content"])
+			return
+		}
+		messages = append(messages, map[string]any{"role": "assistant", "content": msg["content"], "tool_calls": calls})
+		for _, c := range calls {
+			call := c.(map[string]any)
+			fn := call["function"].(map[string]any)
+			var args struct {
+				Location string `json:"location"`
+			}
+			json.Unmarshal([]byte(fn["arguments"].(string)), &args)
+			result, _ := json.Marshal(getWeather(args.Location))
+			messages = append(messages, map[string]any{"role": "tool", "tool_call_id": call["id"], "content": string(result)})
+		}
+	}
+}
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+It’s **72°F** and **sunny** in **NYC** right now.
+```
 
 ### Environment Variables
 
@@ -154,15 +557,119 @@ import { openRouterText } from "@tanstack/ai-openrouter";
 
 const stream = chat({
   adapter: openRouterText("openai/gpt-5.2"),
+  threadId: "fallback-demo",
   messages: [{ role: "user", content: "Hello!" }],
   modelOptions: {
     models: ["anthropic/claude-sonnet-4.5", "google/gemini-3.1-pro-preview"],
     route: "fallback",
   },
 });
+
+for await (const chunk of stream as AsyncIterable<any>) {
+  if ((chunk.type === "content" || chunk.type === "TEXT_MESSAGE_CONTENT") && chunk.delta) {
+    process.stdout.write(chunk.delta);
+  }
+}
+console.log();
+
+```
+
+```python title="Python" lines
+import json
+import os
+import requests
+
+resp = requests.post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+    json={
+        "model": "openai/gpt-5.2",
+        "models": ["anthropic/claude-sonnet-4.5", "google/gemini-3.1-pro-preview"],
+        "route": "fallback",
+        "messages": [{"role": "user", "content": "Hello!"}],
+        "stream": True,
+    },
+    stream=True,
+)
+resp.raise_for_status()
+
+for line in resp.iter_lines():
+    if not line.startswith(b"data: "):
+        continue
+    data = line[6:]
+    if data == b"[DONE]":
+        break
+    chunk = json.loads(data)
+    choices = chunk.get("choices") or []
+    delta = choices[0].get("delta", {}).get("content") if choices else None
+    if delta:
+        print(delta, end="", flush=True)
+print()
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":    "openai/gpt-5.2",
+		"models":   []string{"anthropic/claude-sonnet-4.5", "google/gemini-3.1-pro-preview"},
+		"route":    "fallback",
+		"messages": []any{map[string]any{"role": "user", "content": "Hello!"}},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	var out struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || len(out.Choices) == 0 {
+		panic(fmt.Sprintf("unexpected response (status %d): %v", resp.StatusCode, err))
+	}
+	fmt.Println(out.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+curl -sN https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5.2",
+    "models": ["anthropic/claude-sonnet-4.5", "google/gemini-3.1-pro-preview"],
+    "route": "fallback",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }' | sed -n 's/^data: //p' | grep -v '^\[DONE\]$' | jq -j '.choices[0].delta.content // empty'
+echo
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Hello! What would you like to work on today?
+```
 
 #### Provider Sorting
 
@@ -177,6 +684,7 @@ import { openRouterText } from "@tanstack/ai-openrouter";
 // Prioritize fastest providers
 const stream = chat({
   adapter: openRouterText("openai/gpt-5.2"),
+  threadId: "provider-sort-demo",
   messages: [{ role: "user", content: "Hello!" }],
   modelOptions: {
     provider: {
@@ -184,9 +692,112 @@ const stream = chat({
     },
   },
 });
+
+for await (const chunk of stream as AsyncIterable<any>) {
+  if ((chunk.type === "content" || chunk.type === "TEXT_MESSAGE_CONTENT") && chunk.delta) {
+    process.stdout.write(chunk.delta);
+  }
+}
+console.log();
+
+```
+
+```python title="Python" lines
+import json
+import os
+import requests
+
+# Prioritize fastest providers
+resp = requests.post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+    json={
+        "model": "openai/gpt-5.2",
+        "provider": {"sort": "throughput"},
+        "messages": [{"role": "user", "content": "Hello!"}],
+        "stream": True,
+    },
+    stream=True,
+)
+resp.raise_for_status()
+
+for line in resp.iter_lines():
+    if not line.startswith(b"data: "):
+        continue
+    data = line[6:]
+    if data == b"[DONE]":
+        break
+    chunk = json.loads(data)
+    choices = chunk.get("choices") or []
+    delta = choices[0].get("delta", {}).get("content") if choices else None
+    if delta:
+        print(delta, end="", flush=True)
+print()
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	// Prioritize fastest providers
+	body, _ := json.Marshal(map[string]any{
+		"model":    "openai/gpt-5.2",
+		"provider": map[string]any{"sort": "throughput"},
+		"messages": []any{map[string]any{"role": "user", "content": "Hello!"}},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	var out struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || len(out.Choices) == 0 {
+		panic(fmt.Sprintf("unexpected response (status %d): %v", resp.StatusCode, err))
+	}
+	fmt.Println(out.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+# Prioritize fastest providers
+curl -sN https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5.2",
+    "provider": {"sort": "throughput"},
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }' | sed -n 's/^data: //p' | grep -v '^\[DONE\]$' | jq -j '.choices[0].delta.content // empty'
+echo
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Hello! What would you like to work on today?
+```
 
 #### Provider Ordering
 
@@ -200,6 +811,7 @@ import { openRouterText } from "@tanstack/ai-openrouter";
 
 const stream = chat({
   adapter: openRouterText("anthropic/claude-sonnet-4.5"),
+  threadId: "provider-order-demo",
   messages: [{ role: "user", content: "Hello!" }],
   modelOptions: {
     provider: {
@@ -208,9 +820,118 @@ const stream = chat({
     },
   },
 });
+
+for await (const chunk of stream as AsyncIterable<any>) {
+  if ((chunk.type === "content" || chunk.type === "TEXT_MESSAGE_CONTENT") && chunk.delta) {
+    process.stdout.write(chunk.delta);
+  }
+}
+console.log();
+
+```
+
+```python title="Python" lines
+import json
+import os
+import requests
+
+resp = requests.post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+    json={
+        "model": "anthropic/claude-sonnet-4.5",
+        "provider": {
+            "order": ["anthropic", "amazon-bedrock", "google-vertex"],
+            "allow_fallbacks": True,
+        },
+        "messages": [{"role": "user", "content": "Hello!"}],
+        "stream": True,
+    },
+    stream=True,
+)
+resp.raise_for_status()
+
+for line in resp.iter_lines():
+    if not line.startswith(b"data: "):
+        continue
+    data = line[6:]
+    if data == b"[DONE]":
+        break
+    chunk = json.loads(data)
+    choices = chunk.get("choices") or []
+    delta = choices[0].get("delta", {}).get("content") if choices else None
+    if delta:
+        print(delta, end="", flush=True)
+print()
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "anthropic/claude-sonnet-4.5",
+		"provider": map[string]any{
+			"order":           []string{"anthropic", "amazon-bedrock", "google-vertex"},
+			"allow_fallbacks": true,
+		},
+		"messages": []any{map[string]any{"role": "user", "content": "Hello!"}},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	var out struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || len(out.Choices) == 0 {
+		panic(fmt.Sprintf("unexpected response (status %d): %v", resp.StatusCode, err))
+	}
+	fmt.Println(out.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+curl -sN https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "anthropic/claude-sonnet-4.5",
+    "provider": {
+      "order": ["anthropic", "amazon-bedrock", "google-vertex"],
+      "allow_fallbacks": true
+    },
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }' | sed -n 's/^data: //p' | grep -v '^\[DONE\]$' | jq -j '.choices[0].delta.content // empty'
+echo
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Hello! How can I help you today?
+```
 
 #### Data Privacy Controls
 
@@ -224,6 +945,7 @@ import { openRouterText } from "@tanstack/ai-openrouter";
 
 const stream = chat({
   adapter: openRouterText("openai/gpt-5.2"),
+  threadId: "data-privacy-demo",
   messages: [{ role: "user", content: "Hello!" }],
   modelOptions: {
     provider: {
@@ -232,9 +954,118 @@ const stream = chat({
     },
   },
 });
+
+for await (const chunk of stream as AsyncIterable<any>) {
+  if ((chunk.type === "content" || chunk.type === "TEXT_MESSAGE_CONTENT") && chunk.delta) {
+    process.stdout.write(chunk.delta);
+  }
+}
+console.log();
+
+```
+
+```python title="Python" lines
+import json
+import os
+import requests
+
+resp = requests.post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+    json={
+        "model": "openai/gpt-5.2",
+        "provider": {
+            "data_collection": "deny",
+            "zdr": True,
+        },
+        "messages": [{"role": "user", "content": "Hello!"}],
+        "stream": True,
+    },
+    stream=True,
+)
+resp.raise_for_status()
+
+for line in resp.iter_lines():
+    if not line.startswith(b"data: "):
+        continue
+    data = line[6:]
+    if data == b"[DONE]":
+        break
+    chunk = json.loads(data)
+    choices = chunk.get("choices") or []
+    delta = choices[0].get("delta", {}).get("content") if choices else None
+    if delta:
+        print(delta, end="", flush=True)
+print()
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5.2",
+		"provider": map[string]any{
+			"data_collection": "deny",
+			"zdr":             true,
+		},
+		"messages": []any{map[string]any{"role": "user", "content": "Hello!"}},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	var out struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || len(out.Choices) == 0 {
+		panic(fmt.Sprintf("unexpected response (status %d): %v", resp.StatusCode, err))
+	}
+	fmt.Println(out.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+curl -sN https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5.2",
+    "provider": {
+      "data_collection": "deny",
+      "zdr": true
+    },
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }' | sed -n 's/^data: //p' | grep -v '^\[DONE\]$' | jq -j '.choices[0].delta.content // empty'
+echo
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Hello! What can I help you with today?
+```
 
 #### Filtering Providers
 
@@ -248,18 +1079,131 @@ import { openRouterText } from "@tanstack/ai-openrouter";
 
 const stream = chat({
   adapter: openRouterText("meta-llama/llama-3.3-70b-instruct"),
+  threadId: "provider-filtering-demo",
   messages: [{ role: "user", content: "Hello!" }],
   modelOptions: {
     provider: {
-      only: ["together", "fireworks"],
+      only: ["coreweave", "deepinfra"],
       ignore: ["azure"],
       quantizations: ["fp16", "bf16"],
     },
   },
 });
+
+for await (const chunk of stream as AsyncIterable<any>) {
+  if ((chunk.type === "content" || chunk.type === "TEXT_MESSAGE_CONTENT") && chunk.delta) {
+    process.stdout.write(chunk.delta);
+  }
+}
+console.log();
+
+```
+
+```python title="Python" lines
+import json
+import os
+import requests
+
+resp = requests.post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+    json={
+        "model": "meta-llama/llama-3.3-70b-instruct",
+        "provider": {
+            "only": ["coreweave", "deepinfra"],
+            "ignore": ["azure"],
+            "quantizations": ["fp16", "bf16"],
+        },
+        "messages": [{"role": "user", "content": "Hello!"}],
+        "stream": True,
+    },
+    stream=True,
+)
+resp.raise_for_status()
+
+for line in resp.iter_lines():
+    if not line.startswith(b"data: "):
+        continue
+    data = line[6:]
+    if data == b"[DONE]":
+        break
+    chunk = json.loads(data)
+    choices = chunk.get("choices") or []
+    delta = choices[0].get("delta", {}).get("content") if choices else None
+    if delta:
+        print(delta, end="", flush=True)
+print()
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "meta-llama/llama-3.3-70b-instruct",
+		"provider": map[string]any{
+			"only":          []string{"coreweave", "deepinfra"},
+			"ignore":        []string{"azure"},
+			"quantizations": []string{"fp16", "bf16"},
+		},
+		"messages": []any{map[string]any{"role": "user", "content": "Hello!"}},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	var out struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || len(out.Choices) == 0 {
+		panic(fmt.Sprintf("unexpected response (status %d): %v", resp.StatusCode, err))
+	}
+	fmt.Println(out.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+curl -sN https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "meta-llama/llama-3.3-70b-instruct",
+    "provider": {
+      "only": ["coreweave", "deepinfra"],
+      "ignore": ["azure"],
+      "quantizations": ["fp16", "bf16"]
+    },
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }' | sed -n 's/^data: //p' | grep -v '^\[DONE\]$' | jq -j '.choices[0].delta.content // empty'
+echo
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Hello! It's nice to meet you. Is there something I can help you with or would you like to chat?
+```
 
 #### Cost Controls
 
@@ -273,6 +1217,7 @@ import { openRouterText } from "@tanstack/ai-openrouter";
 
 const stream = chat({
   adapter: openRouterText("z-ai/glm-4.7"),
+  threadId: "cost-controls-demo",
   messages: [{ role: "user", content: "Hello!" }],
   modelOptions: {
     provider: {
@@ -283,9 +1228,124 @@ const stream = chat({
     },
   },
 });
+
+for await (const chunk of stream as AsyncIterable<any>) {
+  if ((chunk.type === "content" || chunk.type === "TEXT_MESSAGE_CONTENT") && chunk.delta) {
+    process.stdout.write(chunk.delta);
+  }
+}
+console.log();
+
+```
+
+```python title="Python" lines
+import json
+import os
+import requests
+
+resp = requests.post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+    json={
+        "model": "z-ai/glm-4.7",
+        "provider": {
+            "max_price": {
+                "prompt": 0.5,
+                "completion": 2,
+            },
+        },
+        "messages": [{"role": "user", "content": "Hello!"}],
+        "stream": True,
+    },
+    stream=True,
+)
+resp.raise_for_status()
+
+for line in resp.iter_lines():
+    if not line.startswith(b"data: "):
+        continue
+    data = line[6:]
+    if data == b"[DONE]":
+        break
+    chunk = json.loads(data)
+    choices = chunk.get("choices") or []
+    delta = choices[0].get("delta", {}).get("content") if choices else None
+    if delta:
+        print(delta, end="", flush=True)
+print()
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "z-ai/glm-4.7",
+		"provider": map[string]any{
+			"max_price": map[string]any{
+				"prompt":     0.5,
+				"completion": 2,
+			},
+		},
+		"messages": []any{map[string]any{"role": "user", "content": "Hello!"}},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	var out struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || len(out.Choices) == 0 {
+		panic(fmt.Sprintf("unexpected response (status %d): %v", resp.StatusCode, err))
+	}
+	fmt.Println(out.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+curl -sN https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "z-ai/glm-4.7",
+    "provider": {
+      "max_price": {
+        "prompt": 0.5,
+        "completion": 2
+      }
+    },
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }' | sed -n 's/^data: //p' | grep -v '^\[DONE\]$' | jq -j '.choices[0].delta.content // empty'
+echo
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Hello! I'm your GLM model trained by Z.ai. How can I assist you today? Whether you have questions, need information, or just want to chat, I'm here to help. What would you like to discuss?
+```
 
 For more advanced routing options like performance thresholds and partition-based sorting, see the [Provider Routing documentation](/guides/routing/provider-selection).
 

@@ -97,7 +97,94 @@ curl https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5.2",
+		"input": "What were the major AI announcements this week?",
+		"tools": []map[string]any{
+			{"type": "openrouter:web_search"},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		panic("API error: " + resp.Status)
+	}
+
+	var data struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		panic(err)
+	}
+
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range data.Output[i].Content {
+			if part.Type == "output_text" {
+				fmt.Println(part.Text)
+				break
+			}
+		}
+		break
+	}
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Here are the biggest *AI product/company announcements* I saw in the past 7 days (**Nov 10–Nov 17, 2026**, as of today **Tue, Nov 17**). If you meant “this calendar week so far” (Mon–Tue only), tell me and I’ll tighten the list.
+
+## Major AI announcements (Nov 10–Nov 17, 2026)
+
+- **Microsoft (Nov 17) — Ignite: new “MAI” model push + transparency initiative**
+  - Microsoft announced multiple new first‑party MAI models (including the **MAI Code 2** family) and also highlighted **Microsoft-Decision-1.1** becoming generally available. ([news.microsoft.com](https://news.microsoft.com/source/2026/11/17/microsoft-ignite-2026-empowering-human-ambition-intelligence-and-trust/))  
+  - Microsoft also announced **“MAI Licensed Weights”** and the **Microsoft AI Transparency Initiative** (positioned around standards, independent verification, and governance). ([blogs.microsoft.com](https://blogs.microsoft.com/blog/2026/11/17/ignite-2026-building-the-frontier-ecosystem/))
+
+- **OpenAI (Nov 16–17) — GPT‑6.2 model release**
+  - OpenAI announced **GPT‑6.2 Astra** (frontier) and **GPT‑6.2 Sol** (more efficient), shipping across ChatGPT/Codex/API. ([openai.com](https://openai.com/index/introducing-gpt-6-2-astra-sol/?utm_source=openai))
+
+- **Google (Nov 12–16) — Gemini 4 Hydrogen rollout (including Search)**
+  - Google introduced **Gemini 4 Hydrogen**, positioning it as a fast “agentic workflows” model and rolling it out broadly (Gemini app, Gemini API / AI Studio, Search, etc.). ([blog.google](https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-hydrogen/?linkId=64389362))  
+  - Google also introduced an **“Orchestrator”** concept in Google Antigravity to switch models dynamically within a session. ([blog.google](https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-hydrogen/?linkId=64389362))
+
+- **Adobe (Nov 10) — Adobe MAX: agentic creative workflows + MCP integrations**
+  - Adobe announced expansion of **Adobe Creative Agent**, updates in **Firefly**, and **local MCP integrations** for Creative Cloud apps (Photoshop/Illustrator/Premiere/After Effects) so third‑party agents can operate on native project files. ([news.adobe.com](https://news.adobe.com/news/2026/11/adobe-powers-new-era-of-creativity?trk=public_post_comment-text))
+
+- **Anthropic (announced during the week) — IPO plans move forward**
+  - Anthropic’s IPO plans/filings were a major company-level development this week (including discussion of its governance structure like a long‑term benefit trust). ([apnews.com](https://apnews.com/article/anthropic-ipo-public-benefit-corp-a2a04c9bcf681c1b46b13607171c83b4))
+
+If you tell me which “this week” window you mean (Mon–today, last 7 days, or last full Mon–Sun week), I can re-rank these and add any notable items I excluded as “not quite major.”
+```
 
 ## Configuration
 
@@ -423,7 +510,86 @@ message = next(item for item in reversed(data["output"]) if item["type"] == "mes
 print(next(part["text"] for part in message["content"] if part["type"] == "output_text"))
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5.2",
+		"input": "What is the current price of Bitcoin?",
+		"tools": []map[string]any{
+			{"type": "openrouter:web_search", "parameters": map[string]any{"max_results": 3}},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		panic("API error: " + resp.Status)
+	}
+
+	var data struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		panic(err)
+	}
+
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range data.Output[i].Content {
+			if part.Type == "output_text" {
+				fmt.Println(part.Text)
+				break
+			}
+		}
+		break
+	}
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5.2",
+    "input": "What is the current price of Bitcoin?",
+    "tools": [
+      {"type": "openrouter:web_search", "parameters": {"max_results": 3}}
+    ]
+  }' | jq -r '[.output[] | select(.type == "message")] | last | first(.content[] | select(.type == "output_text") | .text)'
+```
+
 </CodeGroup>
+
+```text title="Output"
+Bitcoin (BTC) is currently **$63,992 USD**, down **$975 (-1.50%)** from the previous close.
+```
 
 ## Workspace Settings
 

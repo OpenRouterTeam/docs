@@ -52,7 +52,7 @@ const openRouter = new OpenRouter({
   apiKey: '<OPENROUTER_API_KEY>',
 });
 
-const keyInfo = await openRouter.apiKeys.getCurrent();
+const keyInfo = await openRouter.apiKeys.getCurrentKeyMetadata();
 console.log(keyInfo);
 ```
 
@@ -82,9 +82,86 @@ const keyInfo = await response.json();
 console.log(keyInfo);
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	req, _ := http.NewRequest("GET", "https://openrouter.ai/api/v1/key", nil)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	keyInfo, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(keyInfo))
+}
+
+```
+
+```bash title="cURL" lines
+curl https://openrouter.ai/api/v1/key \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY"
+
+```
+
 </CodeGroup>
 
+```text title="Output"
+{
+  data: {
+    label: "<OPENROUTER_API_KEY>...6ed",
+    is_management_key: false,
+    is_provisioning_key: false,
+    limit: 500,
+    limit_reset: "weekly",
+    limit_remaining: 406.54343450199997,
+    include_byok_in_limit: false,
+    budgets: [
+      [Object ...], [Object ...]
+    ],
+    effective_budget: {
+      scope: "key_limit",
+      guardrail_id: null,
+      budget_id: null,
+      limit_usd: 500,
+      spend_usd: 93.456565498,
+      remaining_usd: 406.54343450199997,
+      reset_interval: "weekly",
+      resets_at: "2026-11-23T00:00:00.000Z",
+      include_byok: false,
+    },
+    usage: 420.006262049,
+    usage_daily: 93.456565498,
+    usage_weekly: 93.456565498,
+    usage_monthly: 420.006262049,
+    byok_usage: 0,
+    byok_usage_daily: 0,
+    byok_usage_weekly: 0,
+    byok_usage_monthly: 0,
+    is_free_tier: false,
+    expires_at: null,
+    creator_user_id: null,
+    organization_id: "org_2uMVNwONqhSdZXQy1QtyWuCjTxZ",
+    workspace_id: "b04919e8-b623-5ca1-a91f-01007c41d2c6",
+    allowed_data_regions: [ "global", "europe", "us" ],
+    free_model_daily_requests: {
+      used: 1004,
+      limit: 1000,
+```
+
 If you submit a valid API key, you should get a response of the form:
+
+<CodeGroup>
 
 ```typescript title="TypeScript" expandable lines
 // One budget that applies to requests made with the key (see Budget limits below)
@@ -132,6 +209,123 @@ type Key = {
   };
 };
 ```
+
+```python title="Python" lines
+from typing import Literal, TypedDict
+
+
+# One budget that applies to requests made with the key (see Budget limits below)
+class Budget(TypedDict):
+    scope: Literal["workspace_default_member", "workspace_default_key", "member", "api_key", "workspace", "key_limit"]
+    guardrail_id: str | None  # Set for guardrail scopes
+    budget_id: str | None  # Set for the workspace scope
+    limit_usd: float
+    spend_usd: float  # Spend counted against the limit in the current window
+    remaining_usd: float  # limit_usd - spend_usd; zero or negative blocks requests
+    reset_interval: Literal["daily", "weekly", "monthly"] | None  # None never resets
+    resets_at: str | None  # ISO 8601 UTC instant the window rolls over, or None
+    include_byok: bool  # Whether external BYOK spend counts toward this budget
+
+
+class FreeModelDailyRequests(TypedDict):
+    used: int  # Free-model requests recorded so far in the current UTC day
+    limit: int  # Free-model requests allowed per UTC day (see the free usage limits below)
+    remaining: int  # Free-model requests left in the current UTC day
+
+
+class KeyData(TypedDict):
+    label: str
+    limit: float | None  # Credit limit for the key, or None if unlimited
+    limit_reset: str | None  # Type of limit reset for the key, or None if never resets
+    limit_remaining: float | None  # Remaining credits for the key, or None if unlimited
+    include_byok_in_limit: bool  # Whether to include external BYOK usage in the credit limit
+
+    budgets: list[Budget]  # Every budget enforced for this key, in the order enforcement checks them
+    effective_budget: Budget | None  # The budget that blocks requests first, or None if none
+
+    usage: float  # Number of credits used (all time)
+    usage_daily: float  # Number of credits used (current UTC day)
+    usage_weekly: float  # ... (current UTC week, starting Monday)
+    usage_monthly: float  # ... (current UTC month)
+
+    byok_usage: float  # Same for external BYOK usage
+    byok_usage_daily: float
+    byok_usage_weekly: float
+    byok_usage_monthly: float
+
+    is_free_tier: bool  # Whether the user has paid for credits before
+
+    free_model_daily_requests: FreeModelDailyRequests
+    # rate_limit: { ... }  # A deprecated object in the response, safe to ignore
+
+
+class Key(TypedDict):
+    data: KeyData
+
+```
+
+```go title="Go" lines
+// One budget that applies to requests made with the key (see Budget limits below)
+type Budget struct {
+	Scope         string   `json:"scope"`          // workspace_default_member | workspace_default_key | member | api_key | workspace | key_limit
+	GuardrailID   *string  `json:"guardrail_id"`   // Set for guardrail scopes
+	BudgetID      *string  `json:"budget_id"`      // Set for the workspace scope
+	LimitUSD      float64  `json:"limit_usd"`
+	SpendUSD      float64  `json:"spend_usd"`      // Spend counted against the limit in the current window
+	RemainingUSD  float64  `json:"remaining_usd"`  // limit_usd - spend_usd; zero or negative blocks requests
+	ResetInterval *string  `json:"reset_interval"` // daily | weekly | monthly, or nil if it never resets
+	ResetsAt      *string  `json:"resets_at"`      // ISO 8601 UTC instant the window rolls over, or nil
+	IncludeBYOK   bool     `json:"include_byok"`   // Whether external BYOK spend counts toward this budget
+}
+
+type Key struct {
+	Data struct {
+		Label              string   `json:"label"`
+		Limit              *float64 `json:"limit"`                 // Credit limit for the key, or nil if unlimited
+		LimitReset         *string  `json:"limit_reset"`           // Type of limit reset for the key, or nil if never resets
+		LimitRemaining     *float64 `json:"limit_remaining"`       // Remaining credits for the key, or nil if unlimited
+		IncludeBYOKInLimit bool     `json:"include_byok_in_limit"` // Whether to include external BYOK usage in the credit limit
+
+		Budgets         []Budget `json:"budgets"`          // Every budget enforced for this key, in the order enforcement checks them
+		EffectiveBudget *Budget  `json:"effective_budget"` // The budget that blocks requests first, or nil if none
+
+		Usage        float64 `json:"usage"`         // Number of credits used (all time)
+		UsageDaily   float64 `json:"usage_daily"`   // Number of credits used (current UTC day)
+		UsageWeekly  float64 `json:"usage_weekly"`  // ... (current UTC week, starting Monday)
+		UsageMonthly float64 `json:"usage_monthly"` // ... (current UTC month)
+
+		BYOKUsage        float64 `json:"byok_usage"` // Same for external BYOK usage
+		BYOKUsageDaily   float64 `json:"byok_usage_daily"`
+		BYOKUsageWeekly  float64 `json:"byok_usage_weekly"`
+		BYOKUsageMonthly float64 `json:"byok_usage_monthly"`
+
+		IsFreeTier bool `json:"is_free_tier"` // Whether the user has paid for credits before
+
+		FreeModelDailyRequests struct {
+			Used      int `json:"used"`      // Free-model requests recorded so far in the current UTC day
+			Limit     int `json:"limit"`     // Free-model requests allowed per UTC day (see the free usage limits below)
+			Remaining int `json:"remaining"` // Free-model requests left in the current UTC day
+		} `json:"free_model_daily_requests"`
+		// rate_limit: { ... } // A deprecated object in the response, safe to ignore
+	} `json:"data"`
+}
+```
+
+```bash title="cURL" lines
+# Shape of the GET /key response: pick the documented fields
+response=$(curl -s https://openrouter.ai/api/v1/key \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY")
+echo "$response" | jq '.data | {
+  "label": .label, limit, limit_reset, limit_remaining, include_byok_in_limit,
+  budgets, effective_budget,
+  usage, usage_daily, usage_weekly, usage_monthly,
+  byok_usage, byok_usage_daily, byok_usage_weekly, byok_usage_monthly,
+  is_free_tier, free_model_daily_requests
+}'
+
+```
+
+</CodeGroup>
 
 ## Credit limits
 

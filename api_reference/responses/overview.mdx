@@ -41,43 +41,142 @@ All requests require authentication using your OpenRouter API key:
 const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'openai/o4-mini',
+    model: 'openai/gpt-4o-mini',
     input: 'Hello, world!',
   }),
 });
+
+const result = await response.json();
+console.log(JSON.stringify(result, null, 2));
+
 ```
 
 ```python title="Python" lines
+import os
 import requests
 
 response = requests.post(
     'https://openrouter.ai/api/v1/responses',
     headers={
-        'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+        'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
         'Content-Type': 'application/json',
     },
     json={
-        'model': 'openai/o4-mini',
+        'model': 'openai/gpt-4o-mini',
         'input': 'Hello, world!',
     }
 )
+
+print(response.json())
+
 ```
 
 ```bash title="cURL" lines
 curl -X POST https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer YOUR_OPENROUTER_API_KEY" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "openai/o4-mini",
+    "model": "openai/gpt-4o-mini",
     "input": "Hello, world!"
   }'
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o-mini",
+		"input": "Hello, world!",
+	})
+
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := json.Indent(&out, data, "", "  "); err != nil {
+		fmt.Println(string(data))
+		return
+	}
+	fmt.Println(out.String())
+}
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+{
+  "id": "gen-1794947580-aB47fruOzZLs4Q1yYYEw",
+  "object": "response",
+  "created_at": 1794947580,
+  "model": "openai/gpt-4o-mini",
+  "status": "completed",
+  "completed_at": 1794947582,
+  "output": [
+    {
+      "id": "msg_tmp_twroxelw9tl",
+      "type": "message",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Hello! How can I assist you today?",
+          "annotations": [],
+          "logprobs": []
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "incomplete_details": null,
+  "access_programs": null,
+  "tools": [],
+  "tool_choice": "auto",
+  "parallel_tool_calls": true,
+  "max_output_tokens": null,
+  "temperature": 1,
+  "top_p": 1,
+  "presence_penalty": 0,
+  "frequency_penalty": 0,
+  "top_logprobs": 0,
+  "max_tool_calls": null,
+  "metadata": {},
+  "background": false,
+  "previous_response_id": null,
+  "service_tier": "default",
+```
 
 ## Core Features
 
