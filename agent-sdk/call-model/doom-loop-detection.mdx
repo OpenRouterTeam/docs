@@ -22,8 +22,10 @@ Sometimes an agent gets stuck. It tries the same tool call, gets the same result
 
 Doom-loop detection watches for this inside the `callModel` tool loop. It's **off by default**. Turn it on with `doomLoop: true`:
 
+<CodeGroup>
+
 ```typescript
-const result = openrouter.callModel({
+const result = callModel(client, {
   model: 'openai/gpt-4o',
   input: 'Research this topic',
   tools: [searchTool, bashTool] as const,
@@ -38,6 +40,162 @@ const result = openrouter.callModel({
 // Was the run stopped by detection?
 const verdict = await result.getDoomLoopVerdict();
 if (verdict) console.warn(verdict.message);
+```
+
+```python title="Python" lines
+import asyncio
+import json
+import os
+
+from pydantic import BaseModel
+from openrouter_agent import OpenRouter, HookEntry, HookName, HooksManager, call_model, step_count_is, tool
+
+
+class SearchInput(BaseModel):
+    query: str
+
+
+class BashInput(BaseModel):
+    command: str
+
+
+search_tool = tool(
+    name="search",
+    description="Search the web for a query",
+    input_schema=SearchInput,
+    execute=lambda params, ctx: {"results": [f"No results for {params.query}"]},
+)
+
+bash_tool = tool(
+    name="bash",
+    description="Run a shell command",
+    input_schema=BashInput,
+    execute=lambda params, ctx: {"stdout": "", "exit_code": 0},
+)
+
+# The Python agent SDK has no built-in doom_loop option yet, so detect
+# repeated identical tool calls with a PreToolUse hook and block them.
+# The hook sees one call at a time with no turn boundary, so every identical
+# call counts, including duplicates in one model response. That is stricter
+# than the built-in detector, which counts a repeat once per turn.
+BLOCK_AT = 3  # block the 3rd identical call in a row
+streak: dict[str, tuple[str, int]] = {}  # tool name -> (last input, repeat count)
+verdict: dict | None = None
+
+
+def detect_doom_loop(payload, ctx):
+    global verdict
+    name = payload.get("tool_name") or payload.get("name")
+    args = payload.get("tool_input", payload.get("input", payload.get("arguments")))
+    key = json.dumps(args, sort_keys=True, default=str)
+    last_key, count = streak.get(name, ("", 0))
+    count = count + 1 if key == last_key else 1  # a changed input resets the tool's streak
+    streak[name] = (key, count)
+    if count >= BLOCK_AT:
+        verdict = {"tool": name, "repeats": count}
+        return {"block": f"Doom loop: {name} called {count} times with the same input. Try something different."}
+    return None
+
+
+hooks = HooksManager()
+hooks.on(HookName.PreToolUse.value, HookEntry(handler=detect_doom_loop))
+
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-4o",
+            "input": "Research this topic",
+            "tools": [search_tool, bash_tool],
+            "hooks": hooks,
+            "stop_when": step_count_is(6),  # hard stop as a backstop
+        },
+    )
+    text = await result.get_text()
+
+    # Was a doom loop detected?
+    print("Doom-loop verdict:", verdict)
+    print("Final text:", text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+// Doom-loop detection around the tool loop (observe@2, block@3, stop@6)
+messages := []Message{{Role: "user", Content: "Research this topic"}}
+// canonical normalizes arguments, so reordered fields or extra whitespace still match.
+canonical := func(args string) string {
+	var v any
+	dec := json.NewDecoder(strings.NewReader(args))
+	dec.UseNumber() // keep large integer IDs exact; float64 would merge distinct ones
+	if err := dec.Decode(&v); err != nil {
+		return args // invalid JSON still counts: compare the raw text
+	}
+	b, err := json.Marshal(v) // object keys come out sorted
+	if err != nil {
+		return args
+	}
+	return string(b)
+}
+streak := map[string]int{} // "tool\x00input" -> turns in a row with that call
+verdict := ""
+for i := 0; verdict == "" && i < 20; i++ {
+	msg := chat("openai/gpt-4o", messages, []any{searchTool, bashTool})
+	messages = append(messages, msg)
+	if len(msg.ToolCalls) == 0 {
+		break
+	}
+	turn := map[string]bool{}   // calls already counted in this turn
+	called := map[string]bool{} // tools the model used in this turn
+	for _, tc := range msg.ToolCalls {
+		name := tc.Function.Name
+		key := name + "\x00" + canonical(tc.Function.Arguments)
+		called[name] = true
+		if !turn[key] { // identical calls in one turn count once
+			turn[key] = true
+			streak[key]++
+		}
+		// Decide before dispatch, so a blocked or stopped call never runs.
+		var result string
+		switch n := streak[key]; {
+		case verdict != "":
+			result = "Not run: the run was stopped."
+		case n >= 6:
+			verdict = fmt.Sprintf("Doom loop: %s repeated %d times, run stopped", name, n)
+			result = "Stopped: doom loop detected."
+		case n >= 3:
+			result = "Blocked: identical call repeated. Try a different approach."
+		default:
+			if n >= 2 {
+				log.Printf("observe: %s repeated %d times", name, n)
+			}
+			result = runTool(name, tc.Function.Arguments)
+		}
+		messages = append(messages, Message{Role: "tool", ToolCallID: tc.ID, Content: result})
+	}
+	// Changing a tool's input resets its streak. Other tools in between do not.
+	for key := range streak {
+		if name, _, _ := strings.Cut(key, "\x00"); called[name] && !turn[key] {
+			delete(streak, key)
+		}
+	}
+}
+
+// Was the run stopped by detection?
+if verdict != "" {
+	log.Println(verdict)
+}
+```
+
+</CodeGroup>
+
+```text title="Output"
+Doom-loop verdict: None
+Final text: What topic would you like me to research?
 ```
 
 It watches for three kinds of stuck:
@@ -72,8 +230,10 @@ Want different behavior for one tool? The `DoomLoopDetected` [lifecycle hook](/a
 
 Instead of just blocking a stuck agent, you can give it help. With `escalate`, the next turn runs on a smarter model, then switches back to the cheap one:
 
+<CodeGroup>
+
 ```typescript
-openrouter.callModel({
+const result = callModel(client, {
   model: 'z-ai/glm-5.2', // the everyday executor
   input: 'Research this topic',
   tools: [searchTool] as const,
@@ -89,11 +249,145 @@ openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+# The Python agent SDK has no built-in doom_loop option yet, so emulate the
+# ladder (observe@2, escalate@3, block@5, stop@8) with a PreToolUse hook.
+# A hook cannot switch models inside a run, so escalation here is a separate
+# follow-up run on a stronger model, not the next turn of the stuck run.
+LADDER = {"observe": 2, "escalate": 3, "block": 5, "stop": 8}
+EXECUTOR = "z-ai/glm-5.2"  # the everyday executor
+ESCALATION_MODEL = "anthropic/claude-opus-4.6"  # consulted in a follow-up run
+MAX_ESCALATIONS = 2  # spend cap for one research() call
+
+
+def make_detector():
+    # One detector per research() call, so a second call starts with fresh
+    # streaks, a fresh escalation budget, and no verdict.
+    streak: dict[str, tuple[str, int]] = {}  # tool name -> (last input, repeat count)
+    state = {"escalate": False, "escalations": 0, "verdict": None}
+
+    def detect_doom_loop(payload, ctx):
+        name = payload.get("tool_name") or payload.get("name")
+        args = payload.get("tool_input", payload.get("input", payload.get("arguments")))
+        key = json.dumps(args, sort_keys=True, default=str)
+        last_key, n = streak.get(name, ("", 0))
+        # A changed input resets the tool's streak. The hook has no turn boundary,
+        # so duplicates in one model response each count (see the first example).
+        n = n + 1 if key == last_key else 1
+        streak[name] = (key, n)
+        if n >= LADDER["stop"]:
+            # The hook only records the verdict. It is read after call_model returns,
+            # and the step limit on the call is what ends the run.
+            state["verdict"] = {"tool": name, "repeats": n}
+        if n >= LADDER["block"]:
+            return {"block": f"Doom loop: {name} repeated {n} times. Try something different."}
+        if n >= LADDER["escalate"] and state["escalations"] < MAX_ESCALATIONS:
+            state["escalate"] = True
+            return {"block": "Stuck: escalating to a stronger model."}
+        return None
+
+    hooks = HooksManager()
+    hooks.on(HookName.PreToolUse.value, HookEntry(handler=detect_doom_loop))
+    return hooks, state
+
+
+async def research(client, prompt="Research this topic"):
+    hooks, state = make_detector()
+    opts = {"input": prompt, "tools": [search_tool], "hooks": hooks}
+    text = await call_model(client, {**opts, "model": EXECUTOR, "stop_when": step_count_is(LADDER["stop"])}).get_text()
+    while state["escalate"] and state["verdict"] is None:
+        state["escalate"] = False
+        state["escalations"] += 1
+        # Follow-up run: the stronger model gets the prompt and the stuck run's last
+        # answer, not its tool history. Its advice then goes to a new executor run.
+        stuck = f"{prompt}\n\nA previous attempt got stuck repeating a tool call and ended with:\n{text}"
+        hint = await call_model(client, {**opts, "input": stuck, "model": ESCALATION_MODEL, "stop_when": step_count_is(1)}).get_text()
+        text = await call_model(client, {**opts, "input": f"{prompt}\n\nAdvice: {hint}", "model": EXECUTOR, "stop_when": step_count_is(LADDER["stop"])}).get_text()
+    return text
+
+```
+
+```go title="Go" lines
+// Escalation ladder around the tool loop (observe@2, escalate@3, block@5, stop@8)
+const executor, stronger = "z-ai/glm-5.2", "anthropic/claude-opus-4.6"
+messages := []Message{{Role: "user", Content: "Research this topic"}}
+// canonical normalizes arguments, so reordered fields or extra whitespace still match.
+canonical := func(args string) string {
+	var v any
+	dec := json.NewDecoder(strings.NewReader(args))
+	dec.UseNumber() // keep large integer IDs exact; float64 would merge distinct ones
+	if err := dec.Decode(&v); err != nil {
+		return args // invalid JSON still counts: compare the raw text
+	}
+	b, err := json.Marshal(v) // object keys come out sorted
+	if err != nil {
+		return args
+	}
+	return string(b)
+}
+streak := map[string]int{} // "tool\x00input" -> turns in a row with that call
+verdict := ""
+escalateNext, escalations := false, 0
+for i := 0; verdict == "" && i < 20; i++ {
+	model := executor // the everyday executor
+	if escalateNext && escalations < 2 { // maxEscalations: spend cap for the whole conversation
+		model = stronger // run the NEXT turn on a stronger model, then switch back
+		escalations++
+	}
+	escalateNext = false
+	msg := chat(model, messages, []any{searchTool})
+	messages = append(messages, msg)
+	if len(msg.ToolCalls) == 0 {
+		break
+	}
+	turn := map[string]bool{}   // calls already counted in this turn
+	called := map[string]bool{} // tools the model used in this turn
+	for _, tc := range msg.ToolCalls {
+		name := tc.Function.Name
+		key := name + "\x00" + canonical(tc.Function.Arguments)
+		called[name] = true
+		if !turn[key] { // identical calls in one turn count once
+			turn[key] = true
+			streak[key]++
+		}
+		// Decide before dispatch, so a blocked or stopped call never runs.
+		var result string
+		switch n := streak[key]; {
+		case verdict != "":
+			result = "Not run: the run was stopped."
+		case n >= 8:
+			verdict = fmt.Sprintf("Doom loop: %s repeated %d times, run stopped", name, n)
+			result = "Stopped: doom loop detected."
+		case n >= 5:
+			result = "Blocked: identical call repeated. Try a different approach."
+		default:
+			if n >= 3 {
+				escalateNext = true // the stronger model sees the full message history
+			} else if n == 2 {
+				log.Printf("observe: %s repeated %d times", name, n)
+			}
+			result = runTool(name, tc.Function.Arguments)
+		}
+		messages = append(messages, Message{Role: "tool", ToolCallID: tc.ID, Content: result})
+	}
+	// Changing a tool's input resets its streak. Other tools in between do not.
+	for key := range streak {
+		if name, _, _ := strings.Cut(key, "\x00"); called[name] && !turn[key] {
+			delete(streak, key)
+		}
+	}
+}
+```
+
+</CodeGroup>
+
 When this fires, the engine tells the model a loop was detected, runs one turn with the extra help, then goes back to normal. `maxEscalations` caps how many times this can happen in a conversation, even across pauses and resumes. Once the budget runs out, the weaker actions take over.
 
 ## Telling the detector what counts as "the same": `loopKey`
 
 By default, two calls count as the same when all their inputs match exactly. That default is sometimes wrong, so you can give each tool its own idea of "the same" with `loopKey`:
+
+<CodeGroup>
 
 ```typescript
 // Compute the identity. A web-search tool normalizes its query,
@@ -126,6 +420,87 @@ tool({
   execute: async ({ jobId }) => poll(jobId),
 });
 ```
+
+```python title="Python" lines
+# The Python agent SDK has no loop_key option yet, so keep a per-tool
+# key function next to each tool and use it in your PreToolUse detector.
+class SearchInput(BaseModel):
+    query: str
+
+class BashInput(BaseModel):
+    command: str
+    cwd: str
+    verbose: bool
+
+class StatusInput(BaseModel):
+    job_id: str
+
+web_search = tool(name="web_search", input_schema=SearchInput,
+                  execute=lambda p, ctx: search(p.query))
+bash = tool(name="bash", input_schema=BashInput,
+            execute=lambda p, ctx: run(p.command, p.cwd))
+check_status = tool(name="check_status", input_schema=StatusInput,
+                    execute=lambda p, ctx: poll(p.job_id))
+
+LOOP_KEYS = {
+    # Compute the identity: "Cats" and " cats " count as the same search.
+    "web_search": lambda a: a["query"].strip().lower(),
+    # Only some fields matter: command AND cwd; verbose doesn't count.
+    "bash": lambda a: {"command": a["command"], "cwd": a["cwd"]},
+    # False: never count this tool. Repetition is this tool's job.
+    "check_status": False,
+}
+
+
+def loop_key(name, args):
+    fn = LOOP_KEYS.get(name)
+    if fn is False:
+        return False
+    identity = args  # default: all inputs must match
+    if fn is not None:
+        try:
+            identity = fn(args)
+        except Exception:
+            identity = args  # a failing key function falls back to the full input
+    return json.dumps(identity, sort_keys=True, separators=(",", ":"), default=str)
+
+```
+
+```go title="Go" lines
+// loopKey: how each tool decides two calls are "the same".
+// Returns the call's identity, and false if the call should never count.
+type loopKeyFn func(args string) (string, bool)
+
+loopKeys := map[string]loopKeyFn{
+	// Compute the identity. A web-search tool normalizes its query,
+	// so "Cats" and " cats " count as the same search.
+	"web_search": func(args string) (string, bool) {
+		var in struct {
+			Query string `json:"query"`
+		}
+		json.Unmarshal([]byte(args), &in)
+		return strings.ToLower(strings.TrimSpace(in.Query)), true
+	},
+
+	// Only some fields matter. A bash call is identified by the command
+	// AND where it runs; other fields (e.g. verbose) don't count.
+	"bash": func(args string) (string, bool) {
+		var in struct {
+			Command string `json:"command"`
+			Cwd     string `json:"cwd"`
+		}
+		json.Unmarshal([]byte(args), &in)
+		key, _ := json.Marshal(in)
+		return string(key), true
+	},
+
+	// false: never count this tool. Repetition is this tool's job.
+	"check_status": func(string) (string, bool) { return "", false },
+}
+
+```
+
+</CodeGroup>
 
 A function-form `loopKey` can return `null` to skip one specific call. If it fails in any way (returns `undefined`, throws, or returns something that can't be hashed), the SDK falls back to comparing all the inputs and logs a warning. Detection never crashes a run.
 

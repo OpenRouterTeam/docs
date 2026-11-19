@@ -22,21 +22,215 @@ Any parameter in `callModel` can be a function that computes its value based on 
 
 Pass a function instead of a static value:
 
+<CodeGroup>
+
 ```typescript lines
-import { OpenRouter } from '@openrouter/agent';
+import { OpenRouter, callModel, tool } from '@openrouter/agent';
+import { z } from 'zod';
 
 const openrouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-const result = openrouter.callModel({
+const myTool = tool({
+  name: 'get_time',
+  description: 'Get the current time',
+  inputSchema: z.object({}),
+  execute: async () => ({ time: new Date().toISOString() }),
+});
+
+const result = callModel(openrouter, {
   // Dynamic model selection based on turn count
   model: (ctx) => {
     return ctx.numberOfTurns > 3 ? 'openai/gpt-5.2' : 'openai/gpt-5-nano';
   },
   input: 'Hello!',
-  tools: [myTool],
+  tools: [myTool] as const,
 });
+
+const text = await result.getText();
+console.log(text);
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+from datetime import datetime, timezone
+from pydantic import BaseModel
+from openrouter_agent import OpenRouter, call_model, tool
+
+
+class TimeInput(BaseModel):
+    pass
+
+
+class TimeOutput(BaseModel):
+    time: str
+
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    my_tool = tool(
+        name="get_time",
+        description="Get the current time",
+        input_schema=TimeInput,
+        output_schema=TimeOutput,
+        execute=lambda params, ctx: TimeOutput(
+            time=datetime.now(timezone.utc).isoformat()
+        ),
+    )
+
+    result = call_model(
+        client,
+        {
+            # Dynamic model selection based on turn count
+            "model": lambda ctx: (
+                "openai/gpt-5.2" if ctx["number_of_turns"] > 3 else "openai/gpt-5-nano"
+            ),
+            "input": "Hello!",
+            "tools": [my_tool],
+        },
+    )
+
+    text = await result.get_text()
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"time"
+)
+
+type obj = map[string]any
+
+// Dynamic model selection based on turn count
+func selectModel(numberOfTurns int) string {
+	if numberOfTurns > 3 {
+		return "openai/gpt-5.2"
+	}
+	return "openai/gpt-5-nano"
+}
+
+func main() {
+	tools := []any{obj{"type": "function", "function": obj{
+		"name":        "get_time",
+		"description": "Get the current time",
+		"parameters":  obj{"type": "object", "properties": obj{}},
+	}}}
+	messages := []any{obj{"role": "user", "content": "Hello!"}}
+
+	for turns := 1; ; turns++ {
+		body, _ := json.Marshal(obj{"model": selectModel(turns), "messages": messages, "tools": tools})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		raw, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			log.Fatalf("%s: %s", resp.Status, raw)
+		}
+
+		var out struct {
+			Choices []struct {
+				Message json.RawMessage `json:"message"`
+			} `json:"choices"`
+		}
+		if err := json.Unmarshal(raw, &out); err != nil || len(out.Choices) == 0 {
+			log.Fatalf("unexpected response: %s", raw)
+		}
+		var msg struct {
+			Content   string `json:"content"`
+			ToolCalls []struct {
+				ID string `json:"id"`
+			} `json:"tool_calls"`
+		}
+		json.Unmarshal(out.Choices[0].Message, &msg)
+
+		if len(msg.ToolCalls) == 0 {
+			fmt.Println(msg.Content)
+			return
+		}
+
+		messages = append(messages, out.Choices[0].Message)
+		for _, tc := range msg.ToolCalls {
+			result, _ := json.Marshal(obj{"time": time.Now().UTC().Format(time.RFC3339)})
+			messages = append(messages, obj{"role": "tool", "tool_call_id": tc.ID, "content": string(result)})
+		}
+	}
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Hi there! Nice to meet you. How can I help today? I can answer questions, help with writing or coding, brainstorm ideas, explain concepts, or assist with planning a project. Tell me your goal and any details, and we’ll take it from there.
+```
+
+The Go tab above is a complete program. The later Go tabs on this page are fragments that go inside `func main()` and call the `sendChat` helper below. The helper is a top-level declaration that reuses the imports and the `obj` alias of the program above. It posts one chat completions request, checks the HTTP status, and returns the assistant message. `Raw` holds the message as returned, ready to append to `messages`, and each tool call exposes its `ID` and `Function.Arguments`. Names such as `fetchUserPreferences`, `analysisTool`, and `runAnalysis` are application-defined: supply your own.
+
+```go title="Go" lines
+type chatMessage struct {
+	Content   string `json:"content"`
+	ToolCalls []struct {
+		ID       string `json:"id"`
+		Function struct {
+			Arguments string `json:"arguments"`
+		} `json:"function"`
+	} `json:"tool_calls"`
+	Raw json.RawMessage `json:"-"`
+}
+
+func sendChat(payload obj) (*chatMessage, error) {
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%s: %s", resp.Status, raw)
+	}
+	var out struct {
+		Choices []struct {
+			Message json.RawMessage `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil || len(out.Choices) == 0 {
+		return nil, fmt.Errorf("unexpected response: %s", raw)
+	}
+	msg := &chatMessage{Raw: out.Choices[0].Message}
+	if err := json.Unmarshal(out.Choices[0].Message, msg); err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
 ```
 
 ## Function Signature
@@ -59,8 +253,10 @@ type ParameterFunction<T> = (context: TurnContext) => T | Promise<T>;
 
 Functions can be async for fetching external data:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
 
   // Fetch user preferences from database
@@ -79,14 +275,72 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+async def temperature(ctx):
+    # Fetch user preferences from database
+    prefs = await fetch_user_preferences(user_id)
+    return prefs.get("preferred_temperature", 0.7)
+
+
+async def instructions(ctx):
+    # Load dynamic instructions
+    rules = await fetch_business_rules()
+    return "Follow these rules:\n" + "\n".join(rules)
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "temperature": temperature,
+        "instructions": instructions,
+        "input": "Hello!",
+    },
+)
+
+```
+
+```go title="Go" lines
+ctx := context.Background()
+
+// Fetch user preferences from database
+temperature := 0.7
+if prefs, err := fetchUserPreferences(ctx, userID); err == nil && prefs.PreferredTemperature != nil {
+	temperature = *prefs.PreferredTemperature
+}
+
+// Load dynamic instructions
+rules, err := fetchBusinessRules(ctx)
+if err != nil {
+	log.Fatal(err)
+}
+instructions := "Follow these rules:\n" + strings.Join(rules, "\n")
+
+result, err := sendChat(obj{
+	"model":       "openai/gpt-5-nano",
+	"temperature": temperature,
+	"messages": []any{
+		obj{"role": "system", "content": instructions},
+		obj{"role": "user", "content": "Hello!"},
+	},
+})
+if err != nil {
+	log.Fatal(err)
+}
+```
+
+</CodeGroup>
+
 ## Common Patterns
 
 ### Progressive Model Upgrade
 
 Start with a fast model, upgrade for complex tasks:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: (ctx) => {
     // First few turns: fast model
     if (ctx.numberOfTurns <= 2) {
@@ -97,20 +351,78 @@ const result = openrouter.callModel({
     return 'openai/gpt-5.2';
   },
   input: 'Let me think through this problem...',
-  tools: [analysisTool],
+  tools: [analysisTool] as const,
 });
 ```
+
+```python title="Python" lines
+def select_model(ctx):
+    # First few turns: fast model
+    if ctx["number_of_turns"] <= 2:
+        return "openai/gpt-5-nano"
+
+    # Complex conversations: capable model
+    return "openai/gpt-5.2"
+
+
+result = call_model(
+    client,
+    {
+        "model": select_model,
+        "input": "Let me think through this problem...",
+        "tools": [analysis_tool],
+    },
+)
+
+```
+
+```go title="Go" lines
+// Dynamic model: fast model first, capable model for longer conversations
+selectModel := func(numberOfTurns int) string {
+	// First few turns: fast model
+	if numberOfTurns <= 2 {
+		return "openai/gpt-5-nano"
+	}
+
+	// Complex conversations: capable model
+	return "openai/gpt-5.2"
+}
+
+messages := []any{obj{"role": "user", "content": "Let me think through this problem..."}}
+var result string
+for turns := 1; ; turns++ {
+	msg, err := sendChat(obj{"model": selectModel(turns), "messages": messages, "tools": []any{analysisTool}})
+	if err != nil {
+		log.Fatal(err)
+	}
+	if len(msg.ToolCalls) == 0 {
+		result = msg.Content
+		break
+	}
+	messages = append(messages, msg.Raw)
+	for _, tc := range msg.ToolCalls {
+		messages = append(messages, obj{"role": "tool", "tool_call_id": tc.ID, "content": runAnalysis(tc.Function.Arguments)})
+	}
+}
+```
+
+</CodeGroup>
 
 ### Adaptive Temperature
 
 Adjust creativity based on context:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+const input = 'Write a creative story';
+
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   temperature: (ctx) => {
     // Analyze recent messages for task type
-    const lastMessage = JSON.stringify(ctx.turnRequest?.input).toLowerCase();
+    // (turnRequest may be undefined on the first turn: fall back to the initial input)
+    const lastMessage = JSON.stringify(ctx.turnRequest?.input ?? input).toLowerCase();
 
     if (lastMessage.includes('creative') || lastMessage.includes('brainstorm')) {
       return 1.0; // Creative tasks
@@ -120,13 +432,69 @@ const result = openrouter.callModel({
     }
     return 0.7; // Default
   },
-  input: 'Write a creative story',
+  input,
 });
 ```
+
+```python title="Python" lines
+initial_input = "Write a creative story"
+
+
+def temperature(ctx):
+    # Analyze recent messages for task type
+    # (turn_request may be None on the first turn: fall back to the initial input)
+    last_message = str(ctx.get("turn_request") or initial_input).lower()
+
+    if "creative" in last_message or "brainstorm" in last_message:
+        return 1.0  # Creative tasks
+    if "code" in last_message or "calculate" in last_message:
+        return 0.2  # Precise tasks
+    return 0.7  # Default
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "temperature": temperature,
+        "input": initial_input,
+    },
+)
+
+```
+
+```go title="Go" lines
+input := "Write a creative story"
+
+// Adaptive temperature: analyze the latest message for task type
+adaptiveTemperature := func(lastMessage string) float64 {
+	lastMessage = strings.ToLower(lastMessage)
+	if strings.Contains(lastMessage, "creative") || strings.Contains(lastMessage, "brainstorm") {
+		return 1.0 // Creative tasks
+	}
+	if strings.Contains(lastMessage, "code") || strings.Contains(lastMessage, "calculate") {
+		return 0.2 // Precise tasks
+	}
+	return 0.7 // Default
+}
+
+result, err := sendChat(obj{
+	"model":       "openai/gpt-5-nano",
+	"temperature": adaptiveTemperature(input),
+	"messages":    []any{obj{"role": "user", "content": input}},
+})
+if err != nil {
+	log.Fatal(err)
+}
+```
+
+</CodeGroup>
 
 ### Context-Aware Instructions
 
 Build instructions based on conversation state:
+
+<CodeGroup>
 
 ```typescript lines
 const result = openrouter.callModel({
@@ -147,9 +515,73 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+def instructions(ctx):
+    base = "You are a helpful assistant."
+    turn_info = f"This is turn {ctx['number_of_turns']} of the conversation."
+
+    # Add context based on history length
+    if ctx["number_of_turns"] > 5:
+        return f"{base}\n{turn_info}\nKeep responses concise - this is a long conversation."
+
+    return f"{base}\n{turn_info}"
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "instructions": instructions,
+        "input": "Continue helping me...",
+        "tools": [help_tool],
+    },
+)
+
+```
+
+```go title="Go" lines
+// Dynamic instructions: rebuilt from conversation state on every turn
+buildInstructions := func(numberOfTurns int) string {
+	base := "You are a helpful assistant."
+	turnInfo := fmt.Sprintf("This is turn %d of the conversation.", numberOfTurns)
+
+	// Add context based on history length
+	if numberOfTurns > 5 {
+		return base + "\n" + turnInfo + "\nKeep responses concise - this is a long conversation."
+	}
+
+	return base + "\n" + turnInfo
+}
+
+messages := []any{obj{"role": "user", "content": "Continue helping me..."}}
+var result string
+for turns := 1; ; turns++ {
+	msg, err := sendChat(obj{
+		"model":    "openai/gpt-5-nano",
+		"messages": append([]any{obj{"role": "system", "content": buildInstructions(turns)}}, messages...),
+		"tools":    []any{helpTool},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	if len(msg.ToolCalls) == 0 {
+		result = msg.Content
+		break
+	}
+	messages = append(messages, msg.Raw)
+	for _, tc := range msg.ToolCalls {
+		messages = append(messages, obj{"role": "tool", "tool_call_id": tc.ID, "content": runHelp(tc.Function.Arguments)})
+	}
+}
+```
+
+</CodeGroup>
+
 ### Dynamic Max Tokens
 
 Adjust output length based on task:
+
+<CodeGroup>
 
 ```typescript lines
 const result = openrouter.callModel({
@@ -169,9 +601,66 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+prompt = "Give me a detailed explanation"
+
+
+def max_output_tokens(ctx):
+    # turn_request may be None before the first request is built,
+    # so fall back to the original prompt
+    last_message = str(ctx.get("turn_request") or prompt).lower()
+
+    if "summarize" in last_message or "brief" in last_message:
+        return 200
+    if "detailed" in last_message or "explain" in last_message:
+        return 2000
+    return 500
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "max_output_tokens": max_output_tokens,
+        "input": prompt,
+    },
+)
+
+```
+
+```go title="Go" lines
+input := "Give me a detailed explanation"
+
+// Dynamic max tokens: adjust output length based on the task
+dynamicMaxTokens := func(lastMessage string) int {
+	lastMessage = strings.ToLower(lastMessage)
+	if strings.Contains(lastMessage, "summarize") || strings.Contains(lastMessage, "brief") {
+		return 200
+	}
+	if strings.Contains(lastMessage, "detailed") || strings.Contains(lastMessage, "explain") {
+		return 2000
+	}
+	return 500
+}
+
+maxTokens := dynamicMaxTokens(input)
+result, err := sendChat(obj{
+	"model":      "openai/gpt-5-nano",
+	"max_tokens": maxTokens,
+	"messages":   []any{obj{"role": "user", "content": input}},
+})
+if err != nil {
+	log.Fatal(err)
+}
+```
+
+</CodeGroup>
+
 ### Feature Flags
 
 Enable features dynamically:
+
+<CodeGroup>
 
 ```typescript lines
 const result = openrouter.callModel({
@@ -193,15 +682,79 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+async def provider(ctx):
+    # Enable thinking for complex turns
+    enable_thinking = ctx["number_of_turns"] > 2
+
+    return (
+        {"anthropic": {"thinking": {"type": "enabled", "budget_tokens": 1000}}}
+        if enable_thinking
+        else None
+    )
+
+
+result = call_model(
+    client,
+    {
+        "model": "anthropic/claude-sonnet-4.5",
+        "provider": provider,
+        "input": "Solve this complex problem",
+        "tools": [analysis_tool],
+    },
+)
+```
+
+```go title="Go" lines
+// Feature flag: enable reasoning (thinking) only for complex turns
+reasoningFor := func(numberOfTurns int) any {
+	enableThinking := numberOfTurns > 2
+	if enableThinking {
+		return obj{"max_tokens": 1000}
+	}
+	return nil
+}
+
+messages := []any{obj{"role": "user", "content": "Solve this complex problem"}}
+var result string
+for turns := 1; ; turns++ {
+	req := obj{
+		"model":    "anthropic/claude-sonnet-4.5",
+		"messages": messages,
+		"tools":    []any{analysisTool},
+	}
+	if r := reasoningFor(turns); r != nil {
+		req["reasoning"] = r
+	}
+	msg, err := sendChat(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if len(msg.ToolCalls) == 0 {
+		result = msg.Content
+		break
+	}
+	messages = append(messages, msg.Raw)
+	for _, tc := range msg.ToolCalls {
+		messages = append(messages, obj{"role": "tool", "tool_call_id": tc.ID, "content": runAnalysis(tc.Function.Arguments)})
+	}
+}
+```
+
+</CodeGroup>
+
 ## Combining with Tools
 
 Dynamic parameters work alongside tool execution:
 
+<CodeGroup>
+
 ```typescript lines
-const smartAssistant = openrouter.callModel({
+const smartAssistant = callModel(openrouter, {
   // Upgrade model if tools have been used
   model: (ctx) => {
-    const hasToolUse = JSON.stringify(ctx.turnRequest?.input).includes('function_call');
+    // turnRequest is undefined before the first request is built
+    const hasToolUse = (JSON.stringify(ctx.turnRequest?.input) ?? '').includes('function_call');
     return hasToolUse ? 'anthropic/claude-sonnet-4.5' : 'openai/gpt-5-nano';
   },
 
@@ -214,6 +767,75 @@ const smartAssistant = openrouter.callModel({
   tools: [searchTool, analysisTool],
 });
 ```
+
+```python title="Python" lines
+def model(ctx):
+    # Upgrade model if tools have been used
+    # turn_request is None before the first request is built
+    has_tool_use = "function_call" in str(ctx.get("turn_request") or "")
+    return "anthropic/claude-sonnet-4.5" if has_tool_use else "openai/gpt-5-nano"
+
+
+def temperature(ctx):
+    # Lower temperature after tool execution
+    return 0.3 if ctx["number_of_turns"] > 1 else 0.7
+
+
+smart_assistant = call_model(
+    client,
+    {
+        "model": model,
+        "temperature": temperature,
+        "input": "Research and analyze this topic",
+        "tools": [search_tool, analysis_tool],
+    },
+)
+
+```
+
+```go title="Go" lines
+// Upgrade model if tools have been used
+modelFor := func(hasToolUse bool) string {
+	if hasToolUse {
+		return "anthropic/claude-sonnet-4.5"
+	}
+	return "openai/gpt-5-nano"
+}
+
+// Lower temperature after tool execution
+temperatureFor := func(numberOfTurns int) float64 {
+	if numberOfTurns > 1 {
+		return 0.3
+	}
+	return 0.7
+}
+
+messages := []any{obj{"role": "user", "content": "Research and analyze this topic"}}
+hasToolUse := false
+var result string
+for turns := 1; ; turns++ {
+	msg, err := sendChat(obj{
+		"model":       modelFor(hasToolUse),
+		"temperature": temperatureFor(turns),
+		"messages":    messages,
+		"tools":       []any{searchTool, analysisTool},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	if len(msg.ToolCalls) == 0 {
+		result = msg.Content
+		break
+	}
+	hasToolUse = true
+	messages = append(messages, msg.Raw)
+	for _, tc := range msg.ToolCalls {
+		messages = append(messages, obj{"role": "tool", "tool_call_id": tc.ID, "content": runTool(tc.Function.Name, tc.Function.Arguments)})
+	}
+}
+```
+
+</CodeGroup>
 
 ## Execution Order
 
@@ -233,8 +855,10 @@ Dynamic parameters are resolved at the start of each turn:
 
 Handle errors in async parameter functions:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
 
   instructions: async (ctx) => {
@@ -252,11 +876,64 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+import sys
+
+
+async def instructions(ctx):
+    try:
+        rules = await fetch_rules()
+        return f"Follow these rules: {rules}"
+    except Exception as error:
+        # Fallback on error
+        print("Failed to fetch rules:", error, file=sys.stderr)
+        return "You are a helpful assistant."
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "instructions": instructions,
+        "input": "Hello!",
+    },
+)
+
+```
+
+```go title="Go" lines
+instructions := func() string {
+	rules, err := fetchRules()
+	if err != nil {
+		// Fallback on error
+		log.Printf("Failed to fetch rules: %v", err)
+		return "You are a helpful assistant."
+	}
+	return "Follow these rules: " + rules
+}
+
+msg, err := sendChat(obj{
+	"model": "openai/gpt-5-nano",
+	"messages": []any{
+		obj{"role": "system", "content": instructions()},
+		obj{"role": "user", "content": "Hello!"},
+	},
+})
+if err != nil {
+	log.Fatal(err)
+}
+result := msg.Content
+```
+
+</CodeGroup>
+
 ## Best Practices
 
 ### Keep Functions Pure
 
 Avoid side effects in parameter functions:
+
+<CodeGroup>
 
 ```typescript lines
 // Good: Pure function
@@ -269,14 +946,49 @@ model: (ctx) => {
 },
 ```
 
+```python title="Python" lines
+# Good: Pure function
+def model(ctx):
+    return "gpt-4" if ctx["number_of_turns"] > 3 else "gpt-4o-mini"
+
+
+# Avoid: Side effects
+def model(ctx):
+    log_to_database(ctx)  # Side effect
+    return "gpt-4"
+
+```
+
+```go title="Go" lines
+// Good: Pure function
+modelFor := func(numberOfTurns int) string {
+	if numberOfTurns > 3 {
+		return "openai/gpt-4"
+	}
+	return "openai/gpt-4o-mini"
+}
+
+// Avoid: Side effects
+modelWithSideEffect := func(numberOfTurns int) string {
+	logToDatabase(numberOfTurns) // Side effect
+	return "openai/gpt-4"
+}
+
+```
+
+</CodeGroup>
+
 ### Cache Expensive Operations
 
 Cache results for repeated calls:
 
+<CodeGroup>
+
 ```typescript lines
 let cachedRules: string | null = null;
 
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
+  model: 'openai/gpt-5-nano',
   instructions: async (ctx) => {
     if (!cachedRules) {
       cachedRules = await fetchExpensiveRules();
@@ -287,9 +999,58 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+cached_rules = None
+
+
+async def instructions(ctx):
+    global cached_rules
+    if cached_rules is None:
+        cached_rules = await fetch_expensive_rules()
+    return cached_rules
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "instructions": instructions,
+        "input": "Hello!",
+    },
+)
+
+```
+
+```go title="Go" lines
+var cachedRules string
+
+instructions := func() string {
+	if cachedRules == "" {
+		cachedRules = fetchExpensiveRules()
+	}
+	return cachedRules
+}
+
+msg, err := sendChat(obj{
+	"model": "openai/gpt-5-nano",
+	"messages": []any{
+		obj{"role": "system", "content": instructions()},
+		obj{"role": "user", "content": "Hello!"},
+	},
+})
+if err != nil {
+	log.Fatal(err)
+}
+result := msg.Content
+```
+
+</CodeGroup>
+
 ### Use Sensible Defaults
 
 Always have fallback values:
+
+<CodeGroup>
 
 ```typescript lines
 model: (ctx) => {
@@ -297,6 +1058,25 @@ model: (ctx) => {
   return preferredModel ?? 'openai/gpt-5-nano'; // Default fallback
 },
 ```
+
+```python title="Python" lines
+def model(ctx):
+    preferred_model = get_preferred_model()
+    return preferred_model if preferred_model is not None else "openai/gpt-5-nano"  # Default fallback
+
+```
+
+```go title="Go" lines
+modelFor := func() string {
+	if preferredModel := getPreferredModel(); preferredModel != "" {
+		return preferredModel
+	}
+	return "openai/gpt-5-nano" // Default fallback
+}
+
+```
+
+</CodeGroup>
 
 ## See Also
 

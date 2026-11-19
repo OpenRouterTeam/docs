@@ -1786,6 +1786,8 @@ When using Anthropic models (Claude), you can request specific beta features by 
   For **strict tool use** (`strict: true` on tools), you must explicitly pass the `structured-outputs-2025-11-13` header. Without this header, OpenRouter will strip the `strict` field and route normally.
 </Note>
 
+OpenRouter keeps an allowlist of other `x-anthropic-beta` values for each provider and forwards only the values on the list for the provider that serves the request. Providers that serve Anthropic's Messages API directly have the longest list, and Google Vertex and Amazon Bedrock receive only the values they accept. OpenRouter drops every other value, and some values it recognizes are withheld on purpose.
+
 #### Example: Enabling Interleaved Thinking
 
 <CodeGroup>

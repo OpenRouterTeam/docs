@@ -37,6 +37,8 @@ Prerequisites:
 
 `summarize` calls the [Responses API](/api_reference/responses/overview) with your instructions as `instructions` and the text as `input`, and returns the plain-text summary from the `message` output item with its `usage`. The instructions tell the model what to keep: the goal, the decisions made and why, the files and commands the agent touched, the approaches that failed, and the facts it confirmed. They also tell it to copy names exactly, such as file paths, table names, and ticket IDs, because our summaries lost many of them otherwise. Longer histories get split into chunks before they reach `summarize`, so each summary stays short and focused.
 
+<CodeGroup>
+
 ```typescript lines
 import { z } from 'zod';
 
@@ -93,6 +95,224 @@ async function summarize(text: string): Promise<{ summary: string; usage: Usage 
   }
   return { summary, usage: body.usage };
 }
+
+const { summary, usage } = await summarize(
+  `user: Fix the failing migration for ticket OPS-1423.\nassistant: Ran \`bun run migrate\`; it failed on table user_sessions (column expires_at missing).\nassistant: Edited db/migrations/0042_add_expires_at.sql to add the column, re-ran \`bun run migrate\`, it passed.\nassistant: Tried dropping the index idx_sessions_user first, but that broke tests, so reverted it.`,
+);
+console.log(summary);
+console.log(usage);
+
+```
+
+```python title="Python" lines
+import os
+import requests
+
+SUMMARIZE_MODEL = "scaledown/summarize"
+
+COMPACTION_INSTRUCTIONS = """You are compacting an AI agent's working history so it can continue the task.
+Keep: the goal, decisions made and why, files and functions touched, commands that worked,
+approaches that failed and why, and facts confirmed. Drop pleasantries and raw tool output
+unless a specific value is needed later. Quote identifiers verbatim: ticket IDs, file paths, branch names,
+table names, commands, environment variables, numbers and names. Use short bullet points."""
+
+
+def summarize(text: str) -> tuple[str, dict]:
+    res = requests.post(
+        "https://openrouter.ai/api/v1/responses",
+        headers={
+            "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": SUMMARIZE_MODEL,
+            "instructions": COMPACTION_INSTRUCTIONS,
+            "input": text,
+        },
+        timeout=60,
+    )
+    if not res.ok:
+        raise RuntimeError(f"summarize {res.status_code}: {res.text}")
+    body = res.json()
+    if body["status"] != "completed":
+        reason = (body.get("incomplete_details") or {}).get("reason")
+        raise RuntimeError(
+            (body.get("error") or {}).get("message")
+            or f"summarize ended as {body['status']}{f': {reason}' if reason else ''}"
+        )
+    message = next((item for item in reversed(body["output"]) if item["type"] == "message"), None)
+    summary = next(
+        (part.get("text") for part in (message or {}).get("content") or [] if part["type"] == "output_text"),
+        None,
+    )
+    if summary is None:
+        raise RuntimeError("summarize returned no output_text")
+    usage = body["usage"]
+    return summary, {k: usage[k] for k in ("input_tokens", "output_tokens", "cost")}
+
+
+summary, usage = summarize(
+    "user: Fix the failing migration for ticket OPS-1423.\nassistant: Ran `bun run migrate`; it failed on table user_sessions (column expires_at missing).\nassistant: Edited db/migrations/0042_add_expires_at.sql to add the column, re-ran `bun run migrate`, it passed.\nassistant: Tried dropping the index idx_sessions_user first, but that broke tests, so reverted it."
+)
+print(summary)
+print(usage)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"time"
+)
+
+const summarizeModel = "scaledown/summarize"
+
+const compactionInstructions = `You are compacting an AI agent's working history so it can continue the task.
+Keep: the goal, decisions made and why, files and functions touched, commands that worked,
+approaches that failed and why, and facts confirmed. Drop pleasantries and raw tool output
+unless a specific value is needed later. Quote identifiers verbatim: ticket IDs, file paths, branch names,
+table names, commands, environment variables, numbers and names. Use short bullet points.`
+
+type Usage struct {
+	InputTokens  int     `json:"input_tokens"`
+	OutputTokens int     `json:"output_tokens"`
+	Cost         float64 `json:"cost"`
+}
+
+type responseBody struct {
+	Status string `json:"status"`
+	Error  *struct {
+		Message string `json:"message"`
+	} `json:"error"`
+	IncompleteDetails *struct {
+		Reason string `json:"reason"`
+	} `json:"incomplete_details"`
+	Output []struct {
+		Type    string `json:"type"`
+		Content []struct {
+			Type string  `json:"type"`
+			Text *string `json:"text"`
+		} `json:"content"`
+	} `json:"output"`
+	Usage Usage `json:"usage"`
+}
+
+func summarize(text string) (string, Usage, error) {
+	payload, _ := json.Marshal(map[string]string{
+		"model":        summarizeModel,
+		"instructions": compactionInstructions,
+		"input":        text,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := (&http.Client{Timeout: 60 * time.Second}).Do(req)
+	if err != nil {
+		return "", Usage{}, err
+	}
+	defer res.Body.Close()
+	raw, _ := io.ReadAll(res.Body)
+	if res.StatusCode >= 300 {
+		return "", Usage{}, fmt.Errorf("summarize %d: %s", res.StatusCode, raw)
+	}
+	var body responseBody
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return "", Usage{}, err
+	}
+	if body.Status != "completed" {
+		if body.Error != nil {
+			return "", Usage{}, fmt.Errorf("%s", body.Error.Message)
+		}
+		msg := "summarize ended as " + body.Status
+		if body.IncompleteDetails != nil && body.IncompleteDetails.Reason != "" {
+			msg += ": " + body.IncompleteDetails.Reason
+		}
+		return "", Usage{}, fmt.Errorf("%s", msg)
+	}
+	for i := len(body.Output) - 1; i >= 0; i-- {
+		if body.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range body.Output[i].Content {
+			if part.Type == "output_text" && part.Text != nil {
+				return *part.Text, body.Usage, nil
+			}
+		}
+		break
+	}
+	return "", Usage{}, fmt.Errorf("summarize returned no output_text")
+}
+
+func main() {
+	summary, usage, err := summarize("user: Fix the failing migration for ticket OPS-1423.\nassistant: Ran `bun run migrate`; it failed on table user_sessions (column expires_at missing).\nassistant: Edited db/migrations/0042_add_expires_at.sql to add the column, re-ran `bun run migrate`, it passed.\nassistant: Tried dropping the index idx_sessions_user first, but that broke tests, so reverted it.")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(summary)
+	fmt.Printf("%+v\n", usage)
+}
+
+```
+
+```bash title="cURL" lines
+#!/bin/bash
+INSTRUCTIONS=$(cat <<'EOF'
+You are compacting an AI agent's working history so it can continue the task.
+Keep: the goal, decisions made and why, files and functions touched, commands that worked,
+approaches that failed and why, and facts confirmed. Drop pleasantries and raw tool output
+unless a specific value is needed later. Quote identifiers verbatim: ticket IDs, file paths, branch names,
+table names, commands, environment variables, numbers and names. Use short bullet points.
+EOF
+)
+
+# Reads the text to summarize on stdin, prints the summary on stdout and the usage on stderr.
+summarize() {
+  local response
+  response=$(jq -Rs --arg i "$INSTRUCTIONS" \
+    '{model: "scaledown/summarize", instructions: $i, input: .}' |
+    curl -sS --fail-with-body --max-time 60 https://openrouter.ai/api/v1/responses \
+      -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d @-) || return 1
+
+  if [ "$(echo "$response" | jq -r '.status')" != "completed" ]; then
+    echo "$response" | jq -r '.error.message // "summarize ended as \(.status)\(if .incomplete_details.reason then ": \(.incomplete_details.reason)" else "" end)"' >&2
+    return 1
+  fi
+
+  echo "$response" | jq -er '[.output[] | select(.type == "message")] | last | .content[] | select(.type == "output_text") | .text' || return 1
+  echo "$response" | jq '.usage | {input_tokens, output_tokens, cost}' >&2
+}
+
+summarize <<'EOF' || exit 1
+user: Fix the failing migration for ticket OPS-1423.
+assistant: Ran `bun run migrate`; it failed on table user_sessions (column expires_at missing).
+assistant: Edited db/migrations/0042_add_expires_at.sql to add the column, re-ran `bun run migrate`, it passed.
+assistant: Tried dropping the index idx_sessions_user first, but that broke tests, so reverted it.
+EOF
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+*   **Goal**: Fix the failing migration for ticket OPS-1423.
+*   **Initial Failure**: `bun run migrate` failed on table `user_sessions` due to missing column `expires_at`.
+*   **Resolution**: Edited `db/migrations/0042_add_expires_at.sql` to add the column; re-ran `bun run migrate`, which passed.
+*   **Failed Approach**: Attempted dropping index `idx_sessions_user`; broke tests, so reverted change.
+{
+  input_tokens: 397,
+  output_tokens: 102,
+  cost: 0.00001588,
+}
 ```
 
 <Warning>
@@ -102,6 +322,8 @@ Each `summarize` call is one paid request billed to your OpenRouter account at t
 ## 2. Turn old messages into text
 
 Summarize reads one block of text and rejects tool calls and tool results with a `400`, so turn the old messages into text first. Keep the tool calls and their results, since that's where most of what the agent learned lives. The message type below is the OpenAI chat format; swap in your own.
+
+<CodeGroup>
 
 ```typescript lines
 type ToolCall = { id: string; function: { name: string; arguments: string } };
@@ -131,9 +353,92 @@ function renderMessage(message: HistoryMessage): string {
 const renderHistory = (messages: HistoryMessage[]): string => messages.map(renderMessage).join('\n\n');
 ```
 
+```python title="Python" lines
+def render_message(message: dict) -> str:
+    role = message["role"]
+    if role in ("system", "user"):
+        return f"[{role}]\n{message['content']}"
+    if role == "assistant":
+        calls = [
+            f"[tool_call {call['function']['name']}] {call['function']['arguments']}"
+            for call in message.get("tool_calls") or []
+        ]
+        return "\n".join([f"[assistant]\n{message.get('content') or ''}", *calls])
+    if role == "tool":
+        return f"[tool_result {message['tool_call_id']}]\n{message['content']}"
+    raise ValueError(f"unknown role: {role}")
+
+
+def render_history(messages: list[dict]) -> str:
+    return "\n\n".join(render_message(m) for m in messages)
+
+```
+
+```go title="Go" lines
+type FunctionCall struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
+type ToolCall struct {
+	ID       string       `json:"id"`
+	Function FunctionCall `json:"function"`
+}
+
+type HistoryMessage struct {
+	Role       string     `json:"role"`
+	Content    string     `json:"content"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+func renderMessage(m HistoryMessage) string {
+	switch m.Role {
+	case "system", "user":
+		return fmt.Sprintf("[%s]\n%s", m.Role, m.Content)
+	case "assistant":
+		parts := []string{"[assistant]\n" + m.Content}
+		for _, call := range m.ToolCalls {
+			parts = append(parts, fmt.Sprintf("[tool_call %s] %s", call.Function.Name, call.Function.Arguments))
+		}
+		return strings.Join(parts, "\n")
+	case "tool":
+		return fmt.Sprintf("[tool_result %s]\n%s", m.ToolCallID, m.Content)
+	default:
+		panic("unknown role: " + m.Role)
+	}
+}
+
+func renderHistory(messages []HistoryMessage) string {
+	rendered := make([]string, len(messages))
+	for i, m := range messages {
+		rendered[i] = renderMessage(m)
+	}
+	return strings.Join(rendered, "\n\n")
+}
+```
+
+```bash title="cURL" lines
+render_history() {
+  jq -r 'map(
+    if .role == "assistant" then
+      (["[assistant]\n\(.content // "")"]
+        + [(.tool_calls // [])[] | "[tool_call \(.function.name)] \(.function.arguments)"])
+      | join("\n")
+    elif .role == "tool" then "[tool_result \(.tool_call_id)]\n\(.content)"
+    else "[\(.role)]\n\(.content)"
+    end
+  ) | join("\n\n")'
+}
+```
+
+</CodeGroup>
+
 ## 3. Summarize in chunks
 
 One call can't hold everything in a long history, so it drops facts. Split the old turns into chunks of about 16k characters (4k to 5k tokens), summarize each chunk, and join the results. Each chunk gets its own summary, and the calls run in parallel.
+
+<CodeGroup>
 
 ```typescript lines
 /** One call over a long history drops facts, so histories are compacted in windows of 4k to 5k tokens each. */
@@ -165,6 +470,136 @@ async function summarizeHistory(messages: HistoryMessage[]): Promise<{ summary: 
   return { summary, usage: results.map(({ usage }) => usage) };
 }
 ```
+
+```python title="Python" lines
+import json
+from concurrent.futures import ThreadPoolExecutor
+
+# One call over a long history drops facts, so histories are compacted in windows of 4k to 5k tokens each.
+CHUNK_CHARS = 16_000
+
+
+def history_size(history: list[dict]) -> int:
+    return sum(len(json.dumps(message)) for message in history)
+
+
+def chunk_messages(messages: list[dict]) -> list[list[dict]]:
+    chunks: list[list[dict]] = [[]]
+    for message in messages:
+        current = chunks[-1]
+        if current and history_size(current) + len(json.dumps(message)) > CHUNK_CHARS:
+            chunks.append([message])
+        else:
+            current.append(message)
+    return chunks
+
+
+def summarize_history(messages: list[dict]) -> tuple[str, list[dict]]:
+    chunks = chunk_messages(messages)
+    with ThreadPoolExecutor() as pool:
+        results = list(pool.map(lambda chunk: summarize(render_history(chunk)), chunks))
+    summary = "\n\n".join(
+        f"Part {index + 1} of {len(chunks)}:\n{text}" if len(chunks) > 1 else text
+        for index, (text, _) in enumerate(results)
+    )
+    return summary, [usage for _, usage in results]
+
+```
+
+```go title="Go" lines
+// One call over a long history drops facts, so histories are compacted in windows of 4k to 5k tokens each.
+const chunkChars = 16_000
+
+func messageSize(m HistoryMessage) int {
+	b, _ := json.Marshal(m)
+	return len(b)
+}
+
+func chunkMessages(messages []HistoryMessage) [][]HistoryMessage {
+	chunks := [][]HistoryMessage{{}}
+	size := 0
+	for _, m := range messages {
+		n := messageSize(m)
+		last := len(chunks) - 1
+		if len(chunks[last]) > 0 && size+n > chunkChars {
+			chunks = append(chunks, []HistoryMessage{m})
+			size = n
+		} else {
+			chunks[last] = append(chunks[last], m)
+			size += n
+		}
+	}
+	return chunks
+}
+
+func summarizeHistory(messages []HistoryMessage) (string, []Usage, error) {
+	chunks := chunkMessages(messages)
+	summaries := make([]string, len(chunks))
+	usage := make([]Usage, len(chunks))
+	errs := make([]error, len(chunks))
+	var wg sync.WaitGroup
+	for i, chunk := range chunks {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			summaries[i], usage[i], errs[i] = summarize(renderHistory(chunk))
+		}()
+	}
+	wg.Wait()
+	if err := errors.Join(errs...); err != nil {
+		return "", nil, err
+	}
+	if len(chunks) > 1 {
+		for i := range summaries {
+			summaries[i] = fmt.Sprintf("Part %d of %d:\n%s", i+1, len(chunks), summaries[i])
+		}
+	}
+	return strings.Join(summaries, "\n\n"), usage, nil
+}
+```
+
+```bash title="cURL" lines
+CHUNK_CHARS=16000
+
+# Split a JSON array of messages into chunks of about CHUNK_CHARS characters each.
+chunk_messages() {
+  jq -c --argjson max "$CHUNK_CHARS" '
+    reduce .[] as $m ([[]];
+      if (.[-1] | length) > 0
+        and ((.[-1] | map(tojson | length) | add) + ($m | tojson | length)) > $max
+      then . + [[$m]]
+      else .[-1] += [$m]
+      end) | .[]'
+}
+
+# Summarize each chunk in parallel with `summarize` from step 1, then join the summaries in order.
+# Fails without printing a partial summary if any chunk fails.
+summarize_history() {
+  local chunks dir total=0 pids=() failed=0
+  chunks=$(chunk_messages) || return 1
+  dir=$(mktemp -d)
+  while IFS= read -r chunk; do
+    total=$((total + 1))
+    (set -o pipefail; echo "$chunk" | render_history | summarize > "$dir/$total") &
+    pids+=($!)
+  done <<< "$chunks"
+  for pid in "${pids[@]}"; do wait "$pid" || failed=1; done
+  if [ "$failed" -ne 0 ]; then
+    rm -rf "$dir"
+    echo "summarize_history: a chunk failed" >&2
+    return 1
+  fi
+  for n in $(seq 1 "$total"); do
+    if [ "$total" -gt 1 ]; then echo "Part $n of $total:"; fi
+    cat "$dir/$n"
+    echo
+  done
+  # The chunk summaries hold session history, so do not leave them on disk
+  rm -rf "$dir"
+}
+```
+
+</CodeGroup>
 
 ## 4. Compact when the history gets big
 
@@ -272,6 +707,8 @@ Put anything the agent must never lose, like the user's original task and its co
 
 The session below is made up, but it's the one the captured output came from, so you can run it yourself. `syntheticSession` builds a 100-step coding session (202 messages, 86k characters) in which the agent reads one file per step, with ten facts planted along the way to check what survives: a config path, a failed approach, a rate limit, a table name, a ticket ID, a branch name, a test command, the root cause, a reviewer, and an environment variable. Save steps 1 to 4, without the loop sketch, and these two blocks as one file and run it with `bun run compact.ts`.
 
+Only the TypeScript version is runnable from this page. The Python and Go tabs in the last block are illustrative fragments: steps 1 to 3 give `summarize`, the render helpers, and `summarize_history` / `summarizeHistory` in those languages, but `maybe_compact` / `maybeCompact`, `is_summary_message` / `isSummaryMessage`, `synthetic_session` / `syntheticSession`, and the `FACTS` / `facts` map exist only in TypeScript here, as does `historySize` for Go. Port them from steps 3 and 4 and the fixture block above before running either tab.
+
 ```typescript expandable lines
 const FACTS = {
   config_path: 'config/billing/invoice-clock.yaml',
@@ -317,6 +754,8 @@ function syntheticSession(steps: number, offset = 0): HistoryMessage[] {
 }
 ```
 
+<CodeGroup>
+
 ```typescript lines
 const compacted = await maybeCompact(syntheticSession(100));
 const summary = compacted[1];
@@ -326,6 +765,37 @@ if (isSummaryMessage(summary)) {
   console.log(summary.content);
 }
 ```
+
+```python title="Python" lines
+compacted = maybe_compact(synthetic_session(100))
+summary = compacted[1]
+if is_summary_message(summary):
+    kept = [fact for fact in FACTS.values() if fact.lower() in summary["content"].lower()]
+    print(json.dumps({"after_chars": history_size(compacted), "facts_kept": f"{len(kept)} of {len(FACTS)}"}, separators=(",", ":")))
+    print(summary["content"])
+
+```
+
+```go title="Go" lines
+compacted, err := maybeCompact(syntheticSession(100))
+if err != nil {
+	log.Fatal(err)
+}
+summary := compacted[1]
+if isSummaryMessage(summary) {
+	kept := 0
+	for _, fact := range facts {
+		if strings.Contains(strings.ToLower(summary.Content), strings.ToLower(fact)) {
+			kept++
+		}
+	}
+	out, _ := json.Marshal(map[string]any{"after_chars": historySize(compacted), "facts_kept": fmt.Sprintf("%d of %d", kept, len(facts))})
+	fmt.Println(string(out))
+	fmt.Println(summary.Content)
+}
+```
+
+</CodeGroup>
 
 **Captured output.** The first compaction's log line from `maybeCompact`, and the first two of the six parts of its summary:
 

@@ -143,7 +143,85 @@ curl https://openrouter.ai/api/v1/embeddings \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+type DocumentEmbedding struct {
+	Text      string
+	Embedding []float64
+}
+
+func main() {
+	// Your documents, split into chunks
+	chunks := []string{
+		"OpenRouter is a unified API gateway for LLMs. It aggregates models from multiple providers.",
+		"RAG stands for Retrieval-Augmented Generation. It grounds LLM answers in external data.",
+		"Embeddings convert text into numerical vectors that capture semantic meaning.",
+		"Reranking uses a cross-encoder to re-score documents for a given query, improving precision.",
+		"Vector databases like Pinecone, Weaviate, and Qdrant store embeddings for fast similarity search.",
+		"Prompt caching can reduce costs by reusing previous computations for repeated prefixes.",
+		"OpenRouter supports provider routing to control which providers serve your requests.",
+	}
+
+	// Generate embeddings for all chunks in one batch request
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/text-embedding-3-small",
+		"input": chunks,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/embeddings", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		log.Fatalf("HTTP %d: %s", resp.StatusCode, b)
+	}
+
+	var data struct {
+		Data []struct {
+			Index     int       `json:"index"`
+			Embedding []float64 `json:"embedding"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Fatal(err)
+	}
+
+	// Each item in data.Data contains an "embedding" vector
+	// Store these alongside your chunks in a vector database
+	documentEmbeddings := make([]DocumentEmbedding, 0, len(data.Data))
+	for _, item := range data.Data {
+		documentEmbeddings = append(documentEmbeddings, DocumentEmbedding{
+			Text:      chunks[item.Index],
+			Embedding: item.Embedding,
+		})
+	}
+
+	fmt.Printf("Indexed %d chunks with %d-dim embeddings\n", len(documentEmbeddings), len(documentEmbeddings[0].Embedding))
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Indexed 7 chunks with 1536-dim embeddings
+```
 
 <Tip>
   In production, use a vector database (Pinecone, Weaviate, Qdrant, pgvector, etc.) to store and query embeddings efficiently. The in-memory approach shown here is for illustration only.
@@ -244,6 +322,113 @@ results.forEach((r, i) => {
 });
 ```
 
+```go title="Go" lines
+type ScoredDocument struct {
+	Text  string
+	Score float64
+}
+
+func cosineSimilarity(a, b []float64) float64 {
+	var dot, magA, magB float64
+	for i := range a {
+		dot += a[i] * b[i]
+		magA += a[i] * a[i]
+		magB += b[i] * b[i]
+	}
+	return dot / (math.Sqrt(magA) * math.Sqrt(magB))
+}
+
+func retrieve(query string, documentEmbeddings []DocumentEmbedding, topN int) []ScoredDocument {
+	// Embed the query
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/text-embedding-3-small",
+		"input": query,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/embeddings", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		log.Fatalf("HTTP %d: %s", resp.StatusCode, b)
+	}
+
+	var data struct {
+		Data []struct {
+			Embedding []float64 `json:"embedding"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Fatal(err)
+	}
+	queryEmbedding := data.Data[0].Embedding
+
+	// Score each document by cosine similarity
+	scored := make([]ScoredDocument, 0, len(documentEmbeddings))
+	for _, doc := range documentEmbeddings {
+		scored = append(scored, ScoredDocument{
+			Text:  doc.Text,
+			Score: cosineSimilarity(queryEmbedding, doc.Embedding),
+		})
+	}
+
+	// Return the top N most similar chunks
+	sort.Slice(scored, func(i, j int) bool { return scored[i].Score > scored[j].Score })
+	if len(scored) > topN {
+		scored = scored[:topN]
+	}
+	return scored
+}
+
+// Call retrieveAndPrint(documentEmbeddings) as the last line of main in step 1, and add "math", "sort", and "strings" to that file's imports. Each step passes its results to the next.
+func retrieveAndPrint(documentEmbeddings []DocumentEmbedding) {
+	query := "What is RAG and how does it work?"
+	results := retrieve(query, documentEmbeddings, 5)
+
+	fmt.Println("Retrieved documents:")
+	for i, r := range results {
+		fmt.Printf("  %d. (score: %.4f) %s\n", i+1, r.Score, r.Text)
+	}
+	rerankAndPrint(query, results) // defined in step 3
+}
+```
+
+```bash title="cURL" lines
+QUERY="What is RAG and how does it work?"
+DOCS='["OpenRouter is a unified API gateway for LLMs.", "RAG stands for Retrieval-Augmented Generation.", "Embeddings convert text into numerical vectors."]'
+
+# Embed the documents and save each text next to its vector
+curl -s https://openrouter.ai/api/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d "$(jq -n --argjson docs "$DOCS" '{model: "openai/text-embedding-3-small", input: $docs}')" \
+  | jq --argjson docs "$DOCS" '[.data[] | {text: $docs[.index], embedding}]' \
+  > document_embeddings.json
+
+# Embed the query
+curl -s https://openrouter.ai/api/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d "$(jq -n --arg q "$QUERY" '{model: "openai/text-embedding-3-small", input: $q}')" \
+  > query_embedding.json
+
+# Score each document by cosine similarity and print the top 5
+jq -r --slurpfile q query_embedding.json '
+  def dot(a; b): [a, b] | transpose | map(.[0] * .[1]) | add;
+  def norm(v): v | map(. * .) | add | sqrt;
+  $q[0].data[0].embedding as $qe
+  | map({text, score: (dot($qe; .embedding) / (norm($qe) * norm(.embedding)))})
+  | sort_by(-.score) | .[:5]
+  | "Retrieved documents:",
+    (to_entries[] | "  \(.key + 1). (score: \(.value.score * 10000 | round / 10000)) \(.value.text)")
+' document_embeddings.json
+```
+
 </CodeGroup>
 
 ## Step 3: Rerank for Better Precision
@@ -313,7 +498,8 @@ for (const r of reranked) {
 ```
 
 ```shell title="Shell" lines
-curl https://openrouter.ai/api/v1/rerank \
+# Independent of the retrieval step: a fixed query and fixed documents. To rerank your own matches, send your query and the retrieved texts as "query" and "documents".
+RERANKED=$(curl -sS --fail-with-body https://openrouter.ai/api/v1/rerank \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -d '{
@@ -327,7 +513,65 @@ curl https://openrouter.ai/api/v1/rerank \
       "Vector databases like Pinecone, Weaviate, and Qdrant store embeddings for fast similarity search."
     ],
     "top_n": 3
-  }'
+  }')
+
+echo "$RERANKED" | jq .
+```
+
+```go title="Go" lines
+type RerankResult struct {
+	Index          int     `json:"index"`
+	RelevanceScore float64 `json:"relevance_score"`
+	Document       struct {
+		Text string `json:"text"`
+	} `json:"document"`
+}
+
+func rerank(query string, documents []string, topN int) []RerankResult {
+	body, _ := json.Marshal(map[string]any{
+		"model":     "cohere/rerank-v3.5",
+		"query":     query,
+		"documents": documents,
+		"top_n":     topN,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/rerank", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		log.Fatalf("HTTP %d: %s", resp.StatusCode, b)
+	}
+
+	var data struct {
+		Results []RerankResult `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Fatal(err)
+	}
+	return data.Results
+}
+
+func rerankAndPrint(query string, results []ScoredDocument) {
+	// Use the texts from the retrieval step
+	retrievedTexts := make([]string, len(results))
+	for i, r := range results {
+		retrievedTexts[i] = r.Text
+	}
+
+	reranked := rerank(query, retrievedTexts, 3)
+
+	fmt.Println("Reranked documents:")
+	for _, r := range reranked {
+		fmt.Printf("  Score: %.4f | %s\n", r.RelevanceScore, r.Document.Text)
+	}
+	answerAndPrint(query, reranked) // defined in step 4
+}
 ```
 
 </CodeGroup>
@@ -406,6 +650,90 @@ async function generateAnswer(
 const answer = await generateAnswer(query, reranked);
 console.log(`Question: ${query}`);
 console.log(`Answer: ${answer}`);
+```
+
+```go title="Go" lines
+func generateAnswer(query string, contextDocs []RerankResult) string {
+	// Build a context string from the reranked documents
+	parts := make([]string, len(contextDocs))
+	for i, doc := range contextDocs {
+		parts[i] = fmt.Sprintf("[%d] %s", i+1, doc.Document.Text)
+	}
+	context := strings.Join(parts, "\n\n")
+
+	body, _ := json.Marshal(map[string]any{
+		"model": "~openai/gpt-mini-latest",
+		"instructions": "Answer the user's question based on the provided context. " +
+			"Cite the relevant source numbers in brackets. " +
+			"If the context doesn't contain enough information, say so.",
+		"input": fmt.Sprintf("Context:\n%s\n\nQuestion: %s", context, query),
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		log.Fatalf("HTTP %d: %s", resp.StatusCode, b)
+	}
+
+	var data struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Fatal(err)
+	}
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range data.Output[i].Content {
+			if part.Type == "output_text" {
+				return part.Text
+			}
+		}
+	}
+	return ""
+}
+
+func answerAndPrint(query string, reranked []RerankResult) {
+	answer := generateAnswer(query, reranked)
+	fmt.Printf("Question: %s\n", query)
+	fmt.Printf("Answer: %s\n", answer)
+}
+```
+
+```bash title="cURL" lines
+QUERY="What is RAG and how does it work?"
+
+# RERANKED holds the rerank response captured in the previous step
+CONTEXT=$(echo "$RERANKED" | jq -er '.results | select(length > 0) | [.[].document.text] | to_entries | map("[\(.key + 1)] \(.value)") | join("\n\n")') || {
+  echo "No reranked documents to build context from" >&2
+  exit 1
+}
+
+ANSWER=$(curl -s https://openrouter.ai/api/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d "$(jq -n --arg context "$CONTEXT" --arg query "$QUERY" '{
+    model: "~openai/gpt-mini-latest",
+    instructions: "Answer the user'\''s question based on the provided context. Cite the relevant source numbers in brackets. If the context doesn'\''t contain enough information, say so.",
+    input: "Context:\n\($context)\n\nQuestion: \($query)"
+  }')" | jq -r '[.output[] | select(.type == "message")] | last | .content[] | select(.type == "output_text") | .text')
+
+echo "Question: $QUERY"
+echo "Answer: $ANSWER"
 ```
 
 </CodeGroup>
@@ -628,7 +956,237 @@ const answer = await generate(query, contextTexts);
 console.log(`Q: ${query}\nA: ${answer}`);
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"math"
+	"net/http"
+	"os"
+	"sort"
+	"strings"
+)
+
+const (
+	embeddingModel = "openai/text-embedding-3-small"
+	rerankModel    = "cohere/rerank-v3.5"
+	chatModel      = "~openai/gpt-mini-latest"
+	baseURL        = "https://openrouter.ai/api/v1"
+)
+
+func post(path string, payload any, out any) {
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", baseURL+path, bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		log.Fatalf("HTTP %d: %s", resp.StatusCode, b)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func embed(texts []string) [][]float64 {
+	var data struct {
+		Data []struct {
+			Index     int       `json:"index"`
+			Embedding []float64 `json:"embedding"`
+		} `json:"data"`
+	}
+	post("/embeddings", map[string]any{"model": embeddingModel, "input": texts}, &data)
+	out := make([][]float64, len(data.Data))
+	for _, item := range data.Data {
+		out[item.Index] = item.Embedding
+	}
+	return out
+}
+
+func cosineSimilarity(a, b []float64) float64 {
+	var dot, magA, magB float64
+	for i := range a {
+		dot += a[i] * b[i]
+		magA += a[i] * a[i]
+		magB += b[i] * b[i]
+	}
+	return dot / (math.Sqrt(magA) * math.Sqrt(magB))
+}
+
+type match struct {
+	Index int
+	Score float64
+}
+
+func retrieve(queryEmbedding []float64, docEmbeddings [][]float64, topN int) []match {
+	scored := make([]match, len(docEmbeddings))
+	for i, emb := range docEmbeddings {
+		scored[i] = match{i, cosineSimilarity(queryEmbedding, emb)}
+	}
+	sort.Slice(scored, func(i, j int) bool { return scored[i].Score > scored[j].Score })
+	if topN < len(scored) {
+		scored = scored[:topN]
+	}
+	return scored
+}
+
+type RerankResult struct {
+	Index          int     `json:"index"`
+	RelevanceScore float64 `json:"relevance_score"`
+	Document       struct {
+		Text string `json:"text"`
+	} `json:"document"`
+}
+
+func rerank(query string, documents []string, topN int) []RerankResult {
+	var data struct {
+		Results []RerankResult `json:"results"`
+	}
+	post("/rerank", map[string]any{
+		"model": rerankModel, "query": query, "documents": documents, "top_n": topN,
+	}, &data)
+	return data.Results
+}
+
+func generate(query string, contextDocs []string) string {
+	parts := make([]string, len(contextDocs))
+	for i, doc := range contextDocs {
+		parts[i] = fmt.Sprintf("[%d] %s", i+1, doc)
+	}
+	var data struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	post("/responses", map[string]any{
+		"model": chatModel,
+		"instructions": "Answer the user's question using only the provided context. " +
+			"Cite sources with [n]. If the context is insufficient, say so.",
+		"input": fmt.Sprintf("Context:\n%s\n\nQuestion: %s", strings.Join(parts, "\n\n"), query),
+	}, &data)
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range data.Output[i].Content {
+			if part.Type == "output_text" {
+				return part.Text
+			}
+		}
+	}
+	return ""
+}
+
+func main() {
+	// 1. Index: chunk your knowledge base and embed
+	chunks := []string{
+		"OpenRouter is a unified API gateway for LLMs. It aggregates models from multiple providers into a single OpenAI-compatible interface.",
+		"RAG stands for Retrieval-Augmented Generation. It retrieves relevant documents and uses them as context for LLM generation.",
+		"Embeddings convert text into high-dimensional vectors where semantically similar texts are closer together.",
+		"Reranking uses a cross-encoder to compare each document directly against the query, producing more accurate relevance scores than embedding similarity alone.",
+		"Vector databases like Pinecone, Weaviate, and Qdrant are optimized for storing and querying embedding vectors at scale.",
+		"Prompt caching reduces costs by reusing computations for repeated prompt prefixes across requests.",
+		"OpenRouter supports provider routing to control which upstream providers serve your requests based on cost, latency, or privacy preferences.",
+	}
+	docEmbeddings := embed(chunks)
+
+	// 2. Retrieve: embed the query and find similar chunks
+	query := "How does RAG improve LLM responses?"
+	queryEmbedding := embed([]string{query})[0]
+	var retrievedTexts []string
+	for _, m := range retrieve(queryEmbedding, docEmbeddings, 5) {
+		retrievedTexts = append(retrievedTexts, chunks[m.Index])
+	}
+
+	// 3. Rerank: re-score with a cross-encoder for better precision
+	var contextTexts []string
+	for _, r := range rerank(query, retrievedTexts, 3) {
+		contextTexts = append(contextTexts, r.Document.Text)
+	}
+
+	// 4. Generate: produce a grounded answer
+	answer := generate(query, contextTexts)
+	fmt.Printf("Q: %s\nA: %s\n", query, answer)
+}
+
+```
+
+```bash title="cURL" lines
+#!/bin/bash
+set -eo pipefail # a failed request or an empty rerank result stops the script
+BASE_URL="https://openrouter.ai/api/v1"
+QUERY="How does RAG improve LLM responses?"
+
+# 1. Index: chunk your knowledge base and embed
+CHUNKS='[
+  "OpenRouter is a unified API gateway for LLMs. It aggregates models from multiple providers into a single OpenAI-compatible interface.",
+  "RAG stands for Retrieval-Augmented Generation. It retrieves relevant documents and uses them as context for LLM generation.",
+  "Embeddings convert text into high-dimensional vectors where semantically similar texts are closer together.",
+  "Reranking uses a cross-encoder to compare each document directly against the query, producing more accurate relevance scores than embedding similarity alone.",
+  "Vector databases like Pinecone, Weaviate, and Qdrant are optimized for storing and querying embedding vectors at scale.",
+  "Prompt caching reduces costs by reusing computations for repeated prompt prefixes across requests.",
+  "OpenRouter supports provider routing to control which upstream providers serve your requests based on cost, latency, or privacy preferences."
+]'
+
+embed() {
+  curl -sS --fail-with-body "$BASE_URL/embeddings" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -d "$(jq -n --argjson input "$1" '{model: "openai/text-embedding-3-small", input: $input}')"
+}
+
+DOC_EMB=$(embed "$CHUNKS")
+
+# 2. Retrieve: embed the query and find the top 5 chunks by cosine similarity
+QUERY_EMB=$(embed "$(jq -n --arg q "$QUERY" '[$q]')" | jq -c '.data[0].embedding')
+RETRIEVED=$(echo "$DOC_EMB" | jq -c --argjson qe "$QUERY_EMB" --argjson chunks "$CHUNKS" '
+  def dot(a; b): [a, b] | transpose | map(.[0] * .[1]) | add;
+  # Pair each vector with its chunk by the index field, not by array position
+  [.data[] | {index, score: (dot(.embedding; $qe) / ((dot(.embedding; .embedding) | sqrt) * (dot($qe; $qe) | sqrt)))}]
+  | sort_by(-.score) | .[:5] | map($chunks[.index])')
+
+# 3. Rerank: re-score with a cross-encoder for better precision
+CONTEXT=$(curl -sS --fail-with-body "$BASE_URL/rerank" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d "$(jq -n --arg q "$QUERY" --argjson docs "$RETRIEVED" '{model: "cohere/rerank-v3.5", query: $q, documents: $docs, top_n: 3}')" \
+  | jq -er '.results | select(length > 0) | [.[].document.text] | to_entries | map("[\(.key + 1)] \(.value)") | join("\n\n")')
+
+# 4. Generate: produce a grounded answer
+ANSWER=$(curl -sS --fail-with-body "$BASE_URL/responses" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d "$(jq -n --arg context "$CONTEXT" --arg query "$QUERY" '{
+    model: "~openai/gpt-mini-latest",
+    instructions: "Answer the user'\''s question using only the provided context. Cite sources with [n]. If the context is insufficient, say so.",
+    input: "Context:\n\($context)\n\nQuestion: \($query)"
+  }')" | jq -r '[.output[] | select(.type == "message")] | last | .content[] | select(.type == "output_text") | .text')
+
+echo "Q: $QUERY"
+echo "A: $ANSWER"
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Q: How does RAG improve LLM responses?
+A: RAG improves LLM responses by first retrieving relevant documents and then using those documents as context for generation, which helps the model answer with more grounded and relevant information [1].
+```
 
 ## When to Use Rerank
 
@@ -653,57 +1211,113 @@ This is useful when your knowledge base contains diagrams, screenshots, charts, 
 <CodeGroup>
 
 ```python title="Python" expandable lines
-response = requests.post(
-    "https://openrouter.ai/api/v1/rerank",
-    headers={
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-    },
-    json={
-        "model": "nvidia/llama-nemotron-rerank-vl-1b-v2",
-        "query": "How is AI improving the capabilities of robots?",
-        "documents": [
-            {"text": "AI enables robots to perceive, plan, and act autonomously."},
-            {"image": "https://example.com/robot-diagram.png"},
-            {
-                "text": "A robotic arm assembling components.",
-                "image": "https://example.com/robot-arm.png",
-            },
-        ],
-        "top_n": 2,
-    },
-)
+import os
+import requests
 
-for r in response.json()["results"]:
-    print(f"  Score: {r['relevance_score']:.4f} | index: {r['index']}")
+OPENROUTER_API_KEY = os.environ["OPENROUTER_API_KEY"]
+headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
+
+# Find rerank models that also accept image input
+models = {}
+for modality in ("rerank", "all"):
+    res = requests.get(
+        "https://openrouter.ai/api/v1/models",
+        params={"output_modalities": modality},
+        headers=headers,
+    )
+    res.raise_for_status()  # a failed lookup is an HTTP error, not "no model"
+    for m in res.json().get("data", []):
+        models[m["id"]] = m
+
+def is_image_reranker(m):
+    arch = m.get("architecture") or {}
+    outputs = arch.get("output_modalities") or []
+    inputs = arch.get("input_modalities") or []
+    return ("rerank" in outputs or "rerank" in m["id"]) and "image" in inputs
+
+model = next((mid for mid, m in models.items() if is_image_reranker(m)), None)
+
+if model is None:
+    print("No image-capable rerank model is currently available.")
+else:
+    print(f"Using model: {model}")
+    response = requests.post(
+        "https://openrouter.ai/api/v1/rerank",
+        headers={**headers, "Content-Type": "application/json"},
+        json={
+            "model": model,
+            "query": "How is AI improving the capabilities of robots?",
+            "documents": [
+                {"text": "AI enables robots to perceive, plan, and act autonomously."},
+                {"image": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/HONDA_ASIMO.jpg/320px-HONDA_ASIMO.jpg"},
+                {
+                    "text": "A robotic arm assembling components.",
+                    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/KUKA_Industrial_Robot_KR6.jpg/320px-KUKA_Industrial_Robot_KR6.jpg",
+                },
+            ],
+            "top_n": 2,
+        },
+    )
+
+    data = response.json()
+    if not response.ok:
+        print(data)
+    else:
+        for r in data["results"]:
+            print(f"  Score: {r['relevance_score']:.4f} | index: {r['index']}")
+
 ```
 
 ```typescript title="TypeScript (fetch)" expandable lines
-const response = await fetch('https://openrouter.ai/api/v1/rerank', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    model: 'nvidia/llama-nemotron-rerank-vl-1b-v2',
-    query: 'How is AI improving the capabilities of robots?',
-    documents: [
-      { text: 'AI enables robots to perceive, plan, and act autonomously.' },
-      { image: 'https://example.com/robot-diagram.png' },
-      {
-        text: 'A robotic arm assembling components.',
-        image: 'https://example.com/robot-arm.png',
-      },
-    ],
-    top_n: 2,
-  }),
+// cohere/rerank-v3.5 is text-only, so look up a rerank model that also accepts images
+const modelsRes = await fetch('https://openrouter.ai/api/v1/models?output_modalities=all', {
+  headers: { 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}` },
 });
-
-const data = await response.json();
-for (const r of data.results) {
-  console.log(`  Score: ${r.relevance_score.toFixed(4)} | index: ${r.index}`);
+if (!modelsRes.ok) {
+  throw new Error(`Model lookup failed: HTTP ${modelsRes.status} ${await modelsRes.text()}`);
 }
+const { data: models } = await modelsRes.json();
+const model = models.find(
+  (m: any) =>
+    m.architecture?.output_modalities?.includes('rerank') &&
+    m.architecture?.input_modalities?.includes('image'),
+)?.id;
+
+if (!model) {
+  console.log('No image-capable rerank model is currently available.');
+} else {
+  console.log(`Using model: ${model}`);
+  const response = await fetch('https://openrouter.ai/api/v1/rerank', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      query: 'How is AI improving the capabilities of robots?',
+      documents: [
+        { text: 'AI enables robots to perceive, plan, and act autonomously.' },
+        { image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/HONDA_ASIMO.jpg/320px-HONDA_ASIMO.jpg' },
+        {
+          text: 'A robotic arm assembling components.',
+          image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/KUKA_Industrial_Robot_KR6.jpg/320px-KUKA_Industrial_Robot_KR6.jpg',
+        },
+      ],
+      top_n: 2,
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    console.log(JSON.stringify(data, null, 2));
+  } else {
+    for (const r of data.results) {
+      console.log(`  Score: ${r.relevance_score.toFixed(4)} | index: ${r.index}`);
+    }
+  }
+}
+
 ```
 
 ```shell title="Shell" lines
@@ -726,6 +1340,10 @@ curl https://openrouter.ai/api/v1/rerank \
 ```
 
 </CodeGroup>
+
+```text title="Output"
+No image-capable rerank model is currently available.
+```
 
 <Tip>
   Text-only documents can still be passed as plain strings, so you can mix `"a plain string"` and `{ "image": "..." }` entries in the same `documents` array. Browse multimodal rerank models at [openrouter.ai/models?output_modalities=rerank](https://openrouter.ai/models?fmt=cards&output_modalities=rerank).
