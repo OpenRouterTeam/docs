@@ -131,7 +131,7 @@ const question = 'How would you build the tallest building ever?';
 const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    Authorization: `Bearer ${API_KEY_REF}`,
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
@@ -196,9 +196,157 @@ try {
 } finally {
   reader.cancel();
 }
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func main() {
+	question := "How would you build the tallest building ever?"
+
+	body, _ := json.Marshal(map[string]any{
+		"model":  "openai/gpt-4o",
+		"input":  question,
+		"stream": true,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		log.Fatalf("HTTP %d: %s", resp.StatusCode, b)
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+	for scanner.Scan() {
+		data, ok := strings.CutPrefix(scanner.Text(), "data: ")
+		if !ok || data == "[DONE]" {
+			continue
+		}
+		var event struct {
+			Type     string `json:"type"`
+			Delta    string `json:"delta"`
+			Response struct {
+				Error             *struct{ Message string } `json:"error"`
+				IncompleteDetails *struct{ Reason string }  `json:"incomplete_details"`
+				Usage             json.RawMessage           `json:"usage"`
+			} `json:"response"`
+		}
+		if err := json.Unmarshal([]byte(data), &event); err != nil {
+			continue
+		}
+
+		switch event.Type {
+		case "response.failed":
+			msg := "Response failed"
+			if event.Response.Error != nil {
+				msg = event.Response.Error.Message
+			}
+			log.Fatal(msg)
+		case "response.incomplete":
+			reason := "unknown reason"
+			if event.Response.IncompleteDetails != nil {
+				reason = event.Response.IncompleteDetails.Reason
+			}
+			log.Fatalf("Response incomplete: %s", reason)
+		case "response.output_text.delta":
+			fmt.Println(event.Delta)
+		case "response.completed":
+			// The final response.completed event includes usage stats
+			fmt.Println("Usage:", string(event.Response.Usage))
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+```
+
+```bash title="cURL" lines
+curl -sSfN https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o",
+    "input": "How would you build the tallest building ever?",
+    "stream": true
+  }' |
+  # jq does the filtering: sed and grep would hold the text back until the stream ends
+  jq -R --unbuffered -r 'select(startswith("data: ")) | .[6:] | select(. != "[DONE]") | fromjson |
+    if .type == "response.failed" then error(.response.error.message // "Response failed")
+    elif .type == "response.incomplete" then error("Response incomplete: " + (.response.incomplete_details.reason // "unknown reason"))
+    elif .type == "response.output_text.delta" then .delta
+    # The final response.completed event includes usage stats
+    elif .type == "response.completed" then "Usage: " + (.response.usage | tostring)
+    else empty end'
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Building
+ the
+ tallest
+ building
+ ever
+ would
+ be
+ an
+ incredibly
+ ambitious
+ and
+ complex
+ endeavor
+,
+ requiring
+ careful
+ consideration
+ of
+ engineering
+,
+ materials
+,
+ sustainability
+,
+ and
+ cost
+.
+ Here's
+ a
+ broad
+ overview
+ of
+ the
+ factors
+ you
+ would
+ need
+ to
+ consider
+:
+```
 
 ### Additional information
 
@@ -215,6 +363,8 @@ Comment payload can be safely ignored per the [SSE specs](https://html.spec.what
 </Warning>
 
 A spec-compliant parser such as [eventsource-parser](https://github.com/rexxars/eventsource-parser) handles comments, multi-line `data:` fields, and buffering for you:
+
+<CodeGroup>
 
 ```typescript title="eventsource-parser" expandable lines
 import { createParser } from 'eventsource-parser';
@@ -259,6 +409,167 @@ while (true) {
   if (done) break;
   parser.feed(decoder.decode(value, { stream: true }));
 }
+```
+
+```python title="Python" lines
+import json
+import os
+
+import requests
+
+response = requests.post(
+    "https://openrouter.ai/api/v1/responses",
+    headers={
+        "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "model": "openai/gpt-4o",
+        "input": "Hello",
+        "stream": True,
+    },
+    stream=True,
+)
+
+# Errors that occur before streaming starts are plain JSON, not SSE
+if not response.ok:
+    raise RuntimeError(response.json()["error"]["message"])
+
+response.encoding = "utf-8"
+data_lines = []
+for line in response.iter_lines(decode_unicode=True):
+    if line.startswith(":"):
+        continue  # SSE comment, e.g. ": OPENROUTER PROCESSING"
+    if line.startswith("data:"):
+        data_lines.append(line[5:].removeprefix(" "))
+        continue
+    if line or not data_lines:
+        continue
+    # A blank line ends the event; join multi-line data: fields
+    data, data_lines = "\n".join(data_lines), []
+    if data == "[DONE]":
+        continue
+    try:
+        event = json.loads(data)
+    except json.JSONDecodeError:
+        continue  # Ignore invalid JSON
+    if event.get("type") == "response.output_text.delta":
+        print(event["delta"])
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func handleEvent(data string) {
+	if data == "" || data == "[DONE]" {
+		return
+	}
+	var event struct {
+		Type  string `json:"type"`
+		Delta string `json:"delta"`
+	}
+	if err := json.Unmarshal([]byte(data), &event); err != nil {
+		return // Ignore invalid JSON
+	}
+	if event.Type == "response.output_text.delta" {
+		fmt.Println(event.Delta)
+	}
+}
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":  "openai/gpt-4o",
+		"input":  "Hello",
+		"stream": true,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	// Errors that occur before streaming starts are plain JSON, not SSE
+	if resp.StatusCode != http.StatusOK {
+		var e struct {
+			Error struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		json.NewDecoder(resp.Body).Decode(&e)
+		log.Fatal(e.Error.Message)
+	}
+
+	// Spec-compliant SSE parsing: skip comments, join multi-line data fields,
+	// and dispatch each event on a blank line
+	var data []string
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		switch {
+		case line == "":
+			handleEvent(strings.Join(data, "\n"))
+			data = nil
+		case strings.HasPrefix(line, ":"):
+			// Comment, e.g. ": OPENROUTER PROCESSING"
+		default:
+			if v, ok := strings.CutPrefix(line, "data:"); ok {
+				data = append(data, strings.TrimPrefix(v, " "))
+			}
+		}
+	}
+	handleEvent(strings.Join(data, "\n"))
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+```
+
+```bash title="cURL" lines
+curl -sSfN https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o",
+    "input": "Hello",
+    "stream": true
+  }' |
+  # Keep only data: lines; comment lines such as ": OPENROUTER PROCESSING" are dropped.
+  # Ignore invalid JSON (including [DONE]) and print text deltas. jq does the filtering:
+  # sed and grep would hold the text back until the stream ends
+  jq -R --unbuffered -r 'select(startswith("data: ")) | .[6:] | fromjson? | select(.type == "response.output_text.delta") | .delta'
+```
+
+</CodeGroup>
+
+```text title="Output"
+Hi
+ there
+!
+ How
+ can
+ I
+ assist
+ you
+ today
+?
 ```
 
 A parser only handles the SSE framing. Errors that occur mid-generation still arrive as regular `data:` events (a `response.failed` or `error` event). See [Handling Errors During Streaming](#handling-errors-during-streaming) below.
@@ -364,6 +675,8 @@ controller.abort();
 ```
 
 ```python Python expandable lines
+import json
+import time
 import requests
 from threading import Event, Thread
 
@@ -375,14 +688,29 @@ def stream_with_cancellation(prompt: str, cancel_event: Event):
             json={"model": "openai/gpt-4o", "input": prompt, "stream": True},
             stream=True
         )
+        # An HTTP error (for example a 401) is plain JSON, not an event stream
+        if not response.ok:
+            print(f"Request failed: {response.status_code} {response.text}")
+            response.close()
+            return
+        response.encoding = "utf-8"
 
         try:
-            for line in response.iter_lines():
+            for line in response.iter_lines(decode_unicode=True):
                 if cancel_event.is_set():
-                    response.close()
+                    print("\nStream cancelled")
                     return
-                if line:
-                    print(line.decode(), end="", flush=True)
+                if not line or not line.startswith("data: "):
+                    continue  # Skip blank lines and SSE comments
+                data = line[6:]
+                if data == "[DONE]":
+                    continue
+                try:
+                    event = json.loads(data)
+                except json.JSONDecodeError:
+                    continue  # Ignore invalid JSON
+                if event.get("type") == "response.output_text.delta":
+                    print(event["delta"], end="", flush=True)
         finally:
             response.close()
 
@@ -391,12 +719,18 @@ cancel_event = Event()
 stream_thread = Thread(target=lambda: stream_with_cancellation("Write a story", cancel_event))
 stream_thread.start()
 
-# To cancel the stream:
+# To cancel the stream (here, after 2 seconds):
+time.sleep(2)
 cancel_event.set()
+stream_thread.join()
+
 ```
 
 ```typescript title="TypeScript (fetch)" expandable lines
 const controller = new AbortController();
+
+// To cancel the stream (here, after 2 seconds):
+setTimeout(() => controller.abort(), 2000);
 
 try {
   const response = await fetch(
@@ -416,20 +750,178 @@ try {
     },
   );
 
-  // Process the stream...
+  // An HTTP error (for example a 401) is plain JSON, not an event stream
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status} ${await response.text()}`);
+  }
+
+  // Process the stream, printing text deltas as they arrive
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6);
+      if (data === '[DONE]') continue;
+      try {
+        const event = JSON.parse(data);
+        if (event.type === 'response.output_text.delta') {
+          process.stdout.write(event.delta);
+        }
+      } catch {
+        // Ignore invalid JSON
+      }
+    }
+  }
 } catch (error) {
-  if (error instanceof Error && error.name === 'AbortError') {
-    console.log('Stream cancelled');
+  if ((error as { name?: string })?.name === 'AbortError') {
+    console.log('\nStream cancelled');
   } else {
     throw error;
   }
 }
+```
 
-// To cancel the stream:
-controller.abort();
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+)
+
+func stream(ctx context.Context) error {
+	body, _ := json.Marshal(map[string]any{
+		"model":  "openai/gpt-4o",
+		"input":  "Write a story",
+		"stream": true,
+	})
+	req, _ := http.NewRequestWithContext(ctx, "POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status: %s", resp.Status)
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+	for scanner.Scan() {
+		data, ok := strings.CutPrefix(scanner.Text(), "data: ")
+		if !ok || data == "[DONE]" {
+			continue
+		}
+		var event struct {
+			Type  string `json:"type"`
+			Delta string `json:"delta"`
+		}
+		if json.Unmarshal([]byte(data), &event) == nil && event.Type == "response.output_text.delta" {
+			fmt.Println(event.Delta)
+		}
+	}
+	return scanner.Err()
+}
+
+func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// To cancel the stream (here, after 2 seconds):
+	timer := time.AfterFunc(2*time.Second, cancel)
+	defer timer.Stop()
+
+	if err := stream(ctx); err != nil {
+		// Cancelling the context aborts the request, before or during the stream.
+		if errors.Is(err, context.Canceled) {
+			fmt.Println("Stream cancelled")
+		} else {
+			log.Fatal(err)
+		}
+	}
+}
+
+```
+
+```bash title="cURL" lines
+# Stream a response; closing the connection (Ctrl+C, or killing curl) cancels it
+trap 'echo "Stream cancelled"' INT
+
+curl -sSfN https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o",
+    "input": "Write a story",
+    "stream": true
+  }' |
+  jq -R --unbuffered -r 'select(startswith("data: ")) | .[6:] | fromjson? | select(.type == "response.output_text.delta") | .delta'
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+In
+ the
+ heart
+ of
+ a
+ dense
+,
+ ancient
+ forest
+,
+ where
+ sunlight
+ barely
+ pierced
+ through
+ the
+ dense
+ canopy
+,
+ a
+ young
+ girl
+ named
+ El
+ara
+ lived
+ in
+ a
+ quaint
+,
+ ivy
+-covered
+ cottage
+ with
+ her
+ grandmother
+.
+ The
+ villagers
+ often
+```
 
 <Warning>
   Cancellation only works for streaming requests with supported providers. For non-streaming requests or unsupported providers, the model will continue processing and you will be billed for the complete response.
@@ -553,13 +1045,16 @@ async function streamWithErrorHandling(prompt: string) {
     console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
+
+await streamWithErrorHandling('Write a story');
+
 ```
 
 ```python Python expandable lines
 import requests
 import json
 
-async def stream_with_error_handling(prompt):
+def stream_with_error_handling(prompt):
     response = requests.post(
         'https://openrouter.ai/api/v1/responses',
         headers={'Authorization': f'Bearer <OPENROUTER_API_KEY>'},
@@ -577,10 +1072,12 @@ async def stream_with_error_handling(prompt):
         print(f"Error: {error_data['error']['message']}")
         return
 
+    response.encoding = 'utf-8'
+
     # Process stream and handle mid-stream errors
-    for line in response.iter_lines():
+    for line in response.iter_lines(decode_unicode=True):
         if line:
-            line_text = line.decode('utf-8')
+            line_text = line
             if line_text.startswith('data: '):
                 data = line_text[6:]
                 if data == '[DONE]':
@@ -609,6 +1106,9 @@ async def stream_with_error_handling(prompt):
 
                 except json.JSONDecodeError:
                     pass
+
+stream_with_error_handling('Write a story')
+
 ```
 
 ```typescript title="TypeScript (fetch)" expandable lines
@@ -636,14 +1136,14 @@ async function streamWithErrorHandling(prompt: string) {
     return;
   }
 
-  const reader = response.body?.getReader();
+  const reader = response.body!.getReader();
   if (!reader) throw new Error('No response body');
 
   const decoder = new TextDecoder();
   let buffer = '';
 
   try {
-    while (true) {
+    stream: while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
@@ -658,7 +1158,7 @@ async function streamWithErrorHandling(prompt: string) {
 
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
-          if (data === '[DONE]') return;
+          if (data === '[DONE]') break stream;
 
           try {
             const parsed = JSON.parse(data);
@@ -694,9 +1194,170 @@ async function streamWithErrorHandling(prompt: string) {
     reader.cancel();
   }
 }
+
+await streamWithErrorHandling('Write a story');
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func streamWithErrorHandling(prompt string) error {
+	body, _ := json.Marshal(map[string]any{
+		"model":  "openai/gpt-4o",
+		"input":  prompt,
+		"stream": true,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	// Handle pre-stream errors
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("%s: %s", resp.Status, msg)
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+	for scanner.Scan() {
+		data, ok := strings.CutPrefix(scanner.Text(), "data: ")
+		if !ok || data == "[DONE]" {
+			continue
+		}
+		var event struct {
+			Type     string `json:"type"`
+			Delta    string `json:"delta"`
+			Message  string `json:"message"`
+			Response struct {
+				Error *struct {
+					Message string `json:"message"`
+				} `json:"error"`
+				IncompleteDetails *struct {
+					Reason string `json:"reason"`
+				} `json:"incomplete_details"`
+			} `json:"response"`
+		}
+		if json.Unmarshal([]byte(data), &event) != nil {
+			continue
+		}
+
+		// Check for mid-stream errors
+		switch event.Type {
+		case "response.failed":
+			msg := ""
+			if event.Response.Error != nil {
+				msg = event.Response.Error.Message
+			}
+			fmt.Fprintf(os.Stderr, "Stream error: %s\n", msg)
+			fmt.Println("Stream terminated due to error")
+			return nil
+		case "response.incomplete":
+			reason := "unknown reason"
+			if d := event.Response.IncompleteDetails; d != nil && d.Reason != "" {
+				reason = d.Reason
+			}
+			fmt.Fprintf(os.Stderr, "Stream incomplete: %s\n", reason)
+			return nil
+		case "error":
+			fmt.Fprintf(os.Stderr, "Stream error: %s\n", event.Message)
+			return nil
+		case "response.output_text.delta":
+			// Process normal content
+			fmt.Println(event.Delta)
+		}
+	}
+	return scanner.Err()
+}
+
+func main() {
+	if err := streamWithErrorHandling("Write a story"); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	}
+}
+
+```
+
+```bash title="cURL" lines
+# Stream a response, reporting pre-stream errors (HTTP error body) and mid-stream error events
+curl -sSN https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o",
+    "input": "Write a story",
+    "stream": true
+  }' |
+  jq -R --unbuffered -r 'sub("^data: "; "") | fromjson? |
+    if .type == "response.failed" then "Stream error: \(.response.error.message)", "Stream terminated due to error"
+    elif .type == "response.incomplete" then "Stream incomplete: \(.response.incomplete_details.reason // "unknown reason")"
+    elif .type == "error" then "Stream error: \(.message)"
+    elif .type == "response.output_text.delta" then .delta
+    elif .error then "Error: \(.error.message)"
+    else empty end'
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+In
+ the
+ small
+ town
+ of
+ Eld
+erg
+len
+,
+ nestled
+ between
+ mist
+y
+ mountains
+ and
+ dense
+ forests
+,
+ there
+ was
+ a
+ peculiar
+ shop
+ known
+ only
+ to
+ a
+ few
+.
+ Called
+ "
+Wh
+im
+sy
+ &
+ Wonders
+,"
+ it
+ sat
+ at
+```
 
 #### API-specific behavior
 

@@ -195,7 +195,113 @@ response = requests.post(
 print(response.json()["answers"])
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "typesafe/jev-1.13",
+		"state": map[string]any{
+			"customer_tier": "enterprise",
+			"ticket":        "My checkout page shows a blank screen after I click Pay. I have tried two browsers.",
+		},
+		"questions": map[string]any{
+			"is_bug": map[string]any{
+				"type":         "noul",
+				"instructions": "Is the customer reporting a software defect?",
+				"criteria": map[string]string{
+					"true":  "The customer describes broken or unexpected product behavior.",
+					"false": "The customer is asking a question or requesting a feature.",
+				},
+			},
+			"team": map[string]any{
+				"type":         "choice",
+				"instructions": "Which team should own this ticket?",
+				"criteria": map[string]string{
+					"payments": "Checkout, billing, or payment processing issues.",
+					"frontend": "Rendering, layout, or browser compatibility issues.",
+					"account":  "Login, permissions, or profile issues.",
+				},
+			},
+			"urgency": map[string]any{
+				"type":         "score",
+				"instructions": "How urgent is this ticket?",
+				"criteria": []string{
+					"Can wait for the next release",
+					"Should be fixed this week",
+					"Blocking revenue right now",
+				},
+			},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/alpha/decisions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Answers json.RawMessage `json:"answers"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+	var out bytes.Buffer
+	json.Indent(&out, result.Answers, "", "  ")
+	fmt.Println(out.String())
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+{
+  is_bug: {
+    type: "noul",
+    noul: 0.96,
+  },
+  team: {
+    type: "choice",
+    choice: "payments",
+    probabilities: {
+      payments: 0.77,
+      frontend: 0.23,
+      account: 0,
+    },
+    confidence: 0.66,
+  },
+  urgency: {
+    type: "score",
+    score: 1.99,
+    legend: {
+      "0": "Can wait for the next release",
+      "1": "Should be fixed this week",
+      "2": "Blocking revenue right now",
+    },
+    probabilities: {
+      "0": 0,
+      "1": 0.01,
+      "2": 0.99,
+    },
+    confidence: 0.98,
+  },
+}
+```
 
 ### Step 3: Read the answers
 
@@ -244,6 +350,8 @@ You'll need to branch on these values in your code. For example, you might auto-
 
 If you're already using the TypeSafe JavaScript or Python SDK, you'll just need to point it at OpenRouter and keep your existing code. The [Jev SDK guide](/guides/community/typesafe-sdk) covers setting the base URL, authentication, and the expected response shape.
 
+<CodeGroup>
+
 ```typescript
 import { TypeSafeClient } from '@typesafe-ai/sdk';
 
@@ -256,13 +364,27 @@ const client = new TypeSafeClient({
 ```python
 import os
 
-from typesafe_sdk import TypeSafeClient
+import httpx
 
-client = TypeSafeClient(
-    api_key=os.environ["OPENROUTER_API_KEY"],
+client = httpx.Client(
     base_url="https://openrouter.ai/api",
+    headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+)
+
+```
+
+```go title="Go" lines
+client := openrouter.New(
+	openrouter.WithSecurity(os.Getenv("OPENROUTER_API_KEY")),
 )
 ```
+
+```bash title="cURL" lines
+BASE_URL="https://openrouter.ai/api"
+AUTH_HEADER="Authorization: Bearer $OPENROUTER_API_KEY"
+```
+
+</CodeGroup>
 
 You can also call the Decisions API through the OpenRouter [TypeScript](/client-sdks/typescript/sdks/decisions/README), [Python](/client-sdks/python/sdks/decisions/README), or [Go](/client-sdks/go/sdks/decisions/README) SDK.
 

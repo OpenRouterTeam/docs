@@ -194,6 +194,8 @@ if (!('output' in response)) {
 
 const message = [...response.output].reverse().find((item) => item.type === 'message');
 const weatherInfo = message?.content.find((part) => part.type === 'output_text')?.text;
+console.log(weatherInfo ? JSON.parse(weatherInfo) : weatherInfo);
+
 ```
 
 ```python title="Python" expandable lines
@@ -242,6 +244,8 @@ response = requests.post(
 data = response.json()
 message = next(item for item in reversed(data["output"]) if item["type"] == "message")
 weather_info = next(part["text"] for part in message["content"] if part["type"] == "output_text")
+print(json.loads(weather_info))
+
 ```
 
 ```typescript title="TypeScript (fetch)" expandable lines
@@ -288,9 +292,143 @@ const weatherInfo = [...data.output]
   .reverse()
   .find((item: { type: string }) => item.type === 'message')
   ?.content.find((part: { type: string; text?: string }) => part.type === 'output_text')?.text;
+console.log(weatherInfo ? JSON.parse(weatherInfo) : weatherInfo);
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o",
+		"input": "What is the weather like in London?",
+		"text": map[string]any{
+			"format": map[string]any{
+				"type":   "json_schema",
+				"name":   "weather",
+				"strict": true,
+				"schema": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"location":    map[string]any{"type": "string", "description": "City or location name"},
+						"temperature": map[string]any{"type": "number", "description": "Temperature in Celsius"},
+						"conditions":  map[string]any{"type": "string", "description": "Weather conditions description"},
+					},
+					"required":             []string{"location", "temperature", "conditions"},
+					"additionalProperties": false,
+				},
+			},
+		},
+		"stream": false,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		log.Fatalf("request failed: %s: %s", resp.Status, b)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	for i := len(result.Output) - 1; i >= 0; i-- {
+		if result.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range result.Output[i].Content {
+			if part.Type == "output_text" {
+				var weatherInfo map[string]any
+				if err := json.Unmarshal([]byte(part.Text), &weatherInfo); err != nil {
+					log.Fatal(err)
+				}
+				out, _ := json.MarshalIndent(weatherInfo, "", "  ")
+				fmt.Println(string(out))
+				return
+			}
+		}
+		break
+	}
+	log.Fatal("no output_text found in response")
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o",
+    "input": "What is the weather like in London?",
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "weather",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "type": "string",
+              "description": "City or location name"
+            },
+            "temperature": {
+              "type": "number",
+              "description": "Temperature in Celsius"
+            },
+            "conditions": {
+              "type": "string",
+              "description": "Weather conditions description"
+            }
+          },
+          "required": ["location", "temperature", "conditions"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "stream": false
+  }' | jq '[.output[] | select(.type == "message")] | last | .content[] | select(.type == "output_text") | .text | fromjson'
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+{
+  location: "London",
+  temperature: 15,
+  conditions: "Partly cloudy with a gentle breeze.",
+}
+```
 
 
 ## Streaming with Structured Outputs

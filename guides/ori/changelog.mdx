@@ -18,6 +18,64 @@ rss: true
 
 Curated release notes for the Ori CLI, newest version first. If you are new to Ori, start with [Ori Harness](/guides/ori/harness), which covers installing Ori and running your existing agent CLI. [File Writing](/guides/ori/files) explains what Ori puts in your project.
 
+<Update label="0.17.2" description="November 19, 2026" tags={["Patch"]} rss={{ title: "Ori 0.17.2", description: "The desktop app gets one rebuilt Settings page, a clearer turn view and a mature import of Claude Code and Codex sessions." }}>
+
+The desktop app gets one rebuilt Settings page, a clearer turn view and a mature import of Claude Code and Codex sessions. New interns can run on Substrate, and the desktop app opens any file that an intern links to. Schedules, Slack follow-ups and telemetry get smaller improvements, and the built-in harness gets safety and reliability fixes.
+
+## Desktop app
+
+- **One Settings page.** Settings is one page with the You, Connections, Models, Privacy, Advanced and About tabs, next to the intern settings. The old Settings sheet and every way into it are gone. Every tab uses the same cards, headings, row sizes and a larger body text.
+- **Settings tabs.** Models puts Ori's model first with Auto at the top, and thinking has its own row. You can pick an intern's default thinking effort beside its model. Advanced opens secrets in a side sheet. About names the Plus Jakarta Sans typeface.
+- **Turn view.** Each turn step reads as a human sentence from its tool call. A reply groups its work as one step group under its model line, with its model pick, usage, fallback and cut-off calls. The live status line shows the current step instead of "Working on it", and repeated steps fold together.
+- **Turn states.** A thread whose last turn was stopped shows as idle, not failed. A turn that runs in Slack shows live steps with one status line. Retry and fallback entries no longer disappear. You can select the text of thinking and tool steps, and an MCP step now reads "a user".
+- **Imported sessions.** Claude Code and Codex sessions import as native Ori sessions. An imported thread carries a mark with the source tool's logo, and its earlier turns show as a note. The list holds only the Codex sessions that you started, titled with the name that Codex shows.
+- **Import fixes.** The first import list no longer runs out of memory. The picker header and Import button stay in place while the list scrolls, also in a short or zoomed window. A failed import names its real cause, and the import mark stays after a list refresh.
+- **Files and links.** The desktop app opens, plays and saves any file that an intern links to. A file link opens the file instead of a generic error. The desktop app asks before a link in a reply opens another app.
+- **Updates and the menu bar.** Updates download in the background and show an Update ready card and an app menu item. The tray icon opens a menu bar panel from the new design.
+- **Navigation.** Scheduled runs get their own Scheduled section in the sidebar. A right-click on a session copies a link to it. Shift+Cmd+M opens the model picker. New chat keeps the picked model after you send.
+- **Notifications.** The desktop app notifies you when a session starts to wait on an approval. A click on a notification selects its agent.
+- **Usage on the web.** The web dashboard shows the same Usage page as the desktop app.
+- **Sign-in.** The desktop app shows sign-in when the saved key is rejected at boot. Members with two-step verification can connect the dashboard. The sign-in screen is simpler, and the telemetry notice shows after sign-in. A `429` during proof signing shows a rate-limit message.
+- **Fixes.** The model label is orange only while it says that the model is unavailable. A refused message names the refusal instead of saying the intern could not be reached. A workspace with no interns points you at your other workspaces. Text selection works from the reading-space gutters, and the Made by Ori dock, panel headers and sidebar footer line up. Icons and the sidebar no longer re-render on every update.
+
+## Interns
+
+- **Substrate interns.** New intern can create a Substrate intern. When the `ori-substrate-default` flag is on, new interns run on Substrate by default. You can reach your own Substrate intern through the dashboard.
+- **Rust interns.** The desktop app reaches a Rust intern that serves discover, and it gates features on that intern's capabilities. Made by Ori manages a Rust intern's workflows.
+- **Creating interns.** The desktop app offers another intern only when you are allowed to create one.
+- **Workspace files.** The daemon serves any workspace file at `/api/workspace/download`, and the runtime serves one workspace file at `/v1/workspace/file`.
+- **Desktop turns.** A member's chat turn from the desktop app tells the intern that it came from the desktop.
+
+## Schedules and Slack
+
+- **Digest schedules.** A digest schedule reads today's chats and stays quiet on a day with no chats.
+- **Run finished DMs.** The daemon sends a member a Slack DM when a run that they left finishes.
+- **Reloads.** A feature reload lets schedule runs in flight finish.
+- **Routines.** An approved routine stays armed until a re-armed generation takes it over. A schedule trigger while a run is in flight returns HTTP `409`.
+- **One-time grants.** The vault verifies one-time schedule grants natively.
+- **Google delegation.** A Google Workspace delegation can name teammates instead of the whole intern.
+
+## Built-in harness and launchers
+
+- **Shell safety.** The shell tool refuses recursive scans of the whole filesystem.
+- **MCP servers.** Stdio MCP servers reach the network through the vault proxy. The model learns how to reach a stdio MCP server's service.
+- **Server tool calls.** Server tool calls show their URL and query.
+- **Turn fixes.** A failed reply's interaction is dropped once its turn ended. A turn that stops before its first event releases its claim. Fork-point discovery lists an indivisible message once.
+- **Sessions.** Session summaries load from an index that checks file changes, so session lists load faster.
+- **Chat TUI.** The terminal title no longer carries control characters.
+- **Claude Code.** When the catalog has no Opus, the Default row points at the allowed start model.
+- **Codex.** A Codex model list that is not JSON now produces an error that says what came back.
+- **Pi.** Pi setup anchors `!` exclusion entries that climb out of the agent folder.
+- **Windows.** Ori joins Windows harness bin folders with backslashes.
+- **Skills.** Ori recovers when a real folder replaces a skill wrapper link.
+
+## Telemetry
+
+- **Desktop telemetry.** The desktop app exports traces, crashes and renderer failures with no customer data. Every desktop request sends one `Ori-Desktop` user agent.
+- **Failure detail.** The daemon logs the runtime operation behind `ORI_RUNTIME_SERVER_FAILED`. A failed schedule fire exports its failure code, stage and upstream status. Daemon client failures keep the credential error and HTTP status.
+- **Vault tunnel.** The vault tunnel names its telemetry `ori.command=vault-tunnel`.
+
+</Update>
 <Update label="0.17.1" description="November 16, 2026" tags={["Patch"]} rss={{ title: "Ori 0.17.1", description: "The desktop app gets a new layout with New chat, Made by Ori, Usage and Threads in the sidebar, and it can bring Claude Code and Codex sessions in as threads." }}>
 
 The desktop app gets a new layout with New chat, Made by Ori, Usage and Threads in the sidebar, and it can bring Claude Code and Codex sessions in as threads. Administrator command lists now shape `ori help` and every refusal hint. Ori Claude Code launches handle the workspace model list and default model more reliably. Security fixes harden project dotenv files, cloned key files, Windows launches and Slack credentials.
@@ -268,9 +326,18 @@ Allowed commands now take command paths such as `harness setup`, and a command t
 - **Evicted sessions.** `ORI_SESSION_HISTORY_NOT_FOUND` logs at warn level, not error level.
 
 </Update>
-<Update label="0.16.1" description="October 23, 2026" tags={["Patch"]} rss={{ title: "Ori 0.16.1", description: "`ori harness setup codex` now warns about every way the Codex app can bypass OpenRouter, and it no longer stops intermittently when the app is open." }}>
+<Update label="0.16.1" description="October 23, 2026" tags={["Breaking","Patch"]} rss={{ title: "Ori 0.16.1", description: "`ori harness setup codex` now warns about every way the Codex app can bypass OpenRouter, and it no longer stops intermittently when the app is open." }}>
 
-`ori harness setup codex` now warns about every way the Codex app can bypass OpenRouter, and it no longer stops intermittently when the app is open. `ori harness setup claude` backs up the Claude Desktop configuration before it changes it. `ori alias` follows native updates, and `ori auth region` names each harness to set up again. Security fixes harden webhooks, desktop links, remote features, and the sandbox of `ori code --approvals manual`.
+`ori harness setup codex` now warns about every way the Codex app can bypass OpenRouter, and it no longer stops intermittently when the app is open. `ori harness setup claude` backs up the Claude Desktop configuration before it changes it. `ori alias` follows native updates, and `ori auth region` names each harness to set up again. Security fixes harden webhooks, desktop links, remote features, and the sandbox of `ori code --approvals manual`. The `ori eval` command is removed, and every intern can now compare models with a built-in `eval` skill.
+
+## Breaking changes
+
+- **`ori eval` removed.** The `ori eval` command and the `ori/eval` SDK are gone. `ori eval` now fails with `ORI_CLI_COMMAND_UNKNOWN`, and `ori --help` no longer lists it. The built-in `code-o-eval` skill and its `/create-eval` alias are also gone. Old `eval/history.jsonl` files stay on disk, but Ori no longer reads them.
+
+## Interns
+
+- **Model comparison.** Every intern has a built-in `eval` skill. Ask an intern to find a cheaper or better model for one of its features. The intern runs a few real cases from that feature on up to five models, including the current one, grades each answer, and recommends one model with its pass rate and cost. The intern changes nothing until you approve.
+- **Test cost.** Every model call in the test bills to the tested feature. The feature's sheet in the dashboard shows the cost, started by Eval.
 
 ## Codex setup and Codex Desktop
 

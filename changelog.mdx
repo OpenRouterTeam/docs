@@ -16,7 +16,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="November 19, 2026" tags={["Breaking","Credits","Images","SCIM","STT","TTS"]} rss="1 breaking change, 2 new endpoints, 6 modified endpoints, 11 new schemas, 5 modified schemas.">
+<Update label="November 19, 2026" tags={["Breaking","Credits","Images","SCIM","STT","Schemas","TTS"]} rss="1 breaking change, 2 new endpoints, 6 modified endpoints, 11 new schemas, 6 modified schemas.">
 
 ## Breaking changes
 
@@ -74,6 +74,8 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - Used by [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
 - `STTRequest`: new property `prompt`
   - Used by [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+- `VideoGenerationResponse`: example modified; new property `progress`; new property `status_detail`
+  - Used by [`GET /videos/{jobId}`](/api/api-reference/video-generation/poll-video-generation-status), [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
 
 </Update>
 

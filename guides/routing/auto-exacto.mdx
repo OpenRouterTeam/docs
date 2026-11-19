@@ -36,9 +36,21 @@ The tool-calling success rate signal is derived from the **Tool Call Error Rate*
 
 Tool call `arguments` are validated against the corresponding `tools[].function.parameters` schema using [`@cfworker/json-schema`](https://www.npmjs.com/package/@cfworker/json-schema), pinned to **JSON Schema Draft 7**:
 
+<CodeGroup>
+
 ```ts lines
 new Validator(parameters, '7')
 ```
+
+```python title="Python" lines
+Draft7Validator(parameters)
+```
+
+```go title="Go" lines
+validator := NewValidator(parameters, "7")
+```
+
+</CodeGroup>
 
 Tools whose `parameters` schema is absent or fails to compile are treated as having no schema and are always considered valid, so the metric is conservative when caller-side schemas are malformed.
 

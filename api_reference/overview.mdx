@@ -264,7 +264,94 @@ fetch('https://openrouter.ai/api/v1/chat/completions', {
 });
 ```
 
+```python title="Python" lines
+response = requests.post(
+    'https://openrouter.ai/api/v1/responses',
+    headers={
+        'Authorization': 'Bearer <OPENROUTER_API_KEY>',
+        'HTTP-Referer': '<YOUR_SITE_URL>',  # Optional. Site URL for rankings on openrouter.ai.
+        'X-OpenRouter-Title': '<YOUR_SITE_NAME>',  # Optional. Site title for rankings on openrouter.ai.
+        'Content-Type': 'application/json',
+    },
+    json={
+        'model': 'openai/gpt-5.2',
+        'input': 'What is the meaning of life?',
+    },
+)
+
+```
+
+```go title="Go" lines
+body := strings.NewReader(`{"model": "openai/gpt-5.2", "input": "What is the meaning of life?"}`)
+req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", body)
+req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+req.Header.Set("HTTP-Referer", "<YOUR_SITE_URL>")         // Optional. Site URL for rankings on openrouter.ai.
+req.Header.Set("X-OpenRouter-Title", "<YOUR_SITE_NAME>") // Optional. Site title for rankings on openrouter.ai.
+req.Header.Set("Content-Type", "application/json")
+resp, err := http.DefaultClient.Do(req)
+```
+
+```bash title="cURL" lines
+curl -sS https://openrouter.ai/api/v1/responses \
+  -o response.json \
+  -w "Status: %{http_code}\n" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "HTTP-Referer: <YOUR_SITE_URL>" \
+  -H "X-OpenRouter-Title: <YOUR_SITE_NAME>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5.2",
+    "input": "What is the meaning of life?"
+  }'
+
+jq . response.json
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Status: 200
+{
+  "id": "gen-1794947561-lErZowkClrPNycYNs17c",
+  "object": "response",
+  "created_at": 1794947561,
+  "model": "openai/gpt-5.2",
+  "status": "completed",
+  "completed_at": 1794947570,
+  "output": [
+    {
+      "id": "rs_04c0a1456b3e4c66016afcb9f1f9f887d1be35c915ee85f388",
+      "type": "reasoning",
+      "status": "completed",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "**Crafting meaningful reflections**\n\nI'm thinking about how to approach the topic with a concise and meaningful perspective. It’s important to keep it philosophical, without getting too verbose. I want to present multiple viewpoints and highlight ideas like constructing meaning, well-being, relationships, personal growth, contribution, and curiosity. I also need to emphasize that there’s no single answer and provide actionable reflection prompts for deeper thinking. This way, I can guide the user in exploring the subject more thoughtfully."
+        }
+      ],
+      "encrypted_content": "gAAAAABq_LnxW5uxuX_otngGFsSO5p_FFv06S3YJXOWsaacGZuNGVtn-N4_Z_16z_ahi4VBHLNC7MLGdRkokwsCIeWYlv-4CiTfR5Nf0ko3elo5fRw1d_u981YDpqyHsUVBW7janQNSl70Sb7YG8tpEgejH5xC9jgrbekiclP1t1lg62fA8k6M8bKOrvVfJZw1wLbw1rtWyrVRUibdI-6TBxPoaOv22RuWh3D6881zpvbJac2m89O2oYci3JLvoKChjBZHY7jffAGrbgrA_RM-3F_wjVUN1z84eFn3gP1-yX7QQVLdgMNwySTXnA3VQPEqC9yO-SNrmvOL8y4QJOuGmAOCSx69FXk5LR24bcJd6d-rXruRTgSPC50p8liY_oa71i0PGzJSo-UKrZA1ff5PJStvxXfdAX7Bzik5eusqdA9bps9k3xs3DljTOmAduJMwwuxEAcIvHjb9tQZ4MzbPe99CUpT3SEKgBE6vcCCZjf8iJqcjVVK5Uw8IcShDL77aqMPkWozM9J62DKGo-lwKntYm1KWP4ElwLnpc8USPHP8hGhCZyscsVxBeauREpzl7102BO3Yf19dpzG7hUV8kZ2SL82zYQt3VfuFTeqca7voNdBeML7CGAUWC0uNKXHAb7MFiossXokqsJSwOVrXZvVlDntcyVeDbfHcRwsKwXPDHw3WvhODvw9rhfcHpSfJWQnIy1WRbSRFeInsvEIF3xUCY-FfawJFWVo4w1ttaIWPy4Rj_fY05HRVH1gsh0HVzFrcKVE31Jk2-jkWvUUa63HLkx14wpC4fKK1fBtff8xnGBm8jhQoAfZUwcCi0VDh-UdSsrs174K-dy-XegJAdBNxqJ2_l-l85Dqp1Yo66b9e0INyAkbrLwfR5TSc_zXZQstnRD4nJPhN_3Aep88gOHh1mKmb7wdW0KzR3yOV09j5fCsAg0H_JuJzK1Raxu9fFmUkBoXkIjfv2_M1NFvrT0urogIp5Gt7G7Qsr3NWwfCSrFvjg_ml75TdFuHWlq_9LhIvfY-avHRZihZ5ci-L5ze5MALd5bNQ9wXu6Kg941pTz_gRiHDtvVdRFlEEXJW_VvORanjBfB9enJuDj9zqQwZixKP-cqJXkhqstRFGfu5uySmw6qTLnHLjnqNy7xbcgc4BRkUHxWh3wcFmon061w3EL60mZvathxZTl8kGGovLvWoNh8rZhn5jl4rzGrx5L0KNz4jxBcNWAawC-eqWehhL3UM5I3sQUsRKj5ZNIM7-xWBL7UazjH1URVpjpfNKiHpc3IEyeR54SLwtdnVFH6grOJm3WXi4j6l-KN10_3YGwoCVI0PDCE0TFtuNOcqmeUVOkwGrTK7VlZnLPfTFFr75cG79gGeUi4JXWYben_mp3lRXQT4VqX76U8qXjjDHSKFIerMvwTbQgGxDOkYJLpDQHifqG0WM1sglnffvVZcKZbCmPjjjWW9bNiuH7AztTgjyxORbg0PrduNqnVd6kaGIhvnSocHWXVgOo0_Ve4r3dGBJTu5XnSOEzRBZ0WtoPr58Jd-HDvlrmlnP4y6Nr6xWyib7Nu5UC4lXuel16CLxlBQcZWBk767pk7aJVjdCwwAEooesovtIBSsNb7I9WUXs5VvDzBs8eC39neeKU1kbY2ZHA_PLtihWits73tMXYD3XIcV-x3fBkCnIBvNEWIOLhp3CpVE6B68BsuxtGXiCE268mhiAN5BSdYQDahC7jT7x__3cmI5Cfv9Z9I05Xb4CA3RL4IoITjt92pDeIiFtvPDAZCOP51OctQyXhRgzG6RRpcR0ZEkif4ElGS8MS8riCXxsKpX2VeKfmicur0ZrL6U7gtQC4gE0TOzLGlal9S49yxaq-4ssO9IBMt4Kr7lZ0I4YRTtI5OAkYH2TFTDgXc5_G4zH07XZ2KgZYsY2FQ0uS4a2Z36QlGKpMCwf0dx2c1cm-YMYSl7QaVt9w6dqNijq3gdY54czPO6JhDzFRjWL05fVqQEOj4qMV6YgicrTYPajtmOrQk79C0GrH26SgXb-JB-APf1IHH-_ki8JVf9isgq9F8tVDrTsy9X-0DvUkSp-LFoGHtzKJew4MjgSIat3RcczT0VH_yS8X3XPyUpzVSeX3wAfAZQe2MwuP3s_1siDroGr7g--ekMDAkB4QL7fKb2yl5w_5PZ7FagtrCxFvvfsC86FIEhI_ZWqMMH_cPLzJCd5QM4WtZecxmcJo5PQhF3KzidAspouCPU7CJ454eFW4SvtfoslwbuzIbIbE8TiaIwnRXroSZ5L_MvVOY3gK4IwTu7JBABbDxMAmZRRAjts7FWYrpfbkx1FmmeZh0GsC5bvEMHuHwSBubmriW2a3AShqWvg3-UwYQKzQ45nGVnCarBzsf5axYkHzjn1PH0Xlvl619PPyyD8byn8CLU8SW7TA1JQhRkdv2jRncTvw8jfw5cutKsXtRLgCkBCyZftXbgLE0JugNecApTxRe-q7I79ys=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC01LjItMjAyNTEyMTF8b3BlbmFpIn0",
+      "format": "openai-responses-v1"
+    },
+    {
+      "id": "msg_tmp_sthg0k9a4qs",
+      "type": "message",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "There isn’t a single, universally agreed “meaning of life.” Different traditions answer it differently, and a lot of modern thought treats meaning as something you *make* rather than something you *find*. Here are a few of the main ways people understand it:\n\n- **Biological/evolutionary:** Life’s “purpose” is to survive and reproduce—meaning is an emergent story we add on top of that.\n- **Religious/spiritual:** Meaning comes from relationship to the divine, fulfilling moral duties, awakening, salvation, or aligning with a sacred order.\n- **Philosophical (existentialist):** The universe doesn’t hand you meaning; you create it through choices, responsibility, and authenticity.\n- **Humanistic/psychological:** Meaning tends to come from **relationships**, **mastery/growth**, **contributing beyond yourself**, and **living by values** (e.g., compassion, honesty, curiosity).\n\nIf you want a practical synthesis many people find satisfying:  \n**The meaning of life is to live in a way that’s aligned with your values, deepens connection, reduces needless suffering (yours and others’), and helps you grow—while appreciating the fact that you’re here at all.**\n\nIf you tell me what lens you’re asking from (religious, philosophical, scientific, personal), I can tailor an answer—and if you want, we can turn it into a concrete “meaning statement” for your life based on what you care about.",
+          "annotations": [],
+          "logprobs": []
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "incomplete_details": null,
+  "access_programs": {
+```
 
 <Info>
 **Model routing**
@@ -293,7 +380,7 @@ To use this feature, simply include a message with `role: "assistant"` at the en
 <CodeGroup>
 
 ```typescript title="Responses API" lines
-fetch('https://openrouter.ai/api/v1/responses', {
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     Authorization: 'Bearer <OPENROUTER_API_KEY>',
@@ -324,6 +411,52 @@ fetch('https://openrouter.ai/api/v1/chat/completions', {
     ],
   }),
 });
+```
+
+```python title="Python" lines
+response = requests.post(
+    'https://openrouter.ai/api/v1/responses',
+    headers={
+        'Authorization': 'Bearer <OPENROUTER_API_KEY>',
+        'Content-Type': 'application/json',
+    },
+    json={
+        'model': 'openai/gpt-5.2',
+        'input': [
+            {'role': 'user', 'content': 'What is the meaning of life?'},
+            {'role': 'assistant', 'content': "I'm not sure, but my best guess is"},
+        ],
+    },
+)
+```
+
+```go title="Go" lines
+body := strings.NewReader(`{
+  "model": "openai/gpt-5.2",
+  "input": [
+    {"role": "user", "content": "What is the meaning of life?"},
+    {"role": "assistant", "content": "I'm not sure, but my best guess is"}
+  ]
+}`)
+req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", body)
+req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+req.Header.Set("Content-Type", "application/json")
+resp, err := http.DefaultClient.Do(req)
+```
+
+```bash title="cURL" lines
+curl -sS https://openrouter.ai/api/v1/responses \
+  -o response.json \
+  -w "Status: %{http_code}\n" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5.2",
+    "input": [
+      { "role": "user", "content": "What is the meaning of life?" },
+      { "role": "assistant", "content": "I'\''m not sure, but my best guess is" }
+    ]
+  }'
 ```
 
 </CodeGroup>
@@ -525,11 +658,43 @@ You can also use the returned `id` to query for the generation stats (including 
 
 ```typescript title="Query Generation Stats" lines
 const generation = await fetch(
-  'https://openrouter.ai/api/v1/generation?id=$GENERATION_ID',
+  `https://openrouter.ai/api/v1/generation?id=${generationId}`,
   { headers },
 );
 
 const stats = await generation.json();
+```
+
+```python title="Python" lines
+generation = requests.get(
+    'https://openrouter.ai/api/v1/generation',
+    params={'id': generation_id},
+    headers=headers,
+)
+
+stats = generation.json()
+
+```
+
+```go title="Go" lines
+req, _ := http.NewRequest("GET", "https://openrouter.ai/api/v1/generation?id="+generationId, nil)
+req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+resp, err := http.DefaultClient.Do(req)
+if err != nil {
+	log.Fatal(err)
+}
+
+var stats map[string]any
+json.NewDecoder(resp.Body).Decode(&stats)
+```
+
+```bash title="cURL" lines
+curl -sS -G https://openrouter.ai/api/v1/generation \
+  --data-urlencode "id=$GENERATION_ID" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -o stats.json
+
+jq . stats.json
 ```
 
 </CodeGroup>

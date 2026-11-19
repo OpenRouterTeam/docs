@@ -39,12 +39,155 @@ Otherwise, the returned HTTP response status will be <code>{HTTPStatus.S200_OK}<
 
 Example code for printing errors in JavaScript:
 
+<CodeGroup>
+
 ```typescript lines
-const request = await fetch('https://openrouter.ai/...');
-console.log(request.status); // Will be an error code unless the model started processing your request
+const request = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'openai/gpt-4o-mini',
+    messages: [{ role: 'user', content: 'Hello' }],
+  }),
+});
+console.log(request.status); // An error code unless the model started processing your request
 const response = await request.json();
-console.error(response.error?.code); // Will be an error code
-console.error(response.error?.message);
+
+// Errors before processing return a non-200 status; errors during generation
+// can still appear in the body of a 200 response, at the top level or on the
+// choice next to partial content.
+const error = response.error ?? response.choices?.[0]?.error;
+if (error) {
+  console.error(error.code);
+  console.error(error.message);
+} else {
+  console.log(response.choices[0].message.content);
+}
+
+```
+
+```python title="Python" lines
+import os
+import requests
+
+request = requests.post(
+    'https://openrouter.ai/api/v1/chat/completions',
+    headers={
+        'Authorization': f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        'Content-Type': 'application/json',
+    },
+    json={
+        'model': 'openai/gpt-4o-mini',
+        'messages': [{'role': 'user', 'content': 'Hello'}],
+    },
+)
+print(request.status_code)  # An error code unless the model started processing your request
+response = request.json()
+
+# Errors before processing return a non-200 status; errors during generation
+# can still appear in the body of a 200 response, at the top level or on the
+# choice next to partial content.
+error = response.get('error') or response['choices'][0].get('error')
+if error:
+    print(error['code'])
+    print(error['message'])
+else:
+    print(response['choices'][0]['message']['content'])
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":    "openai/gpt-4o-mini",
+		"messages": []map[string]string{{"role": "user", "content": "Hello"}},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	fmt.Println(resp.StatusCode) // An error code unless the model started processing your request
+
+	type apiError struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	}
+	var response struct {
+		Error   *apiError `json:"error"`
+		Choices []struct {
+			Error   *apiError `json:"error"`
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		panic(err)
+	}
+
+	// Errors before processing return a non-200 status; errors during generation
+	// can still appear in the body of a 200 response, at the top level or on the
+	// choice next to partial content.
+	apiErr := response.Error
+	if apiErr == nil && len(response.Choices) > 0 {
+		apiErr = response.Choices[0].Error
+	}
+	if apiErr != nil {
+		fmt.Fprintln(os.Stderr, apiErr.Code)
+		fmt.Fprintln(os.Stderr, apiErr.Message)
+	} else {
+		fmt.Println(response.Choices[0].Message.Content)
+	}
+}
+
+```
+
+```bash title="cURL" lines
+response=$(curl -s -w '\n%{http_code}' https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o-mini",
+    "messages": [{ "role": "user", "content": "Hello" }]
+  }')
+status=$(tail -n1 <<< "$response")
+body=$(sed '$d' <<< "$response")
+echo "$status" # An error code unless the model started processing your request
+
+if jq -e '.error // .choices[0].error' <<< "$body" > /dev/null; then
+  # Errors before processing return a non-200 status; errors during generation
+  # can still appear in the body of a 200 response, at the top level or on the
+  # choice next to partial content.
+  jq -r '(.error // .choices[0].error) | .code, .message' <<< "$body" >&2
+else
+  jq -r '.choices[0].message.content' <<< "$body"
+fi
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+200
+Hello! How can I assist you today?
 ```
 
 ## Error codes
@@ -69,15 +212,179 @@ Retry-After: 60
 
 The OpenAI SDK, Anthropic SDK, Vercel AI SDK, and OpenRouter SDK already respect this header for backoff on the statuses each SDK retries automatically. None of them retries a <code>{HTTPStatus.S402_Payment_Required}</code> on its own, so for the in-flight budget case catch the error, read `Retry-After`, and retry explicitly. If you're using `fetch` directly, honor it before retrying:
 
+<CodeGroup>
+
 ```typescript lines
-const res = await fetch('https://openrouter.ai/api/v1/responses', { ... });
+const request = () =>
+  fetch('https://openrouter.ai/api/v1/responses', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ model: 'openai/gpt-4o-mini', input: 'Hello' }),
+  });
+
+let res = await request();
 if (res.status === 429 || res.status === 503 || res.status === 402) {
   const retryAfter = Number(res.headers.get('Retry-After'));
   if (Number.isFinite(retryAfter) && retryAfter > 0) {
     await new Promise((r) => setTimeout(r, retryAfter * 1000));
-    // retry the request
+    await res.body?.cancel(); // release the rejected response before retrying
+    res = await request(); // retry the request
   }
 }
+
+console.log(res.status);
+console.log(JSON.stringify(await res.json(), null, 2));
+
+```
+
+```python title="Python" lines
+import os
+import time
+import json
+import requests
+
+def request():
+    return requests.post(
+        'https://openrouter.ai/api/v1/responses',
+        headers={
+            'Authorization': f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+            'Content-Type': 'application/json',
+        },
+        json={'model': 'openai/gpt-4o-mini', 'input': 'Hello'},
+    )
+
+res = request()
+if res.status_code in (429, 503, 402):
+    try:
+        retry_after = float(res.headers.get('Retry-After', ''))
+    except ValueError:
+        retry_after = 0
+    if retry_after > 0:
+        time.sleep(retry_after)
+        res = request()  # retry the request
+
+print(res.status_code)
+print(json.dumps(res.json(), indent=2))
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
+)
+
+func request() *http.Response {
+	body := []byte(`{"model":"openai/gpt-4o-mini","input":"Hello"}`)
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
+func main() {
+	res := request()
+	if res.StatusCode == 429 || res.StatusCode == 503 || res.StatusCode == 402 {
+		retryAfter, err := strconv.ParseFloat(res.Header.Get("Retry-After"), 64)
+		if err == nil && retryAfter > 0 {
+			res.Body.Close()
+			time.Sleep(time.Duration(retryAfter * float64(time.Second)))
+			res = request() // retry the request
+		}
+	}
+	defer res.Body.Close()
+
+	fmt.Println(res.StatusCode)
+	data, _ := io.ReadAll(res.Body)
+	var out bytes.Buffer
+	if err := json.Indent(&out, data, "", "  "); err != nil {
+		panic(err)
+	}
+	fmt.Println(out.String())
+}
+
+```
+
+```bash title="cURL" lines
+request() {
+  curl -s -D headers.txt -o body.json -w '%{http_code}' https://openrouter.ai/api/v1/responses \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{ "model": "openai/gpt-4o-mini", "input": "Hello" }'
+}
+
+status=$(request)
+if [[ $status == 429 || $status == 503 || $status == 402 ]]; then
+  retry_after=$(awk -F': *' 'tolower($1) == "retry-after" { print $2 + 0 }' headers.txt)
+  if [[ -n $retry_after && $retry_after -gt 0 ]]; then
+    sleep "$retry_after"
+    status=$(request) # retry the request
+  fi
+fi
+
+echo "$status"
+jq . body.json
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+200
+{
+  "id": "gen-1794947361-xGTFZYnUpZTVSMDbfHvy",
+  "object": "response",
+  "created_at": 1794947361,
+  "model": "openai/gpt-4o-mini",
+  "status": "completed",
+  "completed_at": 1794947362,
+  "output": [
+    {
+      "id": "msg_tmp_0h0lrl20rbzp",
+      "type": "message",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Hello! How can I assist you today?",
+          "annotations": [],
+          "logprobs": []
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "incomplete_details": null,
+  "access_programs": null,
+  "tools": [],
+  "tool_choice": "auto",
+  "parallel_tool_calls": true,
+  "max_output_tokens": null,
+  "temperature": 1,
+  "top_p": 1,
+  "presence_penalty": 0,
+  "frequency_penalty": 0,
+  "top_logprobs": 0,
+  "max_tool_calls": null,
+  "metadata": {},
+  "background": false,
+  "previous_response_id": null,
 ```
 
 ## Moderation errors
@@ -602,7 +909,147 @@ for line in response.iter_lines():
       print(text)
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+)
+
+type chunk struct {
+	Error json.RawMessage `json:"error"`
+	Debug struct {
+		EchoUpstreamBody json.RawMessage `json:"echo_upstream_body"`
+	} `json:"debug"`
+	Choices []struct {
+		Delta struct {
+			Content string `json:"content"`
+		} `json:"delta"`
+	} `json:"choices"`
+}
+
+func main() {
+	body := []byte(`{
+		"model": "anthropic/claude-haiku-5.5",
+		"stream": true,
+		"messages": [
+			{"role": "system", "content": "You are a helpful assistant."},
+			{"role": "user", "content": "Hello!"}
+		],
+		"debug": {"echo_upstream_body": true}
+	}`) // Debug only works with streaming
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
+
+	text, err := io.ReadAll(res.Body)
+	if err != nil {
+		panic(err)
+	}
+	// A rejected request returns plain JSON, not an event stream
+	if res.StatusCode != http.StatusOK {
+		panic(fmt.Sprintf("%s: %s", res.Status, text))
+	}
+
+	for _, line := range strings.Split(string(text), "\n") {
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+
+		data := strings.TrimSpace(line[6:])
+		if data == "[DONE]" {
+			break
+		}
+
+		var parsed chunk
+		if err := json.Unmarshal([]byte(data), &parsed); err != nil {
+			panic(err)
+		}
+
+		// A failure after the stream starts arrives as a chunk with an error field
+		if len(parsed.Error) > 0 && string(parsed.Error) != "null" {
+			panic(fmt.Sprintf("stream error: %s", parsed.Error))
+		}
+
+		if raw := parsed.Debug.EchoUpstreamBody; len(raw) > 0 && string(raw) != "null" {
+			var out bytes.Buffer
+			json.Indent(&out, raw, "", "  ")
+			fmt.Println("\nDebug:", out.String())
+		}
+
+		if len(parsed.Choices) > 0 {
+			fmt.Print(parsed.Choices[0].Delta.Content)
+		}
+	}
+}
+
+```
+
+```bash title="cURL" lines
+while IFS= read -r line; do
+  [[ $line == "data: "* ]] || continue
+  data=${line#data: }
+  [[ $data == "[DONE]" ]] && break
+
+  if jq -e '.debug.echo_upstream_body' <<< "$data" > /dev/null; then
+    printf '\nDebug: '
+    jq '.debug.echo_upstream_body' <<< "$data"
+  fi
+
+  jq -j '.choices[0].delta.content // ""' <<< "$data"
+done < <(curl -sN https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "anthropic/claude-haiku-5.5",
+    "stream": true,
+    "messages": [
+      { "role": "system", "content": "You are a helpful assistant." },
+      { "role": "user", "content": "Hello!" }
+    ],
+    "debug": { "echo_upstream_body": true }
+  }') # Debug only works with streaming
+echo
+```
+
 </CodeGroup>
+
+```text title="Output"
+
+Debug: {
+  "system": [
+    {
+      "type": "text",
+      "text": "You are a helpful assistant."
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello!"
+    }
+  ],
+  "model": "claude-haiku-5-5",
+  "stream": true,
+  "metadata": {
+    "user_id": "<redacted>"
+  },
+  "max_tokens": 65536,
+  "stop_sequences": []
+}
+Hello! How can I help you today?
+```
 
 #### Responses API
 
@@ -669,7 +1116,123 @@ for line in response.iter_lines():
       print(text)
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+)
+
+type event struct {
+	Type  string          `json:"type"`
+	Debug json.RawMessage `json:"debug"`
+}
+
+func main() {
+	body := []byte(`{
+		"model": "anthropic/claude-haiku-5.5",
+		"stream": true,
+		"input": "Hello!",
+		"debug": {"echo_upstream_body": true}
+	}`)
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
+
+	text, err := io.ReadAll(res.Body)
+	if err != nil {
+		panic(err)
+	}
+	// A rejected request returns plain JSON, not an event stream
+	if res.StatusCode != http.StatusOK {
+		panic(fmt.Sprintf("%s: %s", res.Status, text))
+	}
+
+	for _, line := range strings.Split(string(text), "\n") {
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+
+		data := strings.TrimSpace(line[6:])
+		if data == "[DONE]" {
+			break
+		}
+
+		var parsed event
+		if err := json.Unmarshal([]byte(data), &parsed); err != nil {
+			panic(err)
+		}
+
+		// A failure after the stream starts arrives as an error or response.failed event
+		if parsed.Type == "error" || parsed.Type == "response.failed" {
+			panic(fmt.Sprintf("stream error: %s", data))
+		}
+
+		if parsed.Type == "response.debug" {
+			var out bytes.Buffer
+			json.Indent(&out, parsed.Debug, "", "  ")
+			fmt.Println("\nDebug:", out.String())
+		}
+	}
+}
+
+```
+
+```bash title="cURL" lines
+while IFS= read -r line; do
+  [[ $line == "data: "* ]] || continue
+  data=${line#data: }
+  [[ $data == "[DONE]" ]] && break
+
+  if jq -e '.type == "response.debug"' <<< "$data" > /dev/null; then
+    printf '\nDebug: '
+    jq '.debug' <<< "$data"
+  fi
+done < <(curl -sN https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "anthropic/claude-haiku-5.5",
+    "stream": true,
+    "input": "Hello!",
+    "debug": { "echo_upstream_body": true }
+  }')
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+
+Debug: {
+  "echo_upstream_body": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello!"
+      }
+    ],
+    "model": "claude-haiku-5-5",
+    "stream": true,
+    "metadata": {
+      "user_id": "<redacted>"
+    },
+    "max_tokens": 65536,
+    "stop_sequences": []
+  }
+}
+```
 
 ### Debug response format
 

@@ -77,6 +77,8 @@ This guide uses `google/gemini-3.8-flash-lite-tts`. Not every TTS provider suppo
 
 Ask a chat model for the dialogue and use [structured outputs](/guides/features/structured-outputs) to get it back as a list of turns. A schema saves you from parsing speaker labels out of free text, and the `direction` field gives the voice model something to act on.
 
+<CodeGroup>
+
 ```ts expandable lines
 const apiKey = process.env.OPENROUTER_API_KEY;
 
@@ -154,6 +156,261 @@ for (const turn of turns) {
 }
 ```
 
+```python title="Python" lines
+import json
+import os
+
+import requests
+
+api_key = os.environ["OPENROUTER_API_KEY"]
+
+source = """Tides are caused mostly by the Moon. Its gravity pulls hardest on the side
+of the Earth facing it, so the ocean bulges toward the Moon. On the far side the
+pull is weaker than at the Earth's center, and that difference stretches the
+ocean outward into a second bulge. As the Earth turns, most coastlines pass
+through both bulges, which is why they see two high tides and two low tides
+roughly every 25 hours."""
+
+script_response = requests.post(
+    "https://openrouter.ai/api/v1/responses",
+    headers={
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "model": "google/gemini-3.8-flash",
+        "instructions": (
+            "Write a short podcast dialogue between a host and a guest about the text the user sends. "
+            "Use 6 to 8 turns, alternate speakers, and keep each turn under 40 words. "
+            "Give each turn a few words of delivery direction, such as 'curious' or 'laughing'."
+        ),
+        "input": source,
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "podcast_script",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "turns": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "speaker": {"type": "string", "enum": ["host", "guest"]},
+                                    "text": {"type": "string"},
+                                    "direction": {"type": "string"},
+                                },
+                                "required": ["speaker", "text", "direction"],
+                                "additionalProperties": False,
+                            },
+                        },
+                    },
+                    "required": ["turns"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+    },
+)
+
+if not script_response.ok:
+    raise RuntimeError(script_response.text)
+
+result = script_response.json()
+message = next(item for item in reversed(result["output"]) if item["type"] == "message")
+script_text = next(part["text"] for part in message["content"] if part["type"] == "output_text")
+turns = json.loads(script_text)["turns"]
+
+for turn in turns:
+    print(f"{turn['speaker']:<5} ({turn['direction']}): {turn['text']}")
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+type Turn struct {
+	Speaker   string `json:"speaker"`
+	Text      string `json:"text"`
+	Direction string `json:"direction"`
+}
+
+func main() {
+	apiKey := os.Getenv("OPENROUTER_API_KEY")
+	if apiKey == "" {
+		log.Fatal("Set OPENROUTER_API_KEY first.")
+	}
+
+	source := `Tides are caused mostly by the Moon. Its gravity pulls hardest on the side
+of the Earth facing it, so the ocean bulges toward the Moon. On the far side the
+pull is weaker than at the Earth's center, and that difference stretches the
+ocean outward into a second bulge. As the Earth turns, most coastlines pass
+through both bulges, which is why they see two high tides and two low tides
+roughly every 25 hours.`
+
+	body, _ := json.Marshal(map[string]any{
+		"model": "google/gemini-3.8-flash",
+		"instructions": "Write a short podcast dialogue between a host and a guest about the text the user sends. " +
+			"Use 6 to 8 turns, alternate speakers, and keep each turn under 40 words. " +
+			"Give each turn a few words of delivery direction, such as 'curious' or 'laughing'.",
+		"input": source,
+		"text": map[string]any{
+			"format": map[string]any{
+				"type":   "json_schema",
+				"name":   "podcast_script",
+				"strict": true,
+				"schema": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"turns": map[string]any{
+							"type": "array",
+							"items": map[string]any{
+								"type": "object",
+								"properties": map[string]any{
+									"speaker":   map[string]any{"type": "string", "enum": []string{"host", "guest"}},
+									"text":      map[string]any{"type": "string"},
+									"direction": map[string]any{"type": "string"},
+								},
+								"required":             []string{"speaker", "text", "direction"},
+								"additionalProperties": false,
+							},
+						},
+					},
+					"required":             []string{"turns"},
+					"additionalProperties": false,
+				},
+			},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 300 {
+		log.Fatal(string(data))
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		log.Fatal(err)
+	}
+
+	scriptText := ""
+	for i := len(result.Output) - 1; i >= 0 && scriptText == ""; i-- {
+		if result.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range result.Output[i].Content {
+			if part.Type == "output_text" {
+				scriptText = part.Text
+				break
+			}
+		}
+	}
+
+	var script struct {
+		Turns []Turn `json:"turns"`
+	}
+	if err := json.Unmarshal([]byte(scriptText), &script); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, turn := range script.Turns {
+		fmt.Printf("%-5s (%s): %s\n", turn.Speaker, turn.Direction, turn.Text)
+	}
+}
+
+```
+
+```bash title="cURL" lines
+#!/usr/bin/env bash
+: "${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY first.}"
+
+source=$(cat <<'EOF'
+Tides are caused mostly by the Moon. Its gravity pulls hardest on the side
+of the Earth facing it, so the ocean bulges toward the Moon. On the far side the
+pull is weaker than at the Earth's center, and that difference stretches the
+ocean outward into a second bulge. As the Earth turns, most coastlines pass
+through both bulges, which is why they see two high tides and two low tides
+roughly every 25 hours.
+EOF
+)
+
+body=$(jq -n --arg input "$source" '{
+  model: "google/gemini-3.8-flash",
+  instructions: ("Write a short podcast dialogue between a host and a guest about the text the user sends. " +
+    "Use 6 to 8 turns, alternate speakers, and keep each turn under 40 words. " +
+    "Give each turn a few words of delivery direction, such as '\''curious'\'' or '\''laughing'\''."),
+  input: $input,
+  text: {
+    format: {
+      type: "json_schema",
+      name: "podcast_script",
+      strict: true,
+      schema: {
+        type: "object",
+        properties: {
+          turns: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                speaker: { type: "string", enum: ["host", "guest"] },
+                text: { type: "string" },
+                direction: { type: "string" }
+              },
+              required: ["speaker", "text", "direction"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ["turns"],
+        additionalProperties: false
+      }
+    }
+  }
+}')
+
+turns=$(curl -sS --fail-with-body https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$body" |
+  jq -c '[.output[] | select(.type == "message")] | last
+    | .content[] | select(.type == "output_text") | .text | fromjson | .turns')
+
+jq -r '.[] | "\((.speaker + "     ")[0:5]) (\(.direction)): \(.text)"' <<<"$turns"
+
+```
+
+</CodeGroup>
+
 The model returns a script like this one:
 
 ```text lines
@@ -168,6 +425,8 @@ guest (warm and conclusive): Exactly! Coastlines rotate through both, which is w
 ## Step 2: Voice the whole script in one request
 
 Map each speaker to a voice, then send the turns as `input`, with each turn's direction as its `instructions`. A top-level `instructions` applies only to turns that omit their own, so this request leaves it out.
+
+<CodeGroup>
 
 ```ts lines
 const voices = { host: "Kore", guest: "Puck" } as const;
@@ -200,6 +459,102 @@ console.log(`Content-Type: ${speechResponse.headers.get("content-type")}`);
 console.log(`Generation ID: ${speechResponse.headers.get("x-generation-id")}`);
 ```
 
+```python title="Python" lines
+voices = {"host": "Kore", "guest": "Puck"}
+
+speech_response = requests.post(
+    "https://openrouter.ai/api/v1/audio/speech",
+    headers={
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "model": "google/gemini-3.8-flash-lite-tts",
+        "response_format": "pcm",
+        "input": [
+            {
+                "text": turn["text"],
+                "voice": voices[turn["speaker"]],
+                "instructions": turn["direction"],
+            }
+            for turn in turns
+        ],
+    },
+)
+
+if not speech_response.ok:
+    raise RuntimeError(speech_response.text)
+
+print(f"Content-Type: {speech_response.headers.get('content-type')}")
+print(f"Generation ID: {speech_response.headers.get('x-generation-id')}")
+
+```
+
+```go title="Go" lines
+	// Add this to main from step 1, before its closing brace
+	voices := map[string]string{"host": "Kore", "guest": "Puck"}
+
+	input := make([]map[string]string, 0, len(script.Turns))
+	for _, turn := range script.Turns {
+		input = append(input, map[string]string{
+			"text":         turn.Text,
+			"voice":        voices[turn.Speaker],
+			"instructions": turn.Direction,
+		})
+	}
+
+	speechBody, _ := json.Marshal(map[string]any{
+		"model":           "google/gemini-3.8-flash-lite-tts",
+		"response_format": "pcm",
+		"input":           input,
+	})
+
+	speechReq, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/audio/speech", bytes.NewReader(speechBody))
+	speechReq.Header.Set("Authorization", "Bearer "+apiKey)
+	speechReq.Header.Set("Content-Type", "application/json")
+
+	speechResp, err := http.DefaultClient.Do(speechReq)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer speechResp.Body.Close()
+	if speechResp.StatusCode >= 300 {
+		errBody, _ := io.ReadAll(speechResp.Body)
+		log.Fatal(string(errBody))
+	}
+
+	fmt.Printf("Content-Type: %s\n", speechResp.Header.Get("Content-Type"))
+	fmt.Printf("Generation ID: %s\n", speechResp.Header.Get("X-Generation-Id"))
+
+```
+
+```bash title="cURL" lines
+voices='{"host": "Kore", "guest": "Puck"}'
+
+body=$(jq -n --argjson turns "$turns" --argjson voices "$voices" '{
+  model: "google/gemini-3.8-flash-lite-tts",
+  response_format: "pcm",
+  input: [$turns[] | {
+    text: .text,
+    voice: $voices[.speaker],
+    instructions: .direction
+  }]
+}')
+
+curl -sS --fail-with-body https://openrouter.ai/api/v1/audio/speech \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$body" \
+  -D headers.txt -o podcast.pcm ||
+  { cat podcast.pcm >&2; rm -f podcast.pcm; exit 1; }
+
+tr -d '\r' < headers.txt | awk -F': ' '
+  tolower($1) == "content-type" { print "Content-Type: " $2 }
+  tolower($1) == "x-generation-id" { print "Generation ID: " $2 }'
+```
+
+</CodeGroup>
+
 ```text lines
 Content-Type: audio/pcm;rate=24000;channels=1
 Generation ID: gen-tts-1791408882-gsi0JmqAdk574VPMDHMH
@@ -210,6 +565,8 @@ Gemini TTS returns `pcm` only. Requesting `mp3` returns `400 Gemini TTS only sup
 ## Step 3: Save it as a WAV file
 
 The response body is raw 16-bit PCM at 24 kHz, mono, as the `Content-Type` header says. Most players will not open raw PCM, so add a 44-byte WAV header in front of it:
+
+<CodeGroup>
 
 ```ts expandable lines
 import { writeFile } from "node:fs/promises";
@@ -242,6 +599,88 @@ await writeFile("podcast.wav", pcmToWav(pcm));
 const seconds = pcm.length / (24_000 * 2);
 console.log(`Saved podcast.wav (${seconds.toFixed(1)} seconds)`);
 ```
+
+```python title="Python" lines
+import struct
+
+
+def pcm_to_wav(data, sample_rate=24_000, channels=1):
+    bits_per_sample = 16
+    byte_rate = sample_rate * channels * bits_per_sample // 8
+    header = struct.pack(
+        "<4sI4s4sIHHIIHH4sI",
+        b"RIFF", 36 + len(data), b"WAVE",
+        b"fmt ", 16, 1, channels, sample_rate, byte_rate,
+        channels * bits_per_sample // 8, bits_per_sample,
+        b"data", len(data),
+    )
+    return header + data
+
+
+pcm = speech_response.content
+with open("podcast.wav", "wb") as f:
+    f.write(pcm_to_wav(pcm))
+
+seconds = len(pcm) / (24_000 * 2)
+print(f"Saved podcast.wav ({seconds:.1f} seconds)")
+
+```
+
+```go title="Go" lines
+	// Add this to main after the step 2 code, and add "encoding/binary" to the imports
+	pcmToWav := func(data []byte, sampleRate, channels int) []byte {
+		bitsPerSample := 16
+		byteRate := sampleRate * channels * bitsPerSample / 8
+		header := make([]byte, 44)
+
+		copy(header[0:], "RIFF")
+		binary.LittleEndian.PutUint32(header[4:], uint32(36+len(data)))
+		copy(header[8:], "WAVE")
+		copy(header[12:], "fmt ")
+		binary.LittleEndian.PutUint32(header[16:], 16)
+		binary.LittleEndian.PutUint16(header[20:], 1)
+		binary.LittleEndian.PutUint16(header[22:], uint16(channels))
+		binary.LittleEndian.PutUint32(header[24:], uint32(sampleRate))
+		binary.LittleEndian.PutUint32(header[28:], uint32(byteRate))
+		binary.LittleEndian.PutUint16(header[32:], uint16(channels*bitsPerSample/8))
+		binary.LittleEndian.PutUint16(header[34:], uint16(bitsPerSample))
+		copy(header[36:], "data")
+		binary.LittleEndian.PutUint32(header[40:], uint32(len(data)))
+
+		return append(header, data...)
+	}
+
+	pcm, err := io.ReadAll(speechResp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := os.WriteFile("podcast.wav", pcmToWav(pcm, 24000, 1), 0o644); err != nil {
+		log.Fatal(err)
+	}
+
+	seconds := float64(len(pcm)) / (24000 * 2)
+	fmt.Printf("Saved podcast.wav (%.1f seconds)\n", seconds)
+```
+
+```bash title="cURL" lines
+le16() { printf "$(printf '\\x%02x\\x%02x' $(($1 & 255)) $(($1 >> 8 & 255)))"; }
+le32() { le16 $(($1 & 65535)); le16 $(($1 >> 16 & 65535)); }
+
+size=$(wc -c < podcast.pcm | tr -d ' ')
+
+{
+  printf 'RIFF'; le32 $((36 + size)); printf 'WAVEfmt '
+  le32 16; le16 1; le16 1         # PCM, mono
+  le32 24000; le32 48000          # sample rate, byte rate
+  le16 2; le16 16                 # block align, bits per sample
+  printf 'data'; le32 "$size"
+  cat podcast.pcm
+} > podcast.wav
+
+echo "Saved podcast.wav ($(awk -v n="$size" 'BEGIN { printf "%.1f", n / 48000 }') seconds)"
+```
+
+</CodeGroup>
 
 ```text lines
 Saved podcast.wav (48.7 seconds)

@@ -80,5 +80,82 @@ response = client.responses.create(
 print(response.output_text)
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o",
+		"input": "Say this is a test",
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("HTTP-Referer", "<YOUR_SITE_URL>")        // Optional. Site URL for rankings on openrouter.ai.
+	req.Header.Set("X-OpenRouter-Title", "<YOUR_SITE_NAME>") // Optional. Site title for rankings on openrouter.ai.
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errBody, _ := io.ReadAll(resp.Body)
+		log.Fatalf("request failed: %s: %s", resp.Status, errBody)
+	}
+
+	var result struct {
+		Output []struct {
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, item := range result.Output {
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				fmt.Print(c.Text)
+			}
+		}
+	}
+	fmt.Println()
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "HTTP-Referer: <YOUR_SITE_URL>" \
+  -H "X-OpenRouter-Title: <YOUR_SITE_NAME>" \
+  -d '{
+    "model": "openai/gpt-4o",
+    "input": "Say this is a test"
+  }' | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text'
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+This is a test.
+```
 {/* </llms-ignore> */}

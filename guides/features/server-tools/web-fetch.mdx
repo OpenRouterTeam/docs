@@ -97,7 +97,126 @@ curl https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5.2",
+		"input": "Summarize the content at https://example.com/article",
+		"tools": []map[string]any{
+			{"type": "openrouter:web_fetch"},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("HTTP %d: %s\n", resp.StatusCode, raw)
+		os.Exit(1)
+	}
+
+	// Output items vary by type (e.g. web fetch calls), so decode content lazily.
+	var data struct {
+		Output []struct {
+			Type    string          `json:"type"`
+			Content json.RawMessage `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.Unmarshal(raw, &data); err != nil {
+		panic(err)
+	}
+
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type != "message" {
+			continue
+		}
+		var parts []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		}
+		if err := json.Unmarshal(data.Output[i].Content, &parts); err != nil {
+			continue
+		}
+		for _, part := range parts {
+			if part.Type == "output_text" {
+				fmt.Println(part.Text)
+				return
+			}
+		}
+	}
+
+	// No message text found: print the raw response so the result is visible.
+	fmt.Println(string(raw))
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+OpenRouter’s Quickstart explains how to start using OpenRouter (a single API endpoint that provides access to hundreds of AI models, with automatic fallbacks and cost-aware routing). It presents several integration options and gives example code for each.
+
+## Main ways to integrate
+1. **Direct API (REST)** – most control; works in any language.
+2. **Client SDKs** (`@openrouter/sdk` for JS/TS, `openrouter` for Python) – thin, type-safe wrappers generated from the OpenAPI spec.
+3. **Agent SDK** (`@openrouter/agent`) – higher-level agent primitives (tool use, loops, state management).
+It also notes you can **reuse the OpenAI SDK** by pointing it at OpenRouter as a drop-in replacement.
+
+## Using the OpenRouter API
+- Send requests to: **`POST https://openrouter.ai/api/v1/responses`**
+- Provide **`Authorization: Bearer <OPENROUTER_API_KEY>`**
+- Optional attribution headers (to show up on OpenRouter leaderboards):
+  - **`HTTP-Referer: <YOUR_SITE_URL>`**
+  - **`X-OpenRouter-Title: <YOUR_SITE_NAME>`**
+- Example uses the model alias **`~openai/gpt-sol-latest`**, described as a “latest” alias that resolves to the newest model in that family (so you don’t need to redeploy to stay current).
+- Model discovery:
+  - Browse catalog: `openrouter.ai/models`
+  - Programmatically list models: **`GET /api/v1/models`**
+- Mentions **streaming support**.
+- **EU in-region routing** (Business/Enterprise): use `https://eu.openrouter.ai/api/v1/responses` (or set SDK base URL to `https://eu.openrouter.ai/api/v1`) with an EU-eligible model.
+
+## Client SDKs
+- Install via common package managers (npm/pnpm/yarn/bun/deno) or `pip`.
+- Use `client.responses.send(...)` to call the same Responses API.
+- Example shows checking `response.status === 'completed'` and extracting output text from the structured `output`.
+
+## Agent SDK
+- Install `@openrouter/agent`.
+- Lets you define tools (example uses `tool(...)` with a Zod schema), then call:
+  - `openrouter.callModel({ model, input, tools })`
+- The SDK orchestrates: prompt → model tool call → tool execution → feed result back → final answer.
+
+## OpenAI SDK compatibility
+- Point OpenAI SDK to OpenRouter by setting:
+  - `baseURL/base_url: https://openrouter.ai/api/v1`
+- Then call `openai.responses.create(...)` as usual, optionally passing the same attribution headers.
+
+## Extras
+- Links out to:
+  - FAQ (free models / rate limits)
+```
 
 ## Configuration
 
@@ -247,7 +366,139 @@ message = next(item for item in reversed(data["output"]) if item["type"] == "mes
 print(next(part["text"] for part in message["content"] if part["type"] == "output_text"))
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5.2",
+		"input": "What does the documentation at https://example.com/docs say?",
+		"tools": []map[string]any{
+			{"type": "openrouter:web_fetch", "parameters": map[string]any{"max_content_tokens": 50000}},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("HTTP %d: %s\n", resp.StatusCode, raw)
+		os.Exit(1)
+	}
+
+	// Output items vary by type (e.g. web fetch calls), so decode content lazily.
+	var data struct {
+		Output []struct {
+			Type    string          `json:"type"`
+			Content json.RawMessage `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.Unmarshal(raw, &data); err != nil {
+		panic(err)
+	}
+
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type != "message" {
+			continue
+		}
+		var parts []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		}
+		if err := json.Unmarshal(data.Output[i].Content, &parts); err != nil {
+			continue
+		}
+		for _, part := range parts {
+			if part.Type == "output_text" {
+				fmt.Println(part.Text)
+				return
+			}
+		}
+	}
+
+	// No message text found: print the raw response so the result is visible.
+	fmt.Println(string(raw))
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5.2",
+    "input": "What does the documentation at https://example.com/docs say?",
+    "tools": [
+      {"type": "openrouter:web_fetch", "parameters": {"max_content_tokens": 50000}}
+    ]
+  }' | jq -r '[.output[] | select(.type == "message")] | last | .content[] | select(.type == "output_text") | .text'
+```
+
 </CodeGroup>
+
+```text title="Output"
+The **Quickstart** page says:
+
+- **What OpenRouter is:** It provides access to *hundreds of AI models* through a **single API endpoint**, with **automatic fallbacks** and routing to the **most cost-effective** option for a request.
+- **Three integration options (depending on control needed):**
+  1. **API** (full control, any language)
+  2. **Client SDKs** (type-safe, minimal boilerplate)
+  3. **Agent SDK** (for building agents with tool use, loops, state)
+
+- It links to a GitHub tutorial for building an agent TUI:  
+  `github.com/OpenRouterTeam/skills/tree/main/skills/create-agent-tui`
+
+- Notes that **OpenRouter-specific headers are optional**, but using them helps **app attribution/leaderboards**:
+  - `HTTP-Referer` (your site URL)
+  - `X-OpenRouter-Title` (your app/site name)
+
+## Using the OpenRouter API
+- Send standard HTTP requests to **`/api/v1/responses`** (examples in Python `requests`, JS `fetch`, and `curl`).
+- Example model used: **`~openai/gpt-sol-latest`**, described as a **“latest alias”** that always resolves to the newest model in that family.
+- Mentions:
+  - Browse models at `openrouter.ai/models`
+  - Or list model slugs via **`GET /api/v1/models`**
+  - **Streaming is supported**
+  - You can use the **OpenAI SDK pointed at OpenRouter** as a drop-in replacement.
+
+- **EU routing:** For Business/Enterprise, use  
+  `https://eu.openrouter.ai/api/v1/responses` (or set SDK base URL to `https://eu.openrouter.ai/api/v1`) with an EU-eligible model.
+
+## Using the Client SDKs
+- SDKs are a thin, type-safe wrapper generated from the OpenAPI spec.
+- Install packages like:
+  - `npm install @openrouter/sdk`
+  - `pip install openrouter`
+- Example code shows calling `client.responses.send(...)` and extracting output text.
+
+## Using the Agent SDK
+- Package: **`@openrouter/agent`**
+- Provides higher-level agent primitives, including **tool execution** and **multi-turn loops**, via `callModel`.
+- Example shows defining a tool (with `zod` schema) and letting the SDK handle the tool-call loop.
+
+## Using the OpenAI SDK
+```
 
 ## Response Format
 

@@ -66,6 +66,87 @@ console.log('Model used:', data.model);
 console.log(data.choices[0].message.content);
 ```
 
+```python title="Python" lines
+import os
+
+import requests
+
+response = requests.post(
+    'https://openrouter.ai/api/v1/chat/completions',
+    headers={
+        'Authorization': f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        'Content-Type': 'application/json',
+    },
+    json={
+        'model': 'openrouter/auto-code',
+        'messages': [{'role': 'user', 'content': 'Add a retry with backoff to fetchUser in api/users.ts'}],
+    },
+)
+
+# A 404 can mean no model is routable; read the response body for the specific cause
+if not response.ok:
+    raise SystemExit(f'{response.status_code}: {response.text}')
+
+data = response.json()
+print('Model used:', data['model'])
+print(data['choices'][0]['message']['content'])
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openrouter/auto-code",
+		"messages": []map[string]string{
+			{"role": "user", "content": "Add a retry with backoff to fetchUser in api/users.ts"},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errBody, _ := io.ReadAll(resp.Body)
+		log.Fatalf("request failed: %s: %s", resp.Status, errBody)
+	}
+
+	var data struct {
+		Model   string `json:"model"`
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Fatal(err)
+	}
+	if len(data.Choices) == 0 {
+		log.Fatal("response contained no choices")
+	}
+	fmt.Println("Model used:", data.Model)
+	fmt.Println(data.Choices[0].Message.Content)
+}
+```
+
 </CodeGroup>
 
 Send a `session_id` (or the `x-session-id` header) so the router treats every turn of an agent session as one conversation. See [Auto Router session stickiness](/guides/routing/routers/auto-router#session-stickiness).

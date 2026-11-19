@@ -54,11 +54,46 @@ A request a model cannot serve (a `date` field on Mercury Decide, an image on a 
 
 To list these models programmatically, filter the Models API by the request path they serve; `output_modalities` cannot select them because Extractions is served by text and decisions models alike:
 
+<CodeGroup>
+
 ```bash lines
 curl "https://openrouter.ai/api/v1/models?endpoints=/api/alpha/extractions"
 ```
 
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/models?endpoints=/api/alpha/extractions');
+const models = await response.json();
+```
+
+```python title="Python" lines
+import requests
+
+response = requests.get(
+    "https://openrouter.ai/api/v1/models",
+    params={"endpoints": "/api/alpha/extractions"},
+)
+models = response.json()
+```
+
+```go title="Go" lines
+resp, err := http.Get("https://openrouter.ai/api/v1/models?endpoints=/api/alpha/extractions")
+if err != nil {
+	log.Fatal(err)
+}
+defer resp.Body.Close()
+
+body, err := io.ReadAll(resp.Body)
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(body))
+```
+
+</CodeGroup>
+
 ## Quickstart
+
+<CodeGroup>
 
 ```bash
 curl https://openrouter.ai/api/alpha/extractions \
@@ -77,6 +112,109 @@ curl https://openrouter.ai/api/alpha/extractions \
     "reference_date": "2026-10-28"
   }'
 ```
+
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/alpha/extractions', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'cloudflare/clairic',
+    state: 'Invoice INV-2291 issued 2026-09-02, net 30. Contacts: Dana Ruiz, Priya Shah. Total $1080.',
+    fields: {
+      invoice_number: { type: 'text' },
+      due_date: { type: 'date', instructions: 'Issue date plus the net payment days' },
+      total: { type: 'number', decimals: 2, unit: 'USD' },
+      contacts: { type: 'list', items: 'text' },
+      days_to_pay: { type: 'estimate', min: 0, max: 120, step: 1 },
+    },
+    reference_date: '2026-10-28',
+  }),
+});
+
+const result = await response.json();
+console.log(JSON.stringify(result));
+
+```
+
+```python title="Python" lines
+import os
+import requests
+
+response = requests.post(
+    "https://openrouter.ai/api/alpha/extractions",
+    headers={
+        "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "model": "cloudflare/clairic",
+        "state": "Invoice INV-2291 issued 2026-09-02, net 30. Contacts: Dana Ruiz, Priya Shah. Total $1080.",
+        "fields": {
+            "invoice_number": {"type": "text"},
+            "due_date": {"type": "date", "instructions": "Issue date plus the net payment days"},
+            "total": {"type": "number", "decimals": 2, "unit": "USD"},
+            "contacts": {"type": "list", "items": "text"},
+            "days_to_pay": {"type": "estimate", "min": 0, "max": 120, "step": 1},
+        },
+        "reference_date": "2026-10-28",
+    },
+)
+print(response.text)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func main() {
+	payload := `{
+    "model": "cloudflare/clairic",
+    "state": "Invoice INV-2291 issued 2026-09-02, net 30. Contacts: Dana Ruiz, Priya Shah. Total $1080.",
+    "fields": {
+      "invoice_number": { "type": "text" },
+      "due_date": { "type": "date", "instructions": "Issue date plus the net payment days" },
+      "total": { "type": "number", "decimals": 2, "unit": "USD" },
+      "contacts": { "type": "list", "items": "text" },
+      "days_to_pay": { "type": "estimate", "min": 0, "max": 120, "step": 1 }
+    },
+    "reference_date": "2026-10-28"
+  }`
+
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/alpha/extractions", strings.NewReader(payload))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(string(body))
+}
+
+```
+
+</CodeGroup>
 
 The response has one answer per field, keyed by the field name:
 
