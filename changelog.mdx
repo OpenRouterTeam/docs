@@ -16,6 +16,343 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
+<Update label="November 19, 2026" tags={["Breaking","Images","SCIM"]} rss="1 breaking change, 4 modified endpoints, 4 modified schemas.">
+
+## Breaking changes
+
+- `ImageGenerationResponse.data`: required `b64_json` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+
+## Modified endpoints
+
+- [`POST /scim/group-mappings`](/api/api-reference/scim/create-a-scim-group-mapping): deprecated property_added; description updated; response schema updated
+- [`DELETE /scim/group-mappings/{id}`](/api/api-reference/scim/delete-a-scim-group-mapping): deprecated property_added; description updated; response schema updated
+- [`PATCH /scim/group-mappings/{id}`](/api/api-reference/scim/update-a-scim-group-mapping): deprecated property_added; description updated; response schema updated
+- [`POST /scim/sync-jobs`](/api/api-reference/scim/start-a-scim-directory-sync): deprecated property_added; description updated; response schema updated
+
+## Modified schemas
+
+- `CreateWorkspaceRequest`: description updated; example modified
+  - Used by [`POST /workspaces`](/api/api-reference/workspaces/create-a-workspace)
+- `ImageGenerationRequest`: new property `response_format`
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+- `ImageGenerationResponse`: new property `expires_at`; new property `data.url`; property `b64_json` updated
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+- `UpdateWorkspaceRequest`: description updated; example modified
+  - Used by [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+
+</Update>
+
+<Update label="November 18, 2026" tags={["Analytics","Batch","Breaking","Chat","Presets","Responses","Schemas"]} rss="2 breaking changes, 1 modified endpoint, 2 new schemas, 6 modified schemas.">
+
+## Breaking changes
+
+- `ReasoningFormat`: enum `google-vertex-responses-v1` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Migration: the value was renamed to `google-vertex-meta-responses-v1`. It identifies encrypted reasoning minted by Meta models served on Google Vertex, and the new name says so; the behavior is unchanged. `reasoning_details[].format` in responses now carries the new value. Requests that replay stored `reasoning_details` with the old value keep working: the API accepts `google-vertex-responses-v1` on input and treats it as `google-vertex-meta-responses-v1`. Update any client code or generated SDK enum that compares against the old string, and accept both values while stored reasoning from before this release is still being replayed.
+
+  <Expandable title="6 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data): maxItems changed from `2` to `3`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Migration: none. `group_by` now accepts up to 3 dimensions; requests with 1 or 2 behave as before. A third dimension works only when every metric, dimension and filter in the request is available from the activity rollups (or, for token-kind metrics, their daily rollup); otherwise the request returns 400.
+
+## Modified endpoints
+
+- [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data): description updated
+
+## New schemas
+
+- `PrivateEndpointPromptCaching`
+  - Used by [`GET /private-endpoints/{id}`](/api/api-reference/private-endpoints/get-a-private-endpoint), [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
+- `UpdatePrivateEndpointPromptCaching`
+  - Used by [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint), [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
+
+## Modified schemas
+
+- `ReasoningFormat`: enum property_added
+
+  <Expandable title="6 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `ScalarFilter`: description updated
+  - Used by [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data)
+- `SetFilter`: description updated
+  - Used by [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data)
+- `PrivateEndpoint`: example modified
+  - Used by [`GET /private-endpoints/{id}`](/api/api-reference/private-endpoints/get-a-private-endpoint), [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
+- `PrivateEndpointSettings`: example modified; new property `prompt_caching`
+  - Used by [`GET /private-endpoints/{id}`](/api/api-reference/private-endpoints/get-a-private-endpoint), [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
+- `UpdatePrivateEndpointSettingsRequest`: new property `prompt_caching`
+  - Used by [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint), [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
+
+</Update>
+
+<Update label="November 17, 2026" tags={["API Keys","Benchmarks","Models","OAuth","Schemas"]} rss="5 modified endpoints, 1 new schema, 6 modified schemas.">
+
+## Modified endpoints
+
+- [`POST /auth/keys/code`](/api/api-reference/oauth/create-authorization-code): description updated
+- [`GET /keys`](/api/api-reference/api-keys/list-api-keys): extension `x-speakeasy-max-method-params` added
+- [`GET /benchmarks`](/api/api-reference/benchmarks/list-benchmarks): description updated; parameter `task_type` updated; response schema updated
+- [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties):
+  - new parameter `max_cyber_index`
+  - new parameter `max_decision_index`
+  - new parameter `max_economics_index`
+  - new parameter `max_engineering_index`
+  - new parameter `max_finance_and_accounting_index`
+  - new parameter `max_healthcare_and_medical_index`
+  - new parameter `max_legal_index`
+  - new parameter `max_multilingual_index`
+  - new parameter `max_openness_index`
+  - new parameter `max_strategy_and_ops_index`
+  - new parameter `min_cyber_index`
+  - new parameter `min_decision_index`
+  - new parameter `min_economics_index`
+  - new parameter `min_engineering_index`
+  - new parameter `min_finance_and_accounting_index`
+  - new parameter `min_healthcare_and_medical_index`
+  - new parameter `min_legal_index`
+  - new parameter `min_multilingual_index`
+  - new parameter `min_openness_index`
+  - new parameter `min_strategy_and_ops_index`
+  - parameter `max_agentic_index` updated
+  - description updated
+  - parameter `max_coding_index` updated
+  - parameter `min_agentic_index` updated
+  - parameter `min_coding_index` updated
+  - parameter `sort` updated
+- [`GET /models/user`](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails): description updated; parameter `sort` updated
+
+## New schemas
+
+- `ResponsesInputTransformation`
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch), [`POST /responses`](/api/api-reference/responses/create-a-response)
+
+## Modified schemas
+
+- `AABenchmarkEntry`:
+  - description updated
+  - example modified
+  - new property `cyber_index` (always present)
+  - new property `decision_index` (always present)
+  - new property `economics_index` (always present)
+  - new property `engineering_index` (always present)
+  - new property `finance_and_accounting_index` (always present)
+  - new property `healthcare_and_medical_index` (always present)
+  - new property `legal_index` (always present)
+  - new property `multilingual_index` (always present)
+  - new property `openness_index` (always present)
+  - new property `strategy_and_ops_index` (always present)
+  - deprecated property_added
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /embeddings/models`](/api/api-reference/embeddings/list-all-embeddings-models)
+    - [`GET /model/{author}/{slug}`](/api/api-reference/models/get-a-model-by-its-slug)
+    - [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties)
+    - [`GET /models/user`](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails)
+  </Expandable>
+- `ModelBenchmarks`: example modified
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /embeddings/models`](/api/api-reference/embeddings/list-all-embeddings-models)
+    - [`GET /model/{author}/{slug}`](/api/api-reference/models/get-a-model-by-its-slug)
+    - [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties)
+    - [`GET /models/user`](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails)
+  </Expandable>
+- `ParetoRouterPlugin`: description updated; example modified
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `UnifiedBenchmarksAAItem`:
+  - description updated
+  - example modified
+  - new property `cyber_index` (always present)
+  - new property `decision_index` (always present)
+  - new property `economics_index` (always present)
+  - new property `engineering_index` (always present)
+  - new property `finance_and_accounting_index` (always present)
+  - new property `healthcare_and_medical_index` (always present)
+  - new property `legal_index` (always present)
+  - new property `multilingual_index` (always present)
+  - new property `openness_index` (always present)
+  - new property `strategy_and_ops_index` (always present)
+  - deprecated property_added
+  - Used by [`GET /benchmarks`](/api/api-reference/benchmarks/list-benchmarks)
+- `UnifiedBenchmarksMeta`: description updated
+  - Used by [`GET /benchmarks`](/api/api-reference/benchmarks/list-benchmarks)
+- `UnifiedBenchmarksResponse`: example modified
+  - Used by [`GET /benchmarks`](/api/api-reference/benchmarks/list-benchmarks)
+
+</Update>
+
+<Update label="November 16, 2026" tags={["Generations","OAuth","Schemas"]} rss="2 modified endpoints, 1 new response code, 5 modified schemas.">
+
+## Modified endpoints
+
+- [`POST /auth/keys`](/api/api-reference/oauth/exchange-authorization-code-for-api-key): description updated
+- [`POST /auth/keys/code`](/api/api-reference/oauth/create-authorization-code): description updated
+
+## New response codes
+
+- [`GET /generation/content`](/api/api-reference/generations/get-stored-prompt-completion-and-error-content-for-a-generation): now returns `503`
+
+## Modified schemas
+
+- `SpeechRequest`: description updated
+  - Used by [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+- `VideoGenerationRequest`: enum property_added; description updated
+  - Used by [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+- `VideoModel`: enum property_added
+  - Used by [`GET /videos/models`](/api/api-reference/video-generation/list-all-video-generation-models)
+- `AutoRouterPlugin`: description updated
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `JevRouterPlugin`: description updated
+
+  <Expandable title="6 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+
+</Update>
+
+<Update label="November 13, 2026" tags={["BYOK","Batch","Breaking","Schemas"]} rss="1 breaking change, 1 modified endpoint, 6 new schemas, 15 modified schemas.">
+
+## Breaking changes
+
+- `BatchSubmitBody`: required `requests` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+  - Used by [`POST /batches`](/api/api-reference/batch/create-a-batch)
+
+## Modified endpoints
+
+- [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials): parameter `provider` updated
+
+## New schemas
+
+- `BatchInputReference`
+  - Used by [`POST /batches`](/api/api-reference/batch/create-a-batch)
+- `BatchOutputReference`
+  - Used by [`GET /batches`](/api/api-reference/batch/list-batches), [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch)
+- `ImageGenerationLayer`
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+- `ImageGenerationLayerBoundingBox`
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+- `ImageGenerationLayerTextRecognition`
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+- `ImageGenerationLayerTextRun`
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+
+## Modified schemas
+
+- `BatchListItem`: new property `output`
+  - Used by [`GET /batches`](/api/api-reference/batch/list-batches)
+- `BatchObject`: new property `output`
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch)
+- `BatchPaymentRequiredResponse`: new property `output`
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+- `BatchSubmitBody`: new property `input`; description updated
+  - Used by [`POST /batches`](/api/api-reference/batch/create-a-batch)
+- `ImageGenerationResponse`: new property `data.layer`
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+- `BatchInputReference`: description updated
+  - Used by [`POST /batches`](/api/api-reference/batch/create-a-batch)
+- `BatchOutputReference`: description updated
+  - Used by [`GET /batches`](/api/api-reference/batch/list-batches), [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`POST /batches`](/api/api-reference/batch/create-a-batch)
+- `BYOKProviderSlug`: enum property_added
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials)
+    - [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential)
+    - [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+    - [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+  </Expandable>
+- `MessagesStartEvent`: property `provider` updated
+  - Used by [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+- `ProviderName`: enum property_added
+
+  <Expandable title="18 endpoints using this schema">
+    - [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints)
+    - [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model)
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+    - [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+    - [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+    - [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+  </Expandable>
+- `ProviderOptions`: new property `doubleword`
+
+  <Expandable title="15 endpoints using this schema">
+    - [`POST /api/alpha/decisions`](/api/api-reference/alphadecisions/submit-a-decisions-request)
+    - [`POST /api/alpha/extractions`](/api/api-reference/alphaextractions/submit-an-extractions-request)
+    - [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+    - [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /embeddings`](/api/api-reference/embeddings/submit-an-embedding-request)
+    - [`POST /images`](/api/api-reference/images/generate-an-image)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /rerank`](/api/api-reference/rerank/submit-a-rerank-request)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+    - [`POST /systemone`](/api/api-reference/systemone/submit-a-system-one-request)
+    - [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+  </Expandable>
+- `ProviderResponse`: enum property_added
+  - Used by [`GET /generation`](/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation)
+- `URLCitation`: new property `uncited`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `ImageGenerationProviderPreferences`: new property `data_collection`; new property `zdr`
+  - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+- `VideoGenerationRequest`: description updated; new property `provider.data_collection`; new property `provider.zdr`
+  - Used by [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+
+</Update>
+
 <Update label="November 12, 2026" tags={["Credits","Embeddings","Responses","Schemas","Workspaces"]} rss="4 modified endpoints, 4 new schemas, 9 modified schemas.">
 
 ## Modified endpoints
