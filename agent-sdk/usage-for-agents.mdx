@@ -72,33 +72,117 @@ Once installed, your AI coding assistant will have knowledge of:
 
 ## Example Usage
 
-After installing the skill, your AI assistant can help you with tasks like:
+After installing the skill, your AI assistant can help you with tasks like the ones below. The skill is `openrouter-typescript-sdk`, so the TypeScript tabs show what the assistant writes. The Python and Go tabs are independent equivalents for readers working in those languages; the skill does not teach them.
 
 **"Help me set up an OpenRouter agent"**
 
 The assistant will know to use:
 
+<CodeGroup>
+
 ```typescript lines
-import { OpenRouter } from '@openrouter/agent';
+import { OpenRouter, callModel } from '@openrouter/agent';
 
 const openrouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: '~anthropic/claude-sonnet-latest',
   input: 'Hello!'
 });
 
 const text = await result.getText();
+console.log(text);
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+from openrouter_agent import OpenRouter, call_model
+
+
+async def main() -> None:
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        openrouter,
+        {
+            "model": "~anthropic/claude-sonnet-latest",
+            "input": "Hello!",
+        },
+    )
+
+    text = await result.get_text()
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":    "~anthropic/claude-sonnet-latest",
+		"messages": []map[string]string{{"role": "user", "content": "Hello!"}},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+	if len(result.Choices) == 0 {
+		log.Fatalf("no choices returned (status %d)", resp.StatusCode)
+	}
+
+	fmt.Println(result.Choices[0].Message.Content)
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Hello! How can I help you today?
 ```
 
 **"Add a tool to my agent"**
 
 The assistant understands the tool pattern:
 
+<CodeGroup>
+
 ```typescript lines
-import { OpenRouter, tool } from '@openrouter/agent';
+import { OpenRouter, callModel, tool } from '@openrouter/agent';
 import { z } from 'zod';
 
 const openrouter = new OpenRouter({
@@ -114,13 +198,190 @@ const searchTool = tool({
   },
 });
 
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: '~anthropic/claude-sonnet-latest',
   input: 'Search for TypeScript best practices',
   tools: [searchTool],
 });
 
 const text = await result.getText();
+console.log(text);
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+from pydantic import BaseModel
+from openrouter_agent import OpenRouter, call_model, tool
+
+
+class SearchInput(BaseModel):
+    query: str
+
+
+def search(params: SearchInput, ctx) -> dict:
+    return {"results": ["..."]}
+
+
+search_tool = tool(
+    name="search",
+    description="Search the web",
+    input_schema=SearchInput,
+    execute=search,
+)
+
+
+async def main() -> None:
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        openrouter,
+        {
+            "model": "~anthropic/claude-sonnet-latest",
+            "input": "Search for TypeScript best practices",
+            "tools": [search_tool],
+        },
+    )
+
+    text = await result.get_text()
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+type toolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type message struct {
+	Role       string     `json:"role"`
+	Content    string     `json:"content,omitempty"`
+	ToolCalls  []toolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+func search(query string) map[string]any {
+	return map[string]any{"results": []string{"..."}}
+}
+
+func main() {
+	tools := []map[string]any{{
+		"type": "function",
+		"function": map[string]any{
+			"name":        "search",
+			"description": "Search the web",
+			"parameters": map[string]any{
+				"type":       "object",
+				"properties": map[string]any{"query": map[string]string{"type": "string"}},
+				"required":   []string{"query"},
+			},
+		},
+	}}
+	messages := []message{{Role: "user", Content: "Search for TypeScript best practices"}}
+
+	for i := 0; i < 5; i++ {
+		body, _ := json.Marshal(map[string]any{
+			"model":    "~anthropic/claude-sonnet-latest",
+			"messages": messages,
+			"tools":    tools,
+		})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		var result struct {
+			Choices []struct {
+				Message message `json:"message"`
+			} `json:"choices"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&result)
+		resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(result.Choices) == 0 {
+			log.Fatalf("no choices returned (status %d)", resp.StatusCode)
+		}
+
+		msg := result.Choices[0].Message
+		if len(msg.ToolCalls) == 0 {
+			fmt.Println(msg.Content)
+			return
+		}
+		messages = append(messages, msg)
+		for _, tc := range msg.ToolCalls {
+			var args struct {
+				Query string `json:"query"`
+			}
+			if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil || args.Query == "" {
+				log.Fatalf("bad arguments for %s: %s", tc.Function.Name, tc.Function.Arguments)
+			}
+			out, _ := json.Marshal(search(args.Query))
+			messages = append(messages, message{Role: "tool", ToolCallID: tc.ID, Content: string(out)})
+		}
+	}
+	log.Fatal("too many tool-call rounds")
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+The search tool returned only placeholder results ("...") for all three queries, so I have no sources to cite or summarize. Below are commonly recommended TypeScript practices from my own background knowledge. They don't come from the searches, so check them against current docs.
+
+**Compiler configuration**
+- Enable `"strict": true` in `tsconfig.json`. Consider adding `noUncheckedIndexedAccess`, `noImplicitOverride`, and `exactOptionalPropertyTypes`.
+- Use `isolatedModules` and `skipLibCheck` where your build tooling needs them.
+
+**Type design**
+- Avoid `any`. Use `unknown` for values of uncertain type, and narrow them before use.
+- Let inference work for local variables. Annotate function parameters and public API return types.
+- Use `interface` for object shapes that may be extended. Use `type` for unions, intersections, and mapped or conditional types.
+- Model states with discriminated unions instead of optional fields and flags.
+- Prefer `readonly` and `as const` for data that shouldn't change.
+- Use union types or `as const` objects instead of `enum` in most cases.
+
+**Safety**
+- Avoid type assertions (`as`) and non-null assertions (`!`). Use type guards and narrowing instead.
+- Validate external data at runtime (for example with Zod, Valibot, or io-ts) rather than trusting a cast.
+- Use `satisfies` to check a value against a type without widening it.
+
+**Code organization**
+- Use utility types (`Pick`, `Omit`, `Partial`, `Record`, `ReturnType`) instead of duplicating types.
+- Use generics with constraints (`<T extends ...>`) to keep reusable code type-safe.
+- Keep types close to where they're used, and export only what's needed.
+
+**Tooling**
+- Use `typescript-eslint` with type-aware rules, such as `no-floating-promises` and `no-explicit-any`.
+- Use Prettier for formatting.
+- Run `tsc --noEmit` in CI.
+
+I can try searching again, or go deeper on any of these, such as strict config options or discriminated unions.
 ```
 
 ## Repository

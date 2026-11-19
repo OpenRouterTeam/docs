@@ -29,6 +29,9 @@ Prerequisites:
 
 - Your existing TypeScript app runs on Node.js 20+ or Bun as an ES module, with `@types/node` or `@types/bun` installed, and has the invoice text as a string.
 - You've configured `OPENROUTER_API_KEY` and installed `zod` 4.
+- For the Python tabs: Python 3.10 or newer, `requests`, and Pydantic v2 (`pip install requests "pydantic>=2"`).
+- For the Go tabs: Go 1.21 or newer. The tabs use only the standard library.
+- For the cURL tabs: bash, `curl` 7.76 or newer, and `jq`.
 </Tip>
 
 ## 1. Describe the fields
@@ -56,6 +59,8 @@ const INVOICE_FIELDS = Object.keys(INVOICE_ENTITIES) as InvoiceField[];
 ## 2. Call Extract
 
 Send the invoice text as the [Responses API](/api_reference/responses/overview) `input`. Field descriptions go in `provider.options` (the part of an OpenRouter request that carries provider-specific settings), under `scaledown.entities`. Extract replies with a JSON string in the `output_text` part of the `message` item in `output`. Inside is an `entities` array with one entry per field it found: the field name as `type`, the matching invoice text as `text`, the `start` and `end` character positions of that text in your input, and a `confidence`. The code parses the string and validates it with Zod before using it.
+
+<CodeGroup>
 
 ```typescript lines
 const EntitySchema = z.object({
@@ -109,7 +114,271 @@ export async function extractInvoice(text: string): Promise<{ entities: Entity[]
 }
 ```
 
+```python title="Python" lines
+import json
+import os
+import re
+import time
+from decimal import Decimal, InvalidOperation
+
+import requests
+from pydantic import BaseModel
+
+EXTRACT_MODEL = "scaledown/extract"
+
+INVOICE_ENTITIES = {
+    "vendor": "Name of the company issuing the invoice",
+    "invoice_number": "Invoice number or reference",
+    "subtotal": "Subtotal before tax, with currency",
+    "vat": "VAT or sales tax amount, with currency",
+    "total": "Total amount due including tax, with currency",
+    "due_date": "Payment due date",
+}
+INVOICE_FIELDS = list(INVOICE_ENTITIES)
+
+
+class Entity(BaseModel):
+    type: str
+    text: str
+    confidence: float
+    start: int
+    end: int
+
+
+class Extraction(BaseModel):
+    entities: list[Entity]
+
+
+class ContentPart(BaseModel):
+    type: str
+    text: str | None = None
+
+
+class OutputItem(BaseModel):
+    type: str
+    content: list[ContentPart] | None = None
+
+
+class Usage(BaseModel):
+    input_tokens: int
+    cost: float
+
+
+class ResponseBody(BaseModel):
+    output: list[OutputItem]
+    usage: Usage
+
+
+def extract_invoice(text: str) -> dict:
+    res = requests.post(
+        "https://openrouter.ai/api/v1/responses",
+        headers={
+            "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": EXTRACT_MODEL,
+            "input": text,
+            "provider": {"options": {"scaledown": {"entities": INVOICE_ENTITIES}}},
+        },
+        timeout=60,
+    )
+    if not res.ok:
+        raise RuntimeError(f"extract {res.status_code}: {res.text}")
+    body = ResponseBody.model_validate(res.json())
+    message = next((item for item in reversed(body.output) if item.type == "message"), None)
+    output_text = next(
+        (p.text for p in (message.content or []) if p.type == "output_text"), None
+    ) if message else None
+    if output_text is None:
+        raise RuntimeError("extract returned no output_text")
+    extraction = Extraction.model_validate_json(output_text)
+    return {"entities": extraction.entities, "usage": body.usage}
+
+```
+
+```go title="Go" lines
+package main
+
+// Imports for every Go tab in this recipe
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"math"
+	"net/http"
+	"os"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+)
+
+const extractModel = "scaledown/extract"
+
+var invoiceEntities = map[string]string{
+	"vendor":         "Name of the company issuing the invoice",
+	"invoice_number": "Invoice number or reference",
+	"subtotal":       "Subtotal before tax, with currency",
+	"vat":            "VAT or sales tax amount, with currency",
+	"total":          "Total amount due including tax, with currency",
+	"due_date":       "Payment due date",
+}
+
+// A map has no order, so the field order lives here
+var invoiceFields = []string{"vendor", "invoice_number", "subtotal", "vat", "total", "due_date"}
+
+// The first test input, used as the "table" invoice in the worked example
+const invoice = `INVOICE
+Northwind Traders GmbH
+Invoice No: NW-2026-0417
+Date: 2026-09-30
+Due: 2026-10-30
+
+Consulting (10h)         EUR 1,500.00
+Cloud hosting (Sept)     EUR 320.00
+
+Subtotal                 EUR 1,820.00
+VAT 19%                  EUR 345.80
+Total due                EUR 2,165.80`
+
+type Entity struct {
+	Type       string  `json:"type"`
+	Text       string  `json:"text"`
+	Confidence float64 `json:"confidence"`
+	Start      int     `json:"start"`
+	End        int     `json:"end"`
+}
+
+type Usage struct {
+	InputTokens int     `json:"input_tokens"`
+	Cost        float64 `json:"cost"`
+}
+
+type responseBody struct {
+	Output []struct {
+		Type    string `json:"type"`
+		Content []struct {
+			Type string  `json:"type"`
+			Text *string `json:"text"`
+		} `json:"content"`
+	} `json:"output"`
+	Usage Usage `json:"usage"`
+}
+
+func extractInvoice(text string) ([]Entity, Usage, error) {
+	payload, err := json.Marshal(map[string]any{
+		"model":    extractModel,
+		"input":    text,
+		"provider": map[string]any{"options": map[string]any{"scaledown": map[string]any{"entities": invoiceEntities}}},
+	})
+	if err != nil {
+		return nil, Usage{}, err
+	}
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(payload))
+	if err != nil {
+		return nil, Usage{}, err
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := (&http.Client{Timeout: 60 * time.Second}).Do(req)
+	if err != nil {
+		return nil, Usage{}, err
+	}
+	defer res.Body.Close()
+	raw, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, Usage{}, err
+	}
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return nil, Usage{}, fmt.Errorf("extract %d: %s", res.StatusCode, raw)
+	}
+
+	var body responseBody
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return nil, Usage{}, err
+	}
+	var outputText *string
+	for i := len(body.Output) - 1; i >= 0 && outputText == nil; i-- {
+		if body.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range body.Output[i].Content {
+			if part.Type == "output_text" {
+				outputText = part.Text
+				break
+			}
+		}
+		break
+	}
+	if outputText == nil {
+		return nil, Usage{}, fmt.Errorf("extract returned no output_text")
+	}
+
+	var extraction struct {
+		Entities []struct {
+			Type       string   `json:"type"`
+			Text       string   `json:"text"`
+			Confidence *float64 `json:"confidence"`
+			Start      *int     `json:"start"`
+			End        *int     `json:"end"`
+		} `json:"entities"`
+	}
+	if err := json.Unmarshal([]byte(*outputText), &extraction); err != nil {
+		return nil, Usage{}, err
+	}
+	// Unmarshal accepts a missing field as a zero value, so refuse an entity that lacks any field
+	entities := make([]Entity, 0, len(extraction.Entities))
+	for _, e := range extraction.Entities {
+		if e.Type == "" || e.Text == "" || e.Confidence == nil || e.Start == nil || e.End == nil {
+			return nil, Usage{}, fmt.Errorf("extract returned an entity with a missing field")
+		}
+		entities = append(entities, Entity{e.Type, e.Text, *e.Confidence, *e.Start, *e.End})
+	}
+	return entities, body.Usage, nil
+}
+```
+
+```bash title="cURL" lines
+EXTRACT_MODEL="scaledown/extract"
+INVOICE_ENTITIES='{
+  "vendor": "Name of the company issuing the invoice",
+  "invoice_number": "Invoice number or reference",
+  "subtotal": "Subtotal before tax, with currency",
+  "vat": "VAT or sales tax amount, with currency",
+  "total": "Total amount due including tax, with currency",
+  "due_date": "Payment due date"
+}'
+INVOICE_FIELDS=$(jq -c 'keys_unsorted' <<<"$INVOICE_ENTITIES")
+
+extract_invoice() {
+  local response
+  # Capture the response first so a failed request stops here instead of reaching jq as empty input
+  response=$(jq -n --arg model "$EXTRACT_MODEL" --arg input "$1" --argjson entities "$INVOICE_ENTITIES" \
+    '{model: $model, input: $input, provider: {options: {scaledown: {entities: $entities}}}}' \
+  | curl -sS --fail-with-body --max-time 60 https://openrouter.ai/api/v1/responses \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d @-) || { echo "$response" >&2; return 1; }
+  # A 200 response without output_text is an error, so the caller's check catches it
+  jq '([.output[] | select(.type == "message")] | last
+        | [.content[]? | select(.type == "output_text") | .text] | first) as $text
+    | if $text == null then error("extract returned no output_text") else {
+        entities: ($text | fromjson | .entities),
+        usage: {input_tokens: .usage.input_tokens, cost: .usage.cost}
+      } end' <<<"$response"
+}
+```
+
+</CodeGroup>
+
 The invoice below produces the captured output in this step. Use it as your first test input, then replace it with invoices from your own queue.
+
+<CodeGroup>
 
 ```typescript lines
 const INVOICE = `INVOICE
@@ -128,6 +397,43 @@ Total due                EUR 2,165.80`;
 const { entities } = await extractInvoice(INVOICE);
 console.log(JSON.stringify(entities, null, 2));
 ```
+
+```python title="Python" lines
+INVOICE = """INVOICE
+Northwind Traders GmbH
+Invoice No: NW-2026-0417
+Date: 2026-09-30
+Due: 2026-10-30
+
+Consulting (10h)         EUR 1,500.00
+Cloud hosting (Sept)     EUR 320.00
+
+Subtotal                 EUR 1,820.00
+VAT 19%                  EUR 345.80
+Total due                EUR 2,165.80"""
+
+entities = extract_invoice(INVOICE)["entities"]
+print(json.dumps([e.model_dump() for e in entities], indent=2))
+```
+
+```bash title="cURL" lines
+INVOICE='INVOICE
+Northwind Traders GmbH
+Invoice No: NW-2026-0417
+Date: 2026-09-30
+Due: 2026-10-30
+
+Consulting (10h)         EUR 1,500.00
+Cloud hosting (Sept)     EUR 320.00
+
+Subtotal                 EUR 1,820.00
+VAT 19%                  EUR 345.80
+Total due                EUR 2,165.80'
+
+extract_invoice "$INVOICE" | jq '.entities'
+```
+
+</CodeGroup>
 
 **Captured output.** The `entities` array Extract returned for this invoice, reordered to match `INVOICE_ENTITIES`. `start` and `end` index into `INVOICE`, so `INVOICE.slice(8, 30)` is the vendor. The response also carries fields this recipe doesn't use, such as `ocr_text` and a `context` snippet for each entity.
 
@@ -150,7 +456,9 @@ Each `extractInvoice` call is one paid request billed to your OpenRouter account
 
 ## 3. Check the invoice before you post it
 
-`triage` takes the first value Extract found for each field, checks that none are missing, and checks that subtotal plus tax equals the total in one currency. `parseMoney` reads each amount as whole cents (or fils, for three-decimal currencies like the Kuwaiti dinar) and refuses anything it can't read unambiguously, such as a negative amount. Those invoices go to review.
+`triage` takes the first value Extract found for each field, checks that none are missing, and checks that subtotal plus tax equals the total in one currency. `parseMoney` reads each amount as whole cents (or fils, for three-decimal currencies like the Kuwaiti dinar) and refuses anything it can't read unambiguously, such as a negative amount. Those invoices go to review. Two readings are built in: for a two-decimal currency, a single separator followed by exactly three digits is a thousands separator, so `USD 1.234` is 1,234 dollars, and an amount with more decimal places than its currency has is rounded to the nearest minor unit. If your invoices can carry either form with another meaning, reject them in `parseMoney` instead.
+
+<CodeGroup>
 
 ```typescript lines
 type Triage =
@@ -213,11 +521,199 @@ export function triage(entities: Entity[]): Triage {
 }
 ```
 
+```python title="Python" lines
+THREE_DECIMAL_CURRENCIES = {"BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND"}
+"""Currencies whose minor unit has three digits; every other currency is read with two."""
+
+
+def parse_money(raw: str) -> tuple[int, str | None] | None:
+    """Whole minor units (cents, or fils for a three-decimal currency) plus the currency code or symbol.
+    Signs and accounting negatives are refused rather than silently dropped."""
+    if re.search(r"[-()]", raw):
+        return None
+    match = re.search(r"\b[A-Z]{3}\b|[$€£¥]", raw)
+    currency = match.group(0) if match else None
+    decimals = 3 if currency in THREE_DECIMAL_CURRENCIES else 2
+    digits = re.sub(r"[^0-9.,]", "", raw)
+    if decimals == 3 and "," in digits:
+        return None
+    is_lone_thousands_group = (
+        decimals == 2 and len(re.findall(r"[.,]", digits)) == 1 and re.search(r"[.,]\d{3}$", digits) is not None
+    )
+    decimal_is_comma = digits.rfind(",") > digits.rfind(".")
+    if is_lone_thousands_group:
+        normalized = re.sub(r"[.,]", "", digits)
+    elif decimal_is_comma:
+        normalized = digits.replace(".", "").replace(",", ".", 1)
+    else:
+        normalized = digits.replace(",", "")
+    try:
+        # Round half up, as Math.round does in the TypeScript version
+        cents = int((Decimal(normalized) * 10**decimals).quantize(Decimal(1), rounding="ROUND_HALF_UP"))
+    except InvalidOperation:
+        return None
+    return cents, currency
+
+
+def triage(entities: list[Entity]) -> dict:
+    fields: dict[str, str] = {}
+    for entity in entities:
+        if entity.type in INVOICE_FIELDS and entity.type not in fields:
+            fields[entity.type] = entity.text
+    problems = [f"missing_{field}" for field in INVOICE_FIELDS if field not in fields]
+    if all(key in fields for key in ("subtotal", "vat", "total")):
+        subtotal, vat, total = (parse_money(fields[key]) for key in ("subtotal", "vat", "total"))
+        if subtotal is None or vat is None or total is None:
+            problems.append("unparsed_amount")
+        elif len({money[1] for money in (subtotal, vat, total) if money[1] is not None}) > 1:
+            problems.append("currency_mismatch")
+        elif subtotal[0] + vat[0] != total[0]:
+            problems.append("totals_mismatch")
+    if problems:
+        return {"post": False, "problems": problems, "fields": fields}
+    return {"post": True, "fields": fields}
+```
+
+```go title="Go" lines
+type Triage struct {
+	Post     bool              `json:"post"`
+	Problems []string          `json:"problems,omitempty"`
+	Fields   map[string]string `json:"fields"`
+}
+
+type Money struct {
+	Cents    int64
+	Currency string // empty when the amount names no currency
+}
+
+// Currencies whose minor unit has three digits; every other currency is read with two.
+var threeDecimalCurrencies = map[string]bool{"BHD": true, "IQD": true, "JOD": true, "KWD": true, "LYD": true, "OMR": true, "TND": true}
+
+var (
+	currencyPattern = regexp.MustCompile(`\b[A-Z]{3}\b|[$€£¥]`)
+	nonAmount       = regexp.MustCompile(`[^0-9.,]`)
+	loneThousands   = regexp.MustCompile(`[.,]\d{3}$`)
+)
+
+// parseMoney returns whole minor units (cents, or fils for a three-decimal currency) plus the
+// currency code or symbol. Signs and accounting negatives are refused rather than silently dropped.
+func parseMoney(raw string) (Money, bool) {
+	if strings.ContainsAny(raw, "-()") {
+		return Money{}, false
+	}
+	currency := currencyPattern.FindString(raw)
+	decimals := 2
+	if threeDecimalCurrencies[currency] {
+		decimals = 3
+	}
+	digits := nonAmount.ReplaceAllString(raw, "")
+	if decimals == 3 && strings.Contains(digits, ",") {
+		return Money{}, false
+	}
+	isLoneThousandsGroup := decimals == 2 && strings.Count(digits, ".")+strings.Count(digits, ",") == 1 && loneThousands.MatchString(digits)
+	var normalized string
+	switch {
+	case isLoneThousandsGroup:
+		normalized = strings.NewReplacer(".", "", ",", "").Replace(digits)
+	case strings.LastIndex(digits, ",") > strings.LastIndex(digits, "."):
+		normalized = strings.Replace(strings.ReplaceAll(digits, ".", ""), ",", ".", 1)
+	default:
+		normalized = strings.ReplaceAll(digits, ",", "")
+	}
+	value, err := strconv.ParseFloat(normalized, 64)
+	if err != nil {
+		return Money{}, false
+	}
+	return Money{Cents: int64(math.Round(value * math.Pow10(decimals))), Currency: currency}, true
+}
+
+func triage(entities []Entity) Triage {
+	fields := map[string]string{}
+	for _, entity := range entities {
+		if _, seen := fields[entity.Type]; !seen && slices.Contains(invoiceFields, entity.Type) {
+			fields[entity.Type] = entity.Text
+		}
+	}
+	problems := []string{}
+	for _, field := range invoiceFields {
+		if _, ok := fields[field]; !ok {
+			problems = append(problems, "missing_"+field)
+		}
+	}
+	var raws []string
+	for _, field := range []string{"subtotal", "vat", "total"} {
+		if raw, ok := fields[field]; ok {
+			raws = append(raws, raw)
+		}
+	}
+	if len(raws) == 3 {
+		var amounts []Money
+		currencies := map[string]bool{}
+		for _, raw := range raws {
+			if money, ok := parseMoney(raw); ok {
+				amounts = append(amounts, money)
+				if money.Currency != "" {
+					currencies[money.Currency] = true
+				}
+			}
+		}
+		switch {
+		case len(amounts) < 3:
+			problems = append(problems, "unparsed_amount")
+		case len(currencies) > 1:
+			problems = append(problems, "currency_mismatch")
+		case amounts[0].Cents+amounts[1].Cents != amounts[2].Cents:
+			problems = append(problems, "totals_mismatch")
+		}
+	}
+	return Triage{Post: len(problems) == 0, Problems: problems, Fields: fields}
+}
+```
+
+```bash title="cURL" lines
+triage() {
+  jq --argjson fields "$INVOICE_FIELDS" '
+    def parse_money:
+      if test("[-()]") then null else
+        ([match("\\b[A-Z]{3}\\b|[$€£¥]")][0].string) as $cur
+        | (if $cur != null and any("BHD","IQD","JOD","KWD","LYD","OMR","TND"; . == $cur) then 3 else 2 end) as $dec
+        | gsub("[^0-9.,]"; "") as $d
+        | if $dec == 3 and ($d | contains(",")) then null else
+            ($dec == 2 and ([$d | scan("[.,]")] | length) == 1 and ($d | test("[.,]\\d{3}$"))) as $lone
+            | ((($d | rindex(",")) // -1) > (($d | rindex(".")) // -1)) as $comma
+            | (if $lone then $d | gsub("[.,]"; "")
+               elif $comma then $d | gsub("\\."; "") | sub(","; ".")
+               else $d | gsub(","; "") end) as $n
+            | if $n == "" then null
+              else ($n | tonumber? // null) as $v
+                | if $v == null then null
+                  else {cents: ($v * (if $dec == 3 then 1000 else 100 end) | round), currency: $cur} end
+              end
+          end
+      end;
+    (reduce .[] as $e ({};
+      if any($fields[]; . == $e.type) and .[$e.type] == null then .[$e.type] = $e.text else . end)) as $f
+    | [$fields[] | select($f[.] == null) | "missing_" + .]
+      + (if $f.subtotal != null and $f.vat != null and $f.total != null then
+          ([$f.subtotal, $f.vat, $f.total] | map(parse_money)) as $m
+          | if any($m[]; . == null) then ["unparsed_amount"]
+            elif ([$m[].currency | select(. != null)] | unique | length) > 1 then ["currency_mismatch"]
+            elif $m[0].cents + $m[1].cents != $m[2].cents then ["totals_mismatch"]
+            else [] end
+        else [] end)
+    | if length > 0 then {post: false, problems: ., fields: $f} else {post: true, fields: $f} end'
+}
+```
+
+</CodeGroup>
+
 An invoice with an empty `problems` list can post. Anything else goes to review, with `problems` naming what failed. Dates come back exactly as printed (`2026-10-30`, `October 15, 2026`, `31.10.2026`, and `20 Oct 2026` in our runs), so convert `due_date` with your date library before it reaches the ledger.
 
 ## Worked example
 
-The six made-up invoices below cover the layouts an accounts-payable queue sees: the table from step 2, a prose paragraph, a German-English mix with `12.400,00 EUR` amounts, a one-line statement with fields separated by pipes, an invoice whose printed total is \$10 too high, and a freight invoice with no tax line. Save steps 1 to 3 and this block as one file and run it with `bun run invoices.ts`. Step 2's own call runs first and prints the Northwind `entities` array; the loop then prints one line per invoice.
+The six made-up invoices below cover the layouts an accounts-payable queue sees: the table from step 2, a prose paragraph, a German-English mix with `12.400,00 EUR` amounts, a one-line statement with fields separated by pipes, an invoice whose printed total is \$10 too high, and a freight invoice with no tax line. Save steps 1 to 3 and this block as one file and run it with `bun run invoices.ts`. In Go, the step 2 tab opens the file with `package main`, the imports, and the `invoice` input, and the block below is the body of `func main()`. Step 2's own call runs first and prints the Northwind `entities` array; the loop then prints one line per invoice.
+
+<CodeGroup>
 
 ```typescript expandable lines
 const INVOICES: Record<string, string> = {
@@ -251,6 +747,124 @@ for (const [name, text] of Object.entries(INVOICES)) {
   console.log(JSON.stringify({ name, ...triage(entities), usage, latency_ms: Date.now() - started }));
 }
 ```
+
+```python title="Python" lines
+INVOICES = {
+    "table": INVOICE,
+    "paragraph": "Acme Supplies Ltd hereby invoices Contoso Inc for the September order (reference ACM-88213). The goods total $4,200.00 before tax; sales tax of $336.00 applies, bringing the amount due to $4,536.00. Payment is due by October 15, 2026. Thank you for your business.",
+    "german_mix": """Rechnung / Invoice
+Lieferant: Müller Maschinenbau AG
+Rechnungsnummer: RE-2026-1193
+Rechnungsdatum: 01.10.2026   Fällig am: 31.10.2026
+Nettobetrag: 12.400,00 EUR
+MwSt. 19 %: 2.356,00 EUR
+Gesamtbetrag: 14.756,00 EUR""",
+    "one_line": "Globex Corporation | Invoice GX-5531 | Subtotal USD 980.00 | Tax USD 78.40 | Total USD 1,058.40 | Due 2026-11-05",
+    "wrong_total": """INVOICE
+Initech LLC
+Invoice #: IN-7720
+Due date: 2026-10-20
+Subtotal: $2,000.00
+VAT (10%): $200.00
+Total: $2,210.00""",
+    "missing_vat": """Umbrella Logistics
+Invoice UL-30091
+Due: 20 Oct 2026
+Freight services ...................... $750.00
+Amount due ............................ $750.00""",
+}
+
+for name, text in INVOICES.items():
+    started = time.time()
+    result = extract_invoice(text)
+    latency_ms = round((time.time() - started) * 1000)
+    print(json.dumps({"name": name, **triage(result["entities"]), "usage": result["usage"].model_dump(), "latency_ms": latency_ms}, separators=(",", ":"), ensure_ascii=False))
+
+```
+
+```go title="Go" lines
+invoices := []struct{ Name, Text string }{
+	{"table", invoice},
+	{"paragraph", `Acme Supplies Ltd hereby invoices Contoso Inc for the September order (reference ACM-88213). The goods total $4,200.00 before tax; sales tax of $336.00 applies, bringing the amount due to $4,536.00. Payment is due by October 15, 2026. Thank you for your business.`},
+	{"german_mix", `Rechnung / Invoice
+Lieferant: Müller Maschinenbau AG
+Rechnungsnummer: RE-2026-1193
+Rechnungsdatum: 01.10.2026   Fällig am: 31.10.2026
+Nettobetrag: 12.400,00 EUR
+MwSt. 19 %: 2.356,00 EUR
+Gesamtbetrag: 14.756,00 EUR`},
+	{"one_line", `Globex Corporation | Invoice GX-5531 | Subtotal USD 980.00 | Tax USD 78.40 | Total USD 1,058.40 | Due 2026-11-05`},
+	{"wrong_total", `INVOICE
+Initech LLC
+Invoice #: IN-7720
+Due date: 2026-10-20
+Subtotal: $2,000.00
+VAT (10%): $200.00
+Total: $2,210.00`},
+	{"missing_vat", `Umbrella Logistics
+Invoice UL-30091
+Due: 20 Oct 2026
+Freight services ...................... $750.00
+Amount due ............................ $750.00`},
+}
+
+for _, inv := range invoices {
+	started := time.Now()
+	entities, usage, err := extractInvoice(inv.Text)
+	if err != nil {
+		log.Fatal(err)
+	}
+	line, _ := json.Marshal(struct {
+		Name string `json:"name"`
+		Triage
+		Usage     Usage `json:"usage"`
+		LatencyMs int64 `json:"latency_ms"`
+	}{inv.Name, triage(entities), usage, time.Since(started).Milliseconds()})
+	fmt.Println(string(line))
+}
+```
+
+```bash title="cURL" lines
+NAMES=(table paragraph german_mix one_line wrong_total missing_vat)
+TEXTS=(
+  "$INVOICE"
+  'Acme Supplies Ltd hereby invoices Contoso Inc for the September order (reference ACM-88213). The goods total $4,200.00 before tax; sales tax of $336.00 applies, bringing the amount due to $4,536.00. Payment is due by October 15, 2026. Thank you for your business.'
+  'Rechnung / Invoice
+Lieferant: Müller Maschinenbau AG
+Rechnungsnummer: RE-2026-1193
+Rechnungsdatum: 01.10.2026   Fällig am: 31.10.2026
+Nettobetrag: 12.400,00 EUR
+MwSt. 19 %: 2.356,00 EUR
+Gesamtbetrag: 14.756,00 EUR'
+  'Globex Corporation | Invoice GX-5531 | Subtotal USD 980.00 | Tax USD 78.40 | Total USD 1,058.40 | Due 2026-11-05'
+  'INVOICE
+Initech LLC
+Invoice #: IN-7720
+Due date: 2026-10-20
+Subtotal: $2,000.00
+VAT (10%): $200.00
+Total: $2,210.00'
+  'Umbrella Logistics
+Invoice UL-30091
+Due: 20 Oct 2026
+Freight services ...................... $750.00
+Amount due ............................ $750.00'
+)
+
+# jq's clock works on Linux and macOS; `date +%s%3N` needs GNU date
+now_ms() { jq -n 'now * 1000 | floor'; }
+
+for i in "${!NAMES[@]}"; do
+  started=$(now_ms)
+  result=$(extract_invoice "${TEXTS[$i]}") || exit 1
+  latency=$(( $(now_ms) - started ))
+  jq -c --arg name "${NAMES[$i]}" --argjson latency "$latency" \
+    --argjson triage "$(jq '.entities' <<<"$result" | triage)" \
+    '{name: $name} + $triage + {usage: .usage, latency_ms: $latency}' <<<"$result"
+done
+```
+
+</CodeGroup>
 
 **Captured output.** One run of the loop above, one line per invoice:
 

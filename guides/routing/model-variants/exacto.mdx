@@ -64,6 +64,9 @@ const response = await client.responses.create({
   model: "moonshotai/kimi-k2-0905:exacto",
   input: "Draft a concise changelog entry for the Exacto launch.",
 });
+
+console.log(response.output_text);
+
 ```
 
 ```shell title="cURL" lines
@@ -76,7 +79,104 @@ curl https://openrouter.ai/api/v1/responses \
 }'
 ```
 
+```python title="Python" lines
+import os
+from openrouter import OpenRouter
+
+with OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"]) as open_router:
+    response = open_router.responses.send(
+        model="moonshotai/kimi-k2-0905:exacto",
+        input="Draft a concise changelog entry for the Exacto launch.",
+        stream=False,
+    )
+
+    message = next(
+        (item for item in reversed(response.output) if getattr(item, "type", None) == "message"),
+        None,
+    )
+    text = next(
+        (part.text for part in message.content if getattr(part, "type", None) == "output_text"),
+        None,
+    ) if message else None
+    print(text)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":  "moonshotai/kimi-k2-0905:exacto",
+		"input":  "Draft a concise changelog entry for the Exacto launch.",
+		"stream": false,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		log.Fatalf("HTTP %d: %s", resp.StatusCode, b)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	for i := len(result.Output) - 1; i >= 0; i-- {
+		if result.Output[i].Type == "message" {
+			for _, part := range result.Output[i].Content {
+				if part.Type == "output_text" {
+					fmt.Println(part.Text)
+					return
+				}
+			}
+		}
+	}
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+**Exacto Launch — v1.0.0**
+
+- **New:** Launched Exacto, a precision-focused [tool/category] for [core use case]
+- **New:** [Key feature 1] — [one-line benefit]
+- **New:** [Key feature 2] — [one-line benefit]
+- **New:** [Key feature 3] — [one-line benefit]
+
+---
+
+Want me to refine with actual features, or adjust tone (technical, marketing, minimalist)?
+```
 
 <Tip>
   You can still supply fallback models with the `models` array. Any model that carries the `:exacto` suffix will request Exacto sorting when it is selected.

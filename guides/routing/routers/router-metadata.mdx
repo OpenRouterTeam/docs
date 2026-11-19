@@ -51,9 +51,14 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
     input: 'Hello',
   }),
 });
+
+const data = await response.json();
+console.log(JSON.stringify(data, null, 2));
+
 ```
 
 ```python title="Python" lines
+import json
 import requests
 
 response = requests.post(
@@ -68,9 +73,118 @@ response = requests.post(
         'input': 'Hello',
     },
 )
+
+data = response.json()
+print(json.dumps(data, indent=2))
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o-mini",
+		"input": "Hello",
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-OpenRouter-Metadata", "enabled")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+	var out bytes.Buffer
+	if err := json.Indent(&out, data, "", "  "); err != nil {
+		log.Fatal(string(data))
+	}
+	fmt.Println(out.String())
+}
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+{
+  "id": "gen-1794950717-29tDN9rCwFENbLOhrk9l",
+  "object": "response",
+  "created_at": 1794950717,
+  "model": "openai/gpt-4o-mini",
+  "status": "completed",
+  "completed_at": 1794950718,
+  "output": [
+    {
+      "id": "msg_tmp_ii5fhr0a6rp",
+      "type": "message",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Hello! How can I assist you today?",
+          "annotations": [],
+          "logprobs": []
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "incomplete_details": null,
+  "access_programs": null,
+  "tools": [],
+  "tool_choice": "auto",
+  "parallel_tool_calls": true,
+  "max_output_tokens": null,
+  "temperature": 1,
+  "top_p": 1,
+  "presence_penalty": 0,
+  "frequency_penalty": 0,
+  "top_logprobs": 0,
+  "max_tool_calls": null,
+  "metadata": {},
+  "background": false,
+  "previous_response_id": null,
+  "service_tier": "default",
+  ...
+  "openrouter_metadata": {
+    "requested": "openai/gpt-4o-mini",
+    "strategy": "direct",
+    "region": "iad",
+    "summary": "available=1, selected=OpenAI",
+    "attempt": 1,
+    "is_byok": false,
+    "endpoints": {
+      "total": 1,
+      "available": [
+        {
+          "provider": "OpenAI",
+          "model": "openai/gpt-4o-mini",
+          "selected": true
+        }
+      ]
+    }
+  }
+}
+```
+
+This output is abridged: `...` stands for the response fields between `service_tier` and `openrouter_metadata`, and the metadata values vary by request. See [Response shape](#response-shape) for every field.
 
 ### Accepted Values
 

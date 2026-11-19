@@ -107,7 +107,96 @@ curl https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openrouter/free",
+		"input": "Hello! What can you help me with today?",
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("request failed (%d): %s", resp.StatusCode, raw)
+	}
+
+	var data struct {
+		Model  string `json:"model"`
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.Unmarshal(raw, &data); err != nil {
+		log.Fatal(err)
+	}
+
+	printed := false
+	for i := len(data.Output) - 1; i >= 0 && !printed; i-- {
+		if data.Output[i].Type == "message" {
+			for _, part := range data.Output[i].Content {
+				if part.Type == "output_text" {
+					fmt.Println(part.Text)
+					printed = true
+					break
+				}
+			}
+		}
+	}
+	if !printed {
+		fmt.Println(string(raw))
+	}
+	// Check which model was selected
+	fmt.Println("Model used:", data.Model)
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Hello! I'm here and ready to help! 
+
+I can assist you with a wide range of tasks, including:
+
+*   **Answering Questions:** Fact-checking, explaining concepts, and giving advice across various topics.
+*   **Content Creation:** Writing emails, articles, stories, reports, or presentations.
+*   **Logical Reasoning & Problem Solving:** Analyzing data, breaking down complex issues, or brainstorming solutions.
+*   **Coding & Tech Support:** Writing code, debugging programs, or explaining technical concepts.
+*   **Language Translation:** Converting text between different languages.
+*   **Editing & Proofreading:** Reviewing your writing for grammar, spelling, or style issues.
+*   **Creative Support:** Brainstorming ideas, generating prompts, or exploring creative concepts.
+
+What would you like to work on today?
+Model used: xingchen-agi/xing4.0-29b-a4b:free
+```
 
 ## Response
 

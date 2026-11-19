@@ -18,19 +18,327 @@ icon: stopwatch
 
 ## Basic Usage
 
+<CodeGroup>
+
 ```typescript lines
-import { OpenRouter, stepCountIs } from '@openrouter/agent';
+import { OpenRouter, callModel, stepCountIs, tool } from '@openrouter/agent';
+import { z } from 'zod';
 
 const openrouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-const result = openrouter.callModel({
+const searchTool = tool({
+  name: 'search',
+  description: 'Search for information on a topic',
+  inputSchema: z.object({ query: z.string() }),
+  execute: async ({ query }) => ({
+    results: [`Result about ${query}`],
+  }),
+});
+
+const analysisTool = tool({
+  name: 'analyze',
+  description: 'Analyze a piece of text',
+  inputSchema: z.object({ text: z.string() }),
+  execute: async ({ text }) => ({
+    summary: `Analysis of: ${text}`,
+  }),
+});
+
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'Research this topic thoroughly',
   tools: [searchTool, analysisTool],
   stopWhen: stepCountIs(5), // Stop after 5 steps
 });
+
+console.log(await result.getText());
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+from pydantic import BaseModel
+from openrouter_agent import OpenRouter, call_model, step_count_is, tool
+
+class SearchInput(BaseModel):
+    query: str
+
+class AnalyzeInput(BaseModel):
+    text: str
+
+search_tool = tool(
+    name="search",
+    description="Search for information on a topic",
+    input_schema=SearchInput,
+    execute=lambda params, ctx: {"results": [f"Result about {params.query}"]},
+)
+
+analysis_tool = tool(
+    name="analyze",
+    description="Analyze a piece of text",
+    input_schema=AnalyzeInput,
+    execute=lambda params, ctx: {"summary": f"Analysis of: {params.text}"},
+)
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "Research this topic thoroughly",
+            "tools": [search_tool, analysis_tool],
+            "stop_when": step_count_is(5),  # Stop after 5 steps
+        },
+    )
+
+    print(await result.get_text())
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func fn(name, desc, param string) map[string]any {
+	return map[string]any{"type": "function", "function": map[string]any{
+		"name": name, "description": desc,
+		"parameters": map[string]any{"type": "object", "required": []string{param},
+			"properties": map[string]any{param: map[string]string{"type": "string"}}},
+	}}
+}
+
+func main() {
+	tools := []any{
+		fn("search", "Search for information on a topic", "query"),
+		fn("analyze", "Analyze a piece of text", "text"),
+	}
+	messages := []any{map[string]string{"role": "user", "content": "Research this topic thoroughly"}}
+
+	var text string
+	for step := 0; ; step++ {
+		request := map[string]any{"model": "openai/gpt-5-nano", "messages": messages}
+		if step < 5 { // After 5 steps, send no tools so the model answers from the results it has
+			request["tools"] = tools
+		}
+		body, _ := json.Marshal(request)
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		var out struct {
+			Choices []struct{ Message json.RawMessage } `json:"choices"`
+		}
+		raw, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			panic(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			panic(fmt.Sprintf("request failed: %s: %s", resp.Status, raw))
+		}
+		if err := json.Unmarshal(raw, &out); err != nil {
+			panic(fmt.Sprintf("decode response: %v", err))
+		}
+		if len(out.Choices) == 0 {
+			panic(fmt.Sprintf("no choices in response: %s", raw))
+		}
+
+		var msg struct {
+			Content   string `json:"content"`
+			ToolCalls []struct {
+				ID       string `json:"id"`
+				Function struct{ Name, Arguments string }
+			} `json:"tool_calls"`
+		}
+		if err := json.Unmarshal(out.Choices[0].Message, &msg); err != nil {
+			panic(fmt.Sprintf("decode message: %v", err))
+		}
+		text = msg.Content
+		if len(msg.ToolCalls) == 0 {
+			break
+		}
+		messages = append(messages, out.Choices[0].Message)
+
+		for _, tc := range msg.ToolCalls {
+			// Reject malformed arguments or a missing required argument before running the tool
+			required := map[string]string{"search": "query", "analyze": "text"}[tc.Function.Name]
+			var args map[string]string
+			var result any
+			if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil || required == "" || args[required] == "" {
+				result = map[string]any{"error": "unknown tool or missing argument"}
+			} else if tc.Function.Name == "search" {
+				result = map[string]any{"results": []string{"Result about " + args["query"]}}
+			} else {
+				result = map[string]any{"summary": "Analysis of: " + args["text"]}
+			}
+			content, _ := json.Marshal(result)
+			messages = append(messages, map[string]string{"role": "tool", "tool_call_id": tc.ID, "content": string(content)})
+		}
+	}
+
+	fmt.Println(text)
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+I can do a thorough research pass, but I need your topic to start. Please provide:
+
+- The topic or primary question you want researched
+- Any scope constraints (time period, geography, sector, etc.)
+- Desired deliverables (executive summary, literature review, annotated bibliography, critical analysis, data sources, etc.)
+- Preferred citation style (APA, MLA, Chicago, etc.)
+- Any constraints on sources (peer-reviewed only, include gray literature, languages, etc.)
+- Target length or deadline (rough word count or pages)
+
+If you’d like, I can propose a few topics you can choose from, then proceed with a deep dive. For example:
+- The impact of AI on labor markets and wage polarization
+- Microplastics and their ecological/health effects
+- Advances and challenges in quantum computing for cryptography
+- The effects of remote work on productivity and teamwork in tech industries
+- Climate finance: barriers and opportunities in developing countries
+
+What topic should I research? If you prefer, tell me a field (e.g., biology, economics, history) and I’ll suggest a focused topic. Once you confirm, I’ll outline a plan and start compiling a comprehensive, sourced analysis with summaries and citations.
+```
+
+## Go helpers
+
+The Go tabs on the rest of this page are fragments. They call the helpers below, which need the imports `bytes`, `encoding/json`, `fmt`, `io`, `net/http`, and `os`. `callTool` is application-defined: it takes a tool name and its decoded arguments and returns the tool's output. Tool definitions such as `searchTool` are built with `fn` from the example above.
+
+When a stop check fires on a reply that still contains tool calls, the fragments call `finish`, which runs the pending calls and then asks for one final answer with tool calling forbidden. Fragments that stop by leaving the loop after a tool round (a token, cost, or step budget in the loop condition) need the same final turn, shown in [Final response after stop](#final-response-after-stop).
+
+```go title="Go" lines
+type ToolCall struct {
+	ID       string `json:"id"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type Usage struct {
+	TotalTokens int     `json:"total_tokens"`
+	Cost        float64 `json:"cost"`
+}
+
+// Message is one assistant reply, with the response's finish reason and usage attached
+type Message struct {
+	Content      string     `json:"content"`
+	ToolCalls    []ToolCall `json:"tool_calls"`
+	FinishReason string     `json:"-"`
+	Usage        Usage      `json:"-"`
+}
+
+// ToolResult is one executed tool call
+type ToolResult struct {
+	CallID   string
+	ToolName string
+	Result   map[string]any
+}
+
+// Message is the tool-role message that returns the result to the model
+func (r ToolResult) Message() map[string]string {
+	content, _ := json.Marshal(r.Result)
+	return map[string]string{"role": "tool", "tool_call_id": r.CallID, "content": string(content)}
+}
+
+// send makes one request. Pass "none" as toolChoice to keep the tools in the request but forbid calls.
+func send(model string, messages []any, tools []any, toolChoice ...string) (Message, json.RawMessage) {
+	request := map[string]any{"model": model, "messages": messages, "tools": tools}
+	if len(toolChoice) > 0 {
+		request["tool_choice"] = toolChoice[0]
+	}
+	body, _ := json.Marshal(request)
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	raw, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		panic(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		panic(fmt.Sprintf("request failed: %s: %s", resp.Status, raw))
+	}
+	var out struct {
+		Choices []struct {
+			Message      json.RawMessage `json:"message"`
+			FinishReason string          `json:"finish_reason"`
+		} `json:"choices"`
+		Usage Usage `json:"usage"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		panic(fmt.Sprintf("decode response: %v", err))
+	}
+	if len(out.Choices) == 0 {
+		panic(fmt.Sprintf("no choices in response: %s", raw))
+	}
+	var msg Message
+	if err := json.Unmarshal(out.Choices[0].Message, &msg); err != nil {
+		panic(fmt.Sprintf("decode message: %v", err))
+	}
+	msg.FinishReason = out.Choices[0].FinishReason
+	msg.Usage = out.Usage
+	return msg, out.Choices[0].Message
+}
+
+// execTools runs each call through callTool and keeps the call ID with its result
+func execTools(calls []ToolCall) []ToolResult {
+	var results []ToolResult
+	for _, tc := range calls {
+		var args map[string]any
+		result := map[string]any{"error": "invalid arguments"}
+		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err == nil {
+			result = callTool(tc.Function.Name, args)
+		}
+		results = append(results, ToolResult{CallID: tc.ID, ToolName: tc.Function.Name, Result: result})
+	}
+	return results
+}
+
+// runTools runs the calls and returns their tool-role messages
+func runTools(calls []ToolCall) []any {
+	var messages []any
+	for _, r := range execTools(calls) {
+		messages = append(messages, r.Message())
+	}
+	return messages
+}
+
+// finish runs any pending tool calls, then makes one final turn with tool calling forbidden
+func finish(model string, messages []any, tools []any, msg Message, raw json.RawMessage) string {
+	if len(msg.ToolCalls) == 0 {
+		return msg.Content
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+	final, _ := send(model, messages, tools, "none")
+	return final.Content
+}
 ```
 
 ## Built-in Stop Conditions
@@ -38,6 +346,8 @@ const result = openrouter.callModel({
 ### stepCountIs(n)
 
 Stop after a specific number of steps:
+
+<CodeGroup>
 
 ```typescript lines
 import { stepCountIs } from '@openrouter/agent';
@@ -50,9 +360,44 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+from openrouter_agent import call_model, step_count_is
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Analyze this data",
+        "tools": [analysis_tool],
+        "stop_when": step_count_is(10),  # Stop after 10 steps
+    },
+)
+
+```
+
+```go title="Go" lines
+tools := []any{analysisTool}
+messages := []any{map[string]string{"role": "user", "content": "Analyze this data"}}
+
+var text string
+for step := 1; ; step++ {
+	msg, raw := send("openai/gpt-5-nano", messages, tools)
+	if len(msg.ToolCalls) == 0 || step == 10 { // Stop after 10 steps
+		text = finish("openai/gpt-5-nano", messages, tools, msg, raw)
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+}
+```
+
+</CodeGroup>
+
 ### hasToolCall(name)
 
 Stop when a specific tool is called:
+
+<CodeGroup>
 
 ```typescript lines
 import { hasToolCall } from '@openrouter/agent';
@@ -74,9 +419,62 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+from pydantic import BaseModel
+from openrouter_agent import call_model, has_tool_call, tool
+
+class FinishInput(BaseModel):
+    summary: str
+
+finish_tool = tool(
+    name="finish",
+    description="Call this when the task is complete",
+    input_schema=FinishInput,
+    execute=lambda params, ctx: {"done": True},
+)
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Research the history of the Eiffel Tower until you have enough information, then call finish",
+        "tools": [search_tool, finish_tool],
+        "stop_when": has_tool_call("finish"),  # Stop when finish tool is called
+    },
+)
+
+```
+
+```go title="Go" lines
+finishTool := fn("finish", "Call this when the task is complete", "summary")
+
+tools := []any{searchTool, finishTool}
+messages := []any{map[string]string{"role": "user", "content": "Research until you have enough information, then call finish"}}
+
+var msg Message
+var raw any
+for done := false; !done; {
+	msg, raw = send("openai/gpt-5-nano", messages, tools)
+	if len(msg.ToolCalls) == 0 {
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+	for _, tc := range msg.ToolCalls {
+		if tc.Function.Name == "finish" {
+			done = true // Stop when finish tool is called
+		}
+	}
+}
+```
+
+</CodeGroup>
+
 ### maxTokensUsed(n)
 
 Stop after using a certain number of tokens:
+
+<CodeGroup>
 
 ```typescript lines
 import { maxTokensUsed } from '@openrouter/agent';
@@ -89,24 +487,97 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+from openrouter_agent import call_model, max_tokens_used
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Generate content",
+        "tools": [writing_tool],
+        "stop_when": max_tokens_used(5000),  # Stop after 5000 total tokens
+    },
+)
+```
+
+```go title="Go" lines
+tools := []any{writingTool}
+messages := []any{map[string]string{"role": "user", "content": "Generate content"}}
+
+var text string
+totalTokens := 0
+for totalTokens < 5000 { // Stop after 5000 total tokens
+	msg, raw := send("openai/gpt-5-nano", messages, tools)
+	text = msg.Content
+	totalTokens += msg.Usage.TotalTokens
+	if len(msg.ToolCalls) == 0 {
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+}
+```
+
+</CodeGroup>
+
 ### maxCost(amount)
 
 Stop after reaching a cost threshold:
 
-```typescript lines
-import { maxCost } from '@openrouter/agent';
+<CodeGroup>
 
-const result = openrouter.callModel({
+```typescript lines
+import { callModel, maxCost } from '@openrouter/agent';
+
+const result = callModel(openrouter, {
   model: 'openai/gpt-5.2',
   input: 'Perform extensive analysis',
-  tools: [analysisTool],
+  tools: [analysisTool] as const,
   stopWhen: maxCost(1.00), // Stop after $1.00 spent
 });
 ```
 
+```python title="Python" lines
+from openrouter_agent import call_model, max_cost
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5.2",
+        "input": "Perform extensive analysis",
+        "tools": [analysis_tool],
+        "stop_when": max_cost(1.00),  # Stop after $1.00 spent
+    },
+)
+
+```
+
+```go title="Go" lines
+tools := []any{analysisTool}
+messages := []any{map[string]string{"role": "user", "content": "Perform extensive analysis"}}
+
+var text string
+totalCost := 0.0
+for totalCost < 1.00 { // Stop after $1.00 spent
+	msg, raw := send("openai/gpt-5.2", messages, tools)
+	text = msg.Content
+	totalCost += msg.Usage.Cost
+	if len(msg.ToolCalls) == 0 {
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+}
+```
+
+</CodeGroup>
+
 ### finishReasonIs(reason)
 
 Stop on a specific finish reason:
+
+<CodeGroup>
 
 ```typescript lines
 import { finishReasonIs } from '@openrouter/agent';
@@ -119,9 +590,44 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+from openrouter_agent import call_model, finish_reason_is
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Complete this task",
+        "tools": [task_tool],
+        "stop_when": finish_reason_is("stop"),  # Stop when model finishes naturally
+    },
+)
+
+```
+
+```go title="Go" lines
+tools := []any{taskTool}
+messages := []any{map[string]string{"role": "user", "content": "Complete this task"}}
+
+var text string
+for {
+	msg, raw := send("openai/gpt-5-nano", messages, tools)
+	text = msg.Content
+	if msg.FinishReason == "stop" || len(msg.ToolCalls) == 0 { // Stop when model finishes naturally
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+}
+```
+
+</CodeGroup>
+
 ## Combining Conditions
 
 Pass an array to stop on any condition:
+
+<CodeGroup>
 
 ```typescript lines
 import { stepCountIs, hasToolCall, maxCost } from '@openrouter/agent';
@@ -138,6 +644,50 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+from openrouter_agent import call_model, step_count_is, has_tool_call, max_cost
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5.2",
+        "input": "Research thoroughly but stay within budget",
+        "tools": [search_tool, finish_tool],
+        "stop_when": [
+            step_count_is(10),        # Maximum 10 steps
+            max_cost(0.50),           # Maximum $0.50
+            has_tool_call("finish"),  # Or when finish is called
+        ],
+    },
+)
+
+```
+
+```go title="Go" lines
+tools := []any{searchTool, finishTool}
+messages := []any{map[string]string{"role": "user", "content": "Research thoroughly but stay within budget"}}
+
+var text string
+totalCost := 0.0
+for step, done := 0, false; step < 10 && totalCost < 0.50 && !done; step++ { // Maximum 10 steps, maximum $0.50
+	msg, raw := send("openai/gpt-5.2", messages, tools)
+	text = msg.Content
+	totalCost += msg.Usage.Cost
+	if len(msg.ToolCalls) == 0 {
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+	for _, tc := range msg.ToolCalls {
+		if tc.Function.Name == "finish" {
+			done = true // Or when finish is called
+		}
+	}
+}
+```
+
+</CodeGroup>
+
 Execution stops when **any** condition is met.
 
 ## Final Response After Stop
@@ -146,11 +696,15 @@ A stop condition can fire while the model is still emitting tool calls. By defau
 
 Tune it with `allowFinalResponse`:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+import { callModel, stepCountIs } from '@openrouter/agent';
+
+const result = callModel(openrouter, {
   model: 'openai/gpt-5.2',
   input: 'Research this topic',
-  tools: [searchTool],
+  tools: [searchTool] as const,
   stopWhen: stepCountIs(5),
   // default (omitted or `true`): final turn + built-in directive
 
@@ -162,6 +716,62 @@ const result = openrouter.callModel({
   // allowFinalResponse: false,
 });
 ```
+
+```python title="Python" lines
+from openrouter_agent import call_model, step_count_is
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5.2",
+        "input": "Research this topic",
+        "tools": [search_tool],
+        "stop_when": step_count_is(5),
+        # default (omitted or `True`): final turn + built-in directive
+
+        # override the directive wording:
+        # "allow_final_response": "Summarize what you found so far.",
+        # make the final turn without appending any message:
+        # "allow_final_response": "",
+        # disable the final turn (run ends on the halted tool-call turn):
+        # "allow_final_response": False,
+    },
+)
+
+```
+
+```go title="Go" lines
+tools := []any{searchTool}
+messages := []any{map[string]string{"role": "user", "content": "Research this topic"}}
+
+// default: final turn + directive. Override the wording below,
+// use "" to make the final turn without appending any message,
+// or set allowFinalResponse = false to end on the halted tool-call turn.
+allowFinalResponse := true
+directive := "Summarize what you found so far."
+
+var text string
+pending := false
+for step := 0; step < 5; step++ { // stepCountIs(5)
+	msg, raw := send("openai/gpt-5.2", messages, tools)
+	text = msg.Content
+	pending = len(msg.ToolCalls) > 0
+	if !pending {
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...) // pending calls get outputs
+}
+if pending && allowFinalResponse {
+	if directive != "" {
+		messages = append(messages, map[string]string{"role": "user", "content": directive})
+	}
+	msg, _ := send("openai/gpt-5.2", messages, tools, "none") // tools stay, calling forbidden
+	text = msg.Content
+}
+```
+
+</CodeGroup>
 
 <Note>
   Without the directive, models that emit tool-call syntax as text can leak an unparsed tool call (e.g. `<tool_call>…`) into the final content when the loop stops mid-tool-call. The default directive exists to prevent exactly that.
@@ -177,16 +787,64 @@ This tolerance only applies after at least one completed tool execution round. R
 
 Opt back into the strict contract with `strictFinalResponse: true`:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+import { callModel } from '@openrouter/agent';
+
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-mini',
   input: 'Look up the weather in Paris',
-  tools: [weatherTool],
+  tools: [weatherTool] as const,
   // Throw if the final turn after tool rounds returns empty output
   // (restores pre-0.8.0 behavior).
   strictFinalResponse: true,
 });
 ```
+
+```python title="Python" lines
+from openrouter_agent import call_model
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-mini",
+        "input": "Look up the weather in Paris",
+        "tools": [weather_tool],
+        # Raise if the final turn after tool rounds returns empty output
+        # (restores pre-0.8.0 behavior).
+        "strict_final_response": True,
+    },
+)
+
+```
+
+```go title="Go" lines
+tools := []any{weatherTool}
+messages := []any{map[string]string{"role": "user", "content": "Look up the weather in Paris"}}
+
+// Throw if the final turn after tool rounds returns empty output
+// (restores pre-0.8.0 behavior).
+strictFinalResponse := true
+
+var text string
+toolRounds := 0
+for step := 0; step < 10; step++ {
+	msg, raw := send("openai/gpt-5-mini", messages, tools)
+	text = msg.Content
+	if len(msg.ToolCalls) == 0 {
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+	toolRounds++
+}
+if text == "" && (strictFinalResponse || toolRounds == 0) {
+	log.Fatal("empty final response")
+}
+```
+
+</CodeGroup>
 
 Set `strictFinalResponse: true` if your code depends on non-empty final text and you'd rather see an error than an empty completion. Leave it off (the default) to keep tool-terminal runs from being reported as failures.
 
@@ -194,11 +852,15 @@ Set `strictFinalResponse: true` if your code depends on non-empty final text and
 
 Create custom conditions with a function:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+import { callModel } from '@openrouter/agent';
+
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'Process data',
-  tools: [processTool],
+  tools: [processTool] as const,
   stopWhen: ({ steps }) => {
     // Stop after 20 steps
     if (steps.length >= 20) return true;
@@ -212,6 +874,71 @@ const result = openrouter.callModel({
   },
 });
 ```
+
+```python title="Python" lines
+from openrouter_agent import call_model
+
+
+def should_stop(ctx):
+    steps = ctx["steps"]
+    # Stop after 20 steps
+    if len(steps) >= 20:
+        return True
+
+    # Stop if last step had no tool calls
+    last_step = steps[-1] if steps else None
+    if last_step and not last_step.tool_calls:
+        return True
+
+    # Continue otherwise
+    return False
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Process data",
+        "tools": [process_tool],
+        "stop_when": should_stop,
+    },
+)
+```
+
+```go title="Go" lines
+tools := []any{processTool}
+messages := []any{map[string]string{"role": "user", "content": "Process data"}}
+
+stopWhen := func(steps []Message) bool {
+	// Stop after 20 steps
+	if len(steps) >= 20 {
+		return true
+	}
+
+	// Stop if last step had no tool calls
+	if n := len(steps); n > 0 && len(steps[n-1].ToolCalls) == 0 {
+		return true
+	}
+
+	// Continue otherwise
+	return false
+}
+
+var steps []Message
+var text string
+for {
+	msg, raw := send("openai/gpt-5-nano", messages, tools)
+	steps = append(steps, msg)
+	if stopWhen(steps) {
+		text = finish("openai/gpt-5-nano", messages, tools, msg, raw)
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+}
+```
+
+</CodeGroup>
 
 ### StopConditionContext
 
@@ -231,12 +958,7 @@ interface StepResult {
   response: Response;
   toolCalls?: ParsedToolCall[];
   toolResults?: ToolExecutionResult[];
-  tokens: {
-    input: number;
-    output: number;
-    cached: number;
-  };
-  cost: number;
+  usage?: Usage | null; // token counts and `cost`, as in `step.usage?.cost`
 }
 ```
 
@@ -246,49 +968,162 @@ interface StepResult {
 
 Stop after a time limit:
 
+<CodeGroup>
+
 ```typescript lines
+import { callModel } from '@openrouter/agent';
+
 const startTime = Date.now();
 const maxDuration = 30000; // 30 seconds
 
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'Work on this task',
-  tools: [workTool],
+  tools: [workTool] as const,
   stopWhen: () => {
     return Date.now() - startTime > maxDuration;
   },
 });
 ```
 
+```python title="Python" lines
+import time
+from openrouter_agent import call_model
+
+start_time = time.time()
+max_duration = 30  # 30 seconds
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Work on this task",
+        "tools": [work_tool],
+        "stop_when": lambda ctx: time.time() - start_time > max_duration,
+    },
+)
+
+```
+
+```go title="Go" lines
+tools := []any{workTool}
+messages := []any{map[string]string{"role": "user", "content": "Work on this task"}}
+
+startTime := time.Now()
+maxDuration := 30 * time.Second // 30 seconds
+
+stopWhen := func() bool {
+	return time.Since(startTime) > maxDuration
+}
+
+var text string
+for {
+	msg, raw := send("openai/gpt-5-nano", messages, tools)
+	if len(msg.ToolCalls) == 0 || stopWhen() {
+		text = finish("openai/gpt-5-nano", messages, tools, msg, raw)
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+}
+```
+
+</CodeGroup>
+
 ### Content-Based Stopping
 
 Stop based on response content:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+import { callModel } from '@openrouter/agent';
+
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
-  input: 'Search until you find the answer',
-  tools: [searchTool],
+  input: 'Use the search tool to find the capital of Australia. Keep searching until you find the answer.',
+  tools: [searchTool] as const,
   stopWhen: ({ steps }) => {
     const lastStep = steps[steps.length - 1];
     if (!lastStep) return false;
 
-    // Check if response contains certain keywords
-    const content = JSON.stringify(lastStep.response);
+    // Check if the last step contains certain keywords
+    const content = JSON.stringify(lastStep) ?? '';
     return content.includes('ANSWER FOUND') || content.includes('TASK COMPLETE');
   },
 });
 ```
 
+```python title="Python" lines
+from openrouter_agent import call_model
+
+
+def should_stop(ctx):
+    steps = ctx["steps"]
+    last_step = steps[-1] if steps else None
+    if not last_step:
+        return False
+
+    # Check if the last step contains certain keywords
+    content = str(last_step)
+    return "ANSWER FOUND" in content or "TASK COMPLETE" in content
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Use the search tool to find the capital of Australia. Keep searching until you find the answer.",
+        "tools": [search_tool],
+        "stop_when": should_stop,
+    },
+)
+
+```
+
+```go title="Go" lines
+tools := []any{searchTool}
+messages := []any{map[string]string{"role": "user", "content": "Use the search tool to find the capital of Australia. Keep searching until you find the answer."}}
+
+stopWhen := func(steps []Message) bool {
+	if len(steps) == 0 {
+		return false
+	}
+	lastStep := steps[len(steps)-1]
+
+	// Check if the last step contains certain keywords
+	content, _ := json.Marshal(lastStep)
+	return strings.Contains(string(content), "ANSWER FOUND") || strings.Contains(string(content), "TASK COMPLETE")
+}
+
+var steps []Message
+var text string
+for {
+	msg, raw := send("openai/gpt-5-nano", messages, tools)
+	steps = append(steps, msg)
+	if len(msg.ToolCalls) == 0 || stopWhen(steps) {
+		text = finish("openai/gpt-5-nano", messages, tools, msg, raw)
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+}
+```
+
+</CodeGroup>
+
 ### Quality-Based Stopping
 
 Stop when results meet quality threshold:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
-  input: 'Improve this text until it scores above 0.9',
-  tools: [improverTool, scorerTool],
+  input:
+    'Use the improver and scorer tools to improve this text until the scorer gives it a score above 0.9: "Our product is good and people like it alot."',
+  tools: [improverTool, scorerTool] as const,
   stopWhen: ({ steps }) => {
     // Look for score in tool results
     for (const step of steps) {
@@ -302,6 +1137,78 @@ const result = openrouter.callModel({
   },
 });
 ```
+
+```python title="Python" lines
+import json
+
+from openrouter_agent import call_model
+
+
+def should_stop(ctx):
+    # Look for score in tool results (each tool result is a dict)
+    for step in ctx["steps"]:
+        for tool_result in step.tool_results or []:
+            name = tool_result.get("tool_name") or tool_result.get("name")
+            output = tool_result.get("result") or tool_result.get("output") or {}
+            if isinstance(output, str):
+                try:
+                    output = json.loads(output)
+                except ValueError:
+                    continue
+            if name == "scorer" and isinstance(output, dict) and output.get("score", 0) > 0.9:
+                return True
+    return False
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": 'Use the improver and scorer tools to improve this text until the scorer gives it a score above 0.9: "Our product is good and people like it alot."',
+        "tools": [improver_tool, scorer_tool],
+        "stop_when": should_stop,
+    },
+)
+
+```
+
+```go title="Go" lines
+tools := []any{improverTool, scorerTool}
+messages := []any{map[string]string{"role": "user", "content": `Use the improver and scorer tools to improve this text until the scorer gives it a score above 0.9: "Our product is good and people like it alot."`}}
+
+var toolResults []ToolResult
+stopWhen := func() bool {
+	// Look for score in tool results
+	for _, r := range toolResults {
+		if score, ok := r.Result["score"].(float64); r.ToolName == "scorer" && ok && score > 0.9 {
+			return true
+		}
+	}
+	return false
+}
+
+var text string
+for {
+	msg, raw := send("openai/gpt-5-nano", messages, tools)
+	if len(msg.ToolCalls) == 0 {
+		text = msg.Content
+		break
+	}
+	messages = append(messages, raw)
+	for _, r := range execTools(msg.ToolCalls) {
+		toolResults = append(toolResults, r)
+		messages = append(messages, r.Message()) // tool-role message with the matching call ID
+	}
+	// Check the score before another tool-enabled turn
+	if stopWhen() {
+		final, _ := send("openai/gpt-5-nano", messages, tools, "none")
+		text = final.Content
+		break
+	}
+}
+```
+
+</CodeGroup>
 
 ### Combination with Early Exit
 
@@ -335,25 +1242,56 @@ const result = openrouter.callModel({
 
 If you were using `maxToolRounds`, migrate to `stopWhen`:
 
+<CodeGroup>
+
 ```typescript lines
+import { callModel, stepCountIs } from '@openrouter/agent';
+
 // Before: maxToolRounds
-const result = openrouter.callModel({
-  model: 'openai/gpt-5-nano',
-  input: 'Hello',
-  tools: [myTool],
-  maxToolRounds: 5,
-});
+// const result = callModel(openrouter, {
+//   model: 'openai/gpt-5-nano',
+//   input: 'Hello',
+//   tools: [myTool] as const,
+//   maxToolRounds: 5,
+// });
 
 // After: stopWhen
-import { stepCountIs } from '@openrouter/agent';
-
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'Hello',
-  tools: [myTool],
+  tools: [myTool] as const,
   stopWhen: stepCountIs(5),
 });
 ```
+
+```python title="Python" lines
+from openrouter_agent import call_model, step_count_is
+
+# Before: max_tool_rounds
+# result = call_model(
+#     client,
+#     {
+#         "model": "openai/gpt-5-nano",
+#         "input": "Hello",
+#         "tools": [my_tool],
+#         "max_tool_rounds": 5,
+#     },
+# )
+
+# After: stop_when
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Hello",
+        "tools": [my_tool],
+        "stop_when": step_count_is(5),
+    },
+)
+
+```
+
+</CodeGroup>
 
 ### Default Behavior
 
@@ -365,6 +1303,8 @@ If `stopWhen` is not specified, the loop runs until the model produces a turn wi
 
 Always include a hard limit to prevent runaway execution:
 
+<CodeGroup>
+
 ```typescript lines
 stopWhen: [
   stepCountIs(100),    // Hard limit
@@ -373,21 +1313,54 @@ stopWhen: [
 ],
 ```
 
+```python title="Python" lines
+"stop_when": [
+    step_count_is(100),  # Hard limit
+    max_cost(10.00),  # Budget limit
+    custom_condition,  # Your logic
+],
+```
+
+```go title="Go" lines
+stopWhen := []func([]Message) bool{
+	stepCountIs(100), // Hard limit
+	maxCost(10.00),   // Budget limit
+	customCondition,  // Your logic
+}
+
+var steps []Message
+var text string
+for {
+	msg, raw := send("openai/gpt-5-nano", messages, tools)
+	steps = append(steps, msg)
+	if len(msg.ToolCalls) == 0 || slices.ContainsFunc(stopWhen, func(c func([]Message) bool) bool { return c(steps) }) {
+		text = finish("openai/gpt-5-nano", messages, tools, msg, raw)
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+}
+```
+
+</CodeGroup>
+
 ### Log Stop Reasons
 
 Track why execution stopped:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'Task',
-  tools: [taskTool],
+  tools: [taskTool] as const,
   stopWhen: ({ steps }) => {
     if (steps.length >= 10) {
       console.log('Stopped: step limit');
       return true;
     }
-    const totalCost = steps.reduce((sum, step) => sum + (step.cost ?? 0), 0);
+    const totalCost = steps.reduce((sum, step) => sum + (step.usage?.cost ?? 0), 0);
     if (totalCost >= 1.00) {
       console.log('Stopped: cost limit');
       return true;
@@ -397,9 +1370,76 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+from openrouter_agent import call_model
+
+
+def stop_when(ctx):
+    steps = ctx["steps"]
+    if len(steps) >= 10:
+        print("Stopped: step limit")
+        return True
+    total_cost = sum(getattr(step.usage, "cost", None) or 0 for step in steps)
+    if total_cost >= 1.00:
+        print("Stopped: cost limit")
+        return True
+    return False
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Task",
+        "tools": [task_tool],
+        "stop_when": stop_when,
+    },
+)
+
+```
+
+```go title="Go" lines
+tools := []any{taskTool}
+messages := []any{map[string]string{"role": "user", "content": "Task"}}
+
+var steps []Message
+stopWhen := func() bool {
+	if len(steps) >= 10 {
+		fmt.Println("Stopped: step limit")
+		return true
+	}
+	totalCost := 0.0
+	for _, step := range steps {
+		totalCost += step.Usage.Cost
+	}
+	if totalCost >= 1.00 {
+		fmt.Println("Stopped: cost limit")
+		return true
+	}
+	return false
+}
+
+var text string
+for {
+	msg, raw := send("openai/gpt-5-nano", messages, tools)
+	steps = append(steps, msg)
+	if len(msg.ToolCalls) == 0 || stopWhen() {
+		text = finish("openai/gpt-5-nano", messages, tools, msg, raw)
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+}
+
+```
+
+</CodeGroup>
+
 ### Test Conditions
 
 Verify conditions work as expected:
+
+<CodeGroup>
 
 ```typescript lines
 // Test with low limits first
@@ -410,6 +1450,43 @@ const testResult = openrouter.callModel({
   stopWhen: stepCountIs(2), // Low limit for testing
 });
 ```
+
+```python title="Python" lines
+# Test with low limits first
+test_result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Test task",
+        "tools": [test_tool],
+        "stop_when": step_count_is(2),  # Low limit for testing
+    },
+)
+
+```
+
+```go title="Go" lines
+tools := []any{testTool}
+messages := []any{map[string]string{"role": "user", "content": "Test task"}}
+
+// Test with low limits first
+stopWhen := stepCountIs(2) // Low limit for testing
+
+var steps []Message
+var testResult string
+for {
+	msg, raw := send("openai/gpt-5-nano", messages, tools)
+	steps = append(steps, msg)
+	if len(msg.ToolCalls) == 0 || stopWhen(steps) {
+		testResult = finish("openai/gpt-5-nano", messages, tools, msg, raw)
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+}
+```
+
+</CodeGroup>
 
 ## See Also
 

@@ -66,6 +66,9 @@ After I answer, run this model-selection process:
 You need:
 
 - Node.js 20 or newer
+- For the Python tabs, Python 3 with `requests` (`pip install requests`)
+- For the Go tabs, Go 1.21 or newer
+- For the cURL tabs, bash, `curl`, and `jq`
 - An OpenRouter API key available as `OPENROUTER_API_KEY` only if you submit the optional generation request
 - A stable, directly downloadable image URL if you test an image-to-video request
 
@@ -83,6 +86,8 @@ Submitting `POST /api/v1/videos` starts a real video generation job and may spen
 
 Call the dedicated video model endpoint:
 
+<CodeGroup>
+
 ```js lines
 const response = await fetch("https://openrouter.ai/api/v1/videos/models");
 
@@ -95,6 +100,78 @@ const models = data;
 
 console.log(models.map((model) => model.id));
 ```
+
+```python title="Python" lines
+import json
+import math
+
+import requests
+
+response = requests.get("https://openrouter.ai/api/v1/videos/models")
+
+if not response.ok:
+    raise Exception(response.text)
+
+models = response.json()["data"]
+
+print(json.dumps([model["id"] for model in models], indent=2))
+
+```
+
+```go title="Go" lines
+// The fields the later steps filter and score on. Declare this at package level.
+type VideoModel struct {
+	ID                    string         `json:"id"`
+	SupportedResolutions  []string       `json:"supported_resolutions"`
+	SupportedAspectRatios []string       `json:"supported_aspect_ratios"`
+	SupportedDurations    []int          `json:"supported_durations"`
+	SupportedFrameImages  []string       `json:"supported_frame_images"`
+	PricingSkus           map[string]any `json:"pricing_skus"`
+}
+
+resp, err := http.Get("https://openrouter.ai/api/v1/videos/models")
+if err != nil {
+	log.Fatal(err)
+}
+defer resp.Body.Close()
+
+if resp.StatusCode != http.StatusOK {
+	body, _ := io.ReadAll(resp.Body)
+	log.Fatal(string(body))
+}
+
+// Keep the full model objects: later steps read their capabilities and pricing
+var result struct {
+	Data []VideoModel `json:"data"`
+}
+if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	log.Fatal(err)
+}
+models := result.Data
+
+ids := make([]string, len(models))
+for i, model := range models {
+	ids[i] = model.ID
+}
+out, err := json.MarshalIndent(ids, "", "  ")
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(out))
+```
+
+```bash title="cURL" lines
+set -o pipefail # a failed request fails the pipeline instead of leaving models empty
+
+# Keep the full model objects: later steps read their capabilities and pricing
+models=$(curl -sSf https://openrouter.ai/api/v1/videos/models \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  | jq -c '.data') || exit 1
+
+echo "$models" | jq '[.[].id]'
+```
+
+</CodeGroup>
 
 Actual output from the model-list call:
 
@@ -141,6 +218,8 @@ Start by translating the product request into model requirements: clip length, o
 
 For example, this helper finds models that can generate a 720p, vertical, image-to-video clip with first-frame support:
 
+<CodeGroup>
+
 ```js expandable lines
 function findVideoModels(models) {
   return models.filter((model) => {
@@ -181,6 +260,151 @@ console.log(
   ),
 );
 ```
+
+```python title="Python" lines
+def find_video_models(models):
+    return [
+        model
+        for model in models
+        if "720p" in (model.get("supported_resolutions") or [])
+        and "9:16" in (model.get("supported_aspect_ratios") or [])
+        and 5 in (model.get("supported_durations") or [])
+        and "first_frame" in (model.get("supported_frame_images") or [])
+    ]
+
+
+def get_lowest_advertised_price(model):
+    prices = []
+    for price in (model.get("pricing_skus") or {}).values():
+        try:
+            value = float(price)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(value):
+            prices.append(value)
+
+    return min(prices) if prices else math.inf
+
+
+def displayed_price(model):
+    # math.inf marks a model with no usable price. Print null, which strict JSON readers accept.
+    price = get_lowest_advertised_price(model)
+    return price if math.isfinite(price) else None
+
+
+matching_models = sorted(find_video_models(models), key=get_lowest_advertised_price)
+
+if not matching_models:
+    raise Exception("No matching video model found.")
+
+print(
+    json.dumps(
+        [
+            {
+                "id": match["id"],
+                "lowest_advertised_price": displayed_price(match),
+            }
+            for match in matching_models
+        ],
+        indent=2,
+    )
+)
+
+```
+
+```go title="Go" lines
+findVideoModels := func(models []VideoModel) []VideoModel {
+	var matches []VideoModel
+	for _, model := range models {
+		supportsRequest := slices.Contains(model.SupportedResolutions, "720p") &&
+			slices.Contains(model.SupportedAspectRatios, "9:16") &&
+			slices.Contains(model.SupportedDurations, 5) &&
+			slices.Contains(model.SupportedFrameImages, "first_frame")
+
+		if supportsRequest {
+			matches = append(matches, model)
+		}
+	}
+	return matches
+}
+
+getLowestAdvertisedPrice := func(model VideoModel) float64 {
+	lowest := math.Inf(1)
+	for _, raw := range model.PricingSkus {
+		var price float64
+		switch v := raw.(type) {
+		case float64:
+			price = v
+		case string:
+			parsed, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				continue
+			}
+			price = parsed
+		default:
+			continue
+		}
+		if !math.IsInf(price, 0) && !math.IsNaN(price) {
+			lowest = math.Min(lowest, price)
+		}
+	}
+	return lowest
+}
+
+matchingModels := findVideoModels(models)
+sort.SliceStable(matchingModels, func(i, j int) bool {
+	return getLowestAdvertisedPrice(matchingModels[i]) < getLowestAdvertisedPrice(matchingModels[j])
+})
+
+if len(matchingModels) == 0 {
+	log.Fatal("No matching video model found.")
+}
+
+// +Inf marks a model with no usable price. JSON cannot encode it, so print null instead.
+type match struct {
+	ID                    string   `json:"id"`
+	LowestAdvertisedPrice *float64 `json:"lowest_advertised_price"`
+}
+summary := make([]match, len(matchingModels))
+for i, m := range matchingModels {
+	summary[i] = match{ID: m.ID}
+	if price := getLowestAdvertisedPrice(m); !math.IsInf(price, 0) {
+		summary[i].LowestAdvertisedPrice = &price
+	}
+}
+out, err := json.MarshalIndent(summary, "", "  ")
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(out))
+```
+
+```bash title="cURL" lines
+matching_models=$(echo "$models" | jq -c '
+  def has($field; $value): (.[$field] // []) | index([$value]) != null;
+  def lowest_price:
+    [(.pricing_skus // {})[] | tonumber? | select(isfinite)]
+    | if length > 0 then min else infinite end;
+
+  [.[] | select(
+      has("supported_resolutions"; "720p") and
+      has("supported_aspect_ratios"; "9:16") and
+      has("supported_durations"; 5) and
+      has("supported_frame_images"; "first_frame"))]
+  | sort_by(lowest_price)
+  | if length == 0 then error("No matching video model found.") else . end
+') || exit 1
+
+# A model with no usable price sorts last above and prints null here
+echo "$matching_models" | jq '
+  def lowest_price:
+    [(.pricing_skus // {})[] | tonumber? | select(isfinite)]
+    | if length > 0 then min else null end;
+  map({id, lowest_advertised_price: lowest_price})
+'
+```
+
+</CodeGroup>
 
 Example output:
 
@@ -270,6 +494,8 @@ At this point, you have models that satisfy the hard requirements. Score the mat
 ## Step 3: Score the matching models by priority
 
 Use weighted priorities to make the final choice. For example, a draft workflow might prioritize speed and cost, while a production render might prioritize quality and cost:
+
+<CodeGroup>
 
 ```js expandable lines
 const priorityProfiles = {
@@ -392,6 +618,287 @@ console.log(
 console.log(`Use ${model.id}`);
 ```
 
+```python title="Python" lines
+priority_profiles = {
+    "fast_and_cheap": {"speed": 0.55, "cost": 0.35, "quality": 0.1},
+    "quality_and_cost": {"speed": 0.15, "cost": 0.3, "quality": 0.55},
+    "balanced": {"speed": 0.33, "cost": 0.33, "quality": 0.34},
+}
+
+resolution_ranks = {"480p": 1, "720p": 2, "1080p": 3, "4K": 4}
+
+
+def get_resolution_rank(model):
+    return max(
+        [0]
+        + [
+            resolution_ranks.get(resolution, 0)
+            for resolution in (model.get("supported_resolutions") or [])
+        ]
+    )
+
+
+def get_speed_score(model):
+    model_id = model["id"].lower()
+
+    if "fast" in model_id:
+        return 1
+    if "lite" in model_id or "std" in model_id:
+        return 0.8
+    if "pro" in model_id or "o1" in model_id:
+        return 0.35
+
+    return 0.55
+
+
+def normalize(value, min_value, max_value, invert=False):
+    if not math.isfinite(value) or max_value == min_value:
+        return 0.5
+
+    score = (value - min_value) / (max_value - min_value)
+
+    return 1 - score if invert else score
+
+
+def score_video_models(models, weights):
+    prices = [p for p in map(get_lowest_advertised_price, models) if math.isfinite(p)]
+    min_price = min(prices) if prices else 0
+    max_price = max(prices) if prices else 0
+    max_resolution_rank = max([0] + [get_resolution_rank(m) for m in models])
+
+    ranked = []
+    for model in models:
+        price = get_lowest_advertised_price(model)
+        speed_score = get_speed_score(model)
+        cost_score = (
+            normalize(price, min_price, max_price, invert=True)
+            if math.isfinite(price)
+            else 0
+        )
+        quality_score = (
+            0.5
+            if max_resolution_rank == 0
+            else get_resolution_rank(model) / max_resolution_rank
+        )
+        score = (
+            weights["speed"] * speed_score
+            + weights["cost"] * cost_score
+            + weights["quality"] * quality_score
+        )
+
+        ranked.append(
+            {
+                "model": model,
+                "id": model["id"],
+                "score": round(score, 3),
+                "lowest_advertised_price": price if math.isfinite(price) else None,
+                "speed_score": round(speed_score, 3),
+                "cost_score": round(cost_score, 3),
+                "quality_score": round(quality_score, 3),
+            }
+        )
+
+    return sorted(ranked, key=lambda entry: entry["score"], reverse=True)
+
+
+def summarize_scores(ranked_models):
+    return [
+        {key: value for key, value in entry.items() if key != "model"}
+        for entry in ranked_models[:4]
+    ]
+
+
+fast_and_cheap_models = score_video_models(
+    matching_models, priority_profiles["fast_and_cheap"]
+)
+quality_and_cost_models = score_video_models(
+    matching_models, priority_profiles["quality_and_cost"]
+)
+model = fast_and_cheap_models[0]["model"] if fast_and_cheap_models else None
+
+if not model:
+    raise Exception("No scored video model found.")
+
+print(
+    json.dumps(
+        {
+            "fast_and_cheap": summarize_scores(fast_and_cheap_models),
+            "quality_and_cost": summarize_scores(quality_and_cost_models),
+        },
+        indent=2,
+    )
+)
+print(f"Use {model['id']}")
+```
+
+```go title="Go" lines
+type priorityWeights struct{ Speed, Cost, Quality float64 }
+
+priorityProfiles := map[string]priorityWeights{
+	"fastAndCheap":   {Speed: 0.55, Cost: 0.35, Quality: 0.1},
+	"qualityAndCost": {Speed: 0.15, Cost: 0.3, Quality: 0.55},
+	"balanced":       {Speed: 0.33, Cost: 0.33, Quality: 0.34},
+}
+
+resolutionRanks := map[string]int{"480p": 1, "720p": 2, "1080p": 3, "4K": 4}
+
+getResolutionRank := func(model VideoModel) int {
+	rank := 0
+	for _, resolution := range model.SupportedResolutions {
+		rank = max(rank, resolutionRanks[resolution])
+	}
+	return rank
+}
+
+getSpeedScore := func(model VideoModel) float64 {
+	id := strings.ToLower(model.ID)
+	switch {
+	case strings.Contains(id, "fast"):
+		return 1
+	case strings.Contains(id, "lite") || strings.Contains(id, "std"):
+		return 0.8
+	case strings.Contains(id, "pro") || strings.Contains(id, "o1"):
+		return 0.35
+	}
+	return 0.55
+}
+
+normalize := func(value, lo, hi float64, invert bool) float64 {
+	if math.IsInf(value, 0) || math.IsNaN(value) || hi == lo {
+		return 0.5
+	}
+	score := (value - lo) / (hi - lo)
+	if invert {
+		return 1 - score
+	}
+	return score
+}
+
+round3 := func(v float64) float64 { return math.Round(v*1000) / 1000 }
+
+type scoredModel struct {
+	Model                 VideoModel `json:"-"`
+	ID                    string     `json:"id"`
+	Score                 float64    `json:"score"`
+	LowestAdvertisedPrice *float64   `json:"lowest_advertised_price"` // nil prints null when no price is usable
+	SpeedScore            float64    `json:"speed_score"`
+	CostScore             float64    `json:"cost_score"`
+	QualityScore          float64    `json:"quality_score"`
+}
+
+scoreVideoModels := func(models []VideoModel, weights priorityWeights) []scoredModel {
+	minPrice, maxPrice := math.Inf(1), math.Inf(-1)
+	maxResolutionRank := 0
+	for _, model := range models {
+		if price := getLowestAdvertisedPrice(model); !math.IsInf(price, 0) {
+			minPrice, maxPrice = math.Min(minPrice, price), math.Max(maxPrice, price)
+		}
+		maxResolutionRank = max(maxResolutionRank, getResolutionRank(model))
+	}
+	if math.IsInf(minPrice, 0) {
+		minPrice, maxPrice = 0, 0
+	}
+
+	ranked := make([]scoredModel, 0, len(models))
+	for _, model := range models {
+		price := getLowestAdvertisedPrice(model)
+		speedScore := getSpeedScore(model)
+		costScore := 0.0
+		var displayedPrice *float64
+		if !math.IsInf(price, 0) {
+			costScore = normalize(price, minPrice, maxPrice, true)
+			displayedPrice = &price
+		}
+		qualityScore := 0.5
+		if maxResolutionRank != 0 {
+			qualityScore = float64(getResolutionRank(model)) / float64(maxResolutionRank)
+		}
+		score := weights.Speed*speedScore + weights.Cost*costScore + weights.Quality*qualityScore
+
+		ranked = append(ranked, scoredModel{
+			Model:                 model,
+			ID:                    model.ID,
+			Score:                 round3(score),
+			LowestAdvertisedPrice: displayedPrice,
+			SpeedScore:            round3(speedScore),
+			CostScore:             round3(costScore),
+			QualityScore:          round3(qualityScore),
+		})
+	}
+	sort.SliceStable(ranked, func(i, j int) bool { return ranked[i].Score > ranked[j].Score })
+	return ranked
+}
+
+summarizeScores := func(ranked []scoredModel) []scoredModel {
+	return ranked[:min(4, len(ranked))]
+}
+
+fastAndCheapModels := scoreVideoModels(matchingModels, priorityProfiles["fastAndCheap"])
+qualityAndCostModels := scoreVideoModels(matchingModels, priorityProfiles["qualityAndCost"])
+
+if len(fastAndCheapModels) == 0 {
+	log.Fatal("No scored video model found.")
+}
+model := fastAndCheapModels[0].Model
+
+result, err := json.MarshalIndent(struct {
+	FastAndCheap   []scoredModel `json:"fast_and_cheap"`
+	QualityAndCost []scoredModel `json:"quality_and_cost"`
+}{summarizeScores(fastAndCheapModels), summarizeScores(qualityAndCostModels)}, "", "  ")
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(result))
+fmt.Printf("Use %s\n", model.ID)
+```
+
+```bash title="cURL" lines
+ranked=$(echo "$matching_models" | jq -c '
+  def lowest_price:
+    [(.pricing_skus // {})[] | tonumber? | select(isfinite)]
+    | if length > 0 then min else infinite end;
+  def res_rank:
+    [(.supported_resolutions // [])[] as $r
+      | {"480p": 1, "720p": 2, "1080p": 3, "4K": 4} | .[$r] // 0] + [0] | max;
+  def speed:
+    (.id | ascii_downcase) as $id
+    | if ($id | contains("fast")) then 1
+      elif ($id | contains("lite")) or ($id | contains("std")) then 0.8
+      elif ($id | contains("pro")) or ($id | contains("o1")) then 0.35
+      else 0.55 end;
+  def round3: (. * 1000 | round) / 1000;
+  def score($w):
+    [.[] | lowest_price | select(isfinite)] as $prices
+    | ($prices | min // 0) as $min | ($prices | max // 0) as $max
+    | ([.[] | res_rank] + [0] | max) as $max_rank
+    | map(lowest_price as $p | speed as $s
+        | (if ($p | isfinite | not) then 0
+           elif $max == $min then 0.5
+           else 1 - ($p - $min) / ($max - $min) end) as $c
+        | (if $max_rank == 0 then 0.5 else res_rank / $max_rank end) as $q
+        | {id,
+           score: ($w.speed * $s + $w.cost * $c + $w.quality * $q | round3),
+           lowest_advertised_price: (if ($p | isfinite) then $p else null end),
+           speed_score: ($s | round3),
+           cost_score: ($c | round3),
+           quality_score: ($q | round3)})
+    | sort_by(-.score);
+
+  {fast_and_cheap: score({speed: 0.55, cost: 0.35, quality: 0.1})[:4],
+   quality_and_cost: score({speed: 0.15, cost: 0.3, quality: 0.55})[:4]}
+') || exit 1
+
+model_id=$(echo "$ranked" | jq -er '.fast_and_cheap[0].id') || {
+  echo "No scored video model found." >&2
+  exit 1
+}
+
+echo "$ranked" | jq .
+echo "Use $model_id"
+```
+
+</CodeGroup>
+
 Actual output from the scoring helper:
 
 ```json expandable lines
@@ -475,7 +982,9 @@ Pick the model that best fits your product needs after capability matching. For 
 
 ## Step 4: Preview the generation request
 
-Before submitting, have the implementation build the exact request body it will send. This makes capability mismatches visible before starting a paid job:
+Before submitting, have the implementation build the exact request body it will send. This makes capability mismatches visible before starting a paid job. Steps 4 and 5 have no Python or Go tab: the preview is shown in JavaScript and cURL, and the submission in JavaScript only. If you followed the Python or Go tabs, switch to one of those tabs here, or build the same request body in your language from the fields shown below.
+
+<CodeGroup>
 
 ```js expandable lines
 const firstFrameUrl = process.env.FIRST_FRAME_URL;
@@ -504,6 +1013,25 @@ const requestBody = {
 
 console.log(JSON.stringify(requestBody, null, 2));
 ```
+
+```bash title="cURL" lines
+: "${FIRST_FRAME_URL:?Set FIRST_FRAME_URL to a directly downloadable image URL.}"
+
+request_body=$(jq -n --arg model "$model_id" --arg url "$FIRST_FRAME_URL" '{
+  model: $model,
+  prompt: "A handheld vertical product shot of a ceramic mug on a sunny kitchen counter",
+  duration: 5,
+  resolution: "720p",
+  aspect_ratio: "9:16",
+  frame_images: [
+    {type: "image_url", image_url: {url: $url}, frame_type: "first_frame"}
+  ]
+}')
+
+echo "$request_body"
+```
+
+</CodeGroup>
 
 Before submitting, check that your image URL returns `200` with an image content type:
 

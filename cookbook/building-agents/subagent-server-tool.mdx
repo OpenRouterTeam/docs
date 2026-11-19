@@ -72,6 +72,8 @@ Return the changed files, the delegation boundary, the request body shape, the r
 You need:
 
 - Node.js 20 or newer
+- For the TypeScript SDK samples, the `@openrouter/sdk` and `@openrouter/agent` packages (`npm install @openrouter/sdk @openrouter/agent`)
+- For the cURL samples, `jq` to parse responses and stream events
 - An OpenRouter API key in `OPENROUTER_API_KEY`
 - A workflow that already calls OpenRouter (Chat Completions, Responses, or Agent SDK)
 - An orchestrator model that supports tool calling (e.g. `~anthropic/claude-opus-latest`). Check the model's capabilities on the [model page](https://openrouter.ai/models) before choosing.
@@ -169,6 +171,65 @@ request_body = build_delegation_request(
 )
 ```
 
+```go title="Go" lines
+type SubagentTool struct {
+	Type       string            `json:"type"`
+	Parameters map[string]string `json:"parameters"`
+}
+
+type DelegationRequest struct {
+	Model        string         `json:"model"`
+	Instructions string         `json:"instructions"`
+	Input        string         `json:"input"`
+	Tools        []SubagentTool `json:"tools"`
+	ToolChoice   string         `json:"tool_choice"`
+}
+
+func buildDelegationRequest(task, orchestratorModel, workerModel string) DelegationRequest {
+	return DelegationRequest{
+		Model: orchestratorModel,
+		Instructions: "You are a senior orchestrator. Break complex tasks into focused subtasks. " +
+			"Delegate routine work (summarization, extraction, reformatting, drafting) " +
+			"to the subagent. Include all context the worker needs in task_description — " +
+			"it cannot see this conversation. Keep planning and integration for yourself.",
+		Input: task,
+		Tools: []SubagentTool{
+			{
+				Type:       "openrouter:subagent",
+				Parameters: map[string]string{"model": workerModel},
+			},
+		},
+		ToolChoice: "auto",
+	}
+}
+
+var requestBody = buildDelegationRequest(
+	"Analyze this API changelog. Summarize each section, list all breaking changes, and draft a migration guide.",
+	"~anthropic/claude-opus-latest",
+	"~anthropic/claude-haiku-latest",
+)
+```
+
+```bash title="cURL" lines
+REQUEST_BODY=$(cat <<'EOF'
+{
+  "model": "~anthropic/claude-opus-latest",
+  "instructions": "You are a senior orchestrator. Break complex tasks into focused subtasks. Delegate routine work (summarization, extraction, reformatting, drafting) to the subagent. Include all context the worker needs in task_description — it cannot see this conversation. Keep planning and integration for yourself.",
+  "input": "Analyze this API changelog. Summarize each section, list all breaking changes, and draft a migration guide.",
+  "tools": [
+    {
+      "type": "openrouter:subagent",
+      "parameters": {
+        "model": "~anthropic/claude-haiku-latest"
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}
+EOF
+)
+```
+
 </CodeGroup>
 
 Wire the request body into your app's existing request path. Here's the shape of the call and response parsing:
@@ -177,27 +238,34 @@ Wire the request body into your app's existing request path. Here's the shape of
 
 ```typescript title="TypeScript SDK" lines
 import { OpenRouter } from "@openrouter/sdk";
+import { callModel, serverTool } from "@openrouter/agent";
 
 const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
 
-// The SDK uses camelCase field names and drops unknown keys, so map the
-// fetch-shaped body explicitly instead of spreading it.
-const result = await client.responses.send({
-  responsesRequest: {
-    model: requestBody.model,
-    instructions: requestBody.instructions,
-    input: requestBody.input,
-    tools: requestBody.tools,
-    toolChoice: 'auto',
-  },
+// The task refers to "this API changelog", so include the changelog text in the input.
+const changelog = `## v3.0.0
+### Authentication
+- BREAKING: API keys must now be sent in the Authorization header; the ?api_key= query parameter is removed.
+### Endpoints
+- BREAKING: GET /v2/users is removed; use GET /v3/users (paginated with cursor instead of page).
+- Added POST /v3/users/bulk for batch creation.
+### Responses
+- BREAKING: The created field is renamed to created_at and is now an ISO 8601 string.
+- Error responses now include a request_id field.
+### Rate limits
+- Default limit raised from 60 to 120 requests per minute.`;
+
+// callModel uses camelCase options, so map the fetch-shaped body explicitly.
+// The subagent is a server tool: OpenRouter runs it, so there is nothing to execute locally.
+const result = callModel(client, {
+  model: requestBody.model,
+  instructions: requestBody.instructions,
+  input: `${requestBody.input}\n\n${changelog}`,
+  tools: requestBody.tools.map((t) => serverTool(t)),
+  toolChoice: "auto",
 });
 
-if (!("output" in result)) {
-  throw new Error("Expected a non-streaming response");
-}
-
-const message = [...result.output].reverse().find((item) => item.type === "message");
-const answer = message?.content.find((part) => part.type === "output_text")?.text;
+const answer = await result.getText();
 ```
 
 ```js title="JavaScript (fetch)" lines
@@ -260,6 +328,71 @@ curl -s https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```go title="Go" lines
+// The task refers to "this API changelog", so include the changelog text in the input.
+changelog := `## v3.0.0
+### Authentication
+- BREAKING: API keys must now be sent in the Authorization header; the ?api_key= query parameter is removed.
+### Endpoints
+- BREAKING: GET /v2/users is removed; use GET /v3/users (paginated with cursor instead of page).
+- Added POST /v3/users/bulk for batch creation.
+### Responses
+- BREAKING: The created field is renamed to created_at and is now an ISO 8601 string.
+- Error responses now include a request_id field.
+### Rate limits
+- Default limit raised from 60 to 120 requests per minute.`
+
+requestBody.Input = requestBody.Input + "\n\n" + changelog
+
+// The subagent is a server tool: OpenRouter runs it, so there is nothing to execute locally.
+body, err := json.Marshal(requestBody)
+if err != nil {
+	log.Fatal(err)
+}
+req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+if err != nil {
+	log.Fatal(err)
+}
+req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+req.Header.Set("Content-Type", "application/json")
+
+resp, err := http.DefaultClient.Do(req)
+if err != nil {
+	log.Fatal(err)
+}
+defer resp.Body.Close()
+if resp.StatusCode != http.StatusOK {
+	b, _ := io.ReadAll(resp.Body)
+	log.Fatalf("%s: %s", resp.Status, b)
+}
+
+var result struct {
+	Output []struct {
+		Type    string `json:"type"`
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	} `json:"output"`
+}
+if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	log.Fatal(err)
+}
+
+answer := ""
+for _, item := range result.Output {
+	if item.Type != "message" {
+		continue
+	}
+	for _, c := range item.Content {
+		if c.Type == "output_text" {
+			answer += c.Text
+		}
+	}
+}
+fmt.Println(answer)
+```
+
 </CodeGroup>
 
 The response follows the standard [Responses API format](/api_reference/responses/overview). Server tools resolve server-side: the orchestrator's subagent calls happen inside OpenRouter's agentic loop, and you don't execute them. The response `output` records each delegation as an `openrouter:subagent` item, followed by a `message` item whose `output_text` part holds the final integrated answer. The `usage` object reflects the combined token spend per [Server tools: Usage Tracking](/guides/features/server-tools#usage-tracking).
@@ -315,6 +448,8 @@ The orchestrator receives the result as a tool response and continues generating
 
 When a subtask needs external data, pass server tools to the worker. The worker runs as a mini agent over those tools before producing its outcome.
 
+<CodeGroup>
+
 ```js expandable lines
 const requestBody = {
   model: "~anthropic/claude-opus-latest",
@@ -337,6 +472,89 @@ const requestBody = {
 };
 ```
 
+```python title="Python" lines
+# Include the report text so the worker has the competitor names to research.
+q2_report = """Q2 Report (excerpt)
+Company: Acme Observability, a SaaS monitoring platform for mid-market engineering teams.
+Competitive landscape: We lost deals this quarter mainly to Datadog and New Relic,
+and Grafana Labs is increasingly showing up in open-source-leaning accounts."""
+
+request_body = {
+    "model": "~anthropic/claude-opus-latest",
+    "input": (
+        "Research competitors mentioned in our Q2 report and draft a competitive analysis.\n\n"
+        + q2_report
+    ),
+    "tools": [
+        {
+            "type": "openrouter:subagent",
+            "parameters": {
+                "model": "~anthropic/claude-haiku-latest",
+                "instructions": (
+                    "You are a research assistant. Use web search to find current data. "
+                    "Return structured findings with sources."
+                ),
+                "tools": [
+                    {"type": "openrouter:web_search"},
+                    {"type": "openrouter:web_fetch"},
+                ],
+            },
+        },
+    ],
+}
+```
+
+```go title="Go" lines
+// The task refers to "our Q2 report", so include the relevant report text in the input.
+q2Report := `Q2 Report excerpt (Competitive landscape):
+Our main competitors this quarter were Notion, Coda, and Airtable.
+- Notion launched new AI features and continued to grow in the SMB segment.
+- Coda pushed its enterprise offering with new admin controls.
+- Airtable shifted focus toward enterprise app-building.
+Our product: a collaborative docs-and-database workspace for mid-market teams.`
+
+requestBody := map[string]any{
+	"model": "~anthropic/claude-opus-latest",
+	"input": "Research competitors mentioned in our Q2 report and draft a competitive analysis.\n\n" + q2Report,
+	"tools": []map[string]any{
+		{
+			"type": "openrouter:subagent",
+			"parameters": map[string]any{
+				"model": "~anthropic/claude-haiku-latest",
+				"instructions": "You are a research assistant. Use web search to find current data. " +
+					"Return structured findings with sources.",
+				"tools": []map[string]any{
+					{"type": "openrouter:web_search"},
+					{"type": "openrouter:web_fetch"},
+				},
+			},
+		},
+	},
+}
+```
+
+```bash title="cURL" lines
+REQUEST_BODY='{
+  "model": "~anthropic/claude-opus-latest",
+  "input": "Research the competitors mentioned in this Q2 report excerpt and draft a short competitive analysis.\n\nQ2 report excerpt: We sell a team documentation and wiki product to mid-size software companies. This quarter we lost several enterprise deals to Notion and Coda, and Atlassian Confluence introduced more aggressive pricing for teams under 100 seats.",
+  "tools": [
+    {
+      "type": "openrouter:subagent",
+      "parameters": {
+        "model": "~anthropic/claude-haiku-latest",
+        "instructions": "You are a research assistant. Use web search to find current data. Return structured findings with sources.",
+        "tools": [
+          {"type": "openrouter:web_search"},
+          {"type": "openrouter:web_fetch"}
+        ]
+      }
+    }
+  ]
+}'
+```
+
+</CodeGroup>
+
 The worker's tool use happens inside the subagent call. Only its final text is returned to the orchestrator. The orchestrator never sees the worker's intermediate tool calls or search results, just the finished outcome.
 
 Two constraints on nested tools:
@@ -347,6 +565,8 @@ Two constraints on nested tools:
 ## 4. Tune the worker for cost and quality
 
 The subagent's `parameters` let you control how the worker generates. Use them to keep cost predictable.
+
+<CodeGroup>
 
 ```js lines
 const tools = [
@@ -363,6 +583,53 @@ const tools = [
   },
 ];
 ```
+
+```python title="Python" lines
+tools = [
+    {
+        "type": "openrouter:subagent",
+        "parameters": {
+            "model": "~anthropic/claude-haiku-latest",
+            "instructions": "Complete the task exactly as described. Be concise and structured.",
+            "max_completion_tokens": 1024,
+            "temperature": 0.2,
+            "reasoning": {"effort": "low"},
+        },
+    },
+]
+```
+
+```go title="Go" lines
+tools := []map[string]any{
+	{
+		"type": "openrouter:subagent",
+		"parameters": map[string]any{
+			"model":                 "~anthropic/claude-haiku-latest",
+			"instructions":          "Complete the task exactly as described. Be concise and structured.",
+			"max_completion_tokens": 1024,
+			"temperature":           0.2,
+			"reasoning":             map[string]any{"effort": "low"},
+		},
+	},
+}
+```
+
+```bash title="cURL" lines
+TOOLS='[
+  {
+    "type": "openrouter:subagent",
+    "parameters": {
+      "model": "~anthropic/claude-haiku-latest",
+      "instructions": "Complete the task exactly as described. Be concise and structured.",
+      "max_completion_tokens": 1024,
+      "temperature": 0.2,
+      "reasoning": {"effort": "low"}
+    }
+  }
+]'
+```
+
+</CodeGroup>
 
 | Parameter | What it controls |
 |-----------|-----------------|
@@ -394,6 +661,8 @@ data: [DONE]
 
 Most SSE client libraries ignore comment lines (lines starting with `:`) automatically. Here's a minimal consumer:
 
+<CodeGroup>
+
 ```js expandable lines
 const response = await fetch("https://openrouter.ai/api/v1/responses", {
   method: "POST",
@@ -414,6 +683,7 @@ const response = await fetch("https://openrouter.ai/api/v1/responses", {
 const reader = response.body.getReader();
 const decoder = new TextDecoder();
 let buffer = "";
+let completed = false;
 
 while (true) {
   const { done, value } = await reader.read();
@@ -441,9 +711,236 @@ while (true) {
     }
     if (event.type === "error") throw new Error(event.message);
     if (event.type === "response.output_text.delta") process.stdout.write(event.delta);
+    if (event.type === "response.completed") completed = true;
   }
   if (streamDone) break;
 }
+// A clean end of stream without response.completed means the summary is partial.
+if (!completed) throw new Error("Stream ended before response.completed");
+```
+
+```python title="Python" lines
+import json
+import os
+
+import requests
+
+response = requests.post(
+    "https://openrouter.ai/api/v1/responses",
+    headers={
+        "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "model": "~anthropic/claude-sonnet-latest",
+        "input": "Summarize this document: OpenRouter provides a unified API for hundreds of AI models, with automatic fallbacks, provider routing, and usage-based pricing.",
+        "tools": [
+            {
+                "type": "openrouter:subagent",
+                "parameters": {
+                    "model": "~anthropic/claude-haiku-latest",
+                    "instructions": "Complete the task exactly as described. Be concise and structured.",
+                },
+            },
+        ],
+        "stream": True,
+    },
+    stream=True,
+)
+response.raise_for_status()
+
+completed = False
+for raw in response.iter_lines(decode_unicode=True):
+    if not raw or raw.startswith(":"):  # skip blanks and heartbeat comments
+        continue
+    if not raw.startswith("data: "):
+        continue
+    payload = raw[6:]
+    if payload == "[DONE]":
+        break
+    try:
+        event = json.loads(payload)
+    except json.JSONDecodeError:
+        continue
+    if event.get("type") == "response.failed":
+        error = event["response"].get("error") or {}
+        raise RuntimeError(error.get("message", "Delegation failed"))
+    if event.get("type") == "response.incomplete":
+        details = event["response"].get("incomplete_details") or {}
+        raise RuntimeError(f"Delegation incomplete: {details.get('reason', 'unknown reason')}")
+    if event.get("type") == "error":
+        raise RuntimeError(event.get("message"))
+    if event.get("type") == "response.output_text.delta":
+        print(event["delta"], end="", flush=True)
+    if event.get("type") == "response.completed":
+        completed = True
+print()
+# A clean end of stream without response.completed means the summary is partial.
+if not completed:
+    raise RuntimeError("Stream ended before response.completed")
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "~anthropic/claude-sonnet-latest",
+		"input": "Summarize this document: OpenRouter provides a unified API for hundreds of AI models, with automatic fallbacks, provider routing, and usage-based pricing.",
+		"tools": []map[string]any{
+			{
+				"type": "openrouter:subagent",
+				"parameters": map[string]any{
+					"model":        "~anthropic/claude-haiku-latest",
+					"instructions": "Complete the task exactly as described. Be concise and structured.",
+				},
+			},
+		},
+		"stream": true,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		detail, _ := io.ReadAll(resp.Body)
+		log.Fatalf("request failed: %s: %s", resp.Status, detail)
+	}
+
+	completed := false
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1024*1024), 16*1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, ":") || !strings.HasPrefix(line, "data: ") {
+			continue // heartbeat comment or non-data line
+		}
+		payload := strings.TrimPrefix(line, "data: ")
+		if payload == "[DONE]" {
+			break
+		}
+		var event struct {
+			Type     string `json:"type"`
+			Delta    string `json:"delta"`
+			Message  string `json:"message"`
+			Response struct {
+				Error             *struct{ Message string } `json:"error"`
+				IncompleteDetails *struct{ Reason string }  `json:"incomplete_details"`
+			} `json:"response"`
+		}
+		if json.Unmarshal([]byte(payload), &event) != nil {
+			continue
+		}
+		switch event.Type {
+		case "response.failed":
+			msg := "Delegation failed"
+			if event.Response.Error != nil {
+				msg = event.Response.Error.Message
+			}
+			log.Fatal(msg)
+		case "response.incomplete":
+			reason := "unknown reason"
+			if event.Response.IncompleteDetails != nil {
+				reason = event.Response.IncompleteDetails.Reason
+			}
+			log.Fatal("Delegation incomplete: " + reason)
+		case "error":
+			log.Fatal(event.Message)
+		case "response.output_text.delta":
+			fmt.Print(event.Delta)
+		case "response.completed":
+			completed = true
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println()
+	// A clean end of stream without response.completed means the summary is partial.
+	if !completed {
+		log.Fatal("stream ended before response.completed")
+	}
+}
+
+```
+
+```bash title="cURL" lines
+set -o pipefail # a rejected request or a failed stream fails the whole pipeline
+command -v jq >/dev/null || { echo "This script needs jq to parse stream events" >&2; exit 1; }
+
+curl -sSfN https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "~anthropic/claude-sonnet-latest",
+    "input": "Summarize this document: OpenRouter provides a unified API for hundreds of AI models, with automatic fallbacks, provider routing, and usage-based pricing.",
+    "tools": [
+      {
+        "type": "openrouter:subagent",
+        "parameters": {
+          "model": "~anthropic/claude-haiku-latest",
+          "instructions": "Complete the task exactly as described. Be concise and structured."
+        }
+      }
+    ],
+    "stream": true
+  }' | {
+  completed=0
+  while IFS= read -r line; do
+    line="${line%$'\r'}"
+    case "$line" in
+      :*) continue ;;                # heartbeat comment
+      "data: [DONE]") break ;;
+      "data: "*) payload="${line#data: }" ;;
+      *) continue ;;
+    esac
+    type=$(jq -r '.type' <<<"$payload" 2>/dev/null) || continue
+    case "$type" in
+      response.failed)
+        echo "Delegation failed: $(jq -r '.response.error.message // "unknown"' <<<"$payload")" >&2; exit 1 ;;
+      response.incomplete)
+        echo "Delegation incomplete: $(jq -r '.response.incomplete_details.reason // "unknown reason"' <<<"$payload")" >&2; exit 1 ;;
+      error)
+        echo "$(jq -r '.message' <<<"$payload")" >&2; exit 1 ;;
+      response.output_text.delta)
+        jq -j '.delta' <<<"$payload" ;;
+      response.completed) completed=1 ;;
+    esac
+  done
+  echo
+  # A clean end of stream without response.completed means the summary is partial.
+  [ "$completed" = 1 ] || { echo "Stream ended before response.completed" >&2; exit 1; }
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+The document says that OpenRouter offers one API for accessing hundreds of AI models. It includes three main features:
+
+- **Automatic fallbacks:** if a model or provider fails, requests can be rerouted.
+- **Provider routing:** requests can be directed to different providers.
+- **Usage-based pricing:** you pay for what you use.
 ```
 
 ## 5. Log delegation routing, not task content
@@ -469,6 +966,8 @@ Do not log:
 
 The `usage` object in the response reflects the combined token spend of the orchestrator plus all worker calls, per [Server tools: Usage Tracking](/guides/features/server-tools#usage-tracking). You don't need to track inner costs separately.
 
+<CodeGroup>
+
 ```js lines
 const logDelegation = (response, context) => {
   const usage = response.usage ?? {};
@@ -486,6 +985,70 @@ const logDelegation = (response, context) => {
   };
 };
 ```
+
+```python title="Python" lines
+def log_delegation(response, context):
+    usage = response.get("usage") or {}
+    return {
+        "orchestrator_model": context["orchestrator_model"],
+        "worker_model": context["worker_model"],
+        "did_enable_delegation": True,
+        "status": response.get("status"),
+        "incomplete_reason": (response.get("incomplete_details") or {}).get("reason"),
+        "usage_input_tokens": usage.get("input_tokens"),
+        "usage_output_tokens": usage.get("output_tokens"),
+        "usage_total_tokens": usage.get("total_tokens"),
+        "usage_cost": usage.get("cost"),
+        "route": "delegated_analysis",
+    }
+
+```
+
+```go title="Go" lines
+type DelegationContext struct {
+	OrchestratorModel string
+	WorkerModel       string
+}
+
+func logDelegation(response map[string]any, ctx DelegationContext) map[string]any {
+	usage, _ := response["usage"].(map[string]any)
+	entry := map[string]any{
+		"orchestrator_model":    ctx.OrchestratorModel,
+		"worker_model":          ctx.WorkerModel,
+		"did_enable_delegation": true,
+		"status":                response["status"],
+		"usage_input_tokens":    usage["input_tokens"],
+		"usage_output_tokens":   usage["output_tokens"],
+		"usage_total_tokens":    usage["total_tokens"],
+		"usage_cost":            usage["cost"],
+		"route":                 "delegated_analysis",
+	}
+	if d, ok := response["incomplete_details"].(map[string]any); ok && d["reason"] != nil {
+		entry["incomplete_reason"] = d["reason"]
+	}
+	return entry
+}
+```
+
+```bash title="cURL" lines
+log_delegation() {
+  local response="$1" orchestrator_model="$2" worker_model="$3"
+  jq --arg orchestrator_model "$orchestrator_model" --arg worker_model "$worker_model" '{
+    orchestrator_model: $orchestrator_model,
+    worker_model: $worker_model,
+    did_enable_delegation: true,
+    status: .status,
+    incomplete_reason: .incomplete_details.reason,
+    usage_input_tokens: .usage.input_tokens,
+    usage_output_tokens: .usage.output_tokens,
+    usage_total_tokens: .usage.total_tokens,
+    usage_cost: .usage.cost,
+    route: "delegated_analysis"
+  } | with_entries(select(.value != null))' <<<"$response"
+}
+```
+
+</CodeGroup>
 
 ## Next steps
 

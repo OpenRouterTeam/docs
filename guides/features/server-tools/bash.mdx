@@ -127,7 +127,98 @@ curl https://openrouter.ai/api/v1/messages \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body := []byte(`{
+  "model": "anthropic/claude-sonnet-4.5",
+  "max_tokens": 1024,
+  "messages": [
+    {"role": "user", "content": "List the files in the current directory and show me the OS version."}
+  ],
+  "tools": [
+    {"type": "openrouter:bash", "parameters": {"engine": "openrouter"}}
+  ]
+}`)
+
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/messages", bytes.NewReader(body))
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(data))
+}
+
+```
+
 </CodeGroup>
+
+````text title="Output"
+{
+  id: "msg_bjiP5GH0dfAcIN4WPPS5",
+  type: "message",
+  role: "assistant",
+  container: null,
+  content: [
+    {
+      type: "text",
+      text: "I'll help you list the files in the current directory and show the OS version.",
+      citations: [],
+    }, {
+      type: "server_tool_use",
+      id: "toolu_01L2udfHyfvhsNCgKnQnh1CK",
+      name: "openrouter:bash",
+      input: [Object ...],
+    }, {
+      type: "openrouter_bash_tool_result",
+      tool_use_id: "toolu_01L2udfHyfvhsNCgKnQnh1CK",
+      content: [Object ...],
+      container_id: "gen_f297554427ca",
+    }, {
+      type: "text",
+      text: "Here are the results:\n\n**Files in Current Directory:**\n```\ntotal 8\ndrwx------ 2 root root 4096 Jan  1  1970 .\ndrwxr-xr-x 3 root root 4096 Nov 17 21:12 ..\n```\n\nThe current directory is empty (only contains the `.` and `..` directory references).\n\n**OS Version:**\n- **Operating System:** Ubuntu 22.04.5 LTS (Jammy Jellyfish)\n- **Version ID:** 22.04\n- **Codename:** jammy\n- **Base:** Debian-like\n\nThe system is running Ubuntu 22.04.5 LTS, which is a Long Term Support release.",
+      citations: [],
+    }
+  ],
+  model: "anthropic/claude-sonnet-4.5",
+  stop_reason: "end_turn",
+  stop_details: null,
+  stop_sequence: null,
+  usage: {
+    input_tokens: 748,
+    output_tokens: 263,
+    output_tokens_details: null,
+    cache_creation_input_tokens: 1124,
+    cache_read_input_tokens: null,
+    cache_creation: null,
+    inference_geo: null,
+    server_tool_use: {
+      web_search_requests: 0,
+      ...
+````
+
+This output is truncated: it stops inside `usage.server_tool_use`, and the rest of the `usage` object is omitted.
 
 ## Configuration
 

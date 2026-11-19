@@ -66,31 +66,38 @@ https://us.openrouter.ai
 import { OpenRouter } from '@openrouter/sdk';
 
 const openRouter = new OpenRouter({
-  apiKey: '<OPENROUTER_API_KEY>',
+  apiKey: process.env.OPENROUTER_API_KEY,
   serverURL: 'https://eu.openrouter.ai/api/v1',
 });
 
 const response = await openRouter.responses.send({
   responsesRequest: {
-    model: 'meta-llama/llama-3.3-70b-instruct',
+    model: 'mistralai/mistral-small-3.2-24b-instruct',
     input: 'Hello',
     stream: false,
   },
 });
+
+console.log(JSON.stringify(response, null, 2));
+
 ```
 
 ```typescript title="TypeScript (fetch)" lines
-fetch('https://eu.openrouter.ai/api/v1/responses', {
+const response = await fetch('https://eu.openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer <OPENROUTER_API_KEY>',
+    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'meta-llama/llama-3.3-70b-instruct',
+    model: 'mistralai/mistral-small-3.2-24b-instruct',
     input: 'Hello',
   }),
 });
+
+const data = await response.json();
+console.log(JSON.stringify(data, null, 2));
+
 ```
 
 ```python title="Python" lines
@@ -102,9 +109,12 @@ headers = {
 }
 
 response = requests.post('https://eu.openrouter.ai/api/v1/responses', headers=headers, json={
-  'model': 'meta-llama/llama-3.3-70b-instruct',
+  'model': 'mistralai/mistral-small-3.2-24b-instruct',
   'input': 'Hello',
 })
+
+print(response.json())
+
 ```
 
 ```bash title="cURL" lines
@@ -112,12 +122,105 @@ curl https://eu.openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer <OPENROUTER_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "meta-llama/llama-3.3-70b-instruct",
+    "model": "mistralai/mistral-small-3.2-24b-instruct",
     "input": "Hello"
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":  "mistralai/mistral-small-3.2-24b-instruct",
+		"input":  "Hello",
+		"stream": false,
+	})
+
+	req, err := http.NewRequest("POST", "https://eu.openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := json.Indent(&out, data, "", "  "); err != nil {
+		log.Fatalf("%s: %s", resp.Status, data)
+	}
+	fmt.Println(out.String())
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+{
+  "background": false,
+  "completedAt": 1793737808,
+  "createdAt": 1793737808,
+  "error": null,
+  "frequencyPenalty": 0,
+  "id": "gen-1793737808-MCRzdc4Yq382CYAUyQPA",
+  "incompleteDetails": null,
+  "instructions": null,
+  "maxOutputTokens": null,
+  "maxToolCalls": null,
+  "metadata": {},
+  "model": "mistralai/mistral-small-3.2-24b-instruct",
+  "object": "response",
+  "output": [
+    {
+      "content": [
+        {
+          "annotations": [],
+          "logprobs": [],
+          "text": "Hello! How can I assist you today? 😊",
+          "type": "output_text"
+        }
+      ],
+      "id": "msg_tmp_bkd21u66ug8",
+      "role": "assistant",
+      "status": "completed",
+      "type": "message"
+    }
+  ],
+  "parallelToolCalls": true,
+  "presencePenalty": 0,
+  "previousResponseId": null,
+  "promptCacheKey": null,
+  "promptCacheOptions": null,
+  "reasoning": null,
+  "safetyIdentifier": null,
+  "serviceTier": "default",
+  "status": "completed",
+  "store": false,
+  ...
+```
+
+This output is a truncated excerpt from the TypeScript SDK tab, which returns camelCase field names. The fetch, Python, cURL, and Go tabs print the same response with the snake_case names the API returns, such as `service_tier` and `created_at`.
 
 <Info>
 **In-region models list**

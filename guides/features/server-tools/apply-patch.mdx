@@ -113,7 +113,91 @@ curl https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5.1-codex-mini",
+		"input": `Create a hello.py file that prints "Hello, world!"`,
+		"tools": []map[string]any{
+			{"type": "openrouter:apply_patch"},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintf(os.Stderr, "HTTP %d: %s\n", resp.StatusCode, raw)
+		os.Exit(1)
+	}
+
+	var data struct {
+		Output []map[string]any `json:"output"`
+	}
+	if err := json.Unmarshal(raw, &data); err != nil {
+		panic(err)
+	}
+
+	// The output array holds a reasoning item followed by an apply_patch_call
+	// item with the operation (create_file, update_file, or delete_file)
+	for _, item := range data.Output {
+		fmt.Println("output item:", item["type"])
+		if item["type"] == "apply_patch_call" {
+			op, _ := json.MarshalIndent(item["operation"], "  ", "  ")
+			fmt.Println("  status:", item["status"])
+			fmt.Println("  operation:", string(op))
+		}
+	}
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+[
+  {
+    id: "rs_00c59aa78e15de06016afcc3208a94819584d7aeba43619a9c",
+    type: "reasoning",
+    status: "completed",
+    summary: [],
+    encrypted_content: "gAAAAABq_MMg8M-Lx7jGvjE9IpsbaoxNPWl3m_oJ59_RUlwIkE0N3tgh62y0HaQmb6IFhEdp1Q4iusnGWPgqEc8pmJdMuiV0G-qkSW5ftiw2pcCDx9lRQD2lLSmW3VCSdfojAXf9CBkxA7ohGNYP1V0rUrw8Xdb8nGTscYgkJoag30pMz0bnW0TAaSUxzaRpvU6DL0cWh1fmHZyPtH5ho9Ri69fm4xMxTXg4pwnMo3rAg_0VHQ1ZRC7cg8QF45GNV0rXgO17gFYDrL1HABbE2n1BFV-QOxGfTmYS_LhquugYR0INbzDud-Kz5ioc12UtEkJB_ASeV6JekwbUb1nLWPfjIRRK88RQYizPKvcB6EBiVzBLeT2c9RRD79k_as14nXro0GIske16tTIBn7QyhFE0bVyn1088bnPsyMy_RVAKxmQOWTF2USlDrFgXhD5KCUiM_MwWIEa7gsyh0c_HzjWIYBm-ugQwe0pCno9w4sqHDxCpRbWzuox1Ty6qCMhHwJW8BHSQKfVrLKuRQz1Muf_zwbmErXGcb-5n1--fGhS1F7JgeV5lQdGz-hYKVXgHMaPjHOHQiUsz1JN6mmO03dPKvckjiW6995T9fVOEMKvb92Ve9JK1KoSd639zXbJBnmPuB7pNKivlsVTcZaaC83ic743riq001HDM0Ut-LU44qEZG4aBOp3tuLbBQz48NF_FWzkTD-1yjnNNPM8Pb6Q5-jUD9DPXkSzkugwQ8NTZESYoxQkC9Kvbe393raKbor-UFpQneqekDUYKcry2it6_X0l6W6A8v-FldC2OWEd0Aa3pPzCrg5ZaR4Z4htFacff4dREToJQEubZP_WEjpg8RVN19B2jxZ8YvP9ewaYoWqBkMnoCJw28tz9dyldIgFnri9nNRgQaeP6RgRRZaHtK_lhm7jOIQAjxMGvglQ9coFXbGoSs6ifVVkug4uNfB2K-mYYBvu2fqtqGsAewFIgGhdXVQ_7v1IDbc8gRFlXAOifulXKbzHE1Dqr5GoqlY-CXWHujPiHyDeRiqC2h622sUFEioRfsIXgSdh99QnEIcey2x3C-fxLEGwbTEnPKW6tk3OR_HxScjVZGn0haS2lr7mMnAfH9uRGkTt-4TG98cjr0_2cVv9w22v37ArxQdYi_8U70lyrqBSvrdo4DwJksDtsck8erZxsspKEyAUo-4cUOasmH4Z5GyfJEekBX3kVyK_9objXdV9D7OInDE3A7nPrZ6mqOUxLVS8nHPEgYYxNVDMxUJ4BTVFsYwcgd4R16bonSNNM0UI-rZiE2cw0VonCpMRauL7MQgSNmCQc5tYe1LwOG6xf7AYHnfqQb7ngPKIymXEKel76A8Kqh-5JTCQsf0WX7e22X78rEUnBn-LF9PH9YWiRlSSEinIigGgEmReGEleMCPGha4oLCHsdKY-5EApNbRBnFg174pP9fzXTvsA8SeTiw-vo0A25jvRbA4lsHHWG59Fa2fqUAai5DDYWtRi00sj-4NB8Tze33Fy7-bB5JZXtR4FMKRaqsnr_FDiOK9xrPORZqRoixwK1bm2k_UVqpUNIIKrHvVSRV9HqZHrcYB_jrRJuWIAoCAV5UaBTvaJXTlu.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC01LjEtY29kZXgtbWluaS0yMDI1MTExM3xhenVyZSJ9",
+    format: "azure-openai-responses-v1",
+  }, {
+    type: "apply_patch_call",
+    id: "apc_00c59aa78e15de06016afcc320ff4881958804a1ff64faa521",
+    status: "completed",
+    call_id: "call_bpS3Qpib85gpPKZjOBCMAF2t",
+    operation: {
+      type: "create_file",
+      path: "hello.py",
+      diff: "+def main():\n+    print(\"Hello, world!\")\n+\n+\n+if __name__ == \"__main__\":\n+    main()\n",
+    },
+  }
+]
+```
 
 ## Patch Operations
 

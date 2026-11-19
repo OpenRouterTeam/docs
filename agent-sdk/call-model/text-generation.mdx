@@ -20,19 +20,126 @@ icon: pen-to-square
 
 The simplest way to generate text:
 
+<CodeGroup>
+
 ```typescript lines
-import { OpenRouter } from '@openrouter/agent';
+import { OpenRouter, callModel } from '@openrouter/agent';
 
 const openrouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'Explain quantum computing in one sentence.',
 });
 
 const text = await result.getText();
+console.log(text);
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+
+from openrouter_agent import OpenRouter, call_model
+
+
+async def main() -> None:
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        openrouter,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "Explain quantum computing in one sentence.",
+        },
+    )
+
+    text = await result.get_text()
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5-nano",
+		"input": "Explain quantum computing in one sentence.",
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("unexpected status: %s", resp.Status)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	text := ""
+	for _, item := range result.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				text += c.Text
+			}
+		}
+	}
+	fmt.Println(text)
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-nano",
+    "input": "Explain quantum computing in one sentence."
+  }' | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Quantum computing uses quantum bits (qubits) that can be in superposition and entangled, enabling quantum processors to explore many possibilities simultaneously and solve certain problems more efficiently than classical computers.
 ```
 
 ## Input Formats
@@ -43,6 +150,8 @@ callModel accepts several input formats to match your use case.
 
 The simplest format - a single string becomes a user message:
 
+<CodeGroup>
+
 ```typescript lines
 const result = openrouter.callModel({
   model: 'openai/gpt-5-nano',
@@ -50,12 +159,56 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+result = call_model(
+    openrouter,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "What is the speed of light?",
+    },
+)
+
+```
+
+```go title="Go" lines
+body, _ := json.Marshal(map[string]any{
+	"model": "openai/gpt-5-nano",
+	"input": "What is the speed of light?",
+})
+
+req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+req.Header.Set("Content-Type", "application/json")
+
+resp, err := http.DefaultClient.Do(req)
+```
+
+```bash title="cURL" lines
+result=$(curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-nano",
+    "input": "What is the speed of light?"
+  }')
+```
+
+</CodeGroup>
+
 ### Message Array
 
 For multi-turn conversations, pass an array of messages:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+import { OpenRouter, callModel } from '@openrouter/agent';
+
+const openrouter = new OpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: [
     { role: 'user', content: 'My name is Alice.' },
@@ -63,14 +216,141 @@ const result = openrouter.callModel({
     { role: 'user', content: 'What is my name?' },
   ],
 });
+
+const text = await result.getText();
+console.log(text);
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+
+from openrouter_agent import OpenRouter, call_model
+
+
+async def main() -> None:
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        openrouter,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": [
+                {"role": "user", "content": "My name is Alice."},
+                {"role": "assistant", "content": "Hello Alice! How can I help you today?"},
+                {"role": "user", "content": "What is my name?"},
+            ],
+        },
+    )
+
+    text = await result.get_text()
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5-nano",
+		"input": []map[string]string{
+			{"role": "user", "content": "My name is Alice."},
+			{"role": "assistant", "content": "Hello Alice! How can I help you today?"},
+			{"role": "user", "content": "What is my name?"},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("unexpected status: %s", resp.Status)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	text := ""
+	for _, item := range result.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				text += c.Text
+			}
+		}
+	}
+	fmt.Println(text)
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-nano",
+    "input": [
+      { "role": "user", "content": "My name is Alice." },
+      { "role": "assistant", "content": "Hello Alice! How can I help you today?" },
+      { "role": "user", "content": "What is my name?" }
+    ]
+  }' | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Your name is Alice. Would you like me to call you something else or stick with that?
 ```
 
 ### Multimodal
 
 For rich content including images:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+import { OpenRouter, callModel } from '@openrouter/agent';
+
+const openrouter = new OpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+const result = callModel(openrouter, {
   model: 'openai/gpt-5.2',
   input: [
     {
@@ -80,25 +360,330 @@ const result = openrouter.callModel({
         { type: 'input_text', text: 'What is in this image?' },
         {
           type: 'input_image',
-          imageUrl: 'https://example.com/image.jpg',
+          imageUrl: 'https://openrouter.ai/docs/assets/guides/ori/ori-codex-poster.jpg',
           detail: 'auto',
         },
       ],
     },
   ],
 });
+
+const text = await result.getText();
+console.log(text);
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+
+from openrouter_agent import OpenRouter, call_model
+
+
+async def main() -> None:
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        openrouter,
+        {
+            "model": "openai/gpt-5.2",
+            "input": [
+                {
+                    "type": "message",
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": "What is in this image?"},
+                        {
+                            "type": "input_image",
+                            "image_url": "https://openrouter.ai/docs/assets/guides/ori/ori-codex-poster.jpg",
+                            "detail": "auto",
+                        },
+                    ],
+                },
+            ],
+        },
+    )
+
+    text = await result.get_text()
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5.2",
+		"input": []map[string]any{
+			{
+				"type": "message",
+				"role": "user",
+				"content": []map[string]any{
+					{"type": "input_text", "text": "What is in this image?"},
+					{
+						"type":      "input_image",
+						"image_url": "https://openrouter.ai/docs/assets/guides/ori/ori-codex-poster.jpg",
+						"detail":    "auto",
+					},
+				},
+			},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("unexpected status: %s", resp.Status)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	text := ""
+	for _, item := range result.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				text += c.Text
+			}
+		}
+	}
+	fmt.Println(text)
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5.2",
+    "input": [
+      {
+        "type": "message",
+        "role": "user",
+        "content": [
+          { "type": "input_text", "text": "What is in this image?" },
+          {
+            "type": "input_image",
+            "image_url": "https://openrouter.ai/docs/assets/guides/ori/ori-codex-poster.jpg",
+            "detail": "auto"
+          }
+        ]
+      }
+    ]
+  }' | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+The image is a promotional graphic for **“Ori Codex”** by **openrouter**. It shows the text “Ori Codex” on a dark rounded rectangle, with an install command underneath:
+
+`curl -fsSL https://openrouter.ai/labs/ori/install.sh | bash`
 ```
 
 ## System Instructions
 
 Set the model's behavior with the `instructions` parameter:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+import { OpenRouter, callModel } from '@openrouter/agent';
+
+const openrouter = new OpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   instructions: 'You are a helpful coding assistant. Be concise and provide working code examples.',
   input: 'How do I read a file in Node.js?',
 });
+
+const text = await result.getText();
+console.log(text);
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+
+from openrouter_agent import OpenRouter, call_model
+
+
+async def main() -> None:
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        openrouter,
+        {
+            "model": "openai/gpt-5-nano",
+            "instructions": "You are a helpful coding assistant. Be concise and provide working code examples.",
+            "input": "How do I read a file in Node.js?",
+        },
+    )
+
+    text = await result.get_text()
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":        "openai/gpt-5-nano",
+		"instructions": "You are a helpful coding assistant. Be concise and provide working code examples.",
+		"input":        "How do I read a file in Node.js?",
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("unexpected status: %s", resp.Status)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	text := ""
+	for _, item := range result.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				text += c.Text
+			}
+		}
+	}
+	fmt.Println(text)
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-nano",
+    "instructions": "You are a helpful coding assistant. Be concise and provide working code examples.",
+    "input": "How do I read a file in Node.js?"
+  }' | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+You can read files in Node.js using the built-in fs module. Here are common approaches.
+
+1) Async read with callback (typical in old code)
+const fs = require('fs');
+const path = require('path');
+const filePath = path.join(__dirname, 'example.txt');
+
+fs.readFile(filePath, 'utf8', (err, data) => {
+  if (err) {
+    console.error('Error reading file:', err);
+    return;
+  }
+  console.log(data);
+});
+
+2) Sync read (blocking, not for server code)
+try {
+  const data = require('fs').readFileSync(filePath, 'utf8');
+  console.log(data);
+} catch (err) {
+  console.error(err);
+}
+
+3) Promise-based (modern, async/await)
+const { promises: fsPromises } = require('fs');
+const path = require('path');
+const filePath = path.join(__dirname, 'example.txt');
+
+async function readFileAsync() {
+  try {
+    const data = await fsPromises.readFile(filePath, 'utf8');
+    console.log(data);
+  } catch (err) {
+    console.error('Error reading file:', err);
+  }
+}
+readFileAsync();
+
+4) Read as binary (Buffer) if you omit encoding
+fs.readFile(filePath, (err, data) => {
 ```
 
 ## Model Selection
@@ -107,6 +692,8 @@ const result = openrouter.callModel({
 
 Specify a model by its OpenRouter ID:
 
+<CodeGroup>
+
 ```typescript lines
 const result = openrouter.callModel({
   model: 'anthropic/claude-sonnet-4.5',
@@ -114,16 +701,88 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+result = call_model(
+    openrouter,
+    {
+        "model": "anthropic/claude-sonnet-4.5",
+        "input": "Hello!",
+    },
+)
+```
+
+```go title="Go" lines
+body, _ := json.Marshal(map[string]any{
+	"model": "anthropic/claude-sonnet-4.5",
+	"input": "Hello!",
+})
+
+req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+req.Header.Set("Content-Type", "application/json")
+
+resp, err := http.DefaultClient.Do(req)
+```
+
+```bash title="cURL" lines
+result=$(curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "anthropic/claude-sonnet-4.5",
+    "input": "Hello!"
+  }')
+```
+
+</CodeGroup>
+
 ### Model Fallback
 
 Provide multiple models for automatic fallback:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
-  models: ['anthropic/claude-sonnet-4.5', 'openai/gpt-5.2', 'google/gemini-pro'],
+const result = callModel(openrouter, {
+  models: ['anthropic/claude-sonnet-4.5', 'openai/gpt-5.2'],
   input: 'Hello!',
 });
 ```
+
+```python title="Python" lines
+result = call_model(
+    openrouter,
+    {
+        "models": ["anthropic/claude-sonnet-4.5", "openai/gpt-5.2"],
+        "input": "Hello!",
+    },
+)
+```
+
+```go title="Go" lines
+body, _ := json.Marshal(map[string]any{
+	"models": []string{"anthropic/claude-sonnet-4.5", "openai/gpt-5.2"},
+	"input":  "Hello!",
+})
+
+req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+req.Header.Set("Content-Type", "application/json")
+
+resp, err := http.DefaultClient.Do(req)
+```
+
+```bash title="cURL" lines
+result=$(curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "models": ["anthropic/claude-sonnet-4.5", "openai/gpt-5.2"],
+    "input": "Hello!"
+  }')
+```
+
+</CodeGroup>
 
 The SDK will try each model in order until one succeeds.
 
@@ -133,14 +792,84 @@ The SDK will try each model in order until one succeeds.
 
 Returns just the text content after tool execution completes:
 
+<CodeGroup>
+
 ```typescript lines
 const text = await result.getText();
 console.log(text); // "The speed of light is approximately 299,792 km/s."
 ```
 
+```python title="Python" lines
+import asyncio
+import os
+
+from openrouter_agent import OpenRouter, call_model
+
+
+async def main() -> None:
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        openrouter,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "What is the speed of light?",
+        },
+    )
+
+    text = await result.get_text()
+    print(text)  # "The speed of light is approximately 299,792 km/s."
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+if resp.StatusCode != http.StatusOK {
+	log.Fatalf("unexpected status: %s", resp.Status)
+}
+
+var result struct {
+	Output []struct {
+		Type    string `json:"type"`
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	} `json:"output"`
+}
+if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	log.Fatal(err)
+}
+
+text := ""
+for _, item := range result.Output {
+	if item.Type != "message" {
+		continue
+	}
+	for _, c := range item.Content {
+		if c.Type == "output_text" {
+			text += c.Text
+		}
+	}
+}
+fmt.Println(text) // "The speed of light is approximately 299,792 km/s."
+```
+
+</CodeGroup>
+
+```text title="Output"
+In vacuum, the speed of light is exactly 299,792,458 meters per second (about 3.0 × 10^8 m/s). This is a defined constant, denoted c.
+
+In other media, light travels slower: v = c / n, where n is the refractive index of the material (e.g., in air it's about 0.03% slower, in water roughly 0.75 c). If you’d like, I can give speeds in specific materials.
+```
+
 ### getResponse()
 
 Returns the full response object including usage data:
+
+<CodeGroup>
 
 ```typescript lines
 const response = await result.getResponse();
@@ -154,13 +883,94 @@ console.log(response.usage);      // Token usage information
 // - cachedTokens: tokens served from cache (cost savings)
 ```
 
+```python title="Python" lines
+import asyncio
+import os
+
+from openrouter_agent import OpenRouter, call_model
+
+
+async def main() -> None:
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        openrouter,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "What is the speed of light?",
+        },
+    )
+
+    response = await result.get_response()
+
+    print(response.output)  # Full output array
+    print(response.usage)  # Token usage information
+
+    # Usage includes:
+    # - input_tokens: tokens in the prompt
+    # - output_tokens: tokens generated
+    # - input_tokens_details.cached_tokens: tokens served from cache (cost savings)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+if resp.StatusCode != http.StatusOK {
+	log.Fatalf("unexpected status: %s", resp.Status)
+}
+
+var response struct {
+	Output json.RawMessage `json:"output"`
+	Usage  json.RawMessage `json:"usage"`
+}
+if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+	log.Fatal(err)
+}
+
+fmt.Println(string(response.Output)) // Full output array
+fmt.Println(string(response.Usage))  // Token usage information
+
+// Usage includes:
+// - input_tokens: tokens in the prompt
+// - output_tokens: tokens generated
+// - input_tokens_details.cached_tokens: tokens served from cache (cost savings)
+```
+
+```bash title="cURL" lines
+echo "$result" | jq '.output'   # Full output array
+echo "$result" | jq '.usage'    # Token usage information
+
+# Usage includes:
+# - input_tokens: tokens in the prompt
+# - output_tokens: tokens generated
+# - input_tokens_details.cached_tokens: tokens served from cache (cost savings)
+```
+
+</CodeGroup>
+
+```text title="Output"
+[OutputReasoningItem(id='rs_0833bf1a925fc483016afcb8f6465c87d1bbbdf95216daa364', summary=[ReasoningSummaryText(text="**Explaining the speed of light**\n\nI need to respond to the question, “What is the speed of light?” The speed of light in a vacuum is approximately 299,792,458 meters per second (m/s), often denoted as c. In a vacuum, it’s defined exactly as this value, unlike in other media where it's slower.\n\nFor practical purposes, I could mention it's about 3.00 x 10^8 m/s, which is roughly 299,792 km/s or 186,282 mi/s. Importantly, nothing travels faster than c in a vacuum, and this speed is constant across all inertial frames.**Clarifying the speed of light**\n\nThe speed of light in a vacuum, denoted as c, is exactly 299,792,458 meters per second. This value is defined as such. In other media, light travels slower, and the speed depends on the refractive index, following the equation v = c/n.\n\nImportantly, in the realm of relativity, nothing can travel faster than c, making it the universal speed limit. For context, that's about 186,282 miles per second. I’ll keep it concise and straightforward!", type='summary_text')], type='reasoning', content=Unset(), encrypted_content='gAAAAABq_Lj6USbY0uOUx2_4iREHWxGeHsfV7i0h-mIZM1oWsC-y4k2q7GndtB1ZLhN7tCucg394Mta1O5i4bBHfgCnAHJ3FThiJKJf8Eqgq81EzoQTHE9S1-c8X9HArx_aWneJrJVDWEETtAX1citIF3z3heolGbsibEpQ5hBxd_XJuFDe90QqfbSX_G_cwPz7obmeusqTcbOSpU34LlSgV4iTix6rb_yz1EgnnmLbvzCQnzWDhP7H0K7MC6fOthTSLWd8SncFD-IYXvWjO43plm2H9-FLM3k9fzUGSzVz9sGmEdweUnjOZH7ivVK-dd3icOK05chMRm5-IWOEzJd7t_SC032BwdIfwaoDqyQAYXdutsHnuoXZx5-6i1JIilP6QwMU5vlHIIdyOMMTJrIJxWdqEfTIXg_cLIICnT57b_5a6nawitAN8KG7pebwSCawb2RzW7sIZb53madMI3yVwNMlOssT6lp4SsOgHls-Nno_2qzp_8OtijXK0hwtNyaHYoSj1pKtvx4sd05Gh4dZRXsotL8GCJz2btpYM3cBQc0DcOhRVw3H2twNmIF5nJAZtt3NRspDl2XHQNAmukBa6xTJX4WxYyODuOWFuMiOgCXHYBK4T7R3rF3apdPeCq-m_nIIN_EYGeNjNx_bxz2wEnJpuuZPDQ6XovzSk3vTQt1LX3PWcAas30J_YvxsRb8vA62cEbHJlve0fMto9jokFWJ5aKCfXfIvFvDi5enVk33pCJXHs9A9EN_HIXOV6gFdiCiZnjA_zT8VQzqIUusxbTMtilpHzGmD6C5z87FDxqdTHEiatP3sqLv0Mq5H3jM2iSoM9gYBiZpjFtBOm0EPc0_0Hwz3ilxIME_gUP-HBmyALOdD04RFRYs1Q4lotY6lvgotvb-6_9HKW6DlZnmslXIsLRXWXaTHxq2bXKDjH7NMtuvF5IUx6I1sFzxIKL7QJuZL3m41ijeHLSViZ4SaPlLx3ndjbsFzM8O6v_XWEIp1rEPtfRfnsc_at5dJCQ02i3erZ5aECCHx-mq-KawU2dmC9EoHgXu1xxUU2Y-NVbi95R8ermdUrs0ftktDqt5zh1WIbxJRzS8cCyoG9iXAHNEyX_SNzYgOO3gZW8BsW_ZKPSO1tAQDNs2x3jC6Cx1Nt46s-xikwxRTVHGglXKRLzI5oJrO1yxMo6wT4CYjhi4b42qXm9t9xX5imUY94iK-RwWUU3dzAZpUOP5eWxrYvCZgAKd9r1d9oAARlhD8oTSl47WWsbHFB0HocZM5BJMXXM1mdO5xlRkb1uvdNoHW0aNP6jR-o_CITLjK98JVhs3zgoFdylwLk7gWaZ2gnJjh2GSxwOT1x91UR7j2CFROC0zJtV2RQwARdS50mLlu1qLfYEICl7_Xu71e-JB8FkkJbNaqyWwgqobrCl4R-uyMz0MH_348EGDjjMXJRXM4PK198k_qpW-aEEGno7v7HY8Ch9Q7SDkOZijkJ4Z2BBTCyosqKd2Dj3_KjEGX4-HB8v_166e247dUV_3lRZtuQLG1cqaP694AYi_udfy6m0ADeuQRN-vc9N4m4dVmm3kvRjMbE4O1h-6aeKw9WOSJDTgdpJYImCnGNPP9Qmsv4CyMzE6aXvSxdzGmk_hPOxqn468VoF_5-VRaB0zokk9-cO5LJjM7Cj0zOU42QSb-mC6BhGmIXEmgW6_KYmlSRE7hXBHFWFcSPNeKT34E3pXtJ3uRC5ovMCvzRA2bFVCwNt9f8Tzk1oTFfAOPfoCHUQLlJK_jFK4wo7_6Z9_FFX05hrydav558X_yIBMBiBcJNQCuKTFUYEDCJ7eb_GCtn5Dfl6CwXf216SzPOuz6PREF_ymWHKwjyfoGPDcOTtsOqyPGARobr6qOYXPNfR2AmpjTwhnsoyZEwvT0mbqf9fqYH1ge7osz_sCS17YTZj04CMoTcpitb13Uox-MD0nL7PNHvJGUy6TvW1JwPYFYHK3ZKlbOp8gV-FzX__g2iuQaGJVDNGK_tHDVVtEKParpHX55gfVfroDyWLcWzr9yC42XUdjks_pTLmKK15YR4iauveUtamun6mPjNv5YR268vrGMADHAuGtGOq876PiHU0PxM6rB96GrxmAPHZTKILVcnLOKWk2We6fos02oNFMT1R_PU9atHNwOT-OIuADjGbQfaH2a5eCuytI_h8slQx5g06ulsQtYm6VQu91wyvoX3sdfXpiOpJjkR_0r73FAEh45dXFh3l862Hi3zHRPBxg25dyeEBJ1sLiGgnS-IH6D50aFEsB2z-QVCNSKN35qLeKlV-n1K3sq9gJVNrvAe04JVu78nHWwl2Tu-tHwzCQEn-P9CbZmSDoKCjWJ66vQx44Teb1z-S9KZTymN4_HH7I5fvZw4cTDR9zatQSXuAb_z5hHA9gQGt9v5vVRNN0gwCoL7B7OdcifY-gcwQ8E29RWOnRAQQniq6VEXszrmPuSLKsT3Ccis0EEYGx7Lmxc5YOnpg_PqwAmcQKjOpHV1V94j5svhA-9cDCCcr9VpoDeH2PxD4w1ODOj4lpHRpRTVm7s_fmx9GdRolRVlFJn_bv0vHf5I4dePLQLGfise1KS_hGPSCM4w9kHFRONNgOesIbr9sjMtvQF3YARE5Sy-KFawLB5Tgdwn4KgCFyUi_HJyMNih4h175hjoiAfgkBOUwmCYIYfzUIwdheKfbUdKkFBXWNa11yhOs75bJOGDcwQ1EGx1YNhgxeObOayMuCx5DqU212RL6Q7ZT5dc7YQuQvRu1y6neR_TD44ab94lRvI3tYuBI
+…[624 chars clipped]…
+KytJRdaf0V2IB9soNwTV1MYMkqihIF7VrvUS7nI8k4bY_DNjHNyZUzdEq6o-pWZHKCuGV3rRPDxsQ2atf6_Sz7TkaC-YWTrMzEjtS4eG57sg3S1RmRcJJt2JFRzTylZQWRQgAIN9rOaVWWjmS5iRgMpfO65WWw5DlbKLGsNU9FM0rWiKipYyMpRUAR8zoj-lzKcWC1IRWQy6BwEolsL6tp990LKYDVziiM6lurOjnf-KpMR98yWKI3j9JyktXHwkeBUlhfChuGpLcbGI4NIlf_jPkAluqSyI_OZK4MKEhVUqYT-ZglhR_7i0cJSp7pzArSJWPI0NlsnSCCgsUF5bkfvIQbiSxMeoD5qllIcGxa_Ct-gfw6eopsjz9t81dBvMJ7FCxT01ay6-5rfwJUHTgZksmxCfgFcofWUcM5zz7e0U4EH0Q26eTsfHlEmCaMPJ1GTr_W2hS-pHYQhbcYq6DnXR0h2s-Ipo3_DrDxM5vLY5I_R4MFbzuSbza_YOGV2OFQNc5ah6YUTgvGa2TkNMLiqrvHa8jdDl9M7ZnLtqCgjXZlAePVrSE6EfVIUVi36P86EtVx2prQ4TiMlrU_HYfGsl9Jm2M-InkwyGkEXw_V7QPWymH1pn_zrm6SSE-TZR2VdCVN5v4rdd77Z1F5IJ4TmVb0vpN3aJGMjJBY5X68YWacEPl1-hSph9960wjwhhPmTckcMBQdsXtiAsTofrfP965eveCIQjLOtEwLRrPgLxdSz5s8O9-xdHcUkDtGRh2EShqKzGdaheQtZXbjjqgjRmlmOKah4Y_wZ-8DRiKKVkqMkHvFv4yeZnzgcq1zuYdFf_PpMxo5IqDJMq8AD4RtuotTIPaDmMC9_yw_hjrz0Nk0vC-1oW9DX55-2GbqIMrCXgjz2oRgnXhJnE4CV3laZ9QDZ4741rUG6oVVlNdZTF8LMBUkdKCfxu8IawdtlpxHz_T3Sl4zD8AH5Afqlr5ck3Eo3_tbEJJyZy3nFf2cy8u0pNVO_y1Xe-b09TelLAqLLLa4tIbbTXfJNZbR5Ww8DOJcAC5MjPle5P10JNygp3mP-yerOIYFs6BWgo6J1zJRqLBGtKqwOyoyiOo9vuFT-ehx0Yc_cGVzSOjsSrEiV54tMPBwPAzKc5kD2WVVsmPEt8o4l-AwhX4W95A9SnXy-gyHGokRqDnvukS7ryT9bxQzO5WdSMtx5--JqGgQmL7MV3iI76o3mTKST-wEj5iUrjDNxqnMZscjx2UNzubxur4OmMkRExZfCp-FehFRWm1BWWtc8gvtMe1cilYCEhuEGqo6tOBjjRqnba-Ix9P3-cH9OHU20I-87Wle0jmiOPt4wfnOcWYjv-c5SOJe8tdDhMi05U3GRwEYsDTaJxsoBc8H3ORE-hH3jFDuA4Y_opCf9l2nRJ_KFk4dOC6m3bwnYFn2hlgRUZnK2bePWWGdKlHsKrFvbRchIMk7n1O3B4u6bCStPPF1dC-RhvLyFsOEefRIIfGlSm_gAAd9ZcjLPHi9cmBaBLGZK3utUGgjAkxdFIlSgItSIqp0oYyhrgLEmoEpSVhsEWJ3oPOq1qdVi32f79O3-3k4arwIuKKBzK3YK1d1v7PNSFHZnVim1Ru8NtFYajf3c-JTsOhtCR07bucNxDDBe-3JXul6J-9ejuPlCXb0OC8j8x-6jIP2EZdDICwRRv4wfKCvciQvo4HyKvvlFpJ7Dz-coGZcgUi9afTO_z4Y3o4tcNPFl2ZmfFQnrjwWUCOUZfK3TDFSsPJauSrl-LYxYq6xN656ZzQjdkJ03lgtIjZ5UnOR2_biJZ7LZQDP2haBw_zmVg62ujbDaUD1rhcN43Xk2UFJdYE0GQJcrgC7jpWZwFPFAWjfncNFqpquPZtML0Uv99oT3LQOJxfsdxQsAFdxuNkl2SQetWqaGBk6uzZkodyCg8LjWuxHqK4noVNgWVK3OTBaAtH5zRlF1SDZrir2TprtGmjVz7y4xL_v0pRBj1qY7RX5aNfub4dbWNruTse9Gnd9WSz-GNiPlilA1tpLUuNQmuzAcFm2PRpOMiFlkoTfj1xtcYN7TNBRG5ptf-9UiaaW_S9QRN7XRPHazPiSk3UqllANurvx0z30vBEIPo-_dNKIdKB2KMVMSM1RU-7lckmU-RmthNe5Lpsz5JoF5LHmIutswtREsBIKvx2kNWCN0TlITwIkzPH56Z1ScZwRXeUeppNTFGZbQ02KzIvW74P-qI9QD7sABLnio443lMRdY34kfSC40n6YmM10qPhPPkBS1FFv0r6CgCelZ2xeJ6uf_Jw8t0geoZXAPnxU3nQ1IOflm3On71parFcIXJUvxPlHN8ELvfm6RJQxVd_4l6DEpmwUJG3In6XXcZ3YKTHnq-mLNpqNcSvRW21l3bPlzHhgqzB2UglKlDK_DPzs606B6oFyTNp05dbKkQOCu5S4T0iOyeVcZ52Ck6b1WQIXNGcrcwDPfWuLYEfv6c4JE6ptSoIenTkow8ddctgkz15DWa3jEkvYJh7WPs5x43VHtEB3RInnwYrKWneVcs44vsbmqgM3f_JxZX43VmFvGaC3FBBHrPbvU4qrsg5u1zQy7SnH6-rGI4oPn-pbH-c1NYQ8dfq2HJwZdYet4PI13R6fOkWgbT_b-NEd64Hy-nzg30o2GsAIb37YH3mtMbTk_rGXN9_tsLgu2lcWjUes9P2z8FaUFuMqo-cltTIlFHLcDNhQ3HojX5d39ia5NQ9EkoUOAGjdJW5J7hJ03uenv6XvuB1JqKXgwS7qwz5muQdB9VvAoh60UxasOh8aBsVY_DpYLCYOQCWij13TskRYxQDK0tJRmag8zoRNf_Jtr-buI9Hd7WQACeproaOa0sUDHNZjmfNCGy40e_bDRtVk1ya1xNiI6PXruoLlePBqAKTUiqjLxc9QFxyO2TjrrvKMRZZyBdbMUQv7Z-0bttFlQhwz5faXy7vDWV3TMCLBUopZphncZvI6TyNoR.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC01LW5hbm8tMjAyNS0wOC0wN3xvcGVuYWkifQ', status='completed', format_='openai-responses-v1', signature=Unset()), OutputMessageItem(content=[ResponseOutputText(text='In vacuum, the speed of light is exactly 299,792,458 meters per second (about 3.00 × 10^8 m/s). It’s the universal speed limit in relativity.\n\nIn other media, light travels slower, with speed v = c/n, where n is the refractive index of the medium.', type='output_text', annotations=[], logprobs=[])], id='msg_tmp_7hd5r4y4htd', role='assistant', type='message', phase=Unset(), status='completed')]
+input_tokens=13 input_tokens_details=InputTokensDetails(cached_tokens=0, cache_write_tokens=Unset()) output_tokens=461 output_tokens_details=OutputTokensDetails(reasoning_tokens=384) total_tokens=474 cost=0.00018505 cost_details=UsageCostDetails(upstream_inference_input_cost=6.5e-07, upstream_inference_output_cost=0.0001844, upstream_inference_cost=0.00018505) is_byok=False server_tool_use_details=Unset()
+```
+
 ## Generation Parameters
 
 Control the generation behavior:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
-  model: 'openai/gpt-5-nano',
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel } from '@openrouter/agent';
+
+const openrouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const result = callModel(openrouter, {
+  model: 'openai/gpt-4o-mini',
   input: 'Write a creative story.',
 
   // Temperature: 0 = deterministic, 2 = very creative
@@ -172,16 +982,183 @@ const result = openrouter.callModel({
   // Top-p sampling
   topP: 0.9,
 });
+
+const text = await result.getText();
+console.log(text);
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+
+from openrouter_agent import OpenRouter, call_model
+
+
+async def main() -> None:
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        openrouter,
+        {
+            "model": "openai/gpt-4o-mini",
+            "input": "Write a creative story.",
+            # Temperature: 0 = deterministic, 2 = very creative
+            "temperature": 0.7,
+            # Maximum tokens to generate
+            "max_output_tokens": 1000,
+            # Top-p sampling
+            "top_p": 0.9,
+        },
+    )
+
+    text = await result.get_text()
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o-mini",
+		"input": "Write a creative story.",
+
+		// Temperature: 0 = deterministic, 2 = very creative
+		"temperature": 0.7,
+
+		// Maximum tokens to generate
+		"max_output_tokens": 1000,
+
+		// Top-p sampling
+		"top_p": 0.9,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("unexpected status: %s", resp.Status)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	text := ""
+	for _, item := range result.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				text += c.Text
+			}
+		}
+	}
+	fmt.Println(text)
+}
+
+```
+
+```bash title="cURL" lines
+result=$(curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o-mini",
+    "input": "Write a creative story.",
+    "temperature": 0.7,
+    "max_output_tokens": 1000,
+    "top_p": 0.9
+  }')
+
+# temperature: 0 = deterministic, 2 = very creative
+# max_output_tokens: maximum tokens to generate
+# top_p: top-p sampling
+
+echo "$result" | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+**The Clockmaker’s Secret**
+
+In the quaint village of Eldergrove, nestled between rolling hills and whispering forests, there stood a peculiar little shop that many passed by without a second glance. It was the shop of Alaric, the clockmaker. Alaric was a wiry man with silver hair that stood on end like a hedgehog, and eyes that twinkled with the wisdom of ages. His shop was filled with clocks of every shape and size, each ticking in harmonious disarray, creating a symphony of time.
+
+The villagers knew Alaric as a skilled craftsman, but few knew of his secret: he had the ability to manipulate time itself. With a twist of a gear and a flick of a lever, he could slow moments down, speed them up, or even rewind them for a brief while. However, this gift was not one he shared lightly, for he understood that time was a delicate fabric, and tampering with it could unravel the very essence of life.
+
+One misty morning, as the sun struggled to break through the clouds, a young girl named Clara entered the shop, her auburn curls bouncing with every step. She was a dreamer, with a heart full of wonder and a mind bursting with questions. Clara had always been fascinated by the clocks, particularly an ancient, ornate timepiece that stood at the back of the shop. It was unlike any other, with intricate carvings of stars and moons adorning its surface, and it seemed to hum softly, as if alive.
+
+“Why does that clock feel different?” Clara asked, her eyes wide with curiosity.
+
+Alaric smiled gently, kneeling down to her level. “Ah, that clock is special, my dear. It holds within it the echoes of time itself. Many have tried to understand it, but only a few can truly hear its whispers.”
+
+Clara’s fascination deepened. “Can it make time go slower? Or faster?”
+
+“Indeed,” Alaric replied, his voice thoughtful. “But time is a precious gift. We must be careful how we use it.”
+
+Days turned into weeks, and Clara visited the shop often, helping Alaric with small tasks and learning about the art of clockmaking. Each time she visited, she was drawn to the ornate clock, its whispers growing louder in her ears. One fateful afternoon, as rain pattered softly against the windows, Clara mustered the courage to ask Alaric if she could try to use the clock.
+
+“Just once,” she pleaded. “I want to slow down a moment. Just one moment of pure joy.”
+
+Alaric hesitated, weighing the risks, but the gleam in Clara’s eyes reminded him of his own youthful dreams. With a nod, he led her to the clock, explaining its mechanisms. With trembling hands, Clara turned the delicate key, and the clock began to whir and tick in a mesmerizing rhythm.
+
+Suddenly, the world around them shimmered and slowed. Clara felt the weight of joy settle in her heart as she turned to see a butterfly dance in the air, its wings painting the room with colors. She laughed, a sound that echoed softly, as if wrapped in a cocoon of time. For what felt like an eternity, she savored the sweetness of that moment, her heart full of wonder.
+
+But as the clock’s hands moved, Clara realized she had lost track of time itself. The rain outside had stopped, and dusk began to creep in. Panic surged through her. “Alaric! I can’t stop it!”
+
+With a knowing look, Alaric rushed to her side. “You must focus, Clara! Time must be respected. Turn the key back, but with intention.”
+
+Heart racing, Clara closed her eyes, remembering the joy she had felt. She turned the key again, this time with a purpose, and the world around her began to shift back to its normal pace. The butterfly fluttered away, and Clara felt a bittersweet tug in her chest as the moment slipped away.
+
+As the last echoes of that enchanted moment faded, Clara opened her eyes to find herself in the shop, the sun setting outside, casting golden rays through the window. Alaric smiled at her, pride shining in his gaze. “You have learned a valuable lesson today, Clara. Time is not just something we measure; it is something we experience. Cherish each moment, for they are fleeting.”
+
+From that day on, Clara continued to visit Alaric, but now she understood the beauty of time. She no longer wished to manipulate it, but rather to embrace it fully. The clock remained a constant in her life, a reminder of that magical day when she learned that while time could be slowed or sped up, the true magic lay in the moments we hold dear.
+
+Years later, as Alaric grew older, he passed the shop—and its secrets—
 ```
 
 ## Response Format
 
 Request structured output:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
-  input: 'List three programming languages.',
+  input: 'List three programming languages as a JSON object.',
   text: {
     format: {
       type: 'json_object',
@@ -191,20 +1168,143 @@ const result = openrouter.callModel({
 
 const text = await result.getText();
 const data = JSON.parse(text);
+
+```
+
+```python title="Python" lines
+import asyncio
+import json
+import os
+
+from openrouter_agent import OpenRouter, call_model
+
+
+async def main() -> None:
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        openrouter,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "List three programming languages as a JSON object.",
+            "text": {
+                "format": {
+                    "type": "json_object",
+                },
+            },
+        },
+    )
+
+    text = await result.get_text()
+    data = json.loads(text)
+    print(json.dumps(data, indent=2))
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+body, _ := json.Marshal(map[string]any{
+	"model": "openai/gpt-5-nano",
+	"input": "List three programming languages as a JSON object.",
+	"text": map[string]any{
+		"format": map[string]any{
+			"type": "json_object",
+		},
+	},
+})
+
+req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+req.Header.Set("Content-Type", "application/json")
+
+resp, err := http.DefaultClient.Do(req)
+if err != nil {
+	log.Fatal(err)
+}
+defer resp.Body.Close()
+if resp.StatusCode != http.StatusOK {
+	log.Fatalf("unexpected status: %s", resp.Status)
+}
+
+var result struct {
+	Output []struct {
+		Type    string `json:"type"`
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	} `json:"output"`
+}
+if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	log.Fatal(err)
+}
+
+text := ""
+for _, item := range result.Output {
+	if item.Type != "message" {
+		continue
+	}
+	for _, c := range item.Content {
+		if c.Type == "output_text" {
+			text += c.Text
+		}
+	}
+}
+
+var data map[string]any
+if err := json.Unmarshal([]byte(text), &data); err != nil {
+	log.Fatal(err)
+}
+```
+
+```bash title="cURL" lines
+result=$(curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-nano",
+    "input": "List three programming languages as a JSON object.",
+    "text": {
+      "format": {
+        "type": "json_object"
+      }
+    }
+  }')
+
+text=$(echo "$result" | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text')
+data=$(echo "$text" | jq '.')
+
+```
+
+</CodeGroup>
+
+```json title="Output"
+{
+  "languages": [
+    "Python",
+    "JavaScript",
+    "C++"
+  ]
+}
 ```
 
 ## Error Handling
 
 Handle common error cases:
 
+<CodeGroup>
+
 ```typescript lines
 try {
-  const result = openrouter.callModel({
+  const result = callModel(openrouter, {
     model: 'openai/gpt-5-nano',
     input: 'Hello!',
   });
 
   const text = await result.getText();
+  console.log(text);
 } catch (error) {
   if (error instanceof Error && 'statusCode' in error) {
     if (error.statusCode === 401) {
@@ -213,6 +1313,8 @@ try {
       console.error('Rate limited - try again later');
     } else if (error.statusCode === 503) {
       console.error('Model unavailable');
+    } else {
+      console.error('Request failed with status', error.statusCode);
     }
   } else {
     console.error('Unexpected error:', error);
@@ -220,16 +1322,303 @@ try {
 }
 ```
 
+```python title="Python" lines
+import asyncio
+import os
+import sys
+
+from openrouter_agent import OpenRouter, call_model
+
+
+async def main() -> None:
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    try:
+        result = call_model(
+            openrouter,
+            {
+                "model": "openai/gpt-5-nano",
+                "input": "Hello!",
+            },
+        )
+
+        text = await result.get_text()
+        print(text)
+    except Exception as error:
+        status_code = getattr(error, "status_code", None)
+        if status_code is not None:
+            if status_code == 401:
+                print("Invalid API key", file=sys.stderr)
+            elif status_code == 429:
+                print("Rate limited - try again later", file=sys.stderr)
+            elif status_code == 503:
+                print("Model unavailable", file=sys.stderr)
+            else:
+                print("Request failed with status", status_code, file=sys.stderr)
+        else:
+            print("Unexpected error:", error, file=sys.stderr)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+body, _ := json.Marshal(map[string]any{
+	"model": "openai/gpt-5-nano",
+	"input": "Hello!",
+})
+
+req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+req.Header.Set("Content-Type", "application/json")
+
+resp, err := http.DefaultClient.Do(req)
+if err != nil {
+	log.Fatal("Unexpected error: ", err)
+}
+defer resp.Body.Close()
+
+switch resp.StatusCode {
+case http.StatusOK:
+case http.StatusUnauthorized:
+	log.Fatal("Invalid API key")
+case http.StatusTooManyRequests:
+	log.Fatal("Rate limited - try again later")
+case http.StatusServiceUnavailable:
+	log.Fatal("Model unavailable")
+default:
+	log.Fatal("Unexpected error: ", resp.Status)
+}
+
+var result struct {
+	Output []struct {
+		Type    string `json:"type"`
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	} `json:"output"`
+}
+if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	log.Fatal("Unexpected error: ", err)
+}
+
+text := ""
+for _, item := range result.Output {
+	if item.Type != "message" {
+		continue
+	}
+	for _, c := range item.Content {
+		if c.Type == "output_text" {
+			text += c.Text
+		}
+	}
+}
+fmt.Println(text)
+```
+
+```bash title="cURL" lines
+response=$(curl -s -w '\n%{http_code}' https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-nano",
+    "input": "Hello!"
+  }')
+
+status=$(echo "$response" | tail -n1)
+body=$(echo "$response" | sed '$d')
+
+case "$status" in
+  200) echo "$body" | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text' ;;
+  401) echo "Invalid API key" >&2 ;;
+  429) echo "Rate limited - try again later" >&2 ;;
+  503) echo "Model unavailable" >&2 ;;
+  *)   echo "Unexpected error: $body" >&2 ;;
+esac
+```
+
+</CodeGroup>
+
+```text title="Output"
+Hi there! How can I help today? I can answer questions, explain concepts, help with writing or editing, code or debug, brainstorm ideas, plan a project, or just chat. What would you like to do?
+```
+
 ## Concurrent Requests
 
 Each callModel invocation is independent:
 
+<CodeGroup>
+
 ```typescript lines
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel } from '@openrouter/agent';
+
+const openrouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
 const [result1, result2, result3] = await Promise.all([
-  openrouter.callModel({ model: 'openai/gpt-5-nano', input: 'Question 1' }).getText(),
-  openrouter.callModel({ model: 'openai/gpt-5-nano', input: 'Question 2' }).getText(),
-  openrouter.callModel({ model: 'openai/gpt-5-nano', input: 'Question 3' }).getText(),
+  callModel(openrouter, { model: 'openai/gpt-5-nano', input: 'Question 1' }).getText(),
+  callModel(openrouter, { model: 'openai/gpt-5-nano', input: 'Question 2' }).getText(),
+  callModel(openrouter, { model: 'openai/gpt-5-nano', input: 'Question 3' }).getText(),
 ]);
+
+console.log('Result 1:', result1);
+console.log('Result 2:', result2);
+console.log('Result 3:', result3);
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+
+from openrouter_agent import OpenRouter, call_model
+
+
+async def main() -> None:
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result1, result2, result3 = await asyncio.gather(
+        call_model(openrouter, {"model": "openai/gpt-5-nano", "input": "Question 1"}).get_text(),
+        call_model(openrouter, {"model": "openai/gpt-5-nano", "input": "Question 2"}).get_text(),
+        call_model(openrouter, {"model": "openai/gpt-5-nano", "input": "Question 3"}).get_text(),
+    )
+
+    print("Result 1:", result1)
+    print("Result 2:", result2)
+    print("Result 3:", result3)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"sync"
+)
+
+func getText(input string) (string, error) {
+	body, _ := json.Marshal(map[string]any{"model": "openai/gpt-5-nano", "input": input})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status: %s", resp.Status)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	text := ""
+	for _, item := range result.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				text += c.Text
+			}
+		}
+	}
+	return text, nil
+}
+
+func main() {
+	inputs := []string{"Question 1", "Question 2", "Question 3"}
+	results := make([]string, len(inputs))
+	errs := make([]error, len(inputs))
+
+	var wg sync.WaitGroup
+	for i, input := range inputs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results[i], errs[i] = getText(input)
+		}()
+	}
+	wg.Wait()
+
+	for i, result := range results {
+		if errs[i] != nil {
+			log.Fatal(errs[i])
+		}
+		fmt.Printf("Result %d: %s\n", i+1, result)
+	}
+}
+
+```
+
+```bash title="cURL" lines
+tmp=$(mktemp -d)
+
+for i in 1 2 3; do
+  curl -s https://openrouter.ai/api/v1/responses \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "{\"model\": \"openai/gpt-5-nano\", \"input\": \"Question $i\"}" > "$tmp/result$i.json" &
+done
+wait
+
+for i in 1 2 3; do
+  text=$(jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text' "$tmp/result$i.json")
+  echo "Result $i: $text"
+done
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Result 1: Sure—please share the full text of Question 1 (or an image of it). Also tell me:
+- the subject (math, physics, programming, etc.)
+- any given data or formulas
+- whether you want a quick answer or a step-by-step solution
+
+If you can’t paste it, even a brief summary of the problem will help me get started.
+Result 2: I don’t have Question 2. Please paste the exact problem (text, image, or figures) or tell me the subject and any given data. I’ll provide a step-by-step solution and final answer. If you want, also mention any constraints (time, allowed tools) so I tailor the approach.
+Result 3: I’m happy to help, but I don’t have the prompt for Question 3. Please either paste the full text of Question 3 or upload an image of it. If you can’t do that, tell me:
+
+- the subject (e.g., algebra, calculus, physics, statistics, geometry, etc.)
+- the given data
+- what you’re asked to find
+- any work you’ve done so far
+
+With that, I can give you a step-by-step solution or guide you through the approach. Here are quick, generic approaches you can use depending on the topic:
+
+- Algebra: write the equation, collect like terms, isolate the variable, and check back in the original equation.
+- Calculus: identify what’s to be optimized or solved for, compute derivatives, find critical points, use a sign chart or second derivative test, and verify your solution.
+- Geometry/Trigonometry: apply relevant theorems (Pythagoras, similar triangles, trigonometric identities), set up equations, solve for the unknown, check units/consistency.
+- Statistics/Probability: determine the model, apply the appropriate formulas (mean, variance, probabilities), and interpret the result.
+- Physics: write down the governing equations (Newton’s laws, energy, kinematics), solve for the unknown with correct units, and check dimensional consistency.
+
+Share the prompt and I’ll provide a clear, worked solution.
 ```
 
 ## Next Steps

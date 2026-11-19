@@ -28,52 +28,138 @@ The simplest way to use the API is with a string input:
 const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'openai/o4-mini',
+    model: 'openai/gpt-5-mini',
     input: 'What is the meaning of life?',
     max_output_tokens: 9000,
   }),
 });
 
 const result = await response.json();
-console.log(result);
+console.log(JSON.stringify(result, null, 2));
 ```
 
 ```python title="Python" lines
+import os
+import json
 import requests
 
 response = requests.post(
     'https://openrouter.ai/api/v1/responses',
     headers={
-        'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+        'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
         'Content-Type': 'application/json',
     },
     json={
-        'model': 'openai/o4-mini',
+        'model': 'openai/gpt-5-mini',
         'input': 'What is the meaning of life?',
         'max_output_tokens': 9000,
     }
 )
 
 result = response.json()
-print(result)
+print(json.dumps(result, indent=2))
+
 ```
 
 ```bash title="cURL" lines
-curl -X POST https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer YOUR_OPENROUTER_API_KEY" \
+curl -sS -X POST https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "openai/o4-mini",
+    "model": "openai/gpt-5-mini",
     "input": "What is the meaning of life?",
     "max_output_tokens": 9000
-  }'
+  }' | jq .
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":             "openai/gpt-5-mini",
+		"input":             "What is the meaning of life?",
+		"max_output_tokens": 9000,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+	var out bytes.Buffer
+	if err := json.Indent(&out, data, "", "  "); err != nil {
+		fmt.Println(string(data))
+		return
+	}
+	fmt.Println(out.String())
+}
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+{
+  "id": "gen-1794947552-eB97MeeH8MbQRQV3igmy",
+  "object": "response",
+  "created_at": 1794947552,
+  "model": "openai/gpt-5-mini",
+  "status": "completed",
+  "completed_at": 1794947560,
+  "output": [
+    {
+      "id": "rs_06851d38939ac958016afcb9e1170487d1ab81b2daebc8c090",
+      "type": "reasoning",
+      "status": "completed",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "**Exploring meaning in life**\n\nThis is quite a philosophical question! I think I should provide a thoughtful and balanced answer. I’d cover perspectives such as biological and philosophical views, including existentialism and nihilism, but also focus on practical guidance for creating meaning through relationships, goals, values, and personal growth.\n\nI want to highlight that there’s no single universal answer, maybe suggesting exercises like a values inventory or reflecting on one’s legacy. Psychological research shows that meaning is closely linked to relationships and purpose. So, let’s dive in!**Crafting meaningful suggestions**\n\nI want to wrap up by asking if the user would like tailored suggestions or discussion on a specific perspective. I’ll keep the tone empathetic and thoughtful without claiming absolute truths.\n\nI’ll outline common views on life's meaning, like biological survival, hedonism's pleasure, existentialism’s self-created meaning, nihilism’s absence of meaning, religious beliefs in service to God, humanism’s focus on flourishing, and absurdism’s embrace of life’s absurdity.\n\nPsychological research shows that components of meaning include purpose, coherence, and belonging, which link to well-being. I’ll also suggest practical steps like identifying values and nurturing connections. I’m excited to see how they respond!"
+        }
+      ],
+      "encrypted_content": "gAAAAABq_Lnmb3PsaZK--rCjdJB0MpynXqaD-TRQgIvTAFaV7J7xAVeF1AkywJ9dU-jWICFoMIorE_dMqJII9XLV85UJDdQibvGxmOUvw9JnjCCw_jcdI8qk-_oK6GYvPOZS968QwOrpPClT5WzjRDWq00GG8WOGWZIylFGQwySsSqntQ3VYvIqEpH6pPi23zg-xRkdaHl_tLsHGY7I42m5u2tbUeRTGQuDi5v57gCBbEXiegBdt73P7K7sDHJTliDs2h9TQQSwDkyaZBOGF-r6mrLDIGTVu2g2gn5DyTM1DpuVdQW5-eO2A0ivXt7tvTq8OluS22mW6uHZN0kfeWvVyZ0oreXWtDYpTzPCyRU2ZnpJjTxskT7QJYJt-KkqQ1eerzEArT_jNF7HlJNM0_uBs5d0-dZF1RlorcHK6JwMH7_Aq-KI_Iw27Xp9i7fXpKhLeaYV6Il87fvU7tTC5njmBWgaLeDXloJ5DRihOhnRTbyGKrViyf1_OHpORWsGSv0BGkujQxR1hr-1PeUKVEP-uuqEkoEgGwCJx4woRs2LxEGQASeJLpDuVH-W6hkmvEA2xvkorTmdd2kZeEOgu00PJn-J6qi0YXm3XVl7oo7fxK7wBDW_mXxbuBiaA1oUK30zM_FVd0PNrT1vBFIXZaKtgFZ4fkQYWKpROyhhMt3eGE_5PLFEVZOa5eXUFi-Z1Iv_VRlHDzIhGEQ7KmI4qXnIlEwFYEvzkbeGiOoxUexja9XFuVSdPpu3DRs1ageF5nKNcDqjGkor1YhU9-XH9kPWBACv-R6NLOpvuvEHAhGTTLEv403g4vmkAhWgGxH-rWkqeHBmq6u1stRb_YciD6UVsA09Z7geX7h5ctjFSrg9e2UtVb_foJgdUcyNNZqzptBNl9wrWig1XEk0D5dyLtUdEWaF_CtmGlIYsLdshJ-rNgOttcpgq6AABirkGK_nRK7iuFXoSTdseUk-bPfewucEA1AXOv3Lf5S2lxKaS2dbWo73lnteuyKIA_NsEoBB7dAbNJL-FSV1EDqe3PnUb4LMOofHDYWoZr0TkL-B8cVIFAC-a3xvi3u5HWEl4vfKaFi-U9STGdy2tYb4hNTA2Rs8bunvruQhAE4FrGLTIsXMeBs7W4c1QzzkodqBkTEEQce-eaeWi545LuXU_DoeXCdGBIvI42VMbDYc7cHTSPdxhp9eVUVL8AK-UuUGoua08Q_f5_CMBTYm4DX1gzffviKwrOABKeNoa8VmhGfK5Zq1Pm46gT_EeNdsIM5ExXDL1ltIUGuCrKC_126rNreMfUbZX3DesBUrfA2P4gnmvaQzgPpVlLsqVXUlvV5ewjF_lWTNd_g470CwVozhN6fhAz2BpsJkehVWGIKk0nO-xo5RwDZRC-FfNlJyXzeKvxpvok8-fX4ga7YIl_pucpvBBK-DolI-_zpnOPzbnACcgO3Ss1Bfz3kMuyxcaeJc1wyTrVfQilMt7R9cYeCezcCbHXhFGonOyJgn0Y_7VFapuYlBcVfc90Xb705AP0NYWuyLkF-_OIRZacO-6YU48IVPuNxWsGYbI7Jvvv427o8G9eVsqTXH-HpnayFjHU8p-68YEOsCcTNjMsqsMbDYnumbKgke7-X0NvHsl8fTRhE_oZwl3wpVpFok9wXKGw_JadIdq8lX3PQaZwYwiuGUDReIOpDt4ppyx7x9nhqXQwluH98Qf31oZIWzHjlSDhlA9Vuu0bWANgFl5BC6w6bN1wfIybopBGp-8A-s0YWYcT_LaJ1PO8jH427eAE33a6-Egrt4rFQT0RV7RtbWtXQ0c-vYpBRWn1Dv8xHA8qC2-ig9Q1WSeUeufv1AQUVCQMMoQNv5C7fzHeH5SwiC238RRKPnczPBZjVStiZBRk6aBhS1FIzzbTHfiBTeBGycJPk81QpTx0zijD8c7JmpjtoflQ2Y0TpclNLU-He00m1YNDx9O3j3tI9965RRSppGAlZ_-rCl88yAlKtYVH_amfM0zUrWHJTBguVjHgY_oQ1QlIPzS4WZMk05tDl2da1GLHBTAlQWpAgU94hdXIU110ah4J4K5zpEQDc2R3TunUk2gm_M1zHkSmNgNfc2hC9K26clFE-0ee8CbMN9-MfumIRwWUHimKEcmr_j7i60WofusTykAG3v8sO9UQOHr_Bh
+…[5356 chars clipped]…
+8EV_N9JV6n_8wPWakh1SDS8xJwTfbSjL-L_98jj4-N8_Nf8kQ1J01t7dwVENmrkBwe71rR1xTNjXwNNEnz72sEE_60zu883dO6bPdFcsjI5Od6zbAUnaH7XE9pmsCvg==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC01LW1pbmktMjAyNS0wOC0wN3xvcGVuYWkifQ",
+      "format": "openai-responses-v1"
+    },
+    {
+      "id": "msg_tmp_szocr4yvk9",
+      "type": "message",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Short version: there’s no single, universally agreed “meaning of life.” Whether life has an objective meaning depends on your worldview. Most people find meaning by adopting values and commitments that make their lives feel coherent, worthwhile, and connected to others.\n\nHelpful ways to think about it\n\n- Scientific/biological: life’s basic “purpose” is survival and reproduction, but that’s a descriptive account, not prescriptive about how you should live.\n- Existential/humanist: meaning is created, not discovered—choose values and projects that matter to you.\n- Religious/spiritual: meaning comes from relationship with the divine, spiritual laws, or an afterlife.\n- Nihilism/absurdism: there may be no inherent meaning; the response can be despair, or freedom to invent meaning anyway.\n- Aristotelian/eudaimonic: flourishing — developing virtues, talents, and living well — is the point.\n\nWhat research and experience show\n- People report greater wellbeing when they experience purpose, coherence (a story that makes life make sense), significance (feeling their life matters), and belonging.\n- Strong predictors of meaningful lives: caring relationships, contribution to others, engagement in challenging projects, and personal growth.\n\nPractical steps to find or create meaning\n- Clarify values: what matters to you? (honesty, creativity, family, justice, curiosity…)\n- Pick committed projects: long-term goals tied to those values (raising children, art, science, service).\n- Invest in relationships: meaning is strongly social—friendship, love, community.\n- Serve or contribute: helping others reliably increases a sense of significance.\n- Seek flow and challenge: deeply engaging activities create satisfaction and purpose.\n- Make a life-narrative: write or reflect on how your past, present, and hopes connect.\n- Embrace uncertainty: accept that meaning can shift across life stages.\n\nIf you want more\n- I can suggest short exercises to clarify your values and goals, recommend books (e.g., Viktor Frankl’s Man’s Search for Meaning, Camus’ The Myth of Sisyphus, or positive-psychology work on purpose), or explore any of the philosophical or religious perspectives in more depth. Which would you like?",
+          "annotations": [],
+          "logprobs": []
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "incomplete_details": null,
+```
 
 ## Structured Message Input
 
@@ -85,15 +171,15 @@ For more complex conversations, use the message array format:
 const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'openai/o4-mini',
+    model: 'openai/gpt-4o-mini',
     input: [
       {
         type: 'message',
-        role: 'user',
+        role: 'user' as const,
         content: [
           {
             type: 'input_text',
@@ -107,19 +193,22 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
 });
 
 const result = await response.json();
+console.log(JSON.stringify(result, null, 2));
 ```
 
 ```python title="Python" expandable lines
+import os
+import json
 import requests
 
 response = requests.post(
     'https://openrouter.ai/api/v1/responses',
     headers={
-        'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+        'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
         'Content-Type': 'application/json',
     },
     json={
-        'model': 'openai/o4-mini',
+        'model': 'openai/gpt-4o-mini',
         'input': [
             {
                 'type': 'message',
@@ -137,14 +226,16 @@ response = requests.post(
 )
 
 result = response.json()
+print(json.dumps(result, indent=2))
+
 ```
 
 ```bash title="cURL" lines
 curl -X POST https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer YOUR_OPENROUTER_API_KEY" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "openai/o4-mini",
+    "model": "openai/gpt-4o-mini",
     "input": [
       {
         "type": "message",
@@ -161,7 +252,101 @@ curl -X POST https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o-mini",
+		"input": []map[string]any{
+			{
+				"type": "message",
+				"role": "user",
+				"content": []map[string]any{
+					{
+						"type": "input_text",
+						"text": "Tell me a joke about programming",
+					},
+				},
+			},
+		},
+		"max_output_tokens": 9000,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+	var out bytes.Buffer
+	if err := json.Indent(&out, data, "", "  "); err != nil {
+		fmt.Println(string(data))
+		return
+	}
+	fmt.Println(out.String())
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+{
+  "id": "gen-1794947636-0DOPyQbl4GPtvvtnnja5",
+  "object": "response",
+  "created_at": 1794947636,
+  "model": "openai/gpt-4o-mini",
+  "status": "completed",
+  "completed_at": 1794947637,
+  "output": [
+    {
+      "id": "msg_tmp_nd65xatzzk",
+      "type": "message",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Why do programmers prefer dark mode?\n\nBecause light attracts bugs!",
+          "annotations": [],
+          "logprobs": []
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "incomplete_details": null,
+  "access_programs": null,
+  "tools": [],
+  "tool_choice": "auto",
+  "parallel_tool_calls": true,
+  "max_output_tokens": 9000,
+  "temperature": 1,
+  "top_p": 1,
+  "presence_penalty": 0,
+  "frequency_penalty": 0,
+  "top_logprobs": 0,
+  "max_tool_calls": null,
+  "metadata": {},
+  "background": false,
+  "previous_response_id": null,
+  "service_tier": "default",
+```
 
 ## Response Format
 
@@ -232,31 +417,33 @@ Enable streaming for real-time response generation:
 const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'openai/o4-mini',
+    model: 'openai/gpt-4o-mini',
     input: 'Write a short story about AI',
     stream: true,
     max_output_tokens: 9000,
   }),
 });
 
-const reader = response.body?.getReader();
+const reader = response.body!.getReader();
 const decoder = new TextDecoder();
+let buffer = '';
 
-while (true) {
+stream: while (true) {
   const { done, value } = await reader.read();
   if (done) break;
 
-  const chunk = decoder.decode(value);
-  const lines = chunk.split('\n');
+  buffer += decoder.decode(value, { stream: true });
+  const lines = buffer.split('\n');
+  buffer = lines.pop() ?? '';
 
   for (const line of lines) {
     if (line.startsWith('data: ')) {
       const data = line.slice(6);
-      if (data === '[DONE]') return;
+      if (data === '[DONE]') break stream;
 
       try {
         const parsed = JSON.parse(data);
@@ -270,17 +457,18 @@ while (true) {
 ```
 
 ```python title="Python" expandable lines
+import os
 import requests
 import json
 
 response = requests.post(
     'https://openrouter.ai/api/v1/responses',
     headers={
-        'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+        'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
         'Content-Type': 'application/json',
     },
     json={
-        'model': 'openai/o4-mini',
+        'model': 'openai/gpt-4o-mini',
         'input': 'Write a short story about AI',
         'stream': True,
         'max_output_tokens': 9000,
@@ -300,9 +488,107 @@ for line in response.iter_lines():
                 print(parsed)
             except json.JSONDecodeError:
                 continue
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":             "openai/gpt-4o-mini",
+		"input":             "Write a short story about AI",
+		"stream":            true,
+		"max_output_tokens": 9000,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1024*1024), 16*1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		data := strings.TrimPrefix(line, "data: ")
+		if data == "[DONE]" {
+			break
+		}
+
+		var parsed map[string]any
+		if err := json.Unmarshal([]byte(data), &parsed); err != nil {
+			continue // Skip invalid JSON
+		}
+		out, _ := json.MarshalIndent(parsed, "", "  ")
+		fmt.Println(string(out))
+	}
+}
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+{
+  type: "response.created",
+  response: {
+    id: "gen-1794947687-8tALXw5cFMm8LxzsA7w0",
+    object: "response",
+    created_at: 1794947687,
+    model: "openai/gpt-4o-mini",
+    status: "in_progress",
+    completed_at: null,
+    output: [],
+    error: null,
+    incomplete_details: null,
+    access_programs: null,
+    tools: [],
+    tool_choice: "auto",
+    parallel_tool_calls: true,
+    max_output_tokens: 9000,
+    temperature: 1,
+    top_p: 1,
+    presence_penalty: 0,
+    frequency_penalty: 0,
+    top_logprobs: 0,
+    max_tool_calls: null,
+    metadata: {},
+    background: false,
+    previous_response_id: null,
+    service_tier: "auto",
+    truncation: "disabled",
+    store: false,
+    instructions: null,
+    text: {
+      format: [Object ...],
+    },
+    reasoning: null,
+    safety_identifier: null,
+    prompt_cache_key: null,
+    prompt_cache_options: null,
+    usage: null,
+  },
+  sequence_number: 0,
+```
 
 ### Example Streaming Output
 
@@ -352,56 +638,175 @@ try {
   const response = await fetch('https://openrouter.ai/api/v1/responses', {
     method: 'POST',
     headers: {
-      'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'openai/o4-mini',
+      model: 'openai/gpt-4o-mini',
       input: 'Hello, world!',
     }),
   });
 
   if (!response.ok) {
     const error = await response.json();
-    console.error('API Error:', error.error.message);
-    return;
+    console.error('API Error:', error.error?.message ?? error);
+  } else {
+    const result = await response.json();
+    console.log(JSON.stringify(result, null, 2));
   }
-
-  const result = await response.json();
-  console.log(result);
 } catch (error) {
   console.error('Network Error:', error);
 }
 ```
 
 ```python title="Python" expandable lines
+import os
+import json
 import requests
 
 try:
     response = requests.post(
         'https://openrouter.ai/api/v1/responses',
         headers={
-            'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+            'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
             'Content-Type': 'application/json',
         },
         json={
-            'model': 'openai/o4-mini',
+            'model': 'openai/gpt-4o-mini',
             'input': 'Hello, world!',
         }
     )
 
     if response.status_code != 200:
         error = response.json()
-        print(f"API Error: {error['error']['message']}")
+        print(f"API Error: {error.get('error', {}).get('message', error)}")
     else:
         result = response.json()
-        print(result)
+        print(json.dumps(result, indent=2))
 
 except requests.RequestException as e:
     print(f"Network Error: {e}")
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o-mini",
+		"input": "Hello, world!",
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Network Error:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var apiErr struct {
+			Error struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if json.Unmarshal(data, &apiErr) == nil && apiErr.Error.Message != "" {
+			fmt.Fprintln(os.Stderr, "API Error:", apiErr.Error.Message)
+		} else {
+			fmt.Fprintln(os.Stderr, "API Error:", string(data))
+		}
+		return
+	}
+
+	var out bytes.Buffer
+	if err := json.Indent(&out, data, "", "  "); err != nil {
+		fmt.Println(string(data))
+		return
+	}
+	fmt.Println(out.String())
+}
+
+```
+
+```bash title="cURL" lines
+response=$(curl -sS -w '\n%{http_code}' https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o-mini",
+    "input": "Hello, world!"
+  }') || { echo "Network Error" >&2; exit 1; }
+
+status="${response##*$'\n'}"
+body="${response%$'\n'*}"
+
+if [ "$status" -ge 400 ]; then
+  echo "API Error: $(echo "$body" | jq -r '.error.message // .')" >&2
+else
+  echo "$body" | jq .
+fi
 ```
 
 </CodeGroup>
+
+```text title="Output"
+{
+  "id": "gen-1794947815-8vryPKvrel8n6tpgRNVj",
+  "object": "response",
+  "created_at": 1794947815,
+  "model": "openai/gpt-4o-mini",
+  "status": "completed",
+  "completed_at": 1794947816,
+  "output": [
+    {
+      "id": "msg_tmp_tj7odsr50ve",
+      "type": "message",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Hello! How can I assist you today?",
+          "annotations": [],
+          "logprobs": []
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "incomplete_details": null,
+  "access_programs": null,
+  "tools": [],
+  "tool_choice": "auto",
+  "parallel_tool_calls": true,
+  "max_output_tokens": null,
+  "temperature": 1,
+  "top_p": 1,
+  "presence_penalty": 0,
+  "frequency_penalty": 0,
+  "top_logprobs": 0,
+  "max_tool_calls": null,
+  "metadata": {},
+  "background": false,
+  "previous_response_id": null,
+  "service_tier": "default",
+```
 
 ## Multiple Turn Conversations
 
@@ -414,15 +819,15 @@ Since the Responses API is stateless, you must include the full conversation his
 const firstResponse = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'openai/o4-mini',
+    model: 'openai/gpt-4o-mini',
     input: [
       {
         type: 'message',
-        role: 'user',
+        role: 'user' as const,
         content: [
           {
             type: 'input_text',
@@ -436,20 +841,21 @@ const firstResponse = await fetch('https://openrouter.ai/api/v1/responses', {
 });
 
 const firstResult = await firstResponse.json();
+console.log(JSON.stringify(firstResult, null, 2));
 
 // Second request - include previous conversation
 const secondResponse = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'openai/o4-mini',
+    model: 'openai/gpt-4o-mini',
     input: [
       {
         type: 'message',
-        role: 'user',
+        role: 'user' as const,
         content: [
           {
             type: 'input_text',
@@ -472,7 +878,7 @@ const secondResponse = await fetch('https://openrouter.ai/api/v1/responses', {
       },
       {
         type: 'message',
-        role: 'user',
+        role: 'user' as const,
         content: [
           {
             type: 'input_text',
@@ -486,20 +892,24 @@ const secondResponse = await fetch('https://openrouter.ai/api/v1/responses', {
 });
 
 const secondResult = await secondResponse.json();
+console.log(JSON.stringify(secondResult, null, 2));
+
 ```
 
 ```python title="Python" expandable lines
+import os
+import json
 import requests
 
 # First request
 first_response = requests.post(
     'https://openrouter.ai/api/v1/responses',
     headers={
-        'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+        'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
         'Content-Type': 'application/json',
     },
     json={
-        'model': 'openai/o4-mini',
+        'model': 'openai/gpt-4o-mini',
         'input': [
             {
                 'type': 'message',
@@ -517,16 +927,17 @@ first_response = requests.post(
 )
 
 first_result = first_response.json()
+print(json.dumps(first_result, indent=2))
 
 # Second request - include previous conversation
 second_response = requests.post(
     'https://openrouter.ai/api/v1/responses',
     headers={
-        'Authorization': 'Bearer YOUR_OPENROUTER_API_KEY',
+        'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
         'Content-Type': 'application/json',
     },
     json={
-        'model': 'openai/o4-mini',
+        'model': 'openai/gpt-4o-mini',
         'input': [
             {
                 'type': 'message',
@@ -567,9 +978,200 @@ second_response = requests.post(
 )
 
 second_result = second_response.json()
+print(json.dumps(second_result, indent=2))
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func send(input []any) {
+	body, _ := json.Marshal(map[string]any{
+		"model":             "openai/gpt-4o-mini",
+		"input":             input,
+		"max_output_tokens": 9000,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+	var out bytes.Buffer
+	if err := json.Indent(&out, data, "", "  "); err != nil {
+		fmt.Println(string(data))
+		return
+	}
+	fmt.Println(out.String())
+}
+
+func main() {
+	firstQuestion := map[string]any{
+		"type": "message",
+		"role": "user",
+		"content": []any{
+			map[string]any{"type": "input_text", "text": "What is the capital of France?"},
+		},
+	}
+
+	// First request
+	send([]any{firstQuestion})
+
+	// Second request - include previous conversation
+	send([]any{
+		firstQuestion,
+		map[string]any{
+			"type":   "message",
+			"role":   "assistant",
+			"id":     "msg_abc123",
+			"status": "completed",
+			"content": []any{
+				map[string]any{
+					"type":        "output_text",
+					"text":        "The capital of France is Paris.",
+					"annotations": []any{},
+				},
+			},
+		},
+		map[string]any{
+			"type": "message",
+			"role": "user",
+			"content": []any{
+				map[string]any{"type": "input_text", "text": "What is the population of that city?"},
+			},
+		},
+	})
+}
+
+```
+
+```bash title="cURL" lines
+# First request
+curl -sS https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o-mini",
+    "input": [
+      {
+        "type": "message",
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "What is the capital of France?"
+          }
+        ]
+      }
+    ],
+    "max_output_tokens": 9000
+  }' | jq .
+
+# Second request - include previous conversation
+curl -sS https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o-mini",
+    "input": [
+      {
+        "type": "message",
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "What is the capital of France?"
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "role": "assistant",
+        "id": "msg_abc123",
+        "status": "completed",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "The capital of France is Paris.",
+            "annotations": []
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "What is the population of that city?"
+          }
+        ]
+      }
+    ],
+    "max_output_tokens": 9000
+  }' | jq .
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+{
+  "id": "gen-1794947874-kiaykxSR5H0NiigWXUim",
+  "object": "response",
+  "created_at": 1794947874,
+  "model": "openai/gpt-4o-mini",
+  "status": "completed",
+  "completed_at": 1794947874,
+  "output": [
+    {
+      "id": "msg_tmp_n64m3mb0l7",
+      "type": "message",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "The capital of France is Paris.",
+          "annotations": [],
+          "logprobs": []
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "incomplete_details": null,
+  "access_programs": null,
+  "tools": [],
+  "tool_choice": "auto",
+  "parallel_tool_calls": true,
+  "max_output_tokens": 9000,
+  "temperature": 1,
+  "top_p": 1,
+  "presence_penalty": 0,
+  "frequency_penalty": 0,
+  "top_logprobs": 0,
+  "max_tool_calls": null,
+  "metadata": {},
+  "background": false,
+  "previous_response_id": null,
+  "service_tier": "default",
+```
 
 <Info>
 **Required Fields**

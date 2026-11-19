@@ -80,7 +80,127 @@ message = next(item for item in reversed(data["output"]) if item["type"] == "mes
 print(next(part["text"] for part in message["content"] if part["type"] == "output_text"))
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "~anthropic/claude-opus-latest",
+		"input": "Survey the strongest arguments for and against a carbon tax. Where do experts disagree?",
+		"tools": []map[string]any{
+			{"type": "openrouter:fusion"},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	// An error response has no output, so check the status before decoding
+	if resp.StatusCode != http.StatusOK {
+		panic("OpenRouter rejected the request: " + resp.Status)
+	}
+
+	var data struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		panic(err)
+	}
+
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range data.Output[i].Content {
+			if part.Type == "output_text" {
+				fmt.Println(part.Text)
+				break
+			}
+		}
+		break
+	}
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "~anthropic/claude-opus-latest",
+    "input": "Survey the strongest arguments for and against a carbon tax. Where do experts disagree?",
+    "tools": [
+      { "type": "openrouter:fusion" }
+    ]
+  }' | jq -r '[.output[] | select(.type == "message")] | last | .content[] | select(.type == "output_text") | .text'
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+# The Carbon Tax Debate
+
+Most economists agree on the theory of a carbon tax. The real disagreements are about practice: whether it can be passed and kept in place, how much it actually cuts emissions, and whether it should be the main climate policy or one tool among several.
+
+---
+
+## The strongest arguments for
+
+**1. It fixes the problem at the source.** Greenhouse gas emissions are a textbook externality: polluters don't pay for the damage they cause. A tax on each ton (a "Pigouvian" tax) builds that cost into every decision. Firms and households then cut emissions wherever it's cheapest. No regulator needs to know in advance whether the best option is switching fuels, insulating homes, or changing how a product is made.
+
+**2. It costs less than the alternatives.** A single price makes the cost of the last ton cut the same across the whole economy. Rules that target one sector at a time, like fuel-economy standards or appliance mandates, usually leave cheaper cuts elsewhere untouched. Studies regularly find regulation costs several times more per ton avoided than a price would.
+
+**3. It raises money.** That revenue can:
+- cut taxes that discourage work and investment (a "tax swap"),
+- be returned to households as equal per-person dividends, which leaves most lower-income households better off, or
+- pay for clean-energy investment.
+
+A 2019 statement backing a carbon tax with dividends was signed by over 3,500 US economists, including 28 Nobel laureates and every living former Fed chair. That's unusually broad agreement for economics.
+
+**4. It's simple and transparent.** Compared with layers of regulations and subsidies, a tax is harder for lobbyists to carve up. Compared with cap-and-trade, it gives businesses a predictable price to plan around.
+
+**5. It keeps pushing innovation.** A rising price rewards every future cut in emissions, not just compliance with a fixed standard.
+
+**6. There is real-world evidence it works.**
+- **British Columbia** (since 2008): emissions fell relative to the rest of Canada, with no clear harm to growth.
+- **Sweden** (since 1991, now one of the world's highest rates at roughly $120+ per ton): emissions fell substantially while the economy grew.
+- **UK carbon price floor**: a major reason coal power nearly disappeared in the 2010s.
+
+**7. Leakage can be managed.** "Leakage" means emissions moving to countries without a carbon price. Border adjustments, such as the EU's new carbon tariff on imports (CBAM), tax the carbon in imported goods. That protects domestic industry and pressures trading partners to adopt their own prices.
+
+---
+
+## The strongest arguments against
+
+**1. It's very hard to pass and keep.** The costs are visible, especially at the gas pump, while the benefits are spread out and far in the future. The track record:
+- Australia repealed its carbon price in 2014.
+- France's planned fuel-tax increases helped spark the 2018 "yellow vest" protests and were dropped.
+- Washington State voters rejected carbon-pricing ballot measures in 2016 and 2018.
+- Canada set its consumer carbon tax to zero in 2025, even though most households got rebates larger than what they paid. Its industrial carbon pricing remains.
+```
 
 <Note title="Chat Completions support is in beta">
 Fusion in the `tools` array also works on `/chat/completions`, but it's slower there than on the [Responses API](/api_reference/responses/overview) used in the examples above. For latency-sensitive use, stay on the Responses API.
