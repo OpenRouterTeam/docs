@@ -147,6 +147,7 @@ curl https://openrouter.ai/api/v1/audio/transcriptions \
 | `input_audio.data` | string | Yes | Base64-encoded audio data (raw bytes, not a data URI) |
 | `input_audio.format` | string | Yes | Audio format (e.g., `wav`, `mp3`, `flac`, `m4a`, `ogg`, `webm`, `aac`) |
 | `language` | string | No | ISO-639-1 language code (e.g., `"en"`, `"ja"`). Auto-detected if omitted |
+| `prompt` | string | No | Context to guide transcription, such as domain vocabulary or a previous segment. See [Context Prompting](#context-prompting) for supported providers |
 | `temperature` | number | No | Sampling temperature between 0 and 1. Lower values produce more deterministic results |
 | `response_format` | string | No | `json` (default) or `verbose_json`. See [Verbose Transcripts](#verbose-transcripts-timestamps-and-speakers) |
 | `timestamp_granularities` | string[] | No | `["segment"]` and/or `["word"]`. Only used with `verbose_json` |
@@ -180,13 +181,26 @@ curl https://openrouter.ai/api/v1/audio/transcriptions \
   -F model="openai/whisper-large-v3"
 ```
 
-The `file`, `model`, `language`, `temperature`, `response_format`, and `timestamp_granularities` fields are supported. `prompt` is accepted but ignored. `response_format` may be `json` (the default) or `verbose_json` (see [Verbose Transcripts](#verbose-transcripts-timestamps-and-speakers)). `text`, `srt`, and `vtt` are rejected with a 400. With `verbose_json`, pass `timestamp_granularities[]=word` to also receive word-level timestamps in the `words` array.
+The `file`, `model`, `language`, `prompt`, `temperature`, `response_format`, and `timestamp_granularities` fields are supported. `response_format` may be `json` (the default) or `verbose_json` (see [Verbose Transcripts](#verbose-transcripts-timestamps-and-speakers)). `text`, `srt`, and `vtt` are rejected with a 400. With `verbose_json`, pass `timestamp_granularities[]=word` to also receive word-level timestamps in the `words` array.
 
 Multipart uploads are limited to 25 MB, the same cap OpenAI enforces. For compressed formats this covers long recordings, roughly 26 minutes of 128 kbps MP3, 52 minutes at 64 kbps, or over 2 hours of 24 kbps Opus voice notes. Uncompressed WAV fills the cap much faster (about 13 minutes at 16 kHz mono); prefer `mp3` or `opus` for long recordings. Larger files should be sent as base64 JSON via `input_audio` on OpenAI and Groq models, which offload the large body through a Durable Object and accept files past the 25 MB multipart cap, or as `input_audio.url` for models that accept a URL — the provider downloads it directly, so the 25 MB inline cap does not apply. On other providers, base64 JSON past the multipart cap is rejected, so those models are limited to the 25 MB multipart upload. Recordings longer than about a minute of processing time should be split anyway, since upstream providers time out after 60 seconds per request.
 
+### Context Prompting
+
+Send `prompt` as a top-level JSON string or a multipart text field (`-F 'prompt=Expected vocabulary: OpenRouter, transcription'`). It provides context rather than instructions to rewrite the transcript; a provider may return the same transcript with or without it.
+
+| Provider | Context prompting |
+| --- | --- |
+| OpenAI, Azure OpenAI, Groq, Together | Forwarded as `prompt`. OpenAI's `gpt-4o-transcribe-diarize` does not support it |
+| Alibaba | Mapped to the system message |
+| AssemblyAI | Mapped to `config.prompt` only when the endpoint has prompted pricing configured. Prompted audio uses that rate; otherwise the prompt is ignored and the base rate applies. AssemblyAI ignores `language` when a prompt is applied |
+| Other STT providers | Ignored. Use `keyterms` where keyword boosting is supported |
+
+Canonical `prompt` takes precedence over provider-specific prompt options, including `provider.options.alibaba.system_prompt` and `provider.options.assemblyai.prompt`. An empty string clears the provider-specific prompt. Existing provider-specific options still work when canonical `prompt` is omitted. Provider limits still apply (for example, Groq's 224-token limit and AssemblyAI's 6000-character limit).
+
 ### Provider-Specific Options
 
-Pass provider-specific parameters through `provider.options`, keyed by the provider slug from the endpoints API. Only the options for the provider that serves the request are forwarded, and they are sent under the provider's own field names, so use the names and shapes from that provider's transcription API reference. Parameters that OpenRouter normalizes across providers (`language`, `temperature`, `response_format`, `timestamp_granularities`) stay at the top level of the request.
+Pass provider-specific parameters through `provider.options`, keyed by the provider slug from the endpoints API. Only the options for the provider that serves the request are forwarded, and they are sent under the provider's own field names, so use the names and shapes from that provider's transcription API reference. Parameters that OpenRouter normalizes across providers (`language`, `prompt`, `temperature`, `response_format`, `timestamp_granularities`) stay at the top level of the request.
 
 ```json lines
 {
