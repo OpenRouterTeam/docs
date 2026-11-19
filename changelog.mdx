@@ -16,12 +16,17 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="November 19, 2026" tags={["Breaking","Credits","Images","SCIM","STT"]} rss="1 breaking change, 6 modified endpoints, 5 modified schemas.">
+<Update label="November 19, 2026" tags={["Breaking","Credits","Images","SCIM","STT","TTS"]} rss="1 breaking change, 2 new endpoints, 6 modified endpoints, 11 new schemas, 5 modified schemas.">
 
 ## Breaking changes
 
 - `ImageGenerationResponse.data`: required `b64_json` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+
+## New endpoints
+
+- [`GET /audio/speech/models`](/api/api-reference/tts/list-text-to-speech-models): List text-to-speech models
+- [`GET /audio/speech/models/{author}/{slug}`](/api/api-reference/tts/get-a-text-to-speech-model): Get a text-to-speech model
 
 ## Modified endpoints
 
@@ -31,6 +36,31 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 - [`POST /scim/sync-jobs`](/api/api-reference/scim/start-a-scim-directory-sync): deprecated property_added; description updated; response schema updated
 - [`POST /credits/purchases`](/api/api-reference/credits/buy-credits-with-a-machine-payment): extension `x-payment-info` added; description updated
 - [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription): request schema updated
+
+## New schemas
+
+- `SpeechEnumParameter`
+  - Used by [`GET /audio/speech/models`](/api/api-reference/tts/list-text-to-speech-models), [`GET /audio/speech/models/{author}/{slug}`](/api/api-reference/tts/get-a-text-to-speech-model)
+- `SpeechInputModality`
+  - Used by [`GET /audio/speech/models`](/api/api-reference/tts/list-text-to-speech-models), [`GET /audio/speech/models/{author}/{slug}`](/api/api-reference/tts/get-a-text-to-speech-model)
+- `SpeechModelEndpoint`
+  - Used by [`GET /audio/speech/models`](/api/api-reference/tts/list-text-to-speech-models), [`GET /audio/speech/models/{author}/{slug}`](/api/api-reference/tts/get-a-text-to-speech-model)
+- `SpeechModelResponse`
+  - Used by [`GET /audio/speech/models`](/api/api-reference/tts/list-text-to-speech-models), [`GET /audio/speech/models/{author}/{slug}`](/api/api-reference/tts/get-a-text-to-speech-model)
+- `SpeechModelsListResponse`
+  - Used by [`GET /audio/speech/models`](/api/api-reference/tts/list-text-to-speech-models)
+- `SpeechOutputModality`
+  - Used by [`GET /audio/speech/models`](/api/api-reference/tts/list-text-to-speech-models), [`GET /audio/speech/models/{author}/{slug}`](/api/api-reference/tts/get-a-text-to-speech-model)
+- `SpeechRangeParameter`
+  - Used by [`GET /audio/speech/models`](/api/api-reference/tts/list-text-to-speech-models), [`GET /audio/speech/models/{author}/{slug}`](/api/api-reference/tts/get-a-text-to-speech-model)
+- `SpeechReferenceCount`
+  - Used by [`GET /audio/speech/models`](/api/api-reference/tts/list-text-to-speech-models), [`GET /audio/speech/models/{author}/{slug}`](/api/api-reference/tts/get-a-text-to-speech-model)
+- `SpeechSupportedParameters`
+  - Used by [`GET /audio/speech/models`](/api/api-reference/tts/list-text-to-speech-models), [`GET /audio/speech/models/{author}/{slug}`](/api/api-reference/tts/get-a-text-to-speech-model)
+- `SpeechUnknownParameter`
+  - Used by [`GET /audio/speech/models`](/api/api-reference/tts/list-text-to-speech-models), [`GET /audio/speech/models/{author}/{slug}`](/api/api-reference/tts/get-a-text-to-speech-model)
+- `SpeechVoiceParameter`
+  - Used by [`GET /audio/speech/models`](/api/api-reference/tts/list-text-to-speech-models), [`GET /audio/speech/models/{author}/{slug}`](/api/api-reference/tts/get-a-text-to-speech-model)
 
 ## Modified schemas
 
