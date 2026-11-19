@@ -35,6 +35,8 @@ OpenRouter provides several endpoints for discovering and inspecting models:
 | `GET` | `/api/v1/images/models` | Optional | Dedicated image generation catalog with resolution and aspect ratio constraints. |
 | `GET` | `/api/v1/videos/models` | Optional | Dedicated video generation catalog with duration, resolution, and SKU pricing. |
 | `GET` | `/api/v1/embeddings/models` | Optional | Dedicated text and multimodal embedding catalog with vector dimensions. |
+| `GET` | `/api/v1/audio/speech/models` | Optional | Dedicated text-to-speech catalog with voices, output formats, and speed ranges. |
+| `GET` | `/api/v1/audio/speech/models/{author}/{slug}` | Optional | Single text-to-speech model with per-endpoint voices and speech parameters. |
 
 ## Query parameters (`GET /api/v1/models`)
 
@@ -83,7 +85,7 @@ curl -fsS "https://openrouter.ai/api/v1/models?output_modalities=transcription"
 
 OpenRouter categorizes audio capabilities into three distinct output modalities:
 
-1. **`speech`**: Dedicated Text-to-Speech (TTS) models that run on the `POST /api/v1/audio/speech` endpoint (e.g. `assemblyai/assemblyai-tts-1`, `heygen/heygen-voice-1`). They return raw binary audio files (MP3, WAV, PCM).
+1. **`speech`**: Dedicated Text-to-Speech (TTS) models that run on the `POST /api/v1/audio/speech` endpoint (e.g. `assemblyai/assemblyai-tts-1`, `heygen/heygen-voice-1`). They return raw binary audio files (MP3, WAV, PCM). To list their voices and speech parameters, use `GET /api/v1/audio/speech/models`.
 2. **`transcription`**: Dedicated Speech-to-Text (STT) models that run on the `POST /api/v1/audio/transcriptions` endpoint (e.g. `x-ai/grok-stt-2.0`, `nvidia/nemotron-3.5-transcribe`, `openai/whisper-large-v3`). They accept audio file uploads and return transcribed text.
 3. **`audio`**: General conversational multimodal models that process or emit audio chunks via `POST /api/v1/chat/completions` or `POST /api/v1/responses` (e.g. `openai/gpt-audio`, `openai/gpt-audio-mini`, `google/lyria-3-clip-preview`).
 
