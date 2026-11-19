@@ -204,7 +204,125 @@ product = json.loads(
 print(product["name"], product["price"])
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "google/gemini-2.5-flash",
+		"input": "Generate a product listing with name, price, and description",
+		"text": map[string]any{
+			"format": map[string]any{
+				"type": "json_schema",
+				"name": "Product",
+				"schema": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"name":        map[string]any{"type": "string", "description": "Product name"},
+						"price":       map[string]any{"type": "number", "description": "Price in USD"},
+						"description": map[string]any{"type": "string", "description": "Product description"},
+					},
+					"required": []string{"name", "price"},
+				},
+			},
+		},
+		"plugins": []map[string]any{{"id": "response-healing"}},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Fatal(err)
+	}
+
+	text, found := "", false
+	for i := len(data.Output) - 1; i >= 0 && !found; i-- {
+		if data.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range data.Output[i].Content {
+			if part.Type == "output_text" {
+				text, found = part.Text, true
+				break
+			}
+		}
+		break
+	}
+	if !found {
+		log.Fatal("No output_text in response")
+	}
+
+	// The plugin attempts to repair malformed JSON syntax
+	var product struct {
+		Name  string  `json:"name"`
+		Price float64 `json:"price"`
+	}
+	if err := json.Unmarshal([]byte(text), &product); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(product.Name, product.Price)
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "google/gemini-2.5-flash",
+    "input": "Generate a product listing with name, price, and description",
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "Product",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string", "description": "Product name"},
+            "price": {"type": "number", "description": "Price in USD"},
+            "description": {"type": "string", "description": "Product description"}
+          },
+          "required": ["name", "price"]
+        }
+      }
+    },
+    "plugins": [{"id": "response-healing"}]
+  }' | jq -er '[.output[] | select(.type == "message")] | last | .content[] | select(.type == "output_text") | .text | fromjson | "\(.name) \(.price)"'
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Smartphone X 799.99
+```
 
 ## Limitations
 <Warning>

@@ -78,79 +78,581 @@ Each iteration yields a **complete item** with the same ID but updated content:
 
 The same pattern applies to function calls:
 
-```typescript lines
-// Iteration 1
-{ type: "function_call", callId: "call_456", arguments: "{\"q" }
+<CodeGroup>
 
-// Iteration 2
-{
-  type: "function_call",
-  callId: "call_456",
-  arguments: "{\"query\": \"weather"
+```typescript lines
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel, tool } from '@openrouter/agent';
+import { z } from 'zod';
+
+const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const searchTool = tool({
+  name: 'search',
+  description: 'Search the web',
+  inputSchema: z.object({ query: z.string() }),
+  execute: async ({ query }) => ({ results: [`Result for ${query}`] }),
+});
+
+const result = callModel(client, {
+  model: 'openai/gpt-4o-mini',
+  input: 'Use the search tool to look up the weather in Paris.',
+  tools: [searchTool] as const,
+});
+
+// The same function_call item is emitted repeatedly with the same callId,
+// each time carrying the arguments accumulated so far.
+const iterations = new Map<string, number>();
+for await (const item of result.getItemsStream()) {
+  if (item.type === 'function_call') {
+    const n = (iterations.get(item.callId) ?? 0) + 1;
+    iterations.set(item.callId, n);
+    console.log(`// Iteration ${n}`, {
+      type: item.type,
+      callId: item.callId,
+      arguments: item.arguments,
+    });
+  }
 }
 
-// Iteration 3
-{
+console.log('Final text:', await result.getText());
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+from pydantic import BaseModel
+from openrouter_agent import OpenRouter, call_model, tool
+
+
+class SearchInput(BaseModel):
+    query: str
+
+
+def field(item, key):
+    value = item.get(key) if isinstance(item, dict) else getattr(item, key, None)
+    # Enum-valued fields (e.g. item type) expose their wire string via .value
+    return getattr(value, "value", value)
+
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    search_tool = tool(
+        name="search",
+        description="Search the web",
+        input_schema=SearchInput,
+        execute=lambda params, ctx: {"results": [f"Result for {params.query}"]},
+    )
+
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-4o-mini",
+            "input": "Use the search tool to look up the weather in Paris.",
+            "tools": [search_tool],
+        },
+    )
+
+    # The same function_call item is emitted repeatedly with the same call_id,
+    # each time carrying the arguments accumulated so far.
+    iterations: dict[str, int] = {}
+    async for item in result.get_items_stream():
+        item_type = field(item, "type")
+        call_id = field(item, "call_id")
+        if item_type == "function_call" or (call_id and field(item, "arguments") is not None):
+            n = iterations.get(call_id, 0) + 1
+            iterations[call_id] = n
+            print(f"// Iteration {n}", {
+                "type": "function_call",
+                "call_id": call_id,
+                "arguments": field(item, "arguments"),
+            })
+        else:
+            print("// Item", item_type)
+
+    print("Final text:", await result.get_text())
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+type toolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+func post(body map[string]any) *http.Response {
+	b, _ := json.Marshal(body)
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(b))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if res.StatusCode != 200 {
+		msg, _ := io.ReadAll(res.Body)
+		log.Fatalf("%d: %s", res.StatusCode, msg)
+	}
+	return res
+}
+
+func main() {
+	tools := []map[string]any{{"type": "function", "function": map[string]any{
+		"name": "search", "description": "Search the web",
+		"parameters": map[string]any{"type": "object",
+			"properties": map[string]any{"query": map[string]any{"type": "string"}},
+			"required":   []string{"query"}},
+	}}}
+	messages := []map[string]any{{"role": "user", "content": "Use the search tool to look up the weather in Paris."}}
+
+	res := post(map[string]any{"model": "openai/gpt-4o-mini", "messages": messages, "tools": tools, "stream": true})
+	defer res.Body.Close()
+
+	// Each streamed delta extends the same call (same id) with more arguments.
+	var calls []*toolCall
+	var text strings.Builder
+	done := false
+	iterations := map[string]int{}
+	sc := bufio.NewScanner(res.Body)
+	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
+	for sc.Scan() {
+		data, ok := strings.CutPrefix(sc.Text(), "data: ")
+		if !ok {
+			continue
+		}
+		if data == "[DONE]" {
+			done = true
+			break
+		}
+		var chunk struct {
+			Choices []struct {
+				Delta struct {
+					Content   string `json:"content"`
+					ToolCalls []struct {
+						Index    int    `json:"index"`
+						ID       string `json:"id"`
+						Function struct {
+							Name      string `json:"name"`
+							Arguments string `json:"arguments"`
+						} `json:"function"`
+					} `json:"tool_calls"`
+				} `json:"delta"`
+			} `json:"choices"`
+		}
+		if json.Unmarshal([]byte(data), &chunk) != nil || len(chunk.Choices) == 0 {
+			continue
+		}
+		text.WriteString(chunk.Choices[0].Delta.Content)
+		for _, d := range chunk.Choices[0].Delta.ToolCalls {
+			for len(calls) <= d.Index {
+				calls = append(calls, &toolCall{Type: "function"})
+			}
+			c := calls[d.Index]
+			if d.ID != "" {
+				c.ID = d.ID
+			}
+			c.Function.Name += d.Function.Name
+			c.Function.Arguments += d.Function.Arguments
+			iterations[c.ID]++
+			fmt.Printf("// Iteration %d {type: \"function_call\", callId: %q, arguments: %q}\n",
+				iterations[c.ID], c.ID, c.Function.Arguments)
+		}
+	}
+	// Only use the calls if the stream was read to its end.
+	if err := sc.Err(); err != nil {
+		log.Fatal(err)
+	}
+	if !done {
+		log.Fatal("stream ended before [DONE]")
+	}
+
+	// The model answered directly: print its text and skip the follow-up.
+	if len(calls) == 0 {
+		fmt.Println("Final text:", text.String())
+		return
+	}
+
+	// Run the search tool for every call and send the results back.
+	messages = append(messages, map[string]any{"role": "assistant", "content": text.String(), "tool_calls": calls})
+	for _, c := range calls {
+		var args struct{ Query string }
+		if err := json.Unmarshal([]byte(c.Function.Arguments), &args); err != nil {
+			log.Fatalf("malformed arguments for call %s: %v", c.ID, err)
+		}
+		out, _ := json.Marshal(map[string]any{"results": []string{"Result for " + args.Query}})
+		messages = append(messages, map[string]any{"role": "tool", "tool_call_id": c.ID, "content": string(out)})
+	}
+
+	// tool_choice "none" makes this a text-only follow-up: the model cannot request another search.
+	final := post(map[string]any{"model": "openai/gpt-4o-mini", "messages": messages, "tools": tools, "tool_choice": "none"})
+	defer final.Body.Close()
+	var completion struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(final.Body).Decode(&completion); err != nil {
+		log.Fatal(err)
+	}
+	if len(completion.Choices) == 0 {
+		log.Fatal("no choices in response")
+	}
+	fmt.Println("Final text:", completion.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+#!/bin/bash
+set -o pipefail
+PROMPT='Use the search tool to look up the weather in Paris.'
+TOOLS='[{"type":"function","name":"search","description":"Search the web","parameters":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}}]'
+
+# Stream the Responses API and keep the JSON events. Command substitution waits
+# for the whole response, so the iterations below replay the stream after it ends.
+# --fail and pipefail stop the script on an HTTP error such as a bad API key.
+EVENTS=$(curl -sN --fail https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -n --arg p "$PROMPT" --argjson t "$TOOLS" '{model:"openai/gpt-4o-mini",input:$p,tools:$t,stream:true}')" \
+  | sed -n 's/^data: \({.*\)/\1/p') || { echo "Streaming request failed" >&2; exit 1; }
+
+# The same function_call item (same callId) grows with each arguments delta
+printf '%s\n' "$EVENTS" | jq -nr 'foreach inputs as $e ({};
+  if $e.type == "response.output_item.added" and $e.item.type == "function_call" then
+    .call[$e.item.id] = $e.item.call_id | .args[$e.item.id] = "" | .out = null
+  elif $e.type == "response.function_call_arguments.delta" then
+    .args[$e.item_id] += $e.delta | .n[$e.item_id] += 1 | .out = $e.item_id
+  else .out = null end;
+  select(.out) | .out as $id
+  | "// Iteration \(.n[$id]) \({type: "function_call", callId: .call[$id], arguments: .args[$id]})")'
+
+# Collect every function call the model requested
+CALLS=$(printf '%s\n' "$EVENTS" | jq -sc 'map(select(.type == "response.output_item.done" and .item.type == "function_call") | .item)')
+
+# The model answered directly: print its text and skip the follow-up
+if [ "$CALLS" = "[]" ]; then
+  printf '%s\n' "$EVENTS" | jq -sr '"Final text: " + (map(select(.type == "response.output_text.delta") | .delta) | join(""))'
+  exit 0
+fi
+
+# Run the search tool locally for each call and send the results back.
+# tool_choice "none" makes the follow-up text-only.
+curl -s --fail https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -n --arg p "$PROMPT" --argjson t "$TOOLS" --argjson calls "$CALLS" '{model:"openai/gpt-4o-mini",tools:$t,tool_choice:"none",input:(
+    [{type:"message",role:"user",content:$p}] + $calls
+    + ($calls | map({type:"function_call_output",call_id:.call_id,output:({results:["Result for \(.arguments | fromjson | .query)"]} | tojson)})))}')" \
+  | jq -r '"Final text: " + ([.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text] | join(""))'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+// Iteration 1 {
   type: "function_call",
-  callId: "call_456",
-  arguments: "{\"query\": \"weather in Paris\"}"
+  callId: "call_4mJvr1Fx0enCN2myxTX6N2CA",
+  arguments: "",
+}
+// Iteration 2 {
+  type: "function_call",
+  callId: "call_4mJvr1Fx0enCN2myxTX6N2CA",
+  arguments: "{\"",
+}
+// Iteration 3 {
+  type: "function_call",
+  callId: "call_4mJvr1Fx0enCN2myxTX6N2CA",
+  arguments: "{\"query",
+}
+// Iteration 4 {
+  type: "function_call",
+  callId: "call_4mJvr1Fx0enCN2myxTX6N2CA",
+  arguments: "{\"query\":\"",
+}
+// Iteration 5 {
+  type: "function_call",
+  callId: "call_4mJvr1Fx0enCN2myxTX6N2CA",
+  arguments: "{\"query\":\"weather",
+}
+// Iteration 6 {
+  type: "function_call",
+  callId: "call_4mJvr1Fx0enCN2myxTX6N2CA",
+  arguments: "{\"query\":\"weather in",
+}
+// Iteration 7 {
+  type: "function_call",
+  callId: "call_4mJvr1Fx0enCN2myxTX6N2CA",
+  arguments: "{\"query\":\"weather in Paris",
+}
+// Iteration 8 {
+  type: "function_call",
+  callId: "call_4mJvr1Fx0enCN2myxTX6N2CA",
+  arguments: "{\"query\":\"weather in Paris\"}",
 }
 ```
 
 ## React Integration
 
-The items paradigm eliminates manual chunk accumulation. Use a Map keyed by item ID and let React's reconciliation handle updates:
+The items paradigm eliminates manual chunk accumulation. Use a Map keyed by item ID and let React's reconciliation handle updates. The samples below are console demonstrations so they run outside a browser: they keep the Map in a plain variable and print the items once the stream closes. In a React component, hold the Map in state with `useState` and call `setItems((prev) => new Map(prev).set(item.id, item))` for each item, as the comment in the TypeScript tab shows.
+
+<CodeGroup>
 
 ```tsx expandable lines
-import { useState } from 'react';
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel } from '@openrouter/agent';
 import type { StreamableOutputItem } from '@openrouter/agent';
-import { OpenRouter } from '@openrouter/agent';
 
 const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
 
-function Chat() {
-  const [items, setItems] = useState<Map<string, StreamableOutputItem>>(
-    new Map()
-  );
+// In React, this Map would live in state:
+//   const [items, setItems] = useState(new Map<string, StreamableOutputItem>());
+//   setItems((prev) => new Map(prev).set(item.id, item));
+let items = new Map<string, StreamableOutputItem>();
 
-  async function handleSubmit(input: string) {
-    const result = client.callModel({
-      model: '~anthropic/claude-sonnet-latest',
-      input,
-    });
-
-    for await (const item of result.getItemsStream()) {
-      // Replace the entire item by ID - React re-renders automatically
-      setItems((prev) => new Map(prev).set(item.id, item));
-    }
-  }
-
-  return (
-    <div>
-      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(input); }}>
-        {/* input field */}
-      </form>
-      <div>
-        {[...items.values()].map((item) => (
-          <ItemRenderer key={item.id} item={item} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ItemRenderer({ item }: { item: StreamableOutputItem }) {
+function renderItem(item: StreamableOutputItem) {
   switch (item.type) {
-    case 'message':
-      return <MessageItem message={item} />;
+    case 'message': {
+      const text = (item.content ?? [])
+        .map((part) => (part.type === 'output_text' ? part.text : ''))
+        .join('');
+      console.log(`[message] ${text}`);
+      break;
+    }
     case 'function_call':
-      return <ToolCallItem call={item} />;
+      console.log(`[tool call] ${item.name}(${item.arguments})`);
+      break;
     case 'reasoning':
-      return <ReasoningItem reasoning={item} />;
+      console.log('[reasoning]', JSON.stringify(item.summary ?? []));
+      break;
     default:
-      return null;
+      break;
   }
 }
+
+async function handleSubmit(input: string) {
+  const result = callModel(client, {
+    model: '~anthropic/claude-sonnet-latest',
+    input,
+  });
+
+  for await (const item of result.getItemsStream()) {
+    // Items the SDK does not recognize carry no ID to key on
+    if (!('id' in item) || !item.id) continue;
+    // Replace the entire item by ID - no manual chunk accumulation
+    items = new Map(items).set(item.id, item);
+  }
+
+  // Render the final set of items (React would re-render on each update)
+  for (const item of items.values()) {
+    renderItem(item);
+  }
+}
+
+await handleSubmit('Write a haiku about streaming data.');
+
+```
+
+```python title="Python" lines
+import json
+import os
+
+import requests
+
+# In a UI, this dict would live in state and trigger a re-render on each update
+items: dict[str, dict] = {}
+
+
+def render_item(item: dict) -> None:
+    match item.get("type"):
+        case "message":
+            text = "".join(part.get("text", "") for part in item.get("content") or [])
+            print(f"[message] {text}")
+        case "function_call":
+            print(f"[tool call] {item['name']}({item['arguments']})")
+        case "reasoning":
+            print("[reasoning]", json.dumps(item.get("summary") or []))
+
+
+def handle_submit(user_input: str) -> None:
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/responses",
+        headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+        json={"model": "~anthropic/claude-sonnet-latest", "input": user_input, "stream": True},
+        stream=True,
+    )
+    resp.raise_for_status()
+    for raw in resp.iter_lines():
+        line = raw.decode("utf-8")
+        if not line.startswith("data: ") or line == "data: [DONE]":
+            continue
+        event = json.loads(line[len("data: "):])
+        item = event.get("item")
+        if event.get("type", "").startswith("response.output_item.") and item:
+            # Replace the entire item by ID - no manual chunk accumulation.
+            # This sketch skips response.output_text.delta events, so a message's
+            # text appears when its item is done, not as it is generated.
+            items[item.get("id", str(event.get("output_index")))] = item
+
+    # Render the final set of items (a UI would re-render on each update)
+    for item in items.values():
+        render_item(item)
+
+
+handle_submit("Write a haiku about streaming data.")
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func renderItem(item map[string]any) {
+	switch item["type"] {
+	case "message":
+		var text strings.Builder
+		parts, _ := item["content"].([]any)
+		for _, p := range parts {
+			if part, ok := p.(map[string]any); ok {
+				t, _ := part["text"].(string)
+				text.WriteString(t)
+			}
+		}
+		fmt.Printf("[message] %s\n", text.String())
+	case "function_call":
+		fmt.Printf("[tool call] %v(%v)\n", item["name"], item["arguments"])
+	case "reasoning":
+		summary, _ := json.Marshal(item["summary"])
+		fmt.Println("[reasoning]", string(summary))
+	}
+}
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":  "~anthropic/claude-sonnet-latest",
+		"input":  "Write a haiku about streaming data.",
+		"stream": true,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		log.Fatalf("%s: %s", resp.Status, b)
+	}
+
+	// In React, this map would live in state, keyed by item ID.
+	items := map[string]map[string]any{}
+	var order []string
+
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(make([]byte, 64*1024), 1024*1024)
+	for sc.Scan() {
+		data, ok := strings.CutPrefix(sc.Text(), "data: ")
+		if !ok || data == "[DONE]" {
+			continue
+		}
+		var ev struct {
+			Type string         `json:"type"`
+			Item map[string]any `json:"item"`
+		}
+		if json.Unmarshal([]byte(data), &ev) != nil || ev.Item == nil {
+			continue
+		}
+		if ev.Type == "response.output_item.added" || ev.Type == "response.output_item.done" {
+			// Replace the entire item by ID - no manual chunk accumulation
+			id, _ := ev.Item["id"].(string)
+			if _, seen := items[id]; !seen {
+				order = append(order, id)
+			}
+			items[id] = ev.Item
+		}
+	}
+	// A read error or overlong line stops the scanner: do not render partial items.
+	if err := sc.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	// Render the final set of items (React would re-render on each update)
+	for _, id := range order {
+		renderItem(items[id])
+	}
+}
+
+```
+
+```bash title="cURL" lines
+#!/bin/bash
+# --fail and pipefail surface HTTP errors such as a bad API key
+set -o pipefail
+# Stream the Responses API and keep only the JSON events
+curl -sN --fail https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"~anthropic/claude-sonnet-latest","input":"Write a haiku about streaming data.","stream":true}' \
+  | sed -n 's/^data: \({.*\)/\1/p' \
+  | jq -nr '
+    # Replace the entire item by ID - no manual chunk accumulation
+    reduce inputs as $e ({};
+      if ($e.type | startswith("response.output_item.")) then .[$e.item.id] = $e.item else . end)
+    # Render the final set of items
+    | .[]
+    | if .type == "message" then "[message] " + ((.content // []) | map(.text // "") | join(""))
+      elif .type == "function_call" then "[tool call] \(.name)(\(.arguments))"
+      elif .type == "reasoning" then "[reasoning] " + ((.summary // []) | tojson)
+      else empty end' \
+  || { echo "Streaming request failed" >&2; exit 1; }
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+[message] Endless rivers flow,
+bits like raindrops, never still—
+the present, in motion.
 ```
 
 ### Benefits
@@ -165,16 +667,96 @@ function ItemRenderer({ item }: { item: StreamableOutputItem }) {
 
 Traditional streaming requires manual accumulation:
 
+<CodeGroup>
+
 ```tsx lines
 // Traditional approach - manual accumulation
-const [text, setText] = useState('');
+let text = '';
 
 for await (const chunk of result.getTextStream()) {
-  setText((prev) => prev + chunk); // Must accumulate manually
+  text += chunk; // Must accumulate manually
 }
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+
+from openrouter_agent import OpenRouter, call_model
+
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+    result = call_model(
+        client,
+        {
+            "model": "~anthropic/claude-sonnet-latest",
+            "input": "Write a haiku about streaming data.",
+        },
+    )
+
+    # Traditional approach - manual accumulation
+    text = ""
+
+    async for chunk in result.get_text_stream():
+        text += chunk  # Must accumulate manually
+
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+// Traditional approach - manual accumulation
+var text strings.Builder
+
+sc := bufio.NewScanner(resp.Body)
+for sc.Scan() {
+	data, ok := strings.CutPrefix(sc.Text(), "data: ")
+	if !ok {
+		continue
+	}
+	var ev struct {
+		Type  string `json:"type"`
+		Delta string `json:"delta"`
+	}
+	if json.Unmarshal([]byte(data), &ev) == nil && ev.Type == "response.output_text.delta" {
+		text.WriteString(ev.Delta) // Must accumulate manually
+	}
+}
+
+```
+
+```bash title="cURL" lines
+# Traditional approach - manual accumulation
+text=''
+
+while IFS= read -r -d $'\x1e' chunk; do
+  text+="$chunk" # Must accumulate manually
+done < <(curl -sN https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"~anthropic/claude-sonnet-latest","input":"Write a haiku about streaming data.","stream":true}' \
+  | sed -n 's/^data: \({.*\)/\1/p' \
+  | jq -j 'select(.type == "response.output_text.delta") | .delta, "\u001e"')
+printf '%s\n' "$text"
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Endless river flows,
+bits arrive and slip away,
+each moment, a drop.
 ```
 
 With items, each emission replaces the previous:
+
+<CodeGroup>
 
 ```tsx lines
 // Items approach - replace by ID
@@ -183,19 +765,75 @@ for await (const item of result.getItemsStream()) {
 }
 ```
 
+```python title="Python" lines
+# Items approach - replace by ID
+items = {}
+
+for line in resp.iter_lines(decode_unicode=True):
+    if not line.startswith("data: ") or line == "data: [DONE]":
+        continue
+    event = json.loads(line[len("data: "):])
+    # Text deltas are skipped here, so each item is replaced once when it is
+    # added and once when it is done. The migration example below adds deltas.
+    if event.get("type") in ("response.output_item.added", "response.output_item.done"):
+        item = event["item"]
+        items[item["id"]] = item  # Complete replacement
+
+```
+
+```go title="Go" lines
+// Items approach - replace by ID
+items := map[string]map[string]any{}
+
+sc := bufio.NewScanner(resp.Body)
+sc.Buffer(make([]byte, 64*1024), 1024*1024)
+for sc.Scan() {
+	data, ok := strings.CutPrefix(sc.Text(), "data: ")
+	if !ok {
+		continue
+	}
+	var ev struct {
+		Type string         `json:"type"`
+		Item map[string]any `json:"item"`
+	}
+	if json.Unmarshal([]byte(data), &ev) == nil && ev.Item != nil {
+		id, _ := ev.Item["id"].(string)
+		items[id] = ev.Item // Complete replacement
+	}
+}
+```
+
+```bash title="cURL" lines
+# Items approach - replace by ID
+declare -A items
+
+while IFS=$'\t' read -r id item; do
+  items[$id]="$item" # Complete replacement
+done < <(curl -sN https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"~anthropic/claude-sonnet-latest","input":"Write a haiku about streaming data.","stream":true}' \
+  | sed -n 's/^data: \({.*\)/\1/p' \
+  | jq -r 'select(.type | startswith("response.output_item.")) | "\(.item.id)\t\(.item | tojson)"')
+```
+
+</CodeGroup>
+
 The items approach is especially powerful when the model produces multiple outputs simultaneously (e.g., thinking + tool calls + text).
 
 ## Migrating from getNewMessagesStream()
 
 `getNewMessagesStream()` is deprecated in favor of `getItemsStream()`. To migrate:
 
+<CodeGroup>
+
 ```typescript lines
-// Before (deprecated)
-for await (const message of result.getNewMessagesStream()) {
-  if (message.type === 'message') {
-    console.log(message.content);
-  }
-}
+// Before (deprecated, removed in current SDK versions)
+// for await (const message of result.getNewMessagesStream()) {
+//   if (message.type === 'message') {
+//     console.log(message.content);
+//   }
+// }
 
 // After
 for await (const item of result.getItemsStream()) {
@@ -203,6 +841,114 @@ for await (const item of result.getItemsStream()) {
     console.log(item.content);
   }
 }
+```
+
+```python title="Python" lines
+# Items approach: react to complete output items from the stream,
+# re-emitting the updated message item as each text delta arrives
+items = {}
+
+for raw in resp.iter_lines():
+    line = raw.decode("utf-8")
+    if not line.startswith("data: ") or line == "data: [DONE]":
+        continue
+    event = json.loads(line[len("data: "):])
+    etype = event.get("type")
+    item = None
+    if etype in ("response.output_item.added", "response.output_item.done"):
+        item = event["item"]
+        items[item["id"]] = item  # complete replacement
+    elif etype == "response.output_text.delta":
+        item = items.get(event.get("item_id"))
+        if item is None:
+            continue
+        content = item.setdefault("content", [])
+        idx = event.get("content_index", 0)
+        while len(content) <= idx:
+            content.append({"type": "output_text", "text": "", "annotations": []})
+        content[idx]["text"] += event["delta"]
+    if item and item.get("type") == "message":
+        print(item.get("content"))
+
+```
+
+```go title="Go" lines
+// Before (deprecated): there was no Go getNewMessagesStream(); the items
+// approach below works directly on the Responses event stream.
+
+// After: rebuild each item by ID and print message content as it updates
+type textPart struct {
+	Type        string `json:"type"`
+	Text        string `json:"text"`
+	Annotations []any  `json:"annotations"`
+}
+
+items := map[string]map[string]any{}
+parts := map[string][]textPart{}
+
+sc := bufio.NewScanner(resp.Body)
+sc.Buffer(make([]byte, 64*1024), 1024*1024)
+for sc.Scan() {
+	data, ok := strings.CutPrefix(sc.Text(), "data: ")
+	if !ok {
+		continue
+	}
+	var ev struct {
+		Type         string         `json:"type"`
+		ItemID       string         `json:"item_id"`
+		ContentIndex int            `json:"content_index"`
+		Delta        string         `json:"delta"`
+		Item         map[string]any `json:"item"`
+	}
+	if json.Unmarshal([]byte(data), &ev) != nil {
+		continue
+	}
+	id := ev.ItemID
+	if ev.Item != nil {
+		id, _ = ev.Item["id"].(string)
+		items[id] = ev.Item
+	} else if ev.Type == "response.output_text.delta" && items[id] != nil {
+		// A delta names the content part it extends, so keep one part per index
+		for len(parts[id]) <= ev.ContentIndex {
+			parts[id] = append(parts[id], textPart{Type: "output_text", Annotations: []any{}})
+		}
+		parts[id][ev.ContentIndex].Text += ev.Delta
+		items[id]["content"] = parts[id]
+	} else {
+		continue
+	}
+	if item := items[id]; item["type"] == "message" {
+		out, _ := json.MarshalIndent(item["content"], "", "  ")
+		fmt.Println(string(out))
+	}
+}
+```
+
+```bash title="cURL" lines
+# After: read whole items instead of new messages.
+# This filter skips text deltas, so it prints each message when it is added
+# (empty) and when it is done, without the updates in between.
+curl -sN https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"~anthropic/claude-sonnet-latest","input":"Write a haiku about streaming data.","stream":true}' \
+  | sed -n 's/^data: \({.*\)/\1/p' \
+  | jq 'select(.type | startswith("response.output_item.")) | .item | select(.type == "message") | .content'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+[]
+[
+  {
+    "type": "output_text",
+    "text": "Endless river flows,\nbits drift past in silver streams,\nno pause, only now.",
+    "annotations": [],
+    "logprobs": []
+  }
+]
 ```
 
 `getItemsStream()` includes all item types (reasoning, function calls, etc.), not just messages, whereas `getNewMessagesStream()` only surfaced messages.

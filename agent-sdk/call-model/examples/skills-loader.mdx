@@ -57,6 +57,8 @@ mkdir -p ~/.claude/skills/code-review
 
 ## Basic Skills Tool
 
+<CodeGroup>
+
 ```typescript expandable lines
 import { OpenRouter, tool } from '@openrouter/agent';
 import { readFileSync, existsSync, readdirSync } from 'fs';
@@ -99,11 +101,13 @@ Each skill provides domain-specific instructions and capabilities.`,
         return context.input;
       }
 
-      // Load the skill's instructions
-      const skillPath = path.join(SKILLS_DIR, params.type, 'SKILL.md');
-      if (!existsSync(skillPath)) {
+      // The skill name comes from the model, so only load skills that exist under SKILLS_DIR
+      if (!listAvailableSkills().includes(params.type)) {
         return context.input;
       }
+
+      // Load the skill's instructions
+      const skillPath = path.join(SKILLS_DIR, params.type, 'SKILL.md');
 
       const skill = readFileSync(skillPath, 'utf-8');
       const skillDir = path.join(SKILLS_DIR, params.type);
@@ -132,9 +136,8 @@ ${skill}`,
       return `Skill ${params.type} is already loaded`;
     }
 
-    const skillPath = path.join(SKILLS_DIR, params.type, 'SKILL.md');
-    if (!existsSync(skillPath)) {
-      const available = listAvailableSkills();
+    const available = listAvailableSkills();
+    if (!available.includes(params.type)) {
       return `Skill "${params.type}" not found. Available skills: ${available.join(', ') || 'none'}`;
     }
 
@@ -143,18 +146,545 @@ ${skill}`,
 });
 ```
 
+```python title="Python" lines
+import asyncio
+import json
+import os
+from pathlib import Path
+
+from pydantic import BaseModel, Field
+from openrouter_agent import OpenRouter, call_model, tool
+
+client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+SKILLS_DIR = Path.home() / ".claude" / "skills"
+
+
+# List available skills
+def list_available_skills() -> list[str]:
+    if not SKILLS_DIR.exists():
+        return []
+    return [d.name for d in SKILLS_DIR.iterdir() if d.is_dir() and (d / "SKILL.md").exists()]
+
+
+class SkillInput(BaseModel):
+    type: str = Field(description="The skill type to load (e.g., 'pdf-processing')")
+
+
+# This is where the magic happens - modify context for next turn
+# next_turn_params functions receive the raw tool-call arguments as a dict
+def next_input(params, context):
+    skill_type = params["type"]
+    current = context["input"]
+    # Prevent duplicate skill loading
+    marker = f"[Skill: {skill_type}]"
+    if marker in json.dumps(current, default=str):
+        return current
+
+    # The skill name comes from the model, so only load skills that exist under SKILLS_DIR
+    if skill_type not in list_available_skills():
+        return current
+
+    # Load the skill's instructions
+    skill = (SKILLS_DIR / skill_type / "SKILL.md").read_text(encoding="utf-8")
+    skill_dir = SKILLS_DIR / skill_type
+
+    # Inject skill context into the conversation
+    items = current if isinstance(current, list) else [current]
+    return [
+        *items,
+        {
+            "role": "user",
+            "content": f"{marker}\nBase directory for this skill: {skill_dir}\n\n{skill}",
+        },
+    ]
+
+
+def execute(params, ctx):
+    marker = f"[Skill: {params.type}]"
+
+    # Check if already loaded
+    turn_request = (ctx or {}).get("turn_request") or {}
+    if marker in json.dumps(turn_request.get("input", []), default=str):
+        return f"Skill {params.type} is already loaded"
+
+    available = list_available_skills()
+    if params.type not in available:
+        return f'Skill "{params.type}" not found. Available skills: {", ".join(available) or "none"}'
+
+    return f"Launching skill {params.type}"
+
+
+skills_tool = tool(
+    name="Skill",
+    description=f"""Load a specialized skill to enhance the assistant's capabilities.
+Available skills: {', '.join(list_available_skills()) or 'none configured'}
+Each skill provides domain-specific instructions and capabilities.""",
+    input_schema=SkillInput,
+    next_turn_params={"input": next_input},
+    execute=execute,
+)
+
+
+async def main() -> None:
+    skills = list_available_skills()
+    print("Available skills:", ", ".join(skills) or "none configured")
+    skill_name = skills[0] if skills else "pdf-processing"
+
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-4o",
+            "input": f"Use the Skill tool to load the '{skill_name}' skill, then briefly summarize what it lets you do.",
+            "tools": [skills_tool],
+        },
+    )
+
+    print(await result.get_text())
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+)
+
+var skillsDir = filepath.Join(os.Getenv("HOME"), ".claude", "skills")
+
+type toolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type message struct {
+	Role       string     `json:"role"`
+	Content    any        `json:"content"`
+	ToolCalls  []toolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+// List available skills
+func listAvailableSkills() []string {
+	entries, err := os.ReadDir(skillsDir)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, e := range entries {
+		if _, err := os.Stat(filepath.Join(skillsDir, e.Name(), "SKILL.md")); e.IsDir() && err == nil {
+			names = append(names, e.Name())
+		}
+	}
+	return names
+}
+
+func orNone(names []string, fallback string) string {
+	if len(names) == 0 {
+		return fallback
+	}
+	return strings.Join(names, ", ")
+}
+
+// executeSkill returns the tool output plus a message to inject into the next turn.
+func executeSkill(skillType string, messages []message) (string, *message) {
+	marker := fmt.Sprintf("[Skill: %s]", skillType)
+	history, _ := json.Marshal(messages)
+	if strings.Contains(string(history), marker) {
+		return "Skill " + skillType + " is already loaded", nil
+	}
+	// The skill name comes from the model, so only load skills that exist under skillsDir
+	available := listAvailableSkills()
+	if !slices.Contains(available, skillType) {
+		return fmt.Sprintf("Skill %q not found. Available skills: %s", skillType, orNone(available, "none")), nil
+	}
+	skillDir := filepath.Join(skillsDir, skillType)
+	skill, err := os.ReadFile(filepath.Join(skillDir, "SKILL.md"))
+	if err != nil {
+		return fmt.Sprintf("Skill %q could not be read: %v", skillType, err), nil
+	}
+	return "Launching skill " + skillType, &message{
+		Role:    "user",
+		Content: fmt.Sprintf("%s\nBase directory for this skill: %s\n\n%s", marker, skillDir, skill),
+	}
+}
+
+func main() {
+	skillTool := map[string]any{
+		"type": "function",
+		"function": map[string]any{
+			"name": "Skill",
+			"description": fmt.Sprintf("Load a specialized skill to enhance the assistant's capabilities.\nAvailable skills: %s\nEach skill provides domain-specific instructions and capabilities.", orNone(listAvailableSkills(), "none configured")),
+			"parameters": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"type": map[string]any{"type": "string", "description": "The skill type to load (e.g., 'pdf-processing')"},
+				},
+				"required": []string{"type"},
+			},
+		},
+	}
+
+	messages := []message{{Role: "user", Content: "Load the pdf-processing skill, then tell me what it lets you do."}}
+
+	for i := 0; i < 5; i++ {
+		body, _ := json.Marshal(map[string]any{"model": "openai/gpt-4o-mini", "messages": messages, "tools": []any{skillTool}})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			b, _ := io.ReadAll(resp.Body)
+			panic(fmt.Sprintf("HTTP %d: %s", resp.StatusCode, b))
+		}
+		var out struct {
+			Choices []struct {
+				Message message `json:"message"`
+			} `json:"choices"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&out)
+		resp.Body.Close()
+		if err != nil || len(out.Choices) == 0 {
+			panic(fmt.Sprintf("bad response: %v", err))
+		}
+
+		msg := out.Choices[0].Message
+		messages = append(messages, msg)
+		if len(msg.ToolCalls) == 0 {
+			fmt.Println(msg.Content)
+			return
+		}
+
+		// Run each tool call, then inject loaded skill instructions for the next turn
+		var injected []message
+		for _, tc := range msg.ToolCalls {
+			var args struct {
+				Type string `json:"type"`
+			}
+			json.Unmarshal([]byte(tc.Function.Arguments), &args)
+			result, inject := executeSkill(args.Type, messages)
+			messages = append(messages, message{Role: "tool", ToolCallID: tc.ID, Content: result})
+			if inject != nil {
+				injected = append(injected, *inject)
+			}
+		}
+		messages = append(messages, injected...)
+	}
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Available skills: docs-sample-skill
+"I am the docs sample fixture skill."
+```
+
 ## Usage
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel, tool } from '@openrouter/agent';
+import { z } from 'zod';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+
+const openrouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const skillsDir = join(homedir(), '.claude', 'skills');
+
+// List available skills
+function listAvailableSkills(): string[] {
+  if (!existsSync(skillsDir)) return [];
+  return readdirSync(skillsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && existsSync(join(skillsDir, e.name, 'SKILL.md')))
+    .map((e) => e.name);
+}
+
+const available = listAvailableSkills();
+
+const skillsTool = tool({
+  name: 'Skill',
+  description: `Load a specialized skill to enhance the assistant's capabilities.\nAvailable skills: ${available.join(', ') || 'none configured'}\nEach skill provides domain-specific instructions and capabilities.`,
+  inputSchema: z.object({
+    type: z.string().describe("The skill type to load (e.g., 'pdf-processing')"),
+  }),
+  execute: async ({ type }) => {
+    // The skill name comes from the model, so only load skills that exist under skillsDir
+    const skillDir = join(skillsDir, type);
+    const skillPath = join(skillDir, 'SKILL.md');
+    if (!available.includes(type)) {
+      return { error: `Skill "${type}" not found. Available skills: ${available.join(', ') || 'none'}` };
+    }
+    return {
+      skill: type,
+      baseDirectory: skillDir,
+      instructions: readFileSync(skillPath, 'utf8'),
+    };
+  },
+});
+
+const result = callModel(openrouter, {
   model: 'anthropic/claude-sonnet-4.5',
   input: 'I need to process a PDF and extract tables from it',
-  tools: [skillsTool],
+  tools: [skillsTool] as const,
 });
 
 const text = await result.getText();
 // The model will call the Skill tool, loading pdf-processing context
 // Subsequent responses will have access to the skill's instructions
+console.log(text);
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+from pathlib import Path
+
+from pydantic import BaseModel, Field
+from openrouter_agent import OpenRouter, call_model, tool
+
+skills_dir = Path.home() / ".claude" / "skills"
+
+
+# List available skills
+def list_available_skills() -> list[str]:
+    if not skills_dir.exists():
+        return []
+    return [e.name for e in skills_dir.iterdir() if e.is_dir() and (e / "SKILL.md").exists()]
+
+
+available = list_available_skills()
+
+
+class SkillInput(BaseModel):
+    type: str = Field(description="The skill type to load (e.g., 'pdf-processing')")
+
+
+def execute_skill(params: SkillInput, ctx):
+    # The skill name comes from the model, so only load skills that exist under skills_dir
+    skill_dir = skills_dir / params.type
+    skill_path = skill_dir / "SKILL.md"
+    if params.type not in available or not skill_path.exists():
+        return {"error": f'Skill "{params.type}" not found. Available skills: {", ".join(available) or "none"}'}
+    return {
+        "skill": params.type,
+        "baseDirectory": str(skill_dir),
+        "instructions": skill_path.read_text(encoding="utf-8"),
+    }
+
+
+skills_tool = tool(
+    name="Skill",
+    description=(
+        "Load a specialized skill to enhance the assistant's capabilities.\n"
+        f"Available skills: {', '.join(available) or 'none configured'}\n"
+        "Each skill provides domain-specific instructions and capabilities."
+    ),
+    input_schema=SkillInput,
+    execute=execute_skill,
+)
+
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+    result = call_model(
+        client,
+        {
+            "model": "anthropic/claude-sonnet-4.5",
+            "input": "I need to process a PDF and extract tables from it",
+            "tools": [skills_tool],
+        },
+    )
+    text = await result.get_text()
+    # The model will call the Skill tool, loading pdf-processing context
+    # Subsequent responses will have access to the skill's instructions
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+)
+
+var skillsDir = filepath.Join(os.Getenv("HOME"), ".claude", "skills")
+
+type toolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type message struct {
+	Role       string     `json:"role"`
+	Content    any        `json:"content"`
+	ToolCalls  []toolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+// List available skills
+func listAvailableSkills() []string {
+	entries, err := os.ReadDir(skillsDir)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, e := range entries {
+		if _, err := os.Stat(filepath.Join(skillsDir, e.Name(), "SKILL.md")); e.IsDir() && err == nil {
+			names = append(names, e.Name())
+		}
+	}
+	return names
+}
+
+func orNone(names []string, fallback string) string {
+	if len(names) == 0 {
+		return fallback
+	}
+	return strings.Join(names, ", ")
+}
+
+func executeSkill(skillType string, available []string) string {
+	// The skill name comes from the model, so only load skills that exist under skillsDir
+	skillDir := filepath.Join(skillsDir, skillType)
+	var instructions []byte
+	err := fmt.Errorf("skill %q is not available", skillType)
+	if slices.Contains(available, skillType) {
+		instructions, err = os.ReadFile(filepath.Join(skillDir, "SKILL.md"))
+	}
+	var out map[string]any
+	if err != nil {
+		out = map[string]any{"error": fmt.Sprintf("Skill %q not found. Available skills: %s", skillType, orNone(available, "none"))}
+	} else {
+		out = map[string]any{"skill": skillType, "baseDirectory": skillDir, "instructions": string(instructions)}
+	}
+	b, _ := json.Marshal(out)
+	return string(b)
+}
+
+func main() {
+	available := listAvailableSkills()
+	skillsTool := map[string]any{
+		"type": "function",
+		"function": map[string]any{
+			"name":        "Skill",
+			"description": fmt.Sprintf("Load a specialized skill to enhance the assistant's capabilities.\nAvailable skills: %s\nEach skill provides domain-specific instructions and capabilities.", orNone(available, "none configured")),
+			"parameters": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"type": map[string]any{"type": "string", "description": "The skill type to load (e.g., 'pdf-processing')"},
+				},
+				"required": []string{"type"},
+			},
+		},
+	}
+
+	messages := []message{{Role: "user", Content: "I need to process a PDF and extract tables from it"}}
+
+	for i := 0; i < 5; i++ {
+		body, _ := json.Marshal(map[string]any{"model": "anthropic/claude-sonnet-4.5", "messages": messages, "tools": []any{skillsTool}})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			b, _ := io.ReadAll(resp.Body)
+			panic(fmt.Sprintf("HTTP %d: %s", resp.StatusCode, b))
+		}
+		var out struct {
+			Choices []struct {
+				Message message `json:"message"`
+			} `json:"choices"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&out)
+		resp.Body.Close()
+		if err != nil || len(out.Choices) == 0 {
+			panic(fmt.Sprintf("bad response: %v", err))
+		}
+
+		msg := out.Choices[0].Message
+		messages = append(messages, msg)
+		if len(msg.ToolCalls) == 0 {
+			// The model called the Skill tool, loading pdf-processing context;
+			// this response has access to the skill's instructions
+			fmt.Println(msg.Content)
+			return
+		}
+
+		for _, tc := range msg.ToolCalls {
+			var args struct {
+				Type string `json:"type"`
+			}
+			json.Unmarshal([]byte(tc.Function.Arguments), &args)
+			messages = append(messages, message{Role: "tool", ToolCallID: tc.ID, Content: executeSkill(args.Type, available)})
+		}
+	}
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+I apologize, but it appears that there are no specialized PDF processing skills currently configured in my environment. However, I can still help guide you through the process of extracting tables from PDFs.
+
+To extract tables from a PDF, you would typically need:
+
+1. **The PDF file** - Please upload or share the PDF you want to process
+2. **Information about the tables** - Which pages contain the tables, or if you want to extract all tables from the document
+
+If you share your PDF file with me, I can try to help you extract the table data, though my capabilities may be limited without the specialized PDF processing tools.
+
+Alternatively, here are some popular tools you could use:
+- **Python libraries**: `tabula-py`, `camelot-py`, or `pdfplumber`
+- **Online tools**: Smallpdf, PDFTables, or Adobe Acrobat
+- **Command-line tools**: `pdftotext` or `pdf2json`
+
+Would you like to share your PDF file so I can attempt to help you extract the tables?
 ```
 
 ## Example Skill File
@@ -279,6 +809,8 @@ const result = openrouter.callModel({
 
 Skills that accept configuration:
 
+<CodeGroup>
+
 ```typescript expandable lines
 const configurableSkillLoader = tool({
   name: 'configure_skill',
@@ -324,12 +856,16 @@ const configurableSkillLoader = tool({
 - Output Format: ${options.outputFormat || 'markdown'}
 `;
 
-      const currentInput = Array.isArray(context.input) ? context.input : [context.input];
+      // A plain string input must become a message item before appending
+      const currentInput =
+        typeof context.input === 'string'
+          ? [{ role: 'user' as const, content: context.input }]
+          : (context.input ?? []);
 
       return [
         ...currentInput,
         {
-          role: 'user',
+          role: 'user' as const,
           content: `${skillMarker}
 ${configHeader}
 
@@ -366,6 +902,192 @@ ${skillContent}`,
   },
 });
 ```
+
+```python title="Python" lines
+class SkillOptions(BaseModel):
+    verbosity: Literal["minimal", "normal", "detailed"] = "normal"
+    strict_mode: bool = False
+    output_format: Literal["json", "markdown", "plain"] = "markdown"
+
+
+class ConfigureSkillInput(BaseModel):
+    skill_name: str
+    options: SkillOptions | None = None
+
+
+class ConfigureSkillOutput(BaseModel):
+    status: Literal["loaded", "already_loaded", "not_found"]
+    message: str
+    configuration: dict[str, Any] | None = None
+
+
+# The skill name comes from the model, so accept a plain directory name only
+def is_skill_name(name: str) -> bool:
+    return name not in ("", ".", "..") and os.path.basename(name) == name
+
+
+def next_input(params, context):
+    # next_turn_params functions receive the raw tool-call arguments (a dict)
+    params = ConfigureSkillInput.model_validate(params)
+    skill_marker = f"[Skill: {params.skill_name}]"
+    current = context.get("input")
+    if skill_marker in json.dumps(current, default=str):
+        return current
+
+    skill_path = os.path.join(SKILLS_DIR, params.skill_name, "SKILL.md")
+    if not is_skill_name(params.skill_name) or not os.path.exists(skill_path):
+        return current
+
+    with open(skill_path, encoding="utf-8") as f:
+        skill_content = f.read()
+    options = params.options or SkillOptions()
+
+    # Build configuration header
+    config_header = f"""
+## Skill Configuration
+- Verbosity: {options.verbosity}
+- Strict Mode: {options.strict_mode}
+- Output Format: {options.output_format}
+"""
+
+    # A plain string input must become a message item before appending
+    if isinstance(current, str):
+        current = [{"role": "user", "content": current}]
+
+    return [
+        *(current or []),
+        {"role": "user", "content": f"{skill_marker}\n{config_header}\n\n{skill_content}"},
+    ]
+
+
+# Adjust model behavior based on skill
+def next_temperature(params, context):
+    params = ConfigureSkillInput.model_validate(params)
+    # Lower temperature for strict mode
+    if params.options and params.options.strict_mode:
+        return 0.3
+    return context.get("temperature")
+
+
+def execute_configure(params, ctx):
+    skill_path = os.path.join(SKILLS_DIR, params.skill_name, "SKILL.md")
+    if not is_skill_name(params.skill_name) or not os.path.exists(skill_path):
+        return ConfigureSkillOutput(status="not_found", message=f'Skill "{params.skill_name}" not found')
+    return ConfigureSkillOutput(
+        status="loaded",
+        message=f'Skill "{params.skill_name}" loaded with configuration',
+        configuration=params.options.model_dump() if params.options else {},
+    )
+
+
+configurable_skill_loader = tool(
+    name="configure_skill",
+    description="Load a skill with custom configuration options",
+    input_schema=ConfigureSkillInput,
+    output_schema=ConfigureSkillOutput,
+    next_turn_params={"input": next_input, "temperature": next_temperature},
+    execute=execute_configure,
+)
+
+```
+
+```go title="Go" lines
+type skillOptions struct {
+	Verbosity    string `json:"verbosity,omitempty"`
+	StrictMode   bool   `json:"strictMode,omitempty"`
+	OutputFormat string `json:"outputFormat,omitempty"`
+}
+
+type configureSkillArgs struct {
+	SkillName string        `json:"skillName"`
+	Options   *skillOptions `json:"options,omitempty"`
+}
+
+var configurableSkillLoader = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "configure_skill",
+		"description": "Load a skill with custom configuration options",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"skillName": map[string]any{"type": "string"},
+				"options": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"verbosity":    map[string]any{"type": "string", "enum": []string{"minimal", "normal", "detailed"}, "default": "normal"},
+						"strictMode":   map[string]any{"type": "boolean", "default": false},
+						"outputFormat": map[string]any{"type": "string", "enum": []string{"json", "markdown", "plain"}, "default": "markdown"},
+					},
+				},
+			},
+			"required": []string{"skillName"},
+		},
+	},
+}
+
+// Tool result: status, message, and optional configuration
+func executeConfigureSkill(args configureSkillArgs) map[string]any {
+	// The skill name comes from the model, so only accept skills that exist under skillsDir
+	if !slices.Contains(listAvailableSkills(), args.SkillName) {
+		return map[string]any{"status": "not_found", "message": fmt.Sprintf("Skill %q not found", args.SkillName)}
+	}
+	var configuration any = map[string]any{}
+	if args.Options != nil {
+		configuration = args.Options
+	}
+	return map[string]any{
+		"status":        "loaded",
+		"message":       fmt.Sprintf("Skill %q loaded with configuration", args.SkillName),
+		"configuration": configuration,
+	}
+}
+
+// Next-turn input: append the skill's instructions once, with a config header
+func nextTurnInput(args configureSkillArgs, messages []message) []message {
+	skillMarker := fmt.Sprintf("[Skill: %s]", args.SkillName)
+	if b, _ := json.Marshal(messages); strings.Contains(string(b), skillMarker) {
+		return messages
+	}
+	if !slices.Contains(listAvailableSkills(), args.SkillName) {
+		return messages
+	}
+	skillContent, err := os.ReadFile(filepath.Join(skillsDir, args.SkillName, "SKILL.md"))
+	if err != nil {
+		return messages
+	}
+	opts := skillOptions{}
+	if args.Options != nil {
+		opts = *args.Options
+	}
+	if opts.Verbosity == "" {
+		opts.Verbosity = "normal"
+	}
+	if opts.OutputFormat == "" {
+		opts.OutputFormat = "markdown"
+	}
+
+	// Build configuration header
+	configHeader := fmt.Sprintf("\n## Skill Configuration\n- Verbosity: %s\n- Strict Mode: %t\n- Output Format: %s\n",
+		opts.Verbosity, opts.StrictMode, opts.OutputFormat)
+
+	return append(messages, message{
+		Role:    "user",
+		Content: skillMarker + "\n" + configHeader + "\n\n" + string(skillContent),
+	})
+}
+
+// Adjust model behavior based on skill: lower temperature for strict mode
+func nextTurnTemperature(args configureSkillArgs, current *float64) *float64 {
+	if args.Options != nil && args.Options.StrictMode {
+		t := 0.3
+		return &t
+	}
+	return current
+}
+```
+
+</CodeGroup>
 
 ## Skill Discovery Tool
 
@@ -426,6 +1148,8 @@ const skillDiscoveryTool = tool({
 
 Putting it all together:
 
+<CodeGroup>
+
 ```typescript expandable lines
 import { OpenRouter, tool, stepCountIs } from '@openrouter/agent';
 import { readFileSync, existsSync, readdirSync } from 'fs';
@@ -455,11 +1179,66 @@ const text = await result.getText();
 console.log(text);
 ```
 
+```go title="Go" lines
+// ... (include skillsTool, multiSkillLoader, skillDiscoveryTool and runTool from above)
+
+// Use all skill tools together
+messages := []message{{Role: "user", Content: `I have a complex task:
+1. First, show me what skills are available
+2. Load the appropriate skills for PDF analysis
+3. Then help me extract and analyze data from report.pdf`}}
+tools := []any{skillDiscoveryTool, skillsTool, multiSkillLoader}
+
+// Stop after at most 10 steps
+for step := 0; step < 10; step++ {
+	body, _ := json.Marshal(map[string]any{
+		"model":    "anthropic/claude-sonnet-4.5",
+		"messages": messages,
+		"tools":    tools,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var out struct {
+		Choices []struct {
+			Message message `json:"message"`
+		} `json:"choices"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&out)
+	resp.Body.Close()
+	if err != nil || len(out.Choices) == 0 {
+		log.Fatalf("bad response (status %d): %v", resp.StatusCode, err)
+	}
+
+	msg := out.Choices[0].Message
+	messages = append(messages, msg)
+	if len(msg.ToolCalls) == 0 {
+		fmt.Println(msg.Content)
+		break
+	}
+	for _, tc := range msg.ToolCalls {
+		messages = append(messages, message{
+			Role:       "tool",
+			ToolCallID: tc.ID,
+			Content:    runTool(tc.Function.Name, tc.Function.Arguments),
+		})
+	}
+}
+```
+
+</CodeGroup>
+
 ## Key Patterns
 
 ### 1. Idempotency
 
 Always check if a skill is already loaded:
+
+<CodeGroup>
 
 ```typescript lines
 nextTurnParams: {
@@ -473,9 +1252,36 @@ nextTurnParams: {
 },
 ```
 
+```python title="Python" lines
+# Next-turn input: skip if the skill is already loaded
+def next_turn_input(params, messages):
+    marker = f"[Skill: {params['type']}]"
+    if marker in json.dumps(messages):
+        return messages  # Don't add again
+    # ... add skill
+
+```
+
+```go title="Go" lines
+// Next-turn input: skip if the skill is already in the conversation
+func nextTurnInput(args loadSkillArgs, messages []message) []message {
+	marker := fmt.Sprintf("[Skill: %s]", args.Type)
+	if b, _ := json.Marshal(messages); strings.Contains(string(b), marker) {
+		return messages // Don't add again
+	}
+	// ... add skill
+	return messages
+}
+
+```
+
+</CodeGroup>
+
 ### 2. Graceful Fallbacks
 
 Handle missing skills gracefully:
+
+<CodeGroup>
 
 ```typescript lines
 execute: async (params) => {
@@ -486,9 +1292,34 @@ execute: async (params) => {
 },
 ```
 
+```python title="Python" lines
+# Tool execute: report available skills when the requested one is missing
+def execute(params):
+    if not os.path.exists(skill_path):
+        return f"Skill not found. Available: {', '.join(list_available_skills())}"
+    # ...
+
+```
+
+```go title="Go" lines
+// Execute: if the skill is missing, list the ones that exist
+func execute(args loadSkillArgs) string {
+	available := listAvailableSkills()
+	if !slices.Contains(available, args.Type) {
+		return fmt.Sprintf("Skill not found. Available: %s", strings.Join(available, ", "))
+	}
+	// ...
+	return ""
+}
+```
+
+</CodeGroup>
+
 ### 3. Context Preservation
 
 Always preserve existing input:
+
+<CodeGroup>
 
 ```typescript lines
 nextTurnParams: {
@@ -501,14 +1332,48 @@ nextTurnParams: {
 },
 ```
 
+```python title="Python" lines
+# Next-turn input: append the skill message, never replace existing input
+def next_turn_input(params, messages):
+    current_input = messages if isinstance(messages, list) else [messages]
+    return [*current_input, new_message]  # Append, don't replace
+
+```
+
+```go title="Go" lines
+// Next-turn input: append the skill message to the existing conversation
+func nextTurnInput(args loadSkillArgs, messages []message) []message {
+	newMessage := buildSkillMessage(args)
+	return append(messages, newMessage) // Append, don't replace
+}
+
+```
+
+</CodeGroup>
+
 ### 4. Clear Markers
 
 Use unique markers to identify injected content:
+
+<CodeGroup>
 
 ```typescript lines
 const skillMarker = `[Skill: ${params.type}]`;
 // Makes detection reliable and content clearly labeled
 ```
+
+```python title="Python" lines
+skill_marker = f"[Skill: {params['type']}]"
+# Makes detection reliable and content clearly labeled
+```
+
+```go title="Go" lines
+skillMarker := fmt.Sprintf("[Skill: %s]", args.Type)
+// Makes detection reliable and content clearly labeled
+
+```
+
+</CodeGroup>
 
 ## See Also
 

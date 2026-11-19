@@ -238,7 +238,116 @@ curl https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5.2",
+		"input": "What are the latest developments in AI?",
+		"tools": []map[string]string{
+			{"type": "openrouter:web_search"},
+			{"type": "openrouter:datetime"},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	// An error response has no output, so check the status before decoding
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("OpenRouter rejected the request: %s", resp.Status)
+	}
+
+	var data struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Fatal(err)
+	}
+
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range data.Output[i].Content {
+			if part.Type == "output_text" {
+				fmt.Println(part.Text)
+				break
+			}
+		}
+		break
+	}
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+As of **2026-11-17**, the biggest “latest” AI developments cluster around (1) new frontier models, (2) agents that can *do work* via tools/computers, (3) robotics + multimodal generation (esp. video), (4) open-weight competition, (5) new compute platforms, and (6) regulation/safety maturing.
+
+## 1) New frontier model releases (speed, cost, long context, “reasoning”)
+- **Anthropic** shipped **Claude Fable 5.2 / Mythos 5.2**, with notable **price cuts** and an explicit claim that the released model is **cap-limited** in certain AI-R&D speed‑up capabilities (a new kind of “capability release management”).  
+  Source: https://opendatascience.com/last-week-in-ai-november-9-to-15-2026/
+- **Google** shipped **Gemini 4 Hydrogen** (fast “daily driver” model; very long context) and expanded availability for **Gemini 4 Carbon** (frontier-tier).  
+  Source: https://opendatascience.com/last-week-in-ai-november-9-to-15-2026/
+- A lot of progress is now delivered not as “chatty” models, but as **specialized APIs** (e.g., **Gemini Decisions API** for high-throughput multimodal classification/scoring rather than text generation).  
+  Source: https://theagenticweekly.com/models/releases/2026-11
+
+## 2) Agentic AI: models operating software + standardized tool ecosystems
+- “Agents” are moving from demos to platforms: models can **use tools**, maintain **memory**, and run **long-lived tasks**.
+- **Computer-use tooling** (screenshots + mouse/keyboard actions) is now documented and productized by multiple labs:
+  - Anthropic “computer use tool”: https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool  
+  - OpenAI “computer use” guide: https://developers.openai.com/api/docs/guides/tools-computer-use
+- Enterprises are standardizing how agents connect to internal systems:
+  - Google highlights tool registries / skill registries / multi-type memory and explicit **MCP (Model Context Protocol)** support: https://cloud.google.com/blog/products/ai-machine-learning/welcome-to-gemini-at-work-2026  
+  - Microsoft is pushing always-on workplace agents (e.g., “Autopilot”) with identity, audit logs, and tenant controls: https://www.microsoft.com/en-us/copilot/blog/2026/11/17/copilot-at-microsoft-ignite-expanding-whats-possible-with-intelligence-built-for-work/
+
+## 3) Robotics: generalist “policy” models start showing up in real deployments
+- **NVIDIA GR00T 2** and **DeepMind Gemini Robotics 2.5** signal a push toward **general vision-language-action models** trained from large-scale video/demonstrations and tested in industrial pilots.  
+  Source: https://opendatascience.com/last-week-in-ai-november-9-to-15-2026/
+
+## 4) Video generation is accelerating (and becoming “multimodal video editors”)
+- The leading video models increasingly generate **video + audio**, accept **references**, and support **editing/extension** workflows.
+- Examples cited in recent roundups include **Alibaba Wan 3.0**, **ByteDance Seedance 2.5**, and **MiniMax H3** (notable for partially open/restricted weights in some configurations).  
+  Source: https://www.marktechpost.com/2026/11/13/best-ai-video-generation-models-2026/
+
+## 5) Open-weight models keep scaling (often huge MoE + 1M-context), with China-led momentum
+- Open-weight releases are increasingly **frontier-sized** (trillion-parameter class MoE) with **very long contexts** and competitive benchmarks.
+- Recent trackers highlight releases such as **Kimi K3.x**, **DeepSeek V4.x**, **Qwen 3.8/4**, **MiMo V2.x**, **Mistral Large 4**, and Meta’s newer “Muse” line.  
+  Sources:  
+  - https://gpuwerk.com/blog/open-weight-llm-releases-autumn-2026/  
+  - https://violabs.co.uk/notes/open-weight-models-2026/
+
+## 6) Hardware/compute: inference-first systems + new NVIDIA “Rubin” platform
+- Compute roadmaps are increasingly about **token cost**, **memory bandwidth**, and **inference throughput** (not just training FLOPs).
+- **NVIDIA Rubin** (Vera CPU + Rubin GPU + new NVLink generation, etc.) is positioned as a rack-scale platform aimed at lowering cost per token and supporting large MoE inference; availability is described for **2H 2026** in NVIDIA materials.  
+  Source: https://nvidianews.nvidia.com/news/rubin-platform-ai-supercomputer  
+  (Additional roadmap context: https://www.nextplatform.com/compute/2026/03/19/driving-down-the-ai-system-roadmap-with-nvidia/5210195)
+```
 
 ## Combining with User-Defined Tools
 

@@ -29,6 +29,8 @@ With `nextTurnParams`, tools can modify any `callModel` parameter for the next t
 
 ## Basic Example
 
+<CodeGroup>
+
 ```typescript expandable lines
 import { tool } from '@openrouter/agent';
 import { z } from 'zod';
@@ -61,14 +63,103 @@ EXPERT MODE ENABLED for ${params.domain}:
 });
 ```
 
+```python title="Python" lines
+from pydantic import BaseModel, Field
+from openrouter_agent import tool
+
+class ExpertModeInput(BaseModel):
+    domain: str = Field(description='Technical domain (e.g., "kubernetes", "react")')
+
+class ExpertModeOutput(BaseModel):
+    enabled: bool
+
+def expert_instructions(params, context):
+    base = context.get("instructions") or ""
+    return f"""{base}
+
+EXPERT MODE ENABLED for {params['domain']}:
+- Provide detailed technical explanations
+- Include code examples and best practices
+- Reference official documentation
+- Assume advanced knowledge"""
+
+expert_mode_tool = tool(
+    name="enable_expert_mode",
+    description="Enable expert mode for detailed technical responses",
+    input_schema=ExpertModeInput,
+    output_schema=ExpertModeOutput,
+    next_turn_params={
+        "instructions": expert_instructions,
+        "temperature": lambda params, context: 0.3,  # More precise for technical content
+    },
+    execute=lambda params, ctx: ExpertModeOutput(enabled=True),
+)
+
+```
+
+```go title="Go" lines
+// Go has no agent SDK, so the tool and its nextTurnParams are plain values
+// that your tool-calling loop applies after the tool runs.
+type NextTurnParams struct {
+	Instructions func(args map[string]any, base string) string
+	Temperature  func() float64
+}
+
+type Tool struct {
+	Name           string
+	Description    string
+	Parameters     map[string]any
+	NextTurnParams NextTurnParams
+	Execute        func(args map[string]any) map[string]any
+}
+
+var expertModeTool = Tool{
+	Name:        "enable_expert_mode",
+	Description: "Enable expert mode for detailed technical responses",
+	Parameters: map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"domain": map[string]any{"type": "string", "description": `Technical domain (e.g., "kubernetes", "react")`},
+		},
+		"required": []string{"domain"},
+	},
+
+	NextTurnParams: NextTurnParams{
+		Instructions: func(args map[string]any, base string) string {
+			return fmt.Sprintf(`%s
+
+EXPERT MODE ENABLED for %v:
+- Provide detailed technical explanations
+- Include code examples and best practices
+- Reference official documentation
+- Assume advanced knowledge`, base, args["domain"])
+		},
+		Temperature: func() float64 { return 0.3 }, // More precise for technical content
+	},
+
+	Execute: func(args map[string]any) map[string]any {
+		return map[string]any{"enabled": true}
+	},
+}
+```
+
+</CodeGroup>
+
 ## The Claude Code Skills Pattern
 
 This example shows how to recreate Claude Code's skills system as a single encapsulated tool:
 
+<CodeGroup>
+
 ```typescript expandable lines
-import { tool } from '@openrouter/agent';
-import { readFileSync } from 'fs';
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel, tool } from '@openrouter/agent';
+import { existsSync, readFileSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
 import { z } from 'zod';
+
+const openrouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
 
 const skillsTool = tool({
   name: "skill",
@@ -89,18 +180,29 @@ Each skill provides domain-specific instructions and capabilities.`,
         return context.input;
       }
 
+      // The skill name comes from the model, so accept a plain directory name only
+      if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(params.type)) {
+        return context.input;
+      }
+
       // Load the skill's instructions from file system
-      const skill = readFileSync(
-        `~/.claude/skills/${params.type}/SKILL.md`,
-        "utf-8"
-      );
+      const skillDir = join(homedir(), '.claude', 'skills', params.type);
+      const skillPath = join(skillDir, 'SKILL.md');
+      if (!existsSync(skillPath)) {
+        return context.input;
+      }
+      const skill = readFileSync(skillPath, "utf-8");
+
+      const history = Array.isArray(context.input)
+        ? context.input
+        : [{ role: "user", content: context.input }];
 
       // Inject skill context into the conversation
       return [
-        ...context.input,
+        ...history,
         {
           role: "user",
-          content: `Base directory for this skill: ~/.claude/skills/${params.type}/
+          content: `Base directory for this skill: ${skillDir}/
 
 ${skill}`,
         },
@@ -110,7 +212,7 @@ ${skill}`,
 
   execute: async (params, context) => {
     // Check if already loaded
-    if (JSON.stringify(context.input).includes(`Skill ${params.type} is already loaded`)) {
+    if (JSON.stringify(context?.input ?? []).includes(`Skill ${params.type} is already loaded`)) {
       return `Skill ${params.type} is already loaded`;
     }
 
@@ -119,11 +221,258 @@ ${skill}`,
 });
 
 // Usage - the skill automatically enriches future turns
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'anthropic/claude-sonnet-4.5',
   input: 'Process this PDF and extract the key findings',
-  tools: [skillsTool],
+  tools: [skillsTool] as const,
 });
+
+console.log(await result.getText());
+
+```
+
+```python title="Python" lines
+import asyncio
+import json
+import os
+import re
+from pathlib import Path
+from pydantic import BaseModel, Field
+from openrouter_agent import OpenRouter, call_model, tool
+
+class SkillInput(BaseModel):
+    type: str = Field(description="The skill type to load (e.g., 'pdf-processing')")
+
+# next_turn_params runs after all tool calls execute, before responses go to model
+# Executed in order of tools array. This is where the magic happens.
+def skill_input(params, context):
+    current = context.get("input")
+    # Prevent duplicate skill loading: the marker is written below, with the instructions
+    if f"Skill {params['type']} is loaded" in json.dumps(current, default=str):
+        return current
+
+    # The skill name comes from the model, so accept a plain directory name only
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", params["type"]):
+        return current
+
+    # Load the skill's instructions from file system
+    skill_dir = Path.home() / ".claude" / "skills" / params["type"]
+    skill_path = skill_dir / "SKILL.md"
+    if not skill_path.exists():
+        return current
+    skill = skill_path.read_text(encoding="utf-8")
+
+    history = current if isinstance(current, list) else [{"role": "user", "content": current}]
+
+    # Inject skill context into the conversation
+    return [
+        *history,
+        {"role": "user", "content": f"Skill {params['type']} is loaded. Base directory for this skill: {skill_dir}/\n\n{skill}"},
+    ]
+
+def execute_skill(params, ctx):
+    # Check if already loaded
+    current = (ctx or {}).get("input", [])
+    if f"Skill {params.type} is loaded" in json.dumps(current, default=str):
+        return f"Skill {params.type} is already loaded"
+
+    # Report a load error instead of a launch when there are no instructions to add
+    skill_path = Path.home() / ".claude" / "skills" / params.type / "SKILL.md"
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", params.type) or not skill_path.exists():
+        return f"Skill {params.type} could not be loaded: no SKILL.md found for that name"
+    return f"Launching skill {params.type}"
+
+skills_tool = tool(
+    name="skill",
+    description="""Load a specialized skill to enhance the assistant's capabilities.
+Available skills: pdf-processing, data-analysis, code-review, etc.
+Each skill provides domain-specific instructions and capabilities.""",
+    input_schema=SkillInput,
+    next_turn_params={"input": skill_input},
+    execute=execute_skill,
+)
+
+async def main():
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    # Usage - the skill automatically enriches future turns
+    result = call_model(client, {
+        "model": "anthropic/claude-sonnet-4.5",
+        "input": "Process this PDF and extract the key findings",
+        "tools": [skills_tool],
+    })
+
+    print(await result.get_text())
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+)
+
+// The skill name comes from the model, so accept a plain directory name only
+var skillName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
+
+type toolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type message struct {
+	Role       string     `json:"role"`
+	Content    any        `json:"content"`
+	ToolCalls  []toolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+var skillTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name": "skill",
+		"description": `Load a specialized skill to enhance the assistant's capabilities.
+Available skills: pdf-processing, data-analysis, code-review, etc.
+Each skill provides domain-specific instructions and capabilities.`,
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"type": map[string]any{"type": "string", "description": "The skill type to load (e.g., 'pdf-processing')"},
+			},
+			"required": []string{"type"},
+		},
+	},
+}
+
+// alreadyLoaded looks for the marker nextTurnInput writes with the instructions
+func alreadyLoaded(history []message, skill string) bool {
+	b, _ := json.Marshal(history)
+	return strings.Contains(string(b), fmt.Sprintf("Skill %s is loaded", skill))
+}
+
+func skillDir(skill string) string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".claude", "skills", skill)
+}
+
+// execute: report whether the skill is launching, already loaded, or cannot be loaded
+func execute(skill string, history []message) string {
+	if alreadyLoaded(history, skill) {
+		return fmt.Sprintf("Skill %s is already loaded", skill)
+	}
+	if !skillName.MatchString(skill) {
+		return fmt.Sprintf("Skill %s could not be loaded: no SKILL.md found for that name", skill)
+	}
+	if _, err := os.Stat(filepath.Join(skillDir(skill), "SKILL.md")); err != nil {
+		return fmt.Sprintf("Skill %s could not be loaded: no SKILL.md found for that name", skill)
+	}
+	return fmt.Sprintf("Launching skill %s", skill)
+}
+
+// nextTurnParams.input: runs after tool calls execute, before the next model turn
+func nextTurnInput(skill string, history []message) []message {
+	if alreadyLoaded(history, skill) || !skillName.MatchString(skill) {
+		return history
+	}
+	dir := skillDir(skill)
+	content, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+	if err != nil {
+		return history
+	}
+	return append(history, message{Role: "user", Content: fmt.Sprintf("Skill %s is loaded. Base directory for this skill: %s/\n\n%s", skill, dir, content)})
+}
+
+func main() {
+	history := []message{{Role: "user", Content: "Process this PDF and extract the key findings"}}
+
+	for turn := 0; turn < 5; turn++ {
+		body, _ := json.Marshal(map[string]any{
+			"model":    "anthropic/claude-sonnet-4.5",
+			"messages": history,
+			"tools":    []any{skillTool},
+		})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		var out struct {
+			Choices []struct {
+				Message message `json:"message"`
+			} `json:"choices"`
+		}
+		raw, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			panic(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			panic(fmt.Sprintf("request failed: %s: %s", resp.Status, raw))
+		}
+		if err := json.Unmarshal(raw, &out); err != nil {
+			panic(fmt.Sprintf("decode response: %v", err))
+		}
+		if len(out.Choices) == 0 {
+			panic(fmt.Sprintf("no choices in response: %s", raw))
+		}
+		msg := out.Choices[0].Message
+		if len(msg.ToolCalls) == 0 {
+			fmt.Println(msg.Content)
+			return
+		}
+
+		history = append(history, msg)
+		var skills []string
+		for _, tc := range msg.ToolCalls {
+			var args struct {
+				Type string `json:"type"`
+			}
+			// Reject malformed arguments or a missing type before running the skill
+			if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil || args.Type == "" {
+				history = append(history, message{Role: "tool", ToolCallID: tc.ID, Content: "Invalid skill arguments: a string \"type\" is required"})
+				continue
+			}
+			history = append(history, message{Role: "tool", ToolCallID: tc.ID, Content: execute(args.Type, history)})
+			skills = append(skills, args.Type)
+		}
+		for _, s := range skills {
+			history = nextTurnInput(s, history)
+		}
+	}
+
+	// The last reply still asked for a tool, so there is no answer to print
+	fmt.Println("Stopped after 5 turns without a final answer")
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+I'd be happy to help you process a PDF and extract key findings! However, I don't see any PDF file attached to your message. 
+
+Could you please either:
+1. Upload the PDF file you'd like me to analyze, or
+2. Provide a link to the PDF document
+
+Once you share the PDF, I'll be able to load the PDF processing skill and extract the key findings for you.
 ```
 
 ### Key Benefits
@@ -157,6 +506,8 @@ Understanding when `nextTurnParams` runs is crucial:
 
 The validated input parameters that were passed to the tool:
 
+<CodeGroup>
+
 ```typescript lines
 nextTurnParams: {
   instructions: (params, context) => {
@@ -166,6 +517,26 @@ nextTurnParams: {
   },
 },
 ```
+
+```python title="Python" lines
+def instructions(params, context):
+    # params is the validated input dict, e.g. {"type": "pdf-processing"}
+    print(params["type"])  # e.g., "pdf-processing"
+    return f"Handle {params['type']}"
+
+next_turn_params = {"instructions": instructions}
+
+```
+
+```go title="Go" lines
+// nextTurnParams.instructions: params is typed based on the input schema
+func nextTurnInstructions(params skillInput, history []message) string {
+	fmt.Println(params.Type) // e.g., "pdf-processing"
+	return fmt.Sprintf("Handle %s", params.Type)
+}
+```
+
+</CodeGroup>
 
 ### context
 
@@ -187,6 +558,8 @@ The current request context, including:
 
 You can modify `CallModelInput` parameters:
 
+<CodeGroup>
+
 ```typescript lines
 nextTurnParams: {
   // Modify message history
@@ -204,11 +577,61 @@ nextTurnParams: {
 },
 ```
 
+```python title="Python" lines
+next_turn_params = {
+    # Modify message history (assumes ctx["input"] is a message list; a string
+    # prompt must be wrapped in a user message first, as in the skills example)
+    "input": lambda params, ctx: [*ctx["input"], new_message],
+
+    # Change model
+    "model": lambda params, ctx: "anthropic/claude-sonnet-4.5",
+
+    # Update instructions
+    "instructions": lambda params, ctx: f"{ctx['instructions']}\n\nNew context...",
+
+    # Adjust generation parameters
+    "temperature": lambda params, ctx: 0.5,
+    "max_output_tokens": lambda params, ctx: 2000,
+}
+
+```
+
+```go title="Go" lines
+// nextTurnParams: each field runs after tool calls execute, before the next model turn
+type turnParams struct {
+	Input           []message
+	Model           string
+	Instructions    string
+	Temperature     float64
+	MaxOutputTokens int
+}
+
+func nextTurnParams(params skillInput, ctx turnParams) turnParams {
+	// Modify message history
+	ctx.Input = append(ctx.Input, newMessage)
+
+	// Change model
+	ctx.Model = "anthropic/claude-sonnet-4.5"
+
+	// Update instructions
+	ctx.Instructions = ctx.Instructions + "\n\nNew context..."
+
+	// Adjust generation parameters
+	ctx.Temperature = 0.5
+	ctx.MaxOutputTokens = 2000
+	return ctx
+}
+```
+
+</CodeGroup>
+
 ## Patterns
 
 ### Research Context Accumulation
 
 Build up context as research progresses:
+
+<CodeGroup>
 
 ```typescript lines
 const researchTool = tool({
@@ -233,9 +656,75 @@ Build upon these findings in your response.`;
 });
 ```
 
+```python title="Python" lines
+class ResearchInput(BaseModel):
+    topic: str
+
+class ResearchOutput(BaseModel):
+    findings: list[str]
+
+def research_instructions(params, context):
+    base = context.get("instructions") or ""
+    return f"""{base}
+
+Previous research on "{params['topic']}" found important context.
+Build upon these findings in your response."""
+
+async def run_research(params, ctx):
+    results = await search_database(params.topic)
+    return ResearchOutput(findings=results)
+
+research_tool = tool(
+    name="research",
+    input_schema=ResearchInput,
+    output_schema=ResearchOutput,
+    next_turn_params={"instructions": research_instructions},
+    execute=run_research,
+)
+
+```
+
+```go title="Go" lines
+type researchInput struct {
+	Topic string `json:"topic"`
+}
+
+type researchOutput struct {
+	Findings []string `json:"findings"`
+}
+
+var researchTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name": "research",
+		"parameters": map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"topic": map[string]any{"type": "string"}},
+			"required":   []string{"topic"},
+		},
+	},
+}
+
+// nextTurnParams.instructions: build on the accumulated research context
+func researchInstructions(params researchInput, instructions string) string {
+	return fmt.Sprintf(`%s
+
+Previous research on "%s" found important context.
+Build upon these findings in your response.`, instructions, params.Topic)
+}
+
+func executeResearch(params researchInput) researchOutput {
+	return researchOutput{Findings: searchDatabase(params.Topic)}
+}
+```
+
+</CodeGroup>
+
 ### Complexity-Based Model Selection
 
-Upgrade to better models when needed:
+Upgrade to better models when needed. In the Python tab, `analyze_code_complexity` is application-defined: a synchronous function that takes the code and returns a `ComplexityOutput`. The callbacks receive the tool input, not its output, so they call it again; the Go tab runs its own loop and passes the tool result in directly.
+
+<CodeGroup>
 
 ```typescript expandable lines
 const complexityAnalyzer = tool({
@@ -263,9 +752,94 @@ const complexityAnalyzer = tool({
 });
 ```
 
+```python title="Python" lines
+class ComplexityInput(BaseModel):
+    code: str
+
+class ComplexityOutput(BaseModel):
+    complexity: Literal["low", "medium", "high"]
+
+# params is the tool input ({"code": ...}), so derive the complexity from it
+def complexity_of(params):
+    return analyze_code_complexity(params["code"]).complexity
+
+def select_model(params, context):
+    # Upgrade to more capable model for complex code
+    if complexity_of(params) == "high":
+        return "anthropic/claude-sonnet-4.5"
+    return context.get("model") or "openai/gpt-5-nano"
+
+def select_temperature(params, context):
+    # Lower temperature for complex analysis
+    return 0.3 if complexity_of(params) == "high" else 0.7
+
+async def run_analysis(params, ctx):
+    return analyze_code_complexity(params.code)
+
+complexity_analyzer = tool(
+    name="analyze_complexity",
+    input_schema=ComplexityInput,
+    output_schema=ComplexityOutput,
+    next_turn_params={
+        "model": select_model,
+        "temperature": select_temperature,
+    },
+    execute=run_analysis,
+)
+```
+
+```go title="Go" lines
+type complexityInput struct {
+	Code string `json:"code"`
+}
+
+type complexityOutput struct {
+	Complexity string `json:"complexity"` // "low", "medium", or "high"
+}
+
+var complexityAnalyzer = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name": "analyze_complexity",
+		"parameters": map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"code": map[string]any{"type": "string"}},
+			"required":   []string{"code"},
+		},
+	},
+}
+
+// nextTurnParams.model: upgrade to a more capable model for complex code
+func nextTurnModel(params complexityOutput, model string) string {
+	if params.Complexity == "high" {
+		return "anthropic/claude-sonnet-4.5"
+	}
+	if model != "" {
+		return model
+	}
+	return "openai/gpt-5-nano"
+}
+
+// nextTurnParams.temperature: lower temperature for complex analysis
+func nextTurnTemperature(params complexityOutput) float64 {
+	if params.Complexity == "high" {
+		return 0.3
+	}
+	return 0.7
+}
+
+func executeComplexity(params complexityInput) complexityOutput {
+	return analyzeCodeComplexity(params.Code)
+}
+```
+
+</CodeGroup>
+
 ### Multi-Skill Loading
 
 Load multiple skills at once:
+
+<CodeGroup>
 
 ```typescript expandable lines
 const multiSkillLoader = tool({
@@ -318,9 +892,75 @@ const multiSkillLoader = tool({
 });
 ```
 
+```python title="Python" lines
+class SkillsInput(BaseModel):
+    skills: list[str] = Field(description="Array of skill names to load")
+
+class FailedSkill(BaseModel):
+    name: str
+    reason: str
+
+class SkillsOutput(BaseModel):
+    loaded: list[str]
+    failed: list[FailedSkill]
+
+# Skill names come from the model, so accept plain directory names only
+SKILL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
+
+def skill_path(name):
+    if not SKILL_NAME.fullmatch(name):
+        return None
+    return Path(f"~/.skills/{name}/SKILL.md").expanduser()
+
+def load_skills_input(params, context):
+    new_input = context.get("input")
+
+    for skill_name in params.get("skills", []):
+        path = skill_path(skill_name)
+        if path is None or not path.exists():
+            continue
+
+        skill_marker = f"[Skill: {skill_name}]"
+        if skill_marker in json.dumps(new_input, default=str):
+            continue
+
+        skill_content = path.read_text(encoding="utf-8")
+        new_input = [
+            *(new_input if isinstance(new_input, list) else [{"role": "user", "content": new_input}]),
+            {"role": "user", "content": f"{skill_marker}\n{skill_content}"},
+        ]
+
+    return new_input
+
+async def run_load_skills(params, ctx):
+    loaded, failed = [], []
+
+    for skill in params.skills:
+        path = skill_path(skill)
+        if path is not None and path.exists():
+            loaded.append(skill)
+        else:
+            failed.append(FailedSkill(name=skill, reason="Not found"))
+
+    return SkillsOutput(loaded=loaded, failed=failed)
+
+multi_skill_loader = tool(
+    name="load_skills",
+    description="Load multiple skills at once",
+    input_schema=SkillsInput,
+    output_schema=SkillsOutput,
+    next_turn_params={"input": load_skills_input},
+    execute=run_load_skills,
+)
+```
+
+</CodeGroup>
+
 ### Language/Locale Switching
 
 Adapt to user language preferences:
+
+<CodeGroup>
 
 ```typescript expandable lines
 const languageTool = tool({
@@ -349,11 +989,86 @@ const languageTool = tool({
 });
 ```
 
+```python title="Python" lines
+class LanguageInput(BaseModel):
+    language: Literal["en", "es", "fr", "de", "ja"]
+
+class LanguageOutput(BaseModel):
+    set: bool
+
+def language_instructions(params, context):
+    base = context.get("instructions") or ""
+    language_instructions = {
+        "en": "Respond in English.",
+        "es": "Responde en español.",
+        "fr": "Répondez en français.",
+        "de": "Antworten Sie auf Deutsch.",
+        "ja": "日本語で回答してください。",
+    }
+
+    return f"{base}\n\n{language_instructions[params.get('language')]}"
+
+async def run_set_language(params, ctx):
+    return LanguageOutput(set=True)
+
+language_tool = tool(
+    name="set_language",
+    input_schema=LanguageInput,
+    output_schema=LanguageOutput,
+    next_turn_params={"instructions": language_instructions},
+    execute=run_set_language,
+)
+```
+
+```go title="Go" lines
+type languageInput struct {
+	Language string `json:"language"` // "en", "es", "fr", "de", or "ja"
+}
+
+type languageOutput struct {
+	Set bool `json:"set"`
+}
+
+var languageTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name": "set_language",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"language": map[string]any{"type": "string", "enum": []string{"en", "es", "fr", "de", "ja"}},
+			},
+			"required": []string{"language"},
+		},
+	},
+}
+
+// nextTurnParams.instructions: append the language instruction
+func nextTurnInstructions(params languageInput, instructions string) string {
+	languageInstructions := map[string]string{
+		"en": "Respond in English.",
+		"es": "Responde en español.",
+		"fr": "Répondez en français.",
+		"de": "Antworten Sie auf Deutsch.",
+		"ja": "日本語で回答してください。",
+	}
+	return instructions + "\n\n" + languageInstructions[params.Language]
+}
+
+func executeLanguage(params languageInput) languageOutput {
+	return languageOutput{Set: true}
+}
+```
+
+</CodeGroup>
+
 ## Best Practices
 
 ### Idempotency Checks
 
 Always check if context was already added:
+
+<CodeGroup>
 
 ```typescript lines
 nextTurnParams: {
@@ -373,9 +1088,48 @@ nextTurnParams: {
 },
 ```
 
+```python title="Python" lines
+def add_context_input(params, context):
+    current = context.get("input")
+    marker = f"[Context: {params.get('id')}]"
+
+    # Don't add if already present
+    if marker in json.dumps(current, default=str):
+        return current
+
+    return [
+        *(current if isinstance(current, list) else [{"role": "user", "content": current}]),
+        {"role": "user", "content": f"{marker}\n{new_content}"},
+    ]
+
+next_turn_params = {"input": add_context_input}
+
+```
+
+```go title="Go" lines
+// nextTurnParams.input: add context only if not already present
+func nextTurnInput(params contextInput, input []map[string]any) []map[string]any {
+	marker := fmt.Sprintf("[Context: %s]", params.ID)
+
+	// Don't add if already present
+	if b, _ := json.Marshal(input); strings.Contains(string(b), marker) {
+		return input
+	}
+
+	return append(input, map[string]any{
+		"role":    "user",
+		"content": marker + "\n" + newContent,
+	})
+}
+```
+
+</CodeGroup>
+
 ### Type Safety
 
 Use proper typing for context access:
+
+<CodeGroup>
 
 ```typescript lines
 nextTurnParams: {
@@ -387,9 +1141,35 @@ nextTurnParams: {
 },
 ```
 
+```python title="Python" lines
+def build_instructions(params, context):
+    # Safe access with fallback
+    base = context.get("instructions") or "You are a helpful assistant."
+    return f"{base}\n\nAdditional context: {params.get('data')}"
+
+next_turn_params = {"instructions": build_instructions}
+
+```
+
+```go title="Go" lines
+// nextTurnParams.instructions: safe access with fallback
+func nextTurnInstructions(params dataInput, instructions *string) string {
+	// Safe access with fallback
+	base := "You are a helpful assistant."
+	if instructions != nil {
+		base = *instructions
+	}
+	return base + "\n\nAdditional context: " + params.Data
+}
+```
+
+</CodeGroup>
+
 ### Minimal Modifications
 
 Only modify what's necessary:
+
+<CodeGroup>
 
 ```typescript lines
 // Good: Minimal, targeted change
@@ -404,6 +1184,38 @@ nextTurnParams: {
   },
 },
 ```
+
+```python title="Python" lines
+# Good: Minimal, targeted change
+next_turn_params = {
+    # Returning None removes the parameter, so return the current value to keep it
+    "temperature": lambda params, context: 0.2 if params.get("needs_precision") else context.get("temperature"),
+}
+
+```
+
+```go title="Go" lines
+// Good: Minimal, targeted change
+// nextTurnParams.temperature: return nil to leave temperature unchanged
+func nextTurnTemperature(params precisionInput) *float64 {
+	if params.NeedsPrecision {
+		t := 0.2
+		return &t
+	}
+	return nil
+}
+
+// Avoid: Unnecessary spreading
+func nextTurnTemperatureVerbose(params precisionInput, temperature float64) float64 {
+	if params.NeedsPrecision {
+		return 0.2
+	}
+	return temperature
+}
+
+```
+
+</CodeGroup>
 
 ## See Also
 

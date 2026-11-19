@@ -54,6 +54,10 @@ bun add @openrouter/mcp @openrouter/agent
 
 Call `createMCPTools()` once, spread `mcp.tools` into `callModel`, and close the handle when you're done:
 
+The Python and Go tabs on this page speak MCP's streamable HTTP transport directly and are deliberately minimal. They read only the first `tools/list` page, so follow `nextCursor` if your server paginates. They pass a tool result back as its text content or as the raw result JSON, and do not handle image or other non-text content specially.
+
+<CodeGroup>
+
 ```typescript expandable lines
 import { OpenRouter } from '@openrouter/agent';
 import { callModel } from '@openrouter/agent/call-model';
@@ -74,6 +78,279 @@ const result = callModel(client, {
 
 console.log(await result.getText());
 await mcp.close();
+```
+
+```python title="Python" lines
+import asyncio
+import json
+import os
+
+import httpx
+from pydantic import BaseModel, ConfigDict
+from openrouter_agent import OpenRouter, call_model, tool
+
+MCP_URL = "https://mcp.example.com/mcp"
+http = httpx.Client(timeout=60, headers={
+    "Authorization": f"Bearer {os.environ.get('MCP_TOKEN', '')}",
+    "Accept": "application/json, text/event-stream",
+})
+session: dict[str, str] = {}
+
+
+def rpc(method, params=None, notify=False):
+    msg = {"jsonrpc": "2.0", "method": method, "params": params or {}}
+    if not notify:
+        msg["id"] = 1
+    r = http.post(MCP_URL, json=msg, headers=session)
+    r.raise_for_status()
+    if "mcp-session-id" in r.headers:
+        session["Mcp-Session-Id"] = r.headers["mcp-session-id"]
+    if notify:
+        return None
+    if r.headers.get("content-type", "").startswith("text/event-stream"):
+        msgs = [json.loads(l[5:]) for l in r.text.splitlines() if l.startswith("data:")]
+        body = [m for m in msgs if "id" in m][-1]
+    else:
+        body = r.json()
+    if "error" in body:
+        raise RuntimeError(body["error"])
+    return body["result"]
+
+
+def mcp_tool(t):
+    schema = t.get("inputSchema") or {"type": "object", "properties": {}}
+
+    def use_mcp_schema(s, _cls):
+        s.clear()
+        s.update(schema)
+
+    Input = type(t["name"], (BaseModel,), {
+        "model_config": ConfigDict(extra="allow", json_schema_extra=use_mcp_schema),
+    })
+
+    def execute(params, ctx):
+        res = rpc("tools/call", {"name": t["name"], "arguments": params.model_dump()})
+        text = "\n".join(c["text"] for c in res.get("content", []) if "text" in c)
+        return text or json.dumps(res)  # no text content (image-only result): return the raw result
+
+    return tool(name=t["name"], description=t.get("description", ""),
+                input_schema=Input, execute=execute)
+
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    rpc("initialize", {"protocolVersion": "2025-03-26", "capabilities": {},
+                       "clientInfo": {"name": "example", "version": "1.0"}})
+    rpc("notifications/initialized", notify=True)
+    tools = [mcp_tool(t) for t in rpc("tools/list")["tools"]]
+
+    result = call_model(client, {
+        "model": "anthropic/claude-opus-4-8",
+        "input": "What are my three most recently updated issues?",
+        "tools": tools,
+    })
+
+    print(await result.get_text())
+    if session:  # close the MCP session before the HTTP client
+        http.delete(MCP_URL, headers=session)
+    http.close()
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+const mcpURL = "https://mcp.example.com/mcp"
+
+var session string
+
+// rpc sends one JSON-RPC message to the MCP server (streamable HTTP transport).
+func rpc(method string, params any, id int) map[string]any {
+	msg := map[string]any{"jsonrpc": "2.0", "method": method}
+	if params != nil {
+		msg["params"] = params
+	}
+	if id > 0 {
+		msg["id"] = id
+	}
+	body, _ := json.Marshal(msg)
+	req, _ := http.NewRequest("POST", mcpURL, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("MCP_TOKEN"))
+	if session != "" {
+		req.Header.Set("Mcp-Session-Id", session)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if s := resp.Header.Get("Mcp-Session-Id"); s != "" {
+		session = s
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 300 {
+		log.Fatalf("MCP %s: HTTP %d: %s", method, resp.StatusCode, raw)
+	}
+	if id == 0 {
+		return nil
+	}
+	payloads := []string{string(raw)}
+	if strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream") {
+		payloads = nil
+		for _, line := range strings.Split(string(raw), "\n") {
+			if strings.HasPrefix(line, "data:") {
+				payloads = append(payloads, strings.TrimSpace(line[5:]))
+			}
+		}
+	}
+	for _, p := range payloads {
+		var out map[string]any
+		if json.Unmarshal([]byte(p), &out) == nil && out["id"] == float64(id) {
+			if out["error"] != nil {
+				log.Fatalf("MCP error: %v", out["error"])
+			}
+			result, _ := out["result"].(map[string]any)
+			return result
+		}
+	}
+	log.Fatalf("MCP %s: unexpected response %s", method, raw)
+	return nil
+}
+
+type toolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type message struct {
+	Role       string     `json:"role"`
+	Content    string     `json:"content"`
+	ToolCalls  []toolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+func main() {
+	// Connect to the MCP server and list its tools.
+	rpc("initialize", map[string]any{
+		"protocolVersion": "2025-03-26",
+		"capabilities":    map[string]any{},
+		"clientInfo":      map[string]any{"name": "openrouter-go", "version": "1.0.0"},
+	}, 1)
+	rpc("notifications/initialized", nil, 0)
+	listed := rpc("tools/list", map[string]any{}, 2)
+
+	var tools []any
+	for _, t := range listed["tools"].([]any) {
+		t := t.(map[string]any)
+		tools = append(tools, map[string]any{"type": "function", "function": map[string]any{
+			"name": t["name"], "description": t["description"], "parameters": t["inputSchema"],
+		}})
+	}
+
+	messages := []message{{Role: "user", Content: "What are my three most recently updated issues?"}}
+	id := 3
+	for turn := 0; turn < 10; turn++ {
+		body, _ := json.Marshal(map[string]any{
+			"model":    "anthropic/claude-opus-4-8",
+			"messages": messages,
+			"tools":    tools,
+		})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		raw, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			log.Fatalf("OpenRouter %d: %s", resp.StatusCode, raw)
+		}
+		var out struct {
+			Choices []struct {
+				Message message `json:"message"`
+			} `json:"choices"`
+		}
+		if err := json.Unmarshal(raw, &out); err != nil || len(out.Choices) == 0 {
+			log.Fatalf("unexpected response: %s", raw)
+		}
+		msg := out.Choices[0].Message
+		messages = append(messages, msg)
+		if len(msg.ToolCalls) == 0 {
+			fmt.Println(msg.Content)
+			break
+		}
+
+		// Run each requested tool on the MCP server and send the result back.
+		for _, tc := range msg.ToolCalls {
+			args := map[string]any{}
+			json.Unmarshal([]byte(tc.Function.Arguments), &args)
+			id++
+			res := rpc("tools/call", map[string]any{"name": tc.Function.Name, "arguments": args}, id)
+			var text strings.Builder
+			if items, ok := res["content"].([]any); ok {
+				for _, it := range items {
+					if s, ok := it.(map[string]any)["text"].(string); ok {
+						text.WriteString(s)
+					}
+				}
+			}
+			if text.Len() == 0 {
+				b, _ := json.Marshal(res)
+				text.Write(b)
+			}
+			messages = append(messages, message{Role: "tool", ToolCallID: tc.ID, Content: text.String()})
+		}
+	}
+
+	// Close the MCP session.
+	if session != "" {
+		req, _ := http.NewRequest("DELETE", mcpURL, nil)
+		req.Header.Set("Mcp-Session-Id", session)
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("MCP_TOKEN"))
+		if resp, err := http.DefaultClient.Do(req); err == nil {
+			resp.Body.Close()
+		}
+	}
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+I can't help with retrieving your issues — I'm specialized in answering questions about the OpenRouter documentation, which doesn't have access to any issue-tracking system or your personal account data.
+
+If you were looking for something OpenRouter-related, I'd be happy to help with topics like:
+
+- **API usage** (chat completions, authentication, API keys)
+- **Model routing** and provider selection
+- **Activity and usage tracking** via the API
+- **Credits, limits, and billing**
+
+For example, if you meant something like "how do I view my recent API activity or requests," let me know and I can look that up in the docs. Could you clarify what you're trying to do?
 ```
 
 `createMCPTools()` returns a handle:
@@ -103,6 +380,8 @@ Prefer an `OAuthClientProvider` over caching a static bearer token when the serv
 
 MCP tools coexist with your own `tool()` definitions. Every tool the wrapper produces is marked with the `_mcp` brand, so the Agent SDK can tell the two apart and preserve type safety on your typed results:
 
+<CodeGroup>
+
 ```typescript expandable lines
 import { OpenRouter, tool, isMcpTool } from '@openrouter/agent';
 import { callModel } from '@openrouter/agent/call-model';
@@ -110,6 +389,11 @@ import { createMCPTools } from '@openrouter/mcp';
 import { z } from 'zod';
 
 const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+// Replace with a real weather lookup.
+async function fetchWeather(location: string) {
+  return { temperature: 64, conditions: `Foggy in ${location}` };
+}
 
 const weatherTool = tool({
   name: 'get_weather',
@@ -130,7 +414,8 @@ const result = callModel(client, {
   tools: [weatherTool, ...mcp.tools],
 });
 
-for await (const event of result.getToolStream()) {
+// getFullResponsesStream includes tool execution results (tool.result events)
+for await (const event of result.getFullResponsesStream()) {
   if (event.type !== 'tool.result') continue;
 
   if (event.source === 'client' && event.toolName === 'get_weather') {
@@ -143,6 +428,353 @@ for await (const event of result.getToolStream()) {
     console.log(`MCP tool ${event.toolName} returned`, event.result);
   }
 }
+
+console.log(await result.getText());
+
+```
+
+```python title="Python" lines
+import json
+import os
+import requests
+
+MCP_URL = "https://mcp.example.com/mcp"
+session = None
+
+
+def rpc(method, params=None, id=None):
+    """Send one JSON-RPC message to the MCP server."""
+    global session
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "Authorization": f"Bearer {os.environ.get('MCP_TOKEN', '')}",
+    }
+    if session:
+        headers["Mcp-Session-Id"] = session
+    msg = {"jsonrpc": "2.0", "method": method}
+    if params is not None:
+        msg["params"] = params
+    if id is not None:
+        msg["id"] = id
+    resp = requests.post(MCP_URL, json=msg, headers=headers)
+    resp.raise_for_status()
+    session = resp.headers.get("Mcp-Session-Id", session)
+    if id is None:
+        return None
+    payloads = [resp.text]
+    if resp.headers.get("Content-Type", "").startswith("text/event-stream"):
+        payloads = [l[5:].strip() for l in resp.text.splitlines() if l.startswith("data:")]
+    for p in payloads:
+        try:
+            out = json.loads(p)
+        except ValueError:
+            continue
+        if out.get("id") == id:
+            if out.get("error"):
+                raise RuntimeError(f"MCP error: {out['error']}")
+            return out["result"]
+    raise RuntimeError(f"MCP {method}: unexpected response {resp.text}")
+
+
+# Replace with a real weather lookup.
+def fetch_weather(location):
+    return {"temperature": 64, "conditions": f"Foggy in {location}"}
+
+
+weather_tool = {
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get the current weather for a location",
+        "parameters": {
+            "type": "object",
+            "properties": {"location": {"type": "string"}},
+            "required": ["location"],
+        },
+    },
+}
+
+# Connect to the MCP server and list its tools.
+rpc("initialize", {
+    "protocolVersion": "2025-03-26",
+    "capabilities": {},
+    "clientInfo": {"name": "openrouter-python", "version": "1.0.0"},
+}, id=1)
+rpc("notifications/initialized")
+mcp_tools = [
+    {"type": "function", "function": {
+        "name": t["name"],
+        "description": t.get("description", ""),
+        "parameters": t["inputSchema"],
+    }}
+    for t in rpc("tools/list", {}, id=2)["tools"]
+]
+if any(t["function"]["name"] == "get_weather" for t in mcp_tools):
+    raise RuntimeError("MCP server also advertises get_weather; prefix or rename one of the tools")
+
+messages = [{"role": "user", "content": "Summarize my open Linear issues and the weather in SF."}]
+next_id = 3
+for _ in range(10):
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+        json={
+            "model": "anthropic/claude-opus-4-8",
+            "messages": messages,
+            "tools": [weather_tool, *mcp_tools],
+        },
+    )
+    resp.raise_for_status()
+    msg = resp.json()["choices"][0]["message"]
+    messages.append(msg)
+    if not msg.get("tool_calls"):
+        print(msg.get("content"))
+        break
+
+    for tc in msg["tool_calls"]:
+        name = tc["function"]["name"]
+        args = json.loads(tc["function"]["arguments"] or "{}")
+        if name == "get_weather":
+            # Your own tool: you know the shape of the result
+            result = fetch_weather(args["location"])
+            print(f"Weather: {result['temperature']}°")
+            content = json.dumps(result)
+        else:
+            # MCP results are untyped — narrow them yourself
+            res = rpc("tools/call", {"name": name, "arguments": args}, id=next_id)
+            next_id += 1
+            print(f"MCP tool {name} returned", res)
+            content = "".join(c.get("text", "") for c in res.get("content", [])) or json.dumps(res)
+        messages.append({"role": "tool", "tool_call_id": tc["id"], "content": content})
+
+# Close the MCP session.
+if session:
+    requests.delete(MCP_URL, headers={
+        "Mcp-Session-Id": session,
+        "Authorization": f"Bearer {os.environ.get('MCP_TOKEN', '')}",
+    })
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+const mcpURL = "https://mcp.example.com/mcp"
+
+var session string
+
+// rpc sends a JSON-RPC message to the MCP server (id 0 = notification).
+func rpc(method string, params any, id int) map[string]any {
+	msg := map[string]any{"jsonrpc": "2.0", "method": method}
+	if params != nil {
+		msg["params"] = params
+	}
+	if id != 0 {
+		msg["id"] = id
+	}
+	body, _ := json.Marshal(msg)
+	req, _ := http.NewRequest("POST", mcpURL, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("MCP_TOKEN"))
+	if session != "" {
+		req.Header.Set("Mcp-Session-Id", session)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if s := resp.Header.Get("Mcp-Session-Id"); s != "" {
+		session = s
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 300 {
+		log.Fatalf("MCP %s: HTTP %d: %s", method, resp.StatusCode, raw)
+	}
+	if id == 0 {
+		return nil
+	}
+	payloads := []string{string(raw)}
+	if strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream") {
+		payloads = nil
+		for _, line := range strings.Split(string(raw), "\n") {
+			if strings.HasPrefix(line, "data:") {
+				payloads = append(payloads, strings.TrimSpace(line[5:]))
+			}
+		}
+	}
+	for _, p := range payloads {
+		var out map[string]any
+		if json.Unmarshal([]byte(p), &out) == nil && out["id"] == float64(id) {
+			if out["error"] != nil {
+				log.Fatalf("MCP error: %v", out["error"])
+			}
+			result, _ := out["result"].(map[string]any)
+			return result
+		}
+	}
+	log.Fatalf("MCP %s: unexpected response %s", method, raw)
+	return nil
+}
+
+type weather struct {
+	Temperature float64 `json:"temperature"`
+	Conditions  string  `json:"conditions"`
+}
+
+// Replace with a real weather lookup.
+func fetchWeather(location string) weather {
+	return weather{Temperature: 64, Conditions: "Foggy in " + location}
+}
+
+type toolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type message struct {
+	Role       string     `json:"role"`
+	Content    string     `json:"content"`
+	ToolCalls  []toolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+func main() {
+	// Your own tool.
+	tools := []any{map[string]any{"type": "function", "function": map[string]any{
+		"name":        "get_weather",
+		"description": "Get the current weather for a location",
+		"parameters": map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"location": map[string]any{"type": "string"}},
+			"required":   []string{"location"},
+		},
+	}}}
+
+	// MCP tools, added alongside it.
+	rpc("initialize", map[string]any{
+		"protocolVersion": "2025-03-26",
+		"capabilities":    map[string]any{},
+		"clientInfo":      map[string]any{"name": "openrouter-go", "version": "1.0.0"},
+	}, 1)
+	rpc("notifications/initialized", nil, 0)
+	listed := rpc("tools/list", map[string]any{}, 2)
+	for _, t := range listed["tools"].([]any) {
+		t := t.(map[string]any)
+		if t["name"] == "get_weather" {
+			log.Fatal("MCP server also advertises get_weather; prefix or rename one of the tools")
+		}
+		tools = append(tools, map[string]any{"type": "function", "function": map[string]any{
+			"name": t["name"], "description": t["description"], "parameters": t["inputSchema"],
+		}})
+	}
+
+	messages := []message{{Role: "user", Content: "Summarize my open Linear issues and the weather in SF."}}
+	id := 3
+	for turn := 0; turn < 10; turn++ {
+		body, _ := json.Marshal(map[string]any{
+			"model":    "anthropic/claude-opus-4-8",
+			"messages": messages,
+			"tools":    tools,
+		})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		raw, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			log.Fatalf("OpenRouter %d: %s", resp.StatusCode, raw)
+		}
+		var out struct {
+			Choices []struct {
+				Message message `json:"message"`
+			} `json:"choices"`
+		}
+		if err := json.Unmarshal(raw, &out); err != nil || len(out.Choices) == 0 {
+			log.Fatalf("unexpected response: %s", raw)
+		}
+		msg := out.Choices[0].Message
+		messages = append(messages, msg)
+		if len(msg.ToolCalls) == 0 {
+			fmt.Println(msg.Content)
+			break
+		}
+
+		for _, tc := range msg.ToolCalls {
+			args := map[string]any{}
+			json.Unmarshal([]byte(tc.Function.Arguments), &args)
+			var content string
+			if tc.Function.Name == "get_weather" {
+				// Your tool: the result is a typed struct.
+				w := fetchWeather(fmt.Sprint(args["location"]))
+				fmt.Printf("Weather: %v°\n", w.Temperature)
+				b, _ := json.Marshal(w)
+				content = string(b)
+			} else {
+				// MCP tool: the result is untyped JSON; narrow it yourself.
+				id++
+				res := rpc("tools/call", map[string]any{"name": tc.Function.Name, "arguments": args}, id)
+				fmt.Printf("MCP tool %s returned %v\n", tc.Function.Name, res)
+				b, _ := json.Marshal(res)
+				content = string(b)
+			}
+			messages = append(messages, message{Role: "tool", ToolCallID: tc.ID, Content: content})
+		}
+	}
+
+	// Close the MCP session.
+	if session != "" {
+		req, _ := http.NewRequest("DELETE", mcpURL, nil)
+		req.Header.Set("Mcp-Session-Id", session)
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("MCP_TOKEN"))
+		if resp, err := http.DefaultClient.Do(req); err == nil {
+			resp.Body.Close()
+		}
+	}
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Weather: 64°
+Here's what I can and can't help with:
+
+## Weather in SF ☁️
+It's currently **64°F and foggy** in San Francisco, CA. Classic Karl the Fog weather.
+
+## Linear Issues ❌
+Unfortunately, I **can't access your Linear issues**. The tools I have available are limited to:
+- **Weather lookups** for a given location
+- **OpenRouter documentation** — searching and reading OpenRouter's docs, API references, and OpenAPI specs
+
+I don't have any integration with Linear (or your task/project management tools), so I can't fetch, read, or summarize your open issues.
+
+To get a summary of your Linear issues, you'd need to either use Linear directly, or connect an assistant/agent that has a Linear integration or MCP server configured.
+
+Is there anything I can help you with regarding the weather or OpenRouter's documentation?
 ```
 
 ### The `source` discriminant
@@ -161,6 +793,8 @@ Two helpers let you interact with the brand directly:
 - `isMcpTool(tool)`, runtime type guard for the `_mcp` brand. Useful in lifecycle hooks or custom stop conditions that need to treat MCP tools differently.
 - `markMcp(tool)`, add the brand to an already-built client tool. `@openrouter/mcp` uses this internally on every wrapped tool (including the synthetic resource tools); you rarely need to call it yourself.
 
+<CodeGroup>
+
 ```typescript lines
 import { isMcpTool } from '@openrouter/agent';
 
@@ -169,11 +803,39 @@ for (const t of [weatherTool, ...mcp.tools]) {
 }
 ```
 
+```python title="Python" lines
+for t in [weather_tool, *mcp_tools]:
+    print(t["function"]["name"], "(mcp)" if t in mcp_tools else "(client)")
+
+```
+
+```go title="Go" lines
+// Go has no brand, so record which names came from the MCP server. weatherTool is
+// your own definition and mcpTools the ones built from tools/list, all map[string]any.
+name := func(t map[string]any) string { return fmt.Sprint(t["function"].(map[string]any)["name"]) }
+mcpNames := map[string]bool{}
+for _, t := range mcpTools {
+	mcpNames[name(t)] = true
+}
+
+for _, t := range append([]map[string]any{weatherTool}, mcpTools...) {
+	kind := "(client)"
+	if mcpNames[name(t)] {
+		kind = "(mcp)"
+	}
+	fmt.Println(name(t), kind)
+}
+```
+
+</CodeGroup>
+
 ## Caching and rehydration
 
 Every call to `createMCPTools()` performs an `initialize` + `tools/list` round-trip. For cold-start-heavy workloads (serverless, edge, per-request handlers) you can persist a snapshot and rebuild the handle without touching the network.
 
 ### Manual serialization
+
+<CodeGroup>
 
 ```typescript expandable lines
 import { createMCPTools, rehydrateMCPTools } from '@openrouter/mcp';
@@ -192,15 +854,217 @@ const mcp2 = await rehydrateMCPTools({
   snapshot,
   auth: { kind: 'bearer', token: process.env.MCP_TOKEN },
 });
+
+for (const t of mcp2.tools) {
+  console.log('Rehydrated tool:', t.function.name);
+}
+await mcp2.close();
+
+```
+
+```python title="Python" lines
+import json
+import os
+import requests
+
+URL = "https://mcp.example.com/mcp"
+AUTH = {"Authorization": f"Bearer {os.environ.get('MCP_TOKEN', '')}"}
+
+
+def rpc(method, params, id=None, session=None):
+    body = {"jsonrpc": "2.0", "method": method, "params": params}
+    if id is not None:
+        body["id"] = id
+    headers = {**AUTH, "Accept": "application/json, text/event-stream"}
+    if session:
+        headers["Mcp-Session-Id"] = session
+    r = requests.post(URL, json=body, headers=headers, timeout=30)
+    r.raise_for_status()
+    if id is None:
+        return None, r.headers
+    if r.headers.get("content-type", "").startswith("text/event-stream"):
+        msgs = [json.loads(l[5:]) for l in r.text.splitlines() if l.startswith("data:")]
+        msg = next(m for m in msgs if m.get("id") == id)
+    else:
+        msg = r.json()
+    return msg["result"], r.headers
+
+
+_, h = rpc("initialize", {
+    "protocolVersion": "2025-03-26",
+    "capabilities": {},
+    "clientInfo": {"name": "openrouter-python", "version": "1.0.0"},
+}, id=1)
+session = h.get("Mcp-Session-Id")
+rpc("notifications/initialized", {}, session=session)
+listed, _ = rpc("tools/list", {}, id=2, session=session)
+tools = [{"type": "function", "function": {
+    "name": t["name"], "description": t.get("description", ""), "parameters": t["inputSchema"],
+}} for t in listed["tools"]]
+
+snapshot = json.dumps({"url": URL, "tools": tools})  # plain JSON — store anywhere
+if session:  # close the MCP session
+    requests.delete(URL, headers={**AUTH, "Mcp-Session-Id": session}, timeout=30)
+
+# Later, in another process:
+mcp2 = json.loads(snapshot)
+for t in mcp2["tools"]:
+    print("Rehydrated tool:", t["function"]["name"])
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+const mcpURL = "https://mcp.example.com/mcp"
+
+var session string
+
+// rpc sends one JSON-RPC message to the MCP server (id 0 = notification).
+func rpc(method string, params any, id int) map[string]any {
+	msg := map[string]any{"jsonrpc": "2.0", "method": method}
+	if params != nil {
+		msg["params"] = params
+	}
+	if id > 0 {
+		msg["id"] = id
+	}
+	body, _ := json.Marshal(msg)
+	req, _ := http.NewRequest("POST", mcpURL, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("MCP_TOKEN"))
+	if session != "" {
+		req.Header.Set("Mcp-Session-Id", session)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if s := resp.Header.Get("Mcp-Session-Id"); s != "" {
+		session = s
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 300 {
+		log.Fatalf("MCP %d: %s", resp.StatusCode, raw)
+	}
+	if id == 0 {
+		return nil
+	}
+	// The reply is plain JSON or an SSE stream of "data:" lines.
+	candidates := []string{string(raw)}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(line, "data:") {
+			candidates = append(candidates, strings.TrimSpace(line[5:]))
+		}
+	}
+	for _, c := range candidates {
+		var out struct {
+			Result map[string]any `json:"result"`
+			Error  any            `json:"error"`
+		}
+		if json.Unmarshal([]byte(c), &out) == nil {
+			if out.Error != nil {
+				log.Fatalf("MCP error: %v", out.Error)
+			}
+			if out.Result != nil {
+				return out.Result
+			}
+		}
+	}
+	log.Fatalf("unexpected MCP response: %s", raw)
+	return nil
+}
+
+func closeSession() {
+	if session == "" {
+		return
+	}
+	req, _ := http.NewRequest("DELETE", mcpURL, nil)
+	req.Header.Set("Mcp-Session-Id", session)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("MCP_TOKEN"))
+	if resp, err := http.DefaultClient.Do(req); err == nil {
+		resp.Body.Close()
+	}
+	session = ""
+}
+
+func main() {
+	rpc("initialize", map[string]any{
+		"protocolVersion": "2025-03-26",
+		"capabilities":    map[string]any{},
+		"clientInfo":      map[string]any{"name": "openrouter-go", "version": "1.0.0"},
+	}, 1)
+	rpc("notifications/initialized", nil, 0)
+	listed := rpc("tools/list", map[string]any{}, 2)
+
+	tools := []any{}
+	for _, t := range listed["tools"].([]any) {
+		t := t.(map[string]any)
+		tools = append(tools, map[string]any{"type": "function", "function": map[string]any{
+			"name": t["name"], "description": t["description"], "parameters": t["inputSchema"],
+		}})
+	}
+
+	// Plain JSON — store anywhere.
+	snapshot, _ := json.Marshal(map[string]any{"url": mcpURL, "tools": tools})
+	closeSession()
+
+	// Later, in another process: rehydrate from the snapshot without re-listing.
+	var mcp2 struct {
+		URL   string `json:"url"`
+		Tools []struct {
+			Function struct {
+				Name        string         `json:"name"`
+				Description string         `json:"description"`
+				Parameters  map[string]any `json:"parameters"`
+			} `json:"function"`
+		} `json:"tools"`
+	}
+	if err := json.Unmarshal(snapshot, &mcp2); err != nil {
+		log.Fatal(err)
+	}
+	for _, t := range mcp2.Tools {
+		fmt.Println("Rehydrated tool:", t.Function.Name)
+	}
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Rehydrated tool: search_open_router_documentation
+Rehydrated tool: query_docs_filesystem_open_router_documentation
+Rehydrated tool: submit_feedback
+Rehydrated tool: list_resources
+Rehydrated tool: read_resource
 ```
 
 ### Using an `MCPCacheStore`
 
 Pass a store and key to `createMCPTools()` and it will rehydrate on hit and connect + write on miss automatically:
 
+The Python and Go tabs are a metadata cache: they return the cached tool definitions after closing the session, not a live handle. Connect again before you dispatch a tool call.
+
+<CodeGroup>
+
 ```typescript lines
 import { createMCPTools, InMemoryMCPCacheStore } from '@openrouter/mcp';
 
+const userId = 'user-123'; // identifies whose cached tool list to use
 const store = new InMemoryMCPCacheStore(); // or your own Redis/DB-backed MCPCacheStore
 
 const mcp = await createMCPTools({
@@ -209,6 +1073,226 @@ const mcp = await createMCPTools({
   cache: { store, key: `mcp:${userId}` },
   staleness: { maxAgeMs: 60 * 60 * 1000 },
 });
+
+const tools: any[] = Array.isArray(mcp) ? mcp : (mcp as any).tools ?? [];
+for (const t of tools) {
+  console.log('MCP tool:', t.function?.name ?? t.name);
+}
+await (mcp as any).close?.();
+
+```
+
+```python title="Python" lines
+import json
+import os
+import time
+import requests
+
+URL = "https://mcp.example.com/mcp"
+AUTH = {"Authorization": f"Bearer {os.environ.get('MCP_TOKEN', '')}"}
+
+def rpc(method, params, id=None, session=None):
+    msg = {"jsonrpc": "2.0", "method": method, "params": params}
+    if id is not None:
+        msg["id"] = id
+    headers = {**AUTH, "Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+    if session:
+        headers["Mcp-Session-Id"] = session
+    r = requests.post(URL, json=msg, headers=headers, timeout=30)
+    r.raise_for_status()
+    if id is None:
+        return None, r.headers
+    # The reply is plain JSON or an SSE stream of "data:" lines.
+    for c in [r.text] + [l[5:].strip() for l in r.text.splitlines() if l.startswith("data:")]:
+        try:
+            data = json.loads(c)
+        except ValueError:
+            continue
+        if isinstance(data, dict) and "error" in data:
+            raise RuntimeError(data["error"])
+        if isinstance(data, dict) and "result" in data:
+            return data["result"], r.headers
+    raise RuntimeError(f"unexpected MCP response: {r.text}")
+
+def connect_and_list():
+    _, h = rpc("initialize", {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {"name": "openrouter-python", "version": "1.0.0"},
+    }, id=1)
+    session = h.get("Mcp-Session-Id")
+    rpc("notifications/initialized", {}, session=session)
+    listed, _ = rpc("tools/list", {}, id=2, session=session)
+    if session:  # close the MCP session
+        requests.delete(URL, headers={**AUTH, "Mcp-Session-Id": session}, timeout=30)
+    return [{"type": "function", "function": {
+        "name": t["name"], "description": t.get("description", ""), "parameters": t["inputSchema"],
+    }} for t in listed["tools"]]
+
+user_id = "user-123"  # identifies whose cached tool list to use
+store = {}  # in-memory; or your own Redis/DB-backed store
+MAX_AGE_S = 60 * 60
+
+def create_mcp_tools(key):
+    hit = store.get(key)
+    if hit and time.time() - hit["fetched_at"] < MAX_AGE_S:
+        return json.loads(hit["tools"])  # rehydrate on hit
+    tools = connect_and_list()  # connect + write on miss
+    store[key] = {"fetched_at": time.time(), "tools": json.dumps(tools)}
+    return tools
+
+for t in create_mcp_tools(f"mcp:{user_id}"):
+    print("MCP tool:", t["function"]["name"])
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+)
+
+const mcpURL = "https://mcp.example.com/mcp"
+
+var session string
+
+// rpc sends one JSON-RPC message to the MCP server (id 0 = notification).
+func rpc(method string, params any, id int) map[string]any {
+	msg := map[string]any{"jsonrpc": "2.0", "method": method}
+	if params != nil {
+		msg["params"] = params
+	}
+	if id > 0 {
+		msg["id"] = id
+	}
+	body, _ := json.Marshal(msg)
+	req, _ := http.NewRequest("POST", mcpURL, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("MCP_TOKEN"))
+	if session != "" {
+		req.Header.Set("Mcp-Session-Id", session)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if s := resp.Header.Get("Mcp-Session-Id"); s != "" {
+		session = s
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 300 {
+		log.Fatalf("MCP %d: %s", resp.StatusCode, raw)
+	}
+	if id == 0 {
+		return nil
+	}
+	// The reply is plain JSON or an SSE stream of "data:" lines.
+	candidates := []string{string(raw)}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(line, "data:") {
+			candidates = append(candidates, strings.TrimSpace(line[5:]))
+		}
+	}
+	for _, c := range candidates {
+		var out struct {
+			Result map[string]any `json:"result"`
+			Error  any            `json:"error"`
+		}
+		if json.Unmarshal([]byte(c), &out) == nil {
+			if out.Error != nil {
+				log.Fatalf("MCP error: %v", out.Error)
+			}
+			if out.Result != nil {
+				return out.Result
+			}
+		}
+	}
+	log.Fatalf("unexpected MCP response: %s", raw)
+	return nil
+}
+
+func closeSession() {
+	if session == "" {
+		return
+	}
+	req, _ := http.NewRequest("DELETE", mcpURL, nil)
+	req.Header.Set("Mcp-Session-Id", session)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("MCP_TOKEN"))
+	if resp, err := http.DefaultClient.Do(req); err == nil {
+		resp.Body.Close()
+	}
+	session = ""
+}
+
+// cacheEntry is plain JSON, so a Redis/DB-backed store works the same way.
+type cacheEntry struct {
+	Tools    []map[string]any `json:"tools"`
+	CachedAt time.Time        `json:"cachedAt"`
+}
+
+// In-memory MCP cache store (swap for Redis/DB in production).
+var store = map[string][]byte{}
+
+// loadTools rehydrates from the store on a fresh hit; otherwise it connects,
+// lists tools, and writes the result back to the store.
+func loadTools(key string, maxAge time.Duration) []map[string]any {
+	if raw, ok := store[key]; ok {
+		var e cacheEntry
+		if json.Unmarshal(raw, &e) == nil && time.Since(e.CachedAt) < maxAge {
+			return e.Tools
+		}
+	}
+	rpc("initialize", map[string]any{
+		"protocolVersion": "2025-03-26",
+		"capabilities":    map[string]any{},
+		"clientInfo":      map[string]any{"name": "openrouter-go", "version": "1.0.0"},
+	}, 1)
+	rpc("notifications/initialized", nil, 0)
+	listed := rpc("tools/list", map[string]any{}, 2)
+	closeSession()
+
+	tools := []map[string]any{}
+	for _, t := range listed["tools"].([]any) {
+		t := t.(map[string]any)
+		tools = append(tools, map[string]any{"type": "function", "function": map[string]any{
+			"name": t["name"], "description": t["description"], "parameters": t["inputSchema"],
+		}})
+	}
+	raw, _ := json.Marshal(cacheEntry{Tools: tools, CachedAt: time.Now()})
+	store[key] = raw
+	return tools
+}
+
+func main() {
+	userID := "user-123" // identifies whose cached tool list to use
+	tools := loadTools("mcp:"+userID, time.Hour)
+
+	for _, t := range tools {
+		fmt.Println("MCP tool:", t["function"].(map[string]any)["name"])
+	}
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+MCP tool: search_open_router_documentation
+MCP tool: query_docs_filesystem_open_router_documentation
+MCP tool: submit_feedback
+MCP tool: list_resources
+MCP tool: read_resource
 ```
 
 Implement `MCPCacheStore` (a small `get` / `set` / `delete` interface) to back the cache with Redis, a database, or any KV store you already run.
@@ -221,12 +1305,98 @@ Implement `MCPCacheStore` (a small `get` / `set` / `delete` interface) to back t
 
 Wrapped MCP tools behave like [generator tools](/agent-sdk/call-model/tools#generator-tools). Progress notifications the server emits during a tool call surface as `tool.progress` events on the same streams your own tools use:
 
+<CodeGroup>
+
 ```typescript lines
 for await (const event of result.getToolStream()) {
   if (event.type === 'tool.progress' && event.source === 'mcp') {
     console.log(`[${event.toolName}] ${event.progress}`);
   }
 }
+```
+
+```python title="Python" lines
+import asyncio
+import os
+
+from pydantic import BaseModel
+from openrouter_agent import OpenRouter, call_model, tool
+
+
+class SearchInput(BaseModel):
+    query: str
+
+
+class SearchProgress(BaseModel):
+    progress: float
+
+
+class SearchOutput(BaseModel):
+    results: list[str]
+
+
+# Stands in for a wrapped MCP tool: MCP progress notifications surface
+# exactly like the progress yielded by this generator tool.
+async def search_docs(params, ctx):
+    yield SearchProgress(progress=0.5)
+    yield SearchProgress(progress=1)
+    yield SearchOutput(results=[f"Doc about {params.query}"])
+
+
+def field(event, key):
+    return event.get(key) if isinstance(event, dict) else getattr(event, key, None)
+
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    search_tool = tool(
+        name="search_docs",
+        description="Search the documentation",
+        input_schema=SearchInput,
+        event_schema=SearchProgress,
+        output_schema=SearchOutput,
+        execute=search_docs,
+    )
+
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-4o-mini",
+            "input": "Search the docs for 'streaming' using the search_docs tool.",
+            "tools": [search_tool],
+        },
+    )
+
+    async for event in result.get_tool_stream():
+        if field(event, "type") in ("tool.progress", "preliminary_result"):
+            call_id = field(event, "tool_call_id")
+            update = field(event, "result")
+            print(f"[{call_id}] {getattr(update, 'progress', update)}")
+
+    print("Tool stream finished.")
+    print("Final text:", await result.get_text())
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+for event := range toolStream {
+	if event.Type == "tool.progress" && event.Source == "mcp" {
+		fmt.Printf("[%s] %v\n", event.ToolName, event.Progress)
+	}
+}
+```
+
+</CodeGroup>
+
+```text title="Output"
+[call_zDwtcqJRu8VyADcPYEq13Na5] 0.5
+[call_zDwtcqJRu8VyADcPYEq13Na5] 1.0
+Tool stream finished.
+Final text: I found a document related to "streaming." Would you like more details about it?
 ```
 
 Pass an `AbortSignal` to `createMCPTools({ signal })` and every in-flight tool call is cancelled when the signal aborts. Individual `callModel` invocations can also be aborted through their own signal.
@@ -248,6 +1418,10 @@ Pass an `AbortSignal` to `createMCPTools({ signal })` and every in-flight tool c
   <Accordion title="Handling elicitation requests">
     Some MCP servers pause a tool call to ask the caller for structured input (`elicitation/create`). Pass an `onElicitation` handler to answer them:
 
+    The Python and Go tabs are response-building fragments. The transport examples on this page do not read server-initiated requests, so your transport must read each `elicitation/create` request from the server's event stream, pass it to the handler, and POST the returned JSON-RPC response to the MCP endpoint. `prompt_user` and `promptUser` are application-defined.
+
+    <CodeGroup>
+
     ```typescript lines
     const mcp = await createMCPTools({
       url,
@@ -259,6 +1433,38 @@ Pass an `AbortSignal` to `createMCPTools({ signal })` and every in-flight tool c
     });
     ```
 
+    ```python title="Python" lines
+    # Advertise {"capabilities": {"elicitation": {}}} in initialize, then answer
+    # elicitation/create requests the MCP server sends while a tool call is paused.
+    async def on_elicitation(message, requested_schema):
+        answer = await prompt_user(message, requested_schema)
+        return {"action": "accept", "content": answer}
+
+
+    async def handle_server_request(msg):
+        if msg["method"] == "elicitation/create":
+            params = msg["params"]
+            result = await on_elicitation(params["message"], params["requestedSchema"])
+            return {"jsonrpc": "2.0", "id": msg["id"], "result": result}
+
+    ```
+
+    ```go title="Go" lines
+    // Answer an MCP server's elicitation/create request (declare
+    // "capabilities": {"elicitation": {}} in initialize to receive them).
+    func onElicitation(req map[string]any) map[string]any {
+    	params := req["params"].(map[string]any)
+    	answer := promptUser(params["message"].(string), params["requestedSchema"].(map[string]any))
+    	return map[string]any{
+    		"jsonrpc": "2.0",
+    		"id":      req["id"],
+    		"result":  map[string]any{"action": "accept", "content": answer},
+    	}
+    }
+    ```
+
+    </CodeGroup>
+
     If you omit the handler, requests are auto-declined so the tool call fails cleanly rather than hanging.
   </Accordion>
 </AccordionGroup>
@@ -266,6 +1472,10 @@ Pass an `AbortSignal` to `createMCPTools({ signal })` and every in-flight tool c
 ## Multiple servers
 
 Spread the tools from more than one handle to compose several MCP servers into a single agent. Use `toolNamePrefix` to keep names unambiguous:
+
+The Python and Go tabs are fragments: `load_mcp_tools`, `createMCPTools`, and `callModel` there are application-defined, and the single-URL wrappers earlier on this page do not provide them. Each loader must connect to one server, prefix every advertised tool name, and keep a map from the prefixed name to that server's URL, session, and original tool name. Dispatch looks the prefixed name up in that map and sends `tools/call` to the owning server with the original, unprefixed name.
+
+<CodeGroup>
 
 ```typescript lines
 const [github, linear] = await Promise.all([
@@ -279,6 +1489,37 @@ const result = callModel(client, {
   tools: [...github.tools, ...linear.tools],
 });
 ```
+
+```python title="Python" lines
+async def run_agent(client):
+    github, linear = await asyncio.gather(
+        load_mcp_tools(github_url, gh, tool_name_prefix="github_"),
+        load_mcp_tools(linear_url, ln, tool_name_prefix="linear_"),
+    )
+
+    result = call_model(
+        client,
+        {
+            "model": "anthropic/claude-opus-4-8",
+            "input": "Find the Linear issue linked to GitHub PR #42.",
+            "tools": [*github, *linear],
+        },
+    )
+    return await result.get_text()
+```
+
+```go title="Go" lines
+github := createMCPTools(githubURL, gh, "github_")
+linear := createMCPTools(linearURL, ln, "linear_")
+
+// callModel merges every handle's tools and routes each tool call back
+// to the server that owns the (prefixed) tool name.
+text := callModel(ctx, "anthropic/claude-opus-4-8",
+	"Find the Linear issue linked to GitHub PR #42.",
+	github, linear)
+```
+
+</CodeGroup>
 
 ## Options
 

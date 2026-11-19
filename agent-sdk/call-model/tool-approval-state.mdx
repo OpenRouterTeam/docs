@@ -31,9 +31,16 @@ Add `requireApproval` directly on a tool definition. It accepts a boolean or a f
 
 ### Always Require Approval
 
+<CodeGroup>
+
 ```typescript lines
 import { tool } from '@openrouter/agent';
 import { z } from 'zod';
+
+// Replace with your email provider integration
+async function sendEmail(params: { to: string; subject: string; body: string }) {
+  console.log(`Sending email to ${params.to}: ${params.subject}`);
+}
 
 const sendEmailTool = tool({
   name: 'send_email',
@@ -52,22 +59,96 @@ const sendEmailTool = tool({
 });
 ```
 
+```python title="Python" lines
+from pydantic import BaseModel
+from openrouter_agent import tool
+
+
+# Replace with your email provider integration
+async def send_email(params):
+    print(f"Sending email to {params.to}: {params.subject}")
+
+
+class SendEmailInput(BaseModel):
+    to: str
+    subject: str
+    body: str
+
+
+class SendEmailOutput(BaseModel):
+    sent: bool
+
+
+async def execute_send_email(params, ctx):
+    await send_email(params)
+    return SendEmailOutput(sent=True)
+
+
+send_email_tool = tool(
+    name="send_email",
+    description="Send an email to a recipient",
+    input_schema=SendEmailInput,
+    output_schema=SendEmailOutput,
+    require_approval=True,
+    execute=execute_send_email,
+)
+
+```
+
+```go title="Go" lines
+// Replace with your email provider integration
+func sendEmail(to, subject, body string) {
+	fmt.Printf("Sending email to %s: %s\n", to, subject)
+}
+
+// Go has no agent SDK yet: your tool loop checks RequireApproval
+// before calling Execute.
+type ApprovalTool struct {
+	Name            string
+	Description     string
+	Parameters      map[string]any
+	RequireApproval bool
+	Execute         func(args map[string]any) map[string]any
+}
+
+var sendEmailTool = ApprovalTool{
+	Name:        "send_email",
+	Description: "Send an email to a recipient",
+	Parameters: map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"to":      map[string]any{"type": "string", "format": "email"},
+			"subject": map[string]any{"type": "string"},
+			"body":    map[string]any{"type": "string"},
+		},
+		"required": []string{"to", "subject", "body"},
+	},
+	RequireApproval: true,
+	Execute: func(args map[string]any) map[string]any {
+		sendEmail(fmt.Sprint(args["to"]), fmt.Sprint(args["subject"]), fmt.Sprint(args["body"]))
+		return map[string]any{"sent": true}
+	},
+}
+```
+
+</CodeGroup>
+
 ### Conditional Approval
 
 Pass a function to require approval only in certain cases:
+
+<CodeGroup>
 
 ```typescript lines
 const deleteRecordTool = tool({
   name: 'delete_record',
   description: 'Delete a record from the database',
-  inputSchema: z.object({
-    id: z.string(),
-    environment: z.enum(['staging', 'production']),
-  }),
+  inputSchema: z.object({ id: z.string() }),
   outputSchema: z.object({ deleted: z.boolean() }),
-  requireApproval: (params, context) => {
-    // Only require approval for production deletions
-    return params.environment === 'production';
+  requireApproval: async (params, context) => {
+    // Only require approval for production deletions. Look the environment up
+    // yourself: an argument the model fills in could be set to skip the review.
+    return (await getRecordEnvironment(params.id)) === 'production';
   },
   execute: async (params) => {
     await deleteRecord(params.id);
@@ -76,26 +157,143 @@ const deleteRecordTool = tool({
 });
 ```
 
-The function receives the parsed tool arguments and a `TurnContext`, and can return a boolean or `Promise<boolean>`.
+```python title="Python" lines
+class DeleteRecordInput(BaseModel):
+    id: str
+
+
+class DeleteRecordOutput(BaseModel):
+    deleted: bool
+
+
+def require_production_approval(params, ctx):
+    # Only require approval for production deletions. Look the environment up
+    # yourself: an argument the model fills in could be set to skip the review.
+    return get_record_environment(params.id) == "production"
+
+
+async def execute_delete_record(params, ctx):
+    await delete_record(params.id)
+    return DeleteRecordOutput(deleted=True)
+
+
+delete_record_tool = tool(
+    name="delete_record",
+    description="Delete a record from the database",
+    input_schema=DeleteRecordInput,
+    output_schema=DeleteRecordOutput,
+    require_approval=require_production_approval,
+    execute=execute_delete_record,
+)
+
+```
+
+```go title="Go" lines
+// RequireApproval is a function: your tool loop calls it with the
+// parsed arguments before calling Execute.
+type ConditionalApprovalTool struct {
+	Name            string
+	Description     string
+	Parameters      map[string]any
+	RequireApproval func(args map[string]any) bool
+	Execute         func(args map[string]any) map[string]any
+}
+
+var deleteRecordTool = ConditionalApprovalTool{
+	Name:        "delete_record",
+	Description: "Delete a record from the database",
+	Parameters: map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"id": map[string]any{"type": "string"},
+		},
+		"required": []string{"id"},
+	},
+	RequireApproval: func(args map[string]any) bool {
+		// Only require approval for production deletions. Look the environment up
+		// yourself: an argument the model fills in could be set to skip the review.
+		return getRecordEnvironment(fmt.Sprint(args["id"])) == "production"
+	},
+	Execute: func(args map[string]any) map[string]any {
+		deleteRecord(fmt.Sprint(args["id"]))
+		return map[string]any{"deleted": true}
+	},
+}
+```
+
+</CodeGroup>
+
+The function receives the parsed tool arguments and a `TurnContext`, and can return a boolean or `Promise<boolean>`. Decide from data you control, such as the record's environment looked up by ID, not from an argument the model supplies.
 
 ## Call-Level Approval
 
 Override tool-level settings with a `requireApproval` callback on `callModel` itself:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-4o',
   input: 'Send an email and search for documents',
-  tools: [sendEmailTool, searchTool],
+  tools: [sendEmailTool, searchTool] as const,
   state: myStateAccessor,
   requireApproval: (toolCall, context) => {
-    // Require approval for any tool that modifies data
-    return toolCall.name === 'send_email' || toolCall.name === 'delete_record';
+    // Only the read-only search tool skips review, so a tool added later needs approval by default
+    return toolCall.name !== 'search_documents';
   },
 });
 ```
 
-The call-level callback takes priority over tool-level `requireApproval` settings when both are present.
+```python title="Python" lines
+READ_ONLY_TOOLS = {"search_documents"}
+
+
+def require_modifying_approval(tool_call, context):
+    # Only known read-only tools skip review, so a tool added later needs approval by default
+    return tool_call.name not in READ_ONLY_TOOLS
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-4o",
+        "input": "Send an email and search for documents",
+        "tools": [send_email_tool, search_tool],
+        "state": my_state_accessor,
+        "require_approval": require_modifying_approval,
+    },
+)
+
+```
+
+```go title="Go" lines
+// Go has no agent SDK yet, so your tool loop applies the precedence itself.
+// A call-level callback, when set, overrides each tool's RequireApproval setting.
+func needsApproval(tool ApprovalTool, args map[string]any, callLevel func(name string, args map[string]any) bool) bool {
+	if callLevel != nil {
+		return callLevel(tool.Name, args)
+	}
+	return tool.RequireApproval
+}
+
+func requireApproval(name string, args map[string]any) bool {
+	// Only the read-only search tool skips review, so a tool added later needs approval by default
+	return name != "search_documents"
+}
+
+// In your tool loop, for each call the model returns, with tool and args
+// looked up and parsed from that call:
+func runOrHold(tool ApprovalTool, args map[string]any) (result map[string]any, pending bool) {
+	if needsApproval(tool, args, requireApproval) {
+		return nil, true // save the call as pending and ask the user
+	}
+	return tool.Execute(args), false
+}
+```
+
+</CodeGroup>
+
+The call-level callback takes priority over tool-level `requireApproval` settings when both are present, so write it to require approval unless a tool is known to be safe. A callback that lists the tools needing review silently skips review for every tool it does not name.
 
 ## How the Approval Flow Works
 
@@ -127,6 +325,8 @@ interface StateAccessor<TTools> {
 
 ### In-Memory Implementation
 
+<CodeGroup>
+
 ```typescript lines
 const conversations = new Map<string, ConversationState>();
 
@@ -139,6 +339,45 @@ function createStateAccessor(conversationId: string): StateAccessor {
   };
 }
 ```
+
+```python title="Python" lines
+conversations = {}
+
+
+class InMemoryStateAccessor:
+    def __init__(self, conversation_id: str):
+        self.conversation_id = conversation_id
+
+    async def load(self):
+        return conversations.get(self.conversation_id)
+
+    async def save(self, state):
+        conversations[self.conversation_id] = state
+
+
+def create_state_accessor(conversation_id: str) -> InMemoryStateAccessor:
+    return InMemoryStateAccessor(conversation_id)
+
+```
+
+```go title="Go" lines
+var conversations = map[string]*ConversationState{}
+
+func createStateAccessor(conversationID string) StateAccessor {
+	return StateAccessor{
+		Load: func() (*ConversationState, error) {
+			return conversations[conversationID], nil
+		},
+		Save: func(state *ConversationState) error {
+			conversations[conversationID] = state
+			return nil
+		},
+	}
+}
+
+```
+
+</CodeGroup>
 
 For production use, implement `StateAccessor` with a persistent backend like Redis, a database, or file storage to survive process restarts.
 
@@ -178,6 +417,8 @@ The state object tracks everything needed to resume a conversation:
 
 `StateAccessor.load` / `save` themselves are unchanged. Most callers still round-trip through `JSON.stringify` / `JSON.parse`. Use the opt-in helpers when you want typed errors and a migration hook for future serialization changes:
 
+<CodeGroup>
+
 ```typescript lines
 import {
   serializeConversationState,
@@ -211,6 +452,73 @@ const state: StateAccessor = {
 };
 ```
 
+```python title="Python" lines
+from openrouter_agent import (
+    serialize_conversation_state,
+    deserialize_conversation_state,
+    UnsupportedStateVersionError,
+    InvalidStateError,
+)
+
+
+class RedisStateAccessor:
+    async def load(self):
+        blob = await redis.get(f"conv:{conversation_id}")
+        if not blob:
+            return None
+        try:
+            return deserialize_conversation_state(blob)
+        except UnsupportedStateVersionError as err:
+            # Decide whether to reset, migrate, or fail
+            print(f"Unsupported state version: {err}")
+            raise
+        except InvalidStateError:
+            # Malformed JSON or missing required fields
+            raise
+
+    async def save(self, s):
+        await redis.set(f"conv:{conversation_id}", serialize_conversation_state(s))
+
+
+state = RedisStateAccessor()
+
+```
+
+```go title="Go" lines
+state := StateAccessor{
+	Load: func() (*ConversationState, error) {
+		blob, ok := redis.Get("conv:" + id)
+		if !ok {
+			return nil, nil
+		}
+		s, err := deserializeConversationState(blob)
+		if err != nil {
+			var verr *UnsupportedStateVersionError
+			if errors.As(err, &verr) {
+				// verr.Found and verr.Supported let you decide: reset, migrate, or fail
+				log.Printf("State version %d not in %v", verr.Found, verr.Supported)
+			}
+			var ierr *InvalidStateError
+			if errors.As(err, &ierr) {
+				// Malformed JSON or missing required fields
+			}
+			return nil, err
+		}
+		return s, nil
+	},
+	Save: func(s *ConversationState) error {
+		blob, err := serializeConversationState(s)
+		if err != nil {
+			return err
+		}
+		redis.Set("conv:"+id, blob)
+		return nil
+	},
+}
+```
+
+</CodeGroup>
+
 Compatibility policy:
 
 - Treat the serialized JSON as **opaque**. Do not introspect item shapes across releases.
@@ -225,6 +533,8 @@ Errors:
 ## Complete Example
 
 Here is an end-to-end example showing approval gates with state persistence:
+
+<CodeGroup>
 
 ```typescript expandable lines
 import { OpenRouter, tool } from '@openrouter/agent';
@@ -305,11 +615,280 @@ if (await result.requiresApproval()) {
 }
 ```
 
+```python title="Python" lines
+import asyncio
+import os
+from pydantic import BaseModel
+from openrouter_agent import OpenRouter, call_model, tool
+
+
+# 1. Define a tool with approval required
+class EmailInput(BaseModel):
+    to: str
+    subject: str
+    body: str
+
+
+class EmailOutput(BaseModel):
+    sent: bool
+    message_id: str
+
+
+async def send_email(params: EmailInput, ctx) -> EmailOutput:
+    # Replace with your real email provider
+    return EmailOutput(sent=True, message_id="msg-001")
+
+
+send_email_tool = tool(
+    name="send_email",
+    description="Send an email",
+    input_schema=EmailInput,
+    output_schema=EmailOutput,
+    require_approval=True,
+    execute=send_email,
+)
+
+
+# 2. Create a state accessor (in-memory for this example)
+store = {}
+conversation_id = "conv-123"
+
+
+class InMemoryStateAccessor:
+    async def load(self):
+        return store.get(conversation_id)
+
+    async def save(self, s):
+        store[conversation_id] = s
+
+
+state = InMemoryStateAccessor()
+
+
+def ask_user_for_approval(pending):
+    # Replace with a real UI prompt; this example approves everything
+    return [{"id": call.id, "decision": "approve"} for call in pending]
+
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    # 3. First call_model — model will try to call the tool
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-4o",
+            "input": "Send a welcome email to alice@example.com",
+            "tools": [send_email_tool],
+            "state": state,
+        },
+    )
+
+    # 4. Check if approval is needed
+    pending = await result.get_pending_tool_calls()
+    if pending:
+        for call in pending:
+            print(f"Tool: {call.name}")
+            print(f"To: {call.arguments['to']}")
+            print(f"Subject: {call.arguments['subject']}")
+            print(f"ID: {call.id}")
+
+        # 5. Present to user for decision, then resume
+        approved = ask_user_for_approval(pending)
+        approved_ids = [a["id"] for a in approved if a["decision"] == "approve"]
+        rejected_ids = [a["id"] for a in approved if a["decision"] == "reject"]
+
+        # 6. Second call_model — resume with approval decisions
+        resumed = call_model(
+            client,
+            {
+                "model": "openai/gpt-4o",
+                "input": [],  # No new user input needed for resumption
+                "tools": [send_email_tool],
+                "state": state,
+                "approve_tool_calls": approved_ids,
+                "reject_tool_calls": rejected_ids,
+            },
+        )
+
+        # 7. Get the final response
+        print(await resumed.get_text())
+    else:
+        # No approval needed — tool ran automatically
+        print(await result.get_text())
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+type ToolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type Message struct {
+	Role       string     `json:"role"`
+	Content    any        `json:"content"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+type ConversationState struct {
+	Messages []Message
+	Pending  []ToolCall
+	Status   string // "interrupted" when a run stopped early; see Resuming from Interruption
+}
+
+type StateAccessor struct {
+	Load func() (*ConversationState, error)
+	Save func(*ConversationState) error
+}
+
+// 1. Define a tool that requires approval
+var tools = []map[string]any{{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "send_email",
+		"description": "Send an email",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"to":      map[string]any{"type": "string"},
+				"subject": map[string]any{"type": "string"},
+				"body":    map[string]any{"type": "string"},
+			},
+			"required": []string{"to", "subject", "body"},
+		},
+	},
+}}
+
+func sendEmail(args map[string]any) string { return "msg-001" } // stub
+
+func askUserForApproval(calls []ToolCall) map[string]bool {
+	decisions := map[string]bool{}
+	for _, c := range calls {
+		decisions[c.ID] = true // approve everything in this example
+	}
+	return decisions
+}
+
+func chat(messages []Message) Message {
+	body, _ := json.Marshal(map[string]any{"model": "openai/gpt-4o", "messages": messages, "tools": tools})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	var out struct {
+		Choices []struct{ Message Message } `json:"choices"`
+	}
+	if resp.StatusCode != 200 || json.Unmarshal(raw, &out) != nil || len(out.Choices) == 0 {
+		log.Fatalf("request failed: %s", raw)
+	}
+	return out.Choices[0].Message
+}
+
+func main() {
+	// 2. Create a state accessor (in-memory for this example)
+	store := map[string]*ConversationState{}
+	conversationID := "conv-123"
+	state := StateAccessor{
+		Load: func() (*ConversationState, error) { return store[conversationID], nil },
+		Save: func(s *ConversationState) error { store[conversationID] = s; return nil },
+	}
+
+	// 3. First call — model will try to call the tool
+	messages := []Message{{Role: "user", Content: "Send a welcome email to alice@example.com"}}
+	reply := chat(messages)
+	state.Save(&ConversationState{Messages: append(messages, reply), Pending: reply.ToolCalls})
+
+	// 4. Check if approval is needed. A resumed request can return new tool
+	// calls (for example a revised email after a rejection), so every round
+	// goes through the same approval step
+	for round := 0; len(reply.ToolCalls) > 0; round++ {
+		if round == 5 {
+			log.Fatal("stopped after 5 approval rounds without a final answer")
+		}
+		for _, call := range reply.ToolCalls {
+			var args map[string]any
+			json.Unmarshal([]byte(call.Function.Arguments), &args)
+			// A real approval screen should show every argument, including the email body
+			fmt.Printf("Tool: %s\nTo: %v\nSubject: %v\nID: %s\n", call.Function.Name, args["to"], args["subject"], call.ID)
+		}
+
+		// 5. Present to user for decision
+		decisions := askUserForApproval(reply.ToolCalls)
+
+		// 6. Resume from saved state with approval decisions
+		s, _ := state.Load()
+		for _, call := range s.Pending {
+			result := `{"error":"rejected by user"}`
+			if decisions[call.ID] {
+				var args map[string]any
+				// Approval covers the call the user saw; it does not make incomplete arguments valid
+				if err := json.Unmarshal([]byte(call.Function.Arguments), &args); err != nil || args["to"] == nil || args["subject"] == nil || args["body"] == nil {
+					result = `{"error":"invalid arguments"}`
+				} else {
+					result = fmt.Sprintf(`{"sent":true,"messageId":%q}`, sendEmail(args))
+				}
+			}
+			s.Messages = append(s.Messages, Message{Role: "tool", ToolCallID: call.ID, Content: result})
+		}
+		// Save the tool results before the next model request, so a failed request
+		// cannot leave the calls pending and send the email again on retry
+		s.Pending = nil
+		state.Save(s)
+		reply = chat(s.Messages)
+		s.Messages = append(s.Messages, reply)
+		s.Pending = reply.ToolCalls
+		state.Save(s)
+	}
+
+	// 7. Print the final response once no tool calls are left
+	fmt.Println(reply.Content)
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Tool: send_email
+To: alice@example.com
+Subject: Welcome to Our Community
+ID: call_dwcvgpi9XA4dPCcuWmwI3D6y
+The welcome email has been sent to alice@example.com.
+```
+
 ## Resumption Patterns
 
 ### Resuming from Approval
 
 When the state has `status: 'awaiting_approval'`, pass `approveToolCalls` and/or `rejectToolCalls` to resume:
+
+<CodeGroup>
 
 ```typescript lines
 // Load existing state
@@ -331,9 +910,68 @@ if (loaded?.status === 'awaiting_approval') {
 }
 ```
 
+```python title="Python" lines
+async def resume_from_approval(client, state):
+    # Load existing state
+    loaded = await state.load()
+
+    if loaded is not None and loaded.status == "awaiting_approval":
+        pending = loaded.pending_tool_calls or []
+
+        # Approve all pending calls
+        result = call_model(
+            client,
+            {
+                "model": "openai/gpt-4o",
+                "input": [],
+                "tools": [send_email_tool],
+                "state": state,
+                "approve_tool_calls": [c.id for c in pending],
+            },
+        )
+
+        text = await result.get_text()
+        return text
+
+```
+
+```go title="Go" lines
+// Load existing state
+loaded, _ := state.Load()
+
+if loaded != nil && len(loaded.Pending) > 0 { // awaiting approval
+	// Approve all pending calls
+	for _, call := range loaded.Pending {
+		result := `{"error":"invalid arguments"}`
+		var args map[string]any
+		if err := json.Unmarshal([]byte(call.Function.Arguments), &args); err == nil && args["to"] != nil && args["subject"] != nil && args["body"] != nil {
+			result = fmt.Sprintf(`{"sent":true,"messageId":%q}`, sendEmail(args))
+		}
+		loaded.Messages = append(loaded.Messages, Message{Role: "tool", ToolCallID: call.ID, Content: result})
+	}
+	// Save the tool results before the next model request so a retry cannot resend
+	loaded.Pending = nil
+	state.Save(loaded)
+	final := chat(loaded.Messages)
+	loaded.Messages = append(loaded.Messages, final)
+	// The model can answer with new tool calls; they wait for approval like the first ones
+	loaded.Pending = final.ToolCalls
+	state.Save(loaded)
+
+	if len(final.ToolCalls) == 0 {
+		text = final.Content
+	}
+}
+
+```
+
+</CodeGroup>
+
 ### Resuming from Interruption
 
 If a conversation was interrupted (`status: 'interrupted'`), calling `callModel` with the same state resumes automatically. The SDK clears the interruption flag and continues where it left off:
+
+<CodeGroup>
 
 ```typescript lines
 const loaded = await state.load();
@@ -351,9 +989,61 @@ if (loaded?.status === 'interrupted') {
 }
 ```
 
+```python title="Python" lines
+async def resume_from_interruption(client, state):
+    loaded = await state.load()
+
+    if loaded is not None and loaded.status == "interrupted":
+        # Resume — the SDK picks up from the interruption point
+        result = call_model(
+            client,
+            {
+                "model": "openai/gpt-4o",
+                "input": "Continue where you left off",
+                "tools": my_tools,
+                "state": state,
+            },
+        )
+
+        text = await result.get_text()
+        return text
+
+```
+
+```go title="Go" lines
+// Fragment: uses the Status field of ConversationState from the complete example.
+// Your loop records an interruption when a run stops early, for example on a
+// cancelled request, where s is the state it was working on:
+s.Status = "interrupted"
+state.Save(s)
+
+// Later, load the state and resume:
+loaded, _ := state.Load()
+
+if loaded != nil && loaded.Status == "interrupted" {
+	// Resume — pick up from the interruption point
+	loaded.Messages = append(loaded.Messages, Message{Role: "user", Content: "Continue where you left off"})
+	final := chat(loaded.Messages)
+	loaded.Messages = append(loaded.Messages, final)
+	// The resumed reply can ask for tools; those calls wait for approval like any others
+	loaded.Pending = final.ToolCalls
+	if len(final.ToolCalls) == 0 {
+		loaded.Status = "complete" // clear the interruption
+		text = final.Content
+	} else {
+		loaded.Status = "awaiting_approval" // run the approval loop from the complete example
+	}
+	state.Save(loaded)
+}
+```
+
+</CodeGroup>
+
 ### Multi-Run Conversations
 
 Messages accumulate automatically across `callModel` runs that share the same `StateAccessor`. Each run appends its input and response to the state's message history:
+
+<CodeGroup>
 
 ```typescript expandable lines
 const state: StateAccessor = createStateAccessor('conv-456');
@@ -388,6 +1078,86 @@ const r3 = openrouter.callModel({
 console.log(await r3.getText());
 // "Tokyo is warmer at 22°C compared to Paris at 15°C."
 ```
+
+```python title="Python" lines
+async def multi_run_conversation(client):
+    state = create_state_accessor("conv-456")
+
+    # Turn 1
+    r1 = call_model(
+        client,
+        {
+            "model": "openai/gpt-4o",
+            "input": "What is the weather in Tokyo?",
+            "tools": [weather_tool],
+            "state": state,
+        },
+    )
+    print(await r1.get_text())
+    # "The weather in Tokyo is 22°C and sunny."
+
+    # Turn 2 — state has full history from turn 1
+    r2 = call_model(
+        client,
+        {
+            "model": "openai/gpt-4o",
+            "input": "And in Paris?",
+            "tools": [weather_tool],
+            "state": state,
+        },
+    )
+    print(await r2.get_text())
+    # "The weather in Paris is 15°C and cloudy."
+
+    # Turn 3 — state has history from both prior turns
+    r3 = call_model(
+        client,
+        {
+            "model": "openai/gpt-4o",
+            "input": "Which city is warmer?",
+            "tools": [weather_tool],
+            "state": state,
+        },
+    )
+    print(await r3.get_text())
+    # "Tokyo is warmer at 22°C compared to Paris at 15°C."
+
+```
+
+```go title="Go" lines
+// Fragment: uses chat, Message, and ConversationState from the complete example
+// and createStateAccessor from the in-memory implementation. chat sends that
+// example's tools; swap in your weather tool and run its calls the same way.
+
+// runTurn loads the history, appends the input and the reply, and saves it.
+func runTurn(state StateAccessor, input string) any {
+	s, _ := state.Load()
+	if s == nil {
+		s = &ConversationState{}
+	}
+	s.Messages = append(s.Messages, Message{Role: "user", Content: input})
+	reply := chat(s.Messages)
+	s.Messages = append(s.Messages, reply)
+	state.Save(s)
+	return reply.Content
+}
+
+state := createStateAccessor("conv-456")
+
+// Turn 1
+fmt.Println(runTurn(state, "What is the weather in Tokyo?"))
+// "The weather in Tokyo is 22°C and sunny."
+
+// Turn 2 — state has full history from turn 1
+fmt.Println(runTurn(state, "And in Paris?"))
+// "The weather in Paris is 15°C and cloudy."
+
+// Turn 3 — state has history from both prior turns
+fmt.Println(runTurn(state, "Which city is warmer?"))
+// "Tokyo is warmer at 22°C compared to Paris at 15°C."
+```
+
+</CodeGroup>
 
 ## Next Steps
 

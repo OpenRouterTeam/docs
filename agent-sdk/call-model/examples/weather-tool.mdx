@@ -168,8 +168,17 @@ const weatherTool = tool({
 
 ## Usage
 
+The Python and Go tabs on this page assume you have ported the TypeScript tool above; the page does not include those ports. In Python, supply a `WeatherInput` model, an async `get_weather(params, ctx)` that returns a model with the fields of the TypeScript `outputSchema`, and a `weather_tool = tool(...)` built from them the way `weather_tool_with_retry` is built under [Error Handling](#error-handling). In Go, supply `weatherTool`, a function declaration shaped like `weatherToolWithRetry` under Error Handling, and `getWeather(city, units string)`, which returns a struct with those fields and an error. The Go tabs are fragments that belong inside `main` and call the chat completions API directly.
+
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel } from '@openrouter/agent';
+
+const openrouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'What is the weather like in Tokyo?',
   tools: [weatherTool],
@@ -182,10 +191,108 @@ console.log(text);
 // southwest at 15 km/h."
 ```
 
+```python title="Python" lines
+import asyncio
+import os
+from openrouter_agent import OpenRouter, call_model
+
+client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "What is the weather like in Tokyo?",
+            "tools": [weather_tool],
+        },
+    )
+
+    text = await result.get_text()
+    print(text)
+    # "The current weather in Tokyo, Japan is partly cloudy with a temperature
+    # of 22°C (feels like 24°C). Humidity is at 65% with winds from the
+    # southwest at 15 km/h."
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+messages := []any{
+	map[string]any{"role": "user", "content": "What is the weather like in Tokyo?"},
+}
+
+for {
+	body, _ := json.Marshal(map[string]any{
+		"model":    "openai/gpt-5-nano",
+		"messages": messages,
+		"tools":    []any{weatherTool},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var out struct {
+		Choices []struct {
+			Message json.RawMessage `json:"message"`
+		} `json:"choices"`
+	}
+	json.NewDecoder(resp.Body).Decode(&out)
+	resp.Body.Close()
+	if len(out.Choices) == 0 {
+		log.Fatalf("no choices (status %s)", resp.Status)
+	}
+
+	var msg struct {
+		Content   string `json:"content"`
+		ToolCalls []struct {
+			ID       string `json:"id"`
+			Function struct {
+				Arguments string `json:"arguments"`
+			} `json:"function"`
+		} `json:"tool_calls"`
+	}
+	json.Unmarshal(out.Choices[0].Message, &msg)
+	if len(msg.ToolCalls) == 0 {
+		fmt.Println(msg.Content)
+		break
+	}
+
+	messages = append(messages, out.Choices[0].Message)
+	for _, call := range msg.ToolCalls {
+		var args struct {
+			City  string `json:"city"`
+			Units string `json:"units"`
+		}
+		if err := json.Unmarshal([]byte(call.Function.Arguments), &args); err != nil {
+			log.Fatal(err)
+		}
+		weather, err := getWeather(args.City, args.Units)
+		if err != nil {
+			log.Fatal(err)
+		}
+		content, _ := json.Marshal(weather)
+		messages = append(messages, map[string]any{
+			"role":         "tool",
+			"tool_call_id": call.ID,
+			"content":      string(content),
+		})
+	}
+}
+```
+
+</CodeGroup>
+
 ## With Multiple Cities
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'Compare the weather in New York and Los Angeles',
   tools: [weatherTool],
@@ -193,7 +300,37 @@ const result = openrouter.callModel({
 
 // The model will call the tool twice, once for each city
 const text = await result.getText();
+console.log(text);
 ```
+
+```python title="Python" lines
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "Compare the weather in New York and Los Angeles",
+            "tools": [weather_tool],
+        },
+    )
+
+    # The model will call the tool twice, once for each city
+    text = await result.get_text()
+    print(text)
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+// Run the same loop as in the Usage example; only the first message changes.
+// The model will call the tool twice, once for each city
+messages := []any{
+	map[string]any{"role": "user", "content": "Compare the weather in New York and Los Angeles"},
+}
+```
+
+</CodeGroup>
 
 ## Extended Version with Forecast
 
@@ -263,6 +400,8 @@ const result = openrouter.callModel({
 
 The tool includes proper error handling:
 
+<CodeGroup>
+
 ```typescript expandable lines
 const weatherToolWithRetry = tool({
   name: 'get_weather',
@@ -276,30 +415,22 @@ const weatherToolWithRetry = tool({
     conditions: z.string(),
     error: z.string().optional(),
   }),
-  execute: async ({ city, units }) => {
+  execute: async ({ city, units }, ctx) => {
     const maxRetries = 3;
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       if (attempt > 1) {
-        // Back off before each retry, whichever call failed
+        // Back off before each retry
         await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt - 1)));
       }
 
       try {
-        const place = await findCity(city);
-        const response = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,weather_code&temperature_unit=${units}`
-        );
-
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-
-        const { current } = await response.json();
+        // Reuse the lookup from the basic implementation; it throws on failure
+        const data = await weatherTool.function.execute({ city, units }, ctx);
         return {
-          temperature: current.temperature_2m,
-          conditions: WEATHER_CODES[current.weather_code] ?? 'Unknown',
+          temperature: data.temperature,
+          conditions: data.conditions,
         };
       } catch (error) {
         lastError = error as Error;
@@ -316,7 +447,111 @@ const weatherToolWithRetry = tool({
 });
 ```
 
+```python title="Python" lines
+class WeatherRetryInput(BaseModel):
+    city: str
+    units: Literal["celsius", "fahrenheit"] = "celsius"
+
+
+class WeatherRetryOutput(BaseModel):
+    temperature: float
+    conditions: str
+    error: str | None = None
+
+
+async def get_weather_with_retry(params, ctx):
+    max_retries = 3
+    last_error = None
+
+    for attempt in range(1, max_retries + 1):
+        if attempt > 1:
+            # Back off before each retry
+            await asyncio.sleep(1 * (attempt - 1))
+
+        try:
+            # get_weather is your port of the basic lookup; it raises on failure
+            data = await get_weather(params, ctx)
+            return WeatherRetryOutput(
+                temperature=data.temperature,
+                conditions=data.conditions,
+            )
+        except Exception as error:
+            last_error = error
+
+    # Return error in output rather than raising
+    return WeatherRetryOutput(
+        temperature=0,
+        conditions="Unknown",
+        error=f"Failed after {max_retries} attempts: {last_error}",
+    )
+
+
+weather_tool_with_retry = tool(
+    name="get_weather",
+    description="Get current weather with retry logic",
+    input_schema=WeatherRetryInput,
+    output_schema=WeatherRetryOutput,
+    execute=get_weather_with_retry,
+)
+```
+
+```go title="Go" lines
+var weatherToolWithRetry = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "get_weather",
+		"description": "Get current weather with retry logic",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"city":  map[string]any{"type": "string"},
+				"units": map[string]any{"type": "string", "enum": []string{"celsius", "fahrenheit"}, "default": "celsius"},
+			},
+			"required": []string{"city"},
+		},
+	},
+}
+
+func getWeatherWithRetry(city, units string) string {
+	if units == "" {
+		units = "celsius"
+	}
+	const maxRetries = 3
+	var lastErr error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if attempt > 1 {
+			// Back off before each retry
+			time.Sleep(time.Duration(attempt-1) * time.Second)
+		}
+
+		// getWeather is your port of the basic lookup; it returns an error on failure
+		data, err := getWeather(city, units)
+		if err == nil {
+			out, _ := json.Marshal(map[string]any{
+				"temperature": data.Temperature,
+				"conditions":  data.Conditions,
+			})
+			return string(out)
+		}
+		lastErr = err
+	}
+
+	// Return error in output rather than failing
+	out, _ := json.Marshal(map[string]any{
+		"temperature": 0,
+		"conditions":  "Unknown",
+		"error":       fmt.Sprintf("Failed after %d attempts: %v", maxRetries, lastErr),
+	})
+	return string(out)
+}
+```
+
+</CodeGroup>
+
 ## Testing
+
+<CodeGroup>
 
 ```typescript expandable lines
 import { describe, it, expect, mock } from 'bun:test';
@@ -383,6 +618,118 @@ describe('weatherTool', () => {
   });
 });
 ```
+
+```python title="Python" lines
+from unittest.mock import AsyncMock, MagicMock, patch
+
+
+def mock_response(payload):
+    response = MagicMock()
+    response.raise_for_status.return_value = None
+    response.json.return_value = payload
+    return response
+
+
+async def test_returns_weather_data_for_valid_city():
+    # Mock both Open-Meteo calls: the city lookup, then the forecast
+    def fake_get(url, *args, **kwargs):
+        if "geocoding-api" in url:
+            return mock_response({
+                "results": [{
+                    "name": "London",
+                    "admin1": "England",
+                    "country": "United Kingdom",
+                    "latitude": 51.5,
+                    "longitude": -0.12,
+                }],
+            })
+        return mock_response({
+            "current": {
+                "temperature_2m": 22,
+                "apparent_temperature": 24,
+                "relative_humidity_2m": 45,
+                "weather_code": 0,
+                "wind_speed_10m": 10,
+                "wind_direction_10m": 315,
+            },
+        })
+
+    # get_weather and WeatherInput are your Python port of the tool (see Usage)
+    with patch("httpx.AsyncClient.get", new=AsyncMock(side_effect=fake_get)):
+        result = await get_weather(
+            WeatherInput(city="London", units="celsius"), {"number_of_turns": 1}
+        )
+
+    assert result.temperature == 22
+    assert result.conditions == "Clear sky"
+    assert result.location.name == "London"
+
+
+async def test_handles_city_not_found():
+    # The city lookup answers 200 with no results
+    with patch("httpx.AsyncClient.get", new=AsyncMock(return_value=mock_response({}))):
+        try:
+            await get_weather(
+                WeatherInput(city="InvalidCity123", units="celsius"), {"number_of_turns": 1}
+            )
+        except Exception as error:
+            assert "City not found" in str(error)
+        else:
+            raise AssertionError("expected City not found error")
+
+```
+
+```go title="Go" lines
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+// mockFetch answers every HTTP request with the JSON body chosen for its URL
+// and returns a function that restores the real transport.
+func mockFetch(body func(u string) string) func() {
+	orig := http.DefaultClient.Transport
+	http.DefaultClient.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: 200,
+			Header:     http.Header{"Content-Type": {"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(body(r.URL.String()))),
+			Request:    r,
+		}, nil
+	})
+	return func() { http.DefaultClient.Transport = orig }
+}
+
+// Save in a _test.go file next to getWeather and run with go test.
+func TestReturnsWeatherData(t *testing.T) {
+	// Mock both Open-Meteo calls: the city lookup, then the forecast
+	defer mockFetch(func(u string) string {
+		if strings.Contains(u, "geocoding-api") {
+			return `{"results":[{"name":"London","admin1":"England","country":"United Kingdom","latitude":51.5,"longitude":-0.12}]}`
+		}
+		return `{"current":{"temperature_2m":22,"apparent_temperature":24,"relative_humidity_2m":45,"weather_code":0,"wind_speed_10m":10,"wind_direction_10m":315}}`
+	})()
+
+	result, err := getWeather("London", "celsius")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Temperature != 22 || result.Conditions != "Clear sky" || result.Location.Name != "London" {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
+func TestCityNotFound(t *testing.T) {
+	// The city lookup answers 200 with no results
+	defer mockFetch(func(string) string { return `{}` })()
+
+	_, err := getWeather("InvalidCity123", "celsius")
+	if err == nil || !strings.Contains(err.Error(), "City not found") {
+		t.Fatalf("expected City not found error, got %v", err)
+	}
+}
+```
+
+</CodeGroup>
 
 ## See Also
 

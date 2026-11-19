@@ -265,6 +265,19 @@ The `status` field on `GET /api/v1/videos/{jobId}` reflects the current state of
 | `cancelled` | Terminal | The job was cancelled before rendering completed | Terminal state |
 | `expired` | Terminal | The job exceeded maximum allowed time-to-live before settlement | Terminal state |
 
+While a job is in flight, the response can also carry `status_detail`, the step within `status`, and `progress`:
+
+| `status` | `status_detail` | Meaning |
+| --- | --- | --- |
+| `pending` | `submitting` | OpenRouter is submitting the job to the provider |
+| `pending` | `queued_at_provider` | The provider accepted the job and reports it as queued |
+| `in_progress` | `generating` | The provider reports the job as generating |
+| `in_progress` | `finalizing` | The provider finished, and OpenRouter is storing the video |
+
+A job becomes pollable once the provider accepts it, so most polls start at `queued_at_provider`. `status_detail` only moves forward when present, and a fast job can skip steps between polls. It is absent once the job is finished and can be absent mid-job when the step is unknown, so use `status` to tell whether the job is finished.
+
+`progress` is the percent complete, from 0 to 100, while `status_detail` is `generating`. Only providers that report a percent send it.
+
 ## Downloading outputs: `urls` vs `unsigned_urls`
 
 When a job reaches `status: "completed"`, the response payload provides two distinct ways to access the generated video:

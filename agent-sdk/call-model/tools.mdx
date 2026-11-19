@@ -20,6 +20,8 @@ icon: toolbox
 
 The `tool()` function creates type-safe tools with Zod schema validation:
 
+<CodeGroup>
+
 ```typescript expandable lines
 import { OpenRouter, tool } from '@openrouter/agent';
 import { z } from 'zod';
@@ -45,6 +47,79 @@ const weatherTool = tool({
 });
 ```
 
+```python title="Python" lines
+from openrouter_agent import tool
+from pydantic import BaseModel, Field
+
+
+class WeatherInput(BaseModel):
+    location: str = Field(description='City name, e.g., "San Francisco, CA"')
+
+
+class WeatherOutput(BaseModel):
+    temperature: float
+    conditions: str
+
+
+async def get_weather(params: WeatherInput, ctx) -> WeatherOutput:
+    # params is a validated WeatherInput instance
+    weather = await fetch_weather(params.location)
+    return WeatherOutput(
+        temperature=weather.temp,
+        conditions=weather.description,
+    )
+
+
+weather_tool = tool(
+    name="get_weather",
+    description="Get the current weather for a location",
+    input_schema=WeatherInput,
+    output_schema=WeatherOutput,
+    execute=get_weather,
+)
+
+```
+
+```go title="Go" lines
+type WeatherParams struct {
+	Location string `json:"location"`
+}
+
+type WeatherResult struct {
+	Temperature float64 `json:"temperature"`
+	Conditions  string  `json:"conditions"`
+}
+
+var weatherTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "get_weather",
+		"description": "Get the current weather for a location",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"location": map[string]any{"type": "string", "description": `City name, e.g., "San Francisco, CA"`},
+			},
+			"required": []string{"location"},
+		},
+	},
+}
+
+func executeWeather(params WeatherParams) (WeatherResult, error) {
+	// params is typed as WeatherParams
+	weather, err := fetchWeather(params.Location)
+	if err != nil {
+		return WeatherResult{}, err
+	}
+	return WeatherResult{
+		Temperature: weather.Temp,
+		Conditions:  weather.Description,
+	}, nil
+}
+```
+
+</CodeGroup>
+
 ## Tool Types
 
 The SDK supports four types of tools, automatically detected from your configuration:
@@ -52,6 +127,8 @@ The SDK supports four types of tools, automatically detected from your configura
 ### Regular Tools
 
 Standard tools with an execute function:
+
+<CodeGroup>
 
 ```typescript lines
 const calculatorTool = tool({
@@ -70,9 +147,110 @@ const calculatorTool = tool({
 });
 ```
 
+```python title="Python" lines
+import ast
+import operator
+
+from openrouter_agent import tool
+from pydantic import BaseModel, Field
+
+
+class CalculatorInput(BaseModel):
+    expression: str = Field(description='Math expression like "2 + 2"')
+
+
+class CalculatorOutput(BaseModel):
+    result: float
+
+
+BINARY_OPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Mod: operator.mod,
+}
+UNARY_OPS = {ast.UAdd: operator.pos, ast.USub: operator.neg}
+
+
+# The expression comes from the model, so evaluate arithmetic only and never call eval() on it
+def evaluate_arithmetic(expression: str) -> float:
+    def evaluate(node: ast.AST) -> float:
+        if isinstance(node, ast.Expression):
+            return evaluate(node.body)
+        if isinstance(node, ast.Constant) and type(node.value) in (int, float):
+            return node.value
+        if isinstance(node, ast.BinOp) and type(node.op) in BINARY_OPS:
+            return BINARY_OPS[type(node.op)](evaluate(node.left), evaluate(node.right))
+        if isinstance(node, ast.UnaryOp) and type(node.op) in UNARY_OPS:
+            return UNARY_OPS[type(node.op)](evaluate(node.operand))
+        raise ValueError(f"Unsupported expression: {expression!r}")
+
+    return evaluate(ast.parse(expression, mode="eval"))
+
+
+async def calculate(params: CalculatorInput, ctx) -> CalculatorOutput:
+    return CalculatorOutput(result=evaluate_arithmetic(params.expression))
+
+
+calculator_tool = tool(
+    name="calculate",
+    description="Perform a mathematical calculation",
+    input_schema=CalculatorInput,
+    output_schema=CalculatorOutput,
+    execute=calculate,
+)
+
+```
+
+```go title="Go" lines
+type CalculateParams struct {
+	Expression string `json:"expression"`
+}
+
+type CalculateResult struct {
+	Result float64 `json:"result"`
+}
+
+var calculatorTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "calculate",
+		"description": "Perform a mathematical calculation",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"expression": map[string]any{"type": "string", "description": `Math expression like "2 + 2"`},
+			},
+			"required": []string{"expression"},
+		},
+	},
+}
+
+func executeCalculate(params CalculateParams) (CalculateResult, error) {
+	// Evaluates constant Go expressions only; use a safer evaluator in production.
+	// Go rules apply, so integer operands divide as integers: 5/2 is 2, 5.0/2 is 2.5.
+	tv, err := types.Eval(token.NewFileSet(), nil, token.NoPos, params.Expression)
+	if err != nil || tv.Value == nil {
+		return CalculateResult{}, fmt.Errorf("invalid expression: %q", params.Expression)
+	}
+	// ToFloat yields an Unknown value for booleans and strings: reject them instead of returning 0
+	value := constant.ToFloat(tv.Value)
+	if value.Kind() != constant.Float {
+		return CalculateResult{}, fmt.Errorf("not a numeric expression: %q", params.Expression)
+	}
+	result, _ := constant.Float64Val(value)
+	return CalculateResult{Result: result}, nil
+}
+```
+
+</CodeGroup>
+
 ### Generator Tools
 
 Tools that yield progress updates during execution. Add `eventSchema` to enable generator mode:
+
+<CodeGroup>
 
 ```typescript expandable lines
 const searchTool = tool({
@@ -113,11 +291,125 @@ const searchTool = tool({
 });
 ```
 
+```python title="Python" lines
+from openrouter_agent import tool
+from pydantic import BaseModel, Field
+
+
+class SearchInput(BaseModel):
+    query: str
+    limit: int = 10
+
+
+# event_schema triggers generator mode
+class SearchProgress(BaseModel):
+    progress: int = Field(ge=0, le=100)
+    message: str
+
+
+class SearchOutput(BaseModel):
+    results: list[str]
+    total_found: int
+
+
+# execute is now an async generator
+async def search_database(params: SearchInput, ctx):
+    yield SearchProgress(progress=0, message="Starting search...")
+
+    results = []
+    for i in range(5):
+        yield SearchProgress(progress=(i + 1) * 20, message=f"Searching batch {i + 1}...")
+        results.extend(await search_batch(params.query, i))
+
+    yield SearchProgress(progress=100, message="Complete!")
+
+    # The final yield is the output
+    yield SearchOutput(
+        results=results[: params.limit],
+        total_found=len(results),
+    )
+
+
+search_tool = tool(
+    name="search_database",
+    description="Search documents with progress updates",
+    input_schema=SearchInput,
+    event_schema=SearchProgress,
+    output_schema=SearchOutput,
+    execute=search_database,
+)
+
+```
+
+```go title="Go" lines
+type SearchParams struct {
+	Query string `json:"query"`
+	Limit int    `json:"limit"`
+}
+
+// SearchProgress is the event type emitted while the tool runs
+type SearchProgress struct {
+	Progress int    `json:"progress"`
+	Message  string `json:"message"`
+}
+
+type SearchResult struct {
+	Results    []string `json:"results"`
+	TotalFound int      `json:"totalFound"`
+}
+
+var searchTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "search_database",
+		"description": "Search documents with progress updates",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"query": map[string]any{"type": "string"},
+				"limit": map[string]any{"type": "integer", "default": 10},
+			},
+			"required": []string{"query"},
+		},
+	},
+}
+
+// emit receives progress updates; the return value is the final result
+func executeSearch(params SearchParams, emit func(SearchProgress)) (SearchResult, error) {
+	// The limit comes from the model, so treat a missing or non-positive value as the default
+	if params.Limit <= 0 {
+		params.Limit = 10
+	}
+	emit(SearchProgress{Progress: 0, Message: "Starting search..."})
+
+	var results []string
+	for i := 0; i < 5; i++ {
+		emit(SearchProgress{Progress: (i + 1) * 20, Message: fmt.Sprintf("Searching batch %d...", i+1)})
+		batch, err := searchBatch(params.Query, i)
+		if err != nil {
+			return SearchResult{}, err
+		}
+		results = append(results, batch...)
+	}
+
+	emit(SearchProgress{Progress: 100, Message: "Complete!"})
+
+	return SearchResult{
+		Results:    results[:min(params.Limit, len(results))],
+		TotalFound: len(results),
+	}, nil
+}
+```
+
+</CodeGroup>
+
 Progress events are streamed to consumers via `getToolStream()` and `getFullResponsesStream()`.
 
 ### Manual Tools
 
 Tools without automatic execution - you handle the tool calls yourself:
+
+<CodeGroup>
 
 ```typescript lines
 const manualTool = tool({
@@ -132,6 +424,48 @@ const manualTool = tool({
 });
 ```
 
+```python title="Python" lines
+from openrouter_agent import tool
+from pydantic import BaseModel
+
+
+class SendEmailInput(BaseModel):
+    to: str
+    subject: str
+    body: str
+
+
+manual_tool = tool(
+    name="send_email",
+    description="Send an email (requires user confirmation)",
+    input_schema=SendEmailInput,
+    execute=False,  # Manual handling required
+)
+
+```
+
+```go title="Go" lines
+// No execute function: your code handles send_email calls itself
+var manualTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "send_email",
+		"description": "Send an email (requires user confirmation)",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"to":      map[string]any{"type": "string", "format": "email"},
+				"subject": map[string]any{"type": "string"},
+				"body":    map[string]any{"type": "string"},
+			},
+			"required": []string{"to", "subject", "body"},
+		},
+	},
+}
+```
+
+</CodeGroup>
+
 Use `getToolCalls()` to retrieve manual tool calls for processing.
 
 When manual tool calls are left unresolved at the end of a round, the loop pauses and the calls are persisted to `ConversationState.pendingToolCalls` with `status: 'awaiting_client_tools'`, so cold-start consumers can recover them from serialized state. To continue, call `callModel` again with new `input`; the stale pendings are cleared and the run proceeds as a normal turn. Manual tools are not approved or rejected by call ID the way [approval](/agent-sdk/call-model/tool-approval-state) and [HITL](#human-in-the-loop-hitl-tools) flows are. See [Status Values](/agent-sdk/call-model/tool-approval-state#status-values).
@@ -144,6 +478,8 @@ HITL tools extend manual-tool semantics with two sync-or-async hooks that let yo
 - `onResponseReceived` is optional. It fires on a later turn when an incoming `function_call_output` matches a prior call of this tool (by `callId → function_call.name`). It receives the caller-supplied raw result and returns the value sent to the model. Throwing surfaces as a tool error to the model.
 
 An `outputSchema` is required for HITL tools. It validates both the `onToolCalled` return value (when non-null) and the value delivered via `function_call_output` (whether transformed by `onResponseReceived` or passed through directly).
+
+<CodeGroup>
 
 ```typescript expandable lines
 const approvePaymentTool = tool({
@@ -171,6 +507,94 @@ const approvePaymentTool = tool({
   },
 });
 ```
+
+```python title="Python" lines
+import time
+
+from openrouter_agent import tool
+from pydantic import BaseModel
+
+
+class PaymentInput(BaseModel):
+    amount: float
+    recipient: str
+
+
+class PaymentDecision(BaseModel):
+    ok: bool
+    reviewed_at: int | None = None
+
+
+async def on_tool_called(params: PaymentInput, ctx=None):
+    # Auto-approve small amounts
+    if params.amount < 100:
+        return PaymentDecision(ok=True)
+    # Escalate to a human — pauses the loop
+    return None
+
+
+async def on_response_received(raw, ctx=None):
+    # Post-process the caller-supplied result before the model sees it
+    return {**dict(raw), "reviewed_at": int(time.time() * 1000)}
+
+
+approve_payment_tool = tool(
+    name="approve_payment",
+    description="Approve a payment, escalating large amounts to a human",
+    input_schema=PaymentInput,
+    output_schema=PaymentDecision,
+    on_tool_called=on_tool_called,
+    on_response_received=on_response_received,
+)
+
+```
+
+```go title="Go" lines
+type PaymentParams struct {
+	Amount    float64 `json:"amount"`
+	Recipient string  `json:"recipient"`
+}
+
+// PaymentResult is the output schema for both paths
+type PaymentResult struct {
+	OK         bool   `json:"ok"`
+	ReviewedAt *int64 `json:"reviewedAt,omitempty"`
+}
+
+var approvePaymentTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "approve_payment",
+		"description": "Approve a payment, escalating large amounts to a human",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"amount":    map[string]any{"type": "number"},
+				"recipient": map[string]any{"type": "string"},
+			},
+			"required": []string{"amount", "recipient"},
+		},
+	},
+}
+
+// onToolCalled returns nil to escalate to a human, which pauses your loop
+func onToolCalled(input PaymentParams) *PaymentResult {
+	// Auto-approve small amounts
+	if input.Amount < 100 {
+		return &PaymentResult{OK: true}
+	}
+	return nil
+}
+
+// onResponseReceived post-processes the caller-supplied result before the model sees it
+func onResponseReceived(raw PaymentResult) PaymentResult {
+	now := time.Now().UnixMilli()
+	raw.ReviewedAt = &now
+	return raw
+}
+```
+
+</CodeGroup>
 
 When `onToolCalled` returns `null`, the conversation state moves to `status: 'awaiting_hitl'` and the paused call surfaces via `getToolCalls()` / `getPendingToolCalls()`. Resume by calling `callModel` again with a `function_call_output` item for each paused call in the input.
 
@@ -263,6 +687,8 @@ type SearchEvent = InferToolEvent<typeof searchTool>;
 
 ### Single Tool
 
+<CodeGroup>
+
 ```typescript lines
 const openrouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
 
@@ -277,26 +703,200 @@ const text = await result.getText();
 // "The weather in Tokyo is 22°C and sunny."
 ```
 
+```python title="Python" lines
+import asyncio
+import os
+
+from openrouter_agent import OpenRouter, call_model, tool
+from pydantic import BaseModel
+
+
+class WeatherInput(BaseModel):
+    location: str
+
+
+class WeatherOutput(BaseModel):
+    temperature: float
+    conditions: str
+
+
+weather_tool = tool(
+    name="get_weather",
+    description="Get current weather for a location",
+    input_schema=WeatherInput,
+    output_schema=WeatherOutput,
+    execute=lambda params, ctx: WeatherOutput(temperature=22, conditions="sunny"),
+)
+
+
+async def main():
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        openrouter,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "What is the weather in Tokyo?",
+            "tools": [weather_tool],
+        },
+    )
+
+    # Tools are automatically executed
+    text = await result.get_text()
+    print(text)
+    # "The weather in Tokyo is 22°C and sunny."
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+type ToolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type Message struct {
+	Role       string     `json:"role"`
+	Content    any        `json:"content"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+var weatherTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "get_weather",
+		"description": "Get current weather for a location",
+		"parameters": map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"location": map[string]any{"type": "string"}},
+			"required":   []string{"location"},
+		},
+	},
+}
+
+func getWeather(args string) string {
+	var in struct {
+		Location string `json:"location"`
+	}
+	json.Unmarshal([]byte(args), &in)
+	out, _ := json.Marshal(map[string]any{"location": in.Location, "temperature": 22, "conditions": "sunny"})
+	return string(out)
+}
+
+func main() {
+	messages := []Message{{Role: "user", Content: "What is the weather in Tokyo?"}}
+
+	// Tools are executed by this loop until the model answers in text
+	for i := 0; i < 5; i++ {
+		body, _ := json.Marshal(map[string]any{
+			"model":    "openai/gpt-5-nano",
+			"messages": messages,
+			"tools":    []any{weatherTool},
+		})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		raw, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		var res struct {
+			Choices []struct {
+				Message Message `json:"message"`
+			} `json:"choices"`
+		}
+		if err := json.Unmarshal(raw, &res); err != nil || len(res.Choices) == 0 {
+			log.Fatalf("unexpected response (%d): %s", resp.StatusCode, raw)
+		}
+		msg := res.Choices[0].Message
+		messages = append(messages, msg)
+
+		if len(msg.ToolCalls) == 0 {
+			fmt.Println(msg.Content)
+			return
+		}
+		for _, tc := range msg.ToolCalls {
+			messages = append(messages, Message{Role: "tool", ToolCallID: tc.ID, Content: getWeather(tc.Function.Arguments)})
+		}
+	}
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Right now in Tokyo: 22°C and sunny.
+
+Would you like an hourly forecast or more details (humidity, wind, etc.)?
+```
+
 ### Multiple Tools
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'Search for TypeScript tutorials and calculate 2+2',
-  tools: [searchTool, calculatorTool],
+  tools: [searchTool, calculatorTool] as const,
 });
 ```
+
+```python title="Python" lines
+result = call_model(
+    openrouter,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Search for TypeScript tutorials and calculate 2+2",
+        "tools": [search_tool, calculator_tool],
+    },
+)
+```
+
+```go title="Go" lines
+result := callModel(map[string]any{
+	"model":    "openai/gpt-5-nano",
+	"messages": []Message{{Role: "user", Content: "Search for TypeScript tutorials and calculate 2+2"}},
+	"tools":    []any{searchTool, calculatorTool},
+})
+```
+
+</CodeGroup>
 
 ### Type-Safe Tool Calls with `as const`
 
 Use `as const` for full type inference on tool calls:
 
+<CodeGroup>
+
 ```typescript lines
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'What is the weather?',
   tools: [weatherTool, searchTool] as const,
-  maxToolRounds: 0, // Get tool calls without executing
 });
 
 // Tool calls are typed as union of tool inputs
@@ -308,9 +908,105 @@ for await (const toolCall of result.getToolCallsStream()) {
 }
 ```
 
+```python title="Python" lines
+import asyncio
+import os
+
+from pydantic import BaseModel
+from openrouter_agent import OpenRouter, call_model, tool
+
+
+class WeatherInput(BaseModel):
+    location: str
+
+
+class WeatherOutput(BaseModel):
+    temperature: float
+    conditions: str
+
+
+class SearchInput(BaseModel):
+    query: str
+
+
+class SearchOutput(BaseModel):
+    results: list[str]
+
+
+weather_tool = tool(
+    name="get_weather",
+    description="Get current weather for a location",
+    input_schema=WeatherInput,
+    output_schema=WeatherOutput,
+    execute=lambda params, ctx: WeatherOutput(temperature=22, conditions="sunny"),
+)
+
+search_tool = tool(
+    name="search",
+    description="Search the web",
+    input_schema=SearchInput,
+    output_schema=SearchOutput,
+    execute=lambda params, ctx: SearchOutput(results=[f"Result for {params.query}"]),
+)
+
+
+async def main():
+    openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        openrouter,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "What is the weather in San Francisco?",
+            "tools": [weather_tool, search_tool],
+        },
+    )
+
+    # Tool calls are validated against each tool's input schema
+    async for tool_call in result.get_tool_calls_stream():
+        if tool_call.name == "get_weather":
+            # tool_call.arguments matches WeatherInput: {"location": str}
+            print("Weather for:", tool_call.arguments["location"])
+
+    print("Final text:", await result.get_text())
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+result := callModel(map[string]any{
+	"model":    "openai/gpt-5-nano",
+	"messages": []Message{{Role: "user", Content: "What is the weather?"}},
+	"tools":    []any{weatherTool, searchTool},
+})
+
+// Decode each tool call's arguments into the struct for that tool
+for _, toolCall := range result.ToolCalls {
+	if toolCall.Function.Name == "get_weather" {
+		var args struct {
+			Location string `json:"location"`
+		}
+		json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
+		fmt.Println("Weather for:", args.Location)
+	}
+}
+```
+
+</CodeGroup>
+
+```text title="Output"
+Weather for: San Francisco
+Weather for: San Francisco
+Final text: Right now in San Francisco: sunny, about 22°C (72°F). Would you like an hourly forecast or a daily outlook?
+```
+
 ## Execute Context
 
 Tool execute functions receive a flat context object as their second argument. It merges `TurnContext` fields with a `tools` map and a `setContext()` method:
+
+<CodeGroup>
 
 ```typescript lines
 const contextAwareTool = tool({
@@ -330,6 +1026,56 @@ const contextAwareTool = tool({
 });
 ```
 
+```python title="Python" lines
+class ContextInput(BaseModel):
+    data: str
+
+
+class ContextOutput(BaseModel):
+    result: str
+
+
+async def execute_context_tool(params, ctx):
+    # TurnContext fields are available directly
+    turn_request = ctx.get("turn_request")
+    print("Turn:", ctx.get("number_of_turns"))
+    print("History:", getattr(turn_request, "input", None))
+    print("Model:", getattr(turn_request, "model", None))
+
+    return ContextOutput(result=f"Processed on turn {ctx.get('number_of_turns')}")
+
+
+context_aware_tool = tool(
+    name="context_tool",
+    input_schema=ContextInput,
+    output_schema=ContextOutput,
+    execute=execute_context_tool,
+)
+```
+
+```go title="Go" lines
+contextAwareTool := Tool{
+	Name: "context_tool",
+	Parameters: map[string]any{
+		"type":       "object",
+		"properties": map[string]any{"data": map[string]any{"type": "string"}},
+		"required":   []string{"data"},
+	},
+	Execute: func(params map[string]any, context TurnContext) map[string]any {
+		// TurnContext fields are available directly
+		fmt.Println("Turn:", context.NumberOfTurns)
+		fmt.Println("History:", context.TurnRequest.Messages)
+		fmt.Println("Model:", context.TurnRequest.Model)
+
+		return map[string]any{
+			"result": fmt.Sprintf("Processed on turn %d", context.NumberOfTurns),
+		}
+	},
+}
+```
+
+</CodeGroup>
+
 ### Context Properties
 
 | Property | Type | Description |
@@ -347,6 +1093,8 @@ const contextAwareTool = tool({
 Tools can declare a `contextSchema` to receive typed, persistent context data from the caller. Context is keyed by tool name and persists across turns.
 
 ### Declaring contextSchema
+
+<CodeGroup>
 
 ```typescript expandable lines
 const weatherTool = tool({
@@ -377,9 +1125,76 @@ const weatherTool = tool({
 });
 ```
 
+```python title="Python" lines
+class WeatherInput(BaseModel):
+    location: str
+
+
+class WeatherOutput(BaseModel):
+    temperature: float
+
+
+# Declare what context this tool needs
+class WeatherContext(BaseModel):
+    api_key: str
+    units: Literal["celsius", "fahrenheit"]
+
+
+async def execute_weather(params, ctx):
+    # Access this tool's own context via local
+    local = ctx["local"]
+    weather = await fetch_weather(params.location, local["api_key"], local["units"])
+    return WeatherOutput(temperature=weather["temp"])
+
+
+weather_tool = tool(
+    name="get_weather",
+    description="Get weather for a location",
+    input_schema=WeatherInput,
+    output_schema=WeatherOutput,
+    context_schema=WeatherContext,
+    execute=execute_weather,
+)
+
+```
+
+```go title="Go" lines
+weatherTool := Tool{
+	Name:        "get_weather",
+	Description: "Get weather for a location",
+	Parameters: map[string]any{
+		"type":       "object",
+		"properties": map[string]any{"location": map[string]any{"type": "string"}},
+		"required":   []string{"location"},
+	},
+	// Declare what context this tool needs
+	ContextSchema: map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"apiKey": map[string]any{"type": "string"},
+			"units":  map[string]any{"type": "string", "enum": []string{"celsius", "fahrenheit"}},
+		},
+		"required": []string{"apiKey", "units"},
+	},
+	Execute: func(params map[string]any, context TurnContext) map[string]any {
+		// Access this tool's own context via Local
+		apiKey, _ := context.Local["apiKey"].(string)
+		units, _ := context.Local["units"].(string)
+		location, _ := params["location"].(string)
+
+		weather := fetchWeather(location, apiKey, units)
+		return map[string]any{"temperature": weather.Temp}
+	},
+}
+```
+
+</CodeGroup>
+
 ### Providing Context in callModel
 
 Pass context keyed by tool name:
+
+<CodeGroup>
 
 ```typescript lines
 const result = openrouter.callModel({
@@ -395,9 +1210,43 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "What is the weather in Tokyo?",
+        "tools": [weather_tool, db_tool],
+        # Static context — keyed by tool name
+        "context": {
+            "get_weather": {"api_key": "sk-...", "units": "celsius"},
+            "db_query": {"connection_string": "postgres://..."},
+        },
+    },
+)
+```
+
+```go title="Go" lines
+result := callModel(CallModelRequest{
+	Model: "openai/gpt-5-nano",
+	Input: "What is the weather in Tokyo?",
+	Tools: []Tool{weatherTool, dbTool},
+
+	// Static context — keyed by tool name
+	Context: map[string]map[string]any{
+		"get_weather": {"apiKey": "sk-...", "units": "celsius"},
+		"db_query":    {"connectionString": "postgres://..."},
+	},
+})
+```
+
+</CodeGroup>
+
 ### Dynamic Context
 
 Use an async function for one-time initialization that needs to fetch data:
+
+<CodeGroup>
 
 ```typescript lines
 const result = openrouter.callModel({
@@ -415,6 +1264,48 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+async def load_context(turn_context):
+    return {
+        "get_weather": {
+            "api_key": await fetch_api_key(),
+            "units": "celsius",
+        },
+    }
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "What is the weather?",
+        "tools": [weather_tool],
+        # Resolved once at turn 0 to seed the store
+        "context": load_context,
+    },
+)
+```
+
+```go title="Go" lines
+result := callModel(CallModelRequest{
+	Model: "openai/gpt-5-nano",
+	Input: "What is the weather?",
+	Tools: []Tool{weatherTool},
+
+	// Resolved once at turn 0 to seed the store
+	ContextFunc: func() map[string]map[string]any {
+		return map[string]map[string]any{
+			"get_weather": {
+				"apiKey": fetchApiKey(),
+				"units":  "celsius",
+			},
+		}
+	},
+})
+```
+
+</CodeGroup>
+
 <Note>
 `resolveContext` runs once at turn 0 to seed the context store. For per-turn mutations, use `setContext()` inside your tool's `execute` function.
 </Note>
@@ -422,6 +1313,8 @@ const result = openrouter.callModel({
 ### Mutating Context with setContext
 
 Tools can update their own context using `setContext()`. Changes persist across turns via the shared store and are visible immediately. `context.local` is a live getter that always reads the latest values:
+
+<CodeGroup>
 
 ```typescript expandable lines
 const authTool = tool({
@@ -449,9 +1342,79 @@ const authTool = tool({
 });
 ```
 
+```python title="Python" lines
+class AuthInput(BaseModel):
+    action: str
+
+
+class AuthContext(BaseModel):
+    token: str
+    refresh_count: int
+
+
+async def execute_auth(params, ctx):
+    token = ctx["local"]["token"]
+
+    if is_expired(token):
+        new_token = await refresh_token(token)
+        # Mutate own context — persists to next turn
+        ctx["set_context"]({
+            "token": new_token,
+            "refresh_count": ctx["local"]["refresh_count"] + 1,
+        })
+
+    return {"success": True}
+
+
+auth_tool = tool(
+    name="auth",
+    input_schema=AuthInput,
+    context_schema=AuthContext,
+    execute=execute_auth,
+)
+```
+
+```go title="Go" lines
+authTool := Tool{
+	Name: "auth",
+	Parameters: map[string]any{
+		"type":       "object",
+		"properties": map[string]any{"action": map[string]any{"type": "string"}},
+		"required":   []string{"action"},
+	},
+	ContextSchema: map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"token":        map[string]any{"type": "string"},
+			"refreshCount": map[string]any{"type": "number"},
+		},
+		"required": []string{"token", "refreshCount"},
+	},
+	Execute: func(params map[string]any, context TurnContext) map[string]any {
+		token, _ := context.Local["token"].(string)
+
+		if isExpired(token) {
+			newToken := refreshToken(token)
+			refreshCount, _ := context.Local["refreshCount"].(int)
+			// Mutate own context — persists to next turn
+			context.SetContext(map[string]any{
+				"token":        newToken,
+				"refreshCount": refreshCount + 1,
+			})
+		}
+
+		return map[string]any{"success": true}
+	},
+}
+```
+
+</CodeGroup>
+
 ### Observing Context Changes
 
 Use `getContextUpdates()` on `ModelResult` to observe context mutations in real time:
+
+<CodeGroup>
 
 ```typescript lines
 const result = openrouter.callModel({
@@ -469,9 +1432,55 @@ for await (const snapshot of result.getContextUpdates()) {
 }
 ```
 
+```python title="Python" lines
+import asyncio
+
+
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "Authenticate and fetch data",
+            "tools": [auth_tool],
+            "context": {
+                "auth": {"token": "initial", "refresh_count": 0},
+            },
+        },
+    )
+
+    async for snapshot in result.get_context_updates():
+        print("Context changed:", snapshot)
+        # {'auth': {'token': 'new-token', 'refresh_count': 1}}
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+result := callModel(CallModelRequest{
+	Model: "openai/gpt-5-nano",
+	Input: "Authenticate and fetch data",
+	Tools: []Tool{authTool},
+	Context: map[string]map[string]any{
+		"auth": {"token": "initial", "refreshCount": 0},
+	},
+})
+
+for snapshot := range result.GetContextUpdates() {
+	fmt.Println("Context changed:", snapshot)
+	// map[auth:map[refreshCount:1 token:new-token]]
+}
+```
+
+</CodeGroup>
+
 ### Shared Context
 
 Use `sharedSchema` on `tool()` and `sharedContextSchema` on `callModel` to share typed state across tools:
+
+<CodeGroup>
 
 ```typescript expandable lines
 const SharedContextSchema = z.object({
@@ -504,6 +1513,88 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+class SharedContext(BaseModel):
+    session_id: str | None = None
+
+
+class ExecInput(BaseModel):
+    command: str
+
+
+async def execute_sandbox(params, ctx):
+    # Read shared state set by any tool (validated against SharedContext)
+    shared = SharedContext.model_validate(ctx["shared"] or {})
+    session = await connect(shared.session_id)
+    # Write shared state for other tools
+    ctx["set_shared_context"]({"session_id": session.id})
+    return await session.exec(params.command)
+
+
+exec_tool = tool(
+    name="sandbox_exec",
+    description="Run a shell command in the sandbox",
+    input_schema=ExecInput,
+    execute=execute_sandbox,
+)
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Use the sandbox_exec tool to run the command `echo hello`.",
+        "tools": [exec_tool],
+        "context": {
+            "shared": {"session_id": "existing-session"},
+            "sandbox_exec": {},
+        },
+    },
+)
+
+```
+
+```go title="Go" lines
+sharedContextSchema := map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"_sessionId": map[string]any{"type": "string"},
+	},
+}
+
+execTool := Tool{
+	Name:        "sandbox_exec",
+	Description: "Run a shell command in the sandbox session",
+	Parameters: map[string]any{
+		"type":       "object",
+		"properties": map[string]any{"command": map[string]any{"type": "string"}},
+		"required":   []string{"command"},
+	},
+	SharedSchema: sharedContextSchema,
+	Execute: func(input map[string]any, ctx TurnContext) map[string]any {
+		// Read shared state set by any tool
+		sid, _ := ctx.Shared["_sessionId"].(string)
+		session := connect(sid)
+		// Write shared state for other tools
+		ctx.SetSharedContext(map[string]any{"_sessionId": session.ID})
+		command, _ := input["command"].(string)
+		return session.Exec(command)
+	},
+}
+
+result := callModel(CallModelRequest{
+	Model:               "openai/gpt-5-nano",
+	Input:               "Run the command `echo hello` in the sandbox",
+	Tools:               []Tool{execTool},
+	SharedContextSchema: sharedContextSchema,
+	Context: map[string]map[string]any{
+		"shared":       {"_sessionId": "existing-session"},
+		"sandbox_exec": {},
+	},
+})
+```
+
+</CodeGroup>
+
 <Note>
 `context.local` is scoped to one tool. `context.shared` is visible to all tools and persists across turns. Pass the same `sharedSchema` to each tool for typed access, and `sharedContextSchema` to `callModel` for runtime validation.
 </Note>
@@ -515,6 +1606,10 @@ callModel automatically executes tools and handles multi-turn conversations. Whe
 ### Automatic Execution Flow
 
 When you provide tools with execute functions:
+
+The Python tab starts with the setup that the other Python samples on this page assume: the imports, plus a `client`. The Go tabs on this page are fragments, because there is no Go agent SDK. `Tool`, `TurnContext`, `CallModelRequest`, `Step`, and `callModel` in the Go tabs of this section stand for a tool loop that your application defines; they are not imported from a library. Later Go tabs call the chat completions endpoint (`/api/v1/chat/completions`) directly through `chat` and `complete`, which are also application-defined helpers: each one sends the messages and tool definitions and exits on an HTTP error or an empty `choices` list. `chat` returns the first choice's message and `complete` returns the whole response.
+
+<CodeGroup>
 
 ```typescript expandable lines
 import { OpenRouter, tool } from '@openrouter/agent';
@@ -540,6 +1635,85 @@ const text = await result.getText();
 // "The weather in Paris is 18°C."
 ```
 
+```python title="Python" lines
+import asyncio
+import os
+
+from openrouter_agent import OpenRouter, call_model, tool
+from pydantic import BaseModel
+
+client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+
+class WeatherInput(BaseModel):
+    location: str
+
+
+class WeatherOutput(BaseModel):
+    temperature: float
+
+
+async def get_weather(params, ctx):
+    return WeatherOutput(temperature=await fetch_temperature(params.location))
+
+
+weather_tool = tool(
+    name="get_weather",
+    description="Get the current temperature for a location",
+    input_schema=WeatherInput,
+    output_schema=WeatherOutput,
+    execute=get_weather,
+)
+
+
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "What is the weather in Paris?",
+            "tools": [weather_tool],
+        },
+    )
+
+    # get_text() waits for all tool execution to complete
+    text = await result.get_text()
+    print(text)
+    # "The weather in Paris is 18°C."
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+weatherTool := Tool{
+	Name:        "get_weather",
+	Description: "Get the current temperature for a location",
+	Parameters: map[string]any{
+		"type":       "object",
+		"properties": map[string]any{"location": map[string]any{"type": "string"}},
+		"required":   []string{"location"},
+	},
+	Execute: func(input map[string]any, ctx TurnContext) map[string]any {
+		location, _ := input["location"].(string)
+		return map[string]any{"temperature": fetchTemperature(location)}
+	},
+}
+
+result := callModel(CallModelRequest{
+	Model: "openai/gpt-5-nano",
+	Input: "What is the weather in Paris?",
+	Tools: []Tool{weatherTool},
+})
+
+// GetText() waits for all tool execution to complete
+text := result.GetText()
+// "The weather in Paris is 18°C."
+```
+
+</CodeGroup>
+
 ### Execution Sequence
 
 1. Model receives prompt and generates tool call
@@ -555,6 +1729,8 @@ const text = await result.getText();
 
 Limit the maximum number of tool execution rounds:
 
+<CodeGroup>
+
 ```typescript lines
 const result = openrouter.callModel({
   model: 'openai/gpt-5-nano',
@@ -564,38 +1740,101 @@ const result = openrouter.callModel({
 });
 ```
 
+```python title="Python" lines
+from openrouter_agent import step_count_is
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Research this topic thoroughly",
+        "tools": [search_tool, analyze_tool],
+        "stop_when": step_count_is(3),  # Stop after 3 rounds of tool execution
+    },
+)
+
+```
+
+```go title="Go" lines
+result := callModel(CallModelRequest{
+	Model:         "openai/gpt-5-nano",
+	Input:         "Research this topic thoroughly",
+	Tools:         []Tool{searchTool, analyzeTool},
+	MaxToolRounds: 3, // Stop after 3 rounds of tool execution
+})
+```
+
+</CodeGroup>
+
 Setting `maxToolRounds: 0` disables automatic execution - you get raw tool calls.
 
 #### maxToolRounds (Function)
 
 Use a function for dynamic control:
 
+<CodeGroup>
+
 ```typescript lines
 const result = openrouter.callModel({
   model: 'openai/gpt-5-nano',
   input: 'Research and analyze',
-  tools: [searchTool],
-  maxToolRounds: (context) => {
-    // Continue if under 5 turns
-    return context.numberOfTurns < 5;
+  tools: [searchTool] as const,
+  stopWhen: ({ steps }) => {
+    // Stop once 5 tool rounds have run
+    return steps.length >= 5;
   },
 });
 ```
 
-The function receives `TurnContext` and returns `true` to continue or `false` to stop.
+```python title="Python" lines
+def stop_after_five_rounds(ctx):
+    # Stop once 5 tool rounds have run
+    return len(ctx["steps"]) >= 5
+
+
+result = call_model(
+    client,
+    {
+        "model": "openai/gpt-5-nano",
+        "input": "Research and analyze",
+        "tools": [search_tool],
+        "stop_when": stop_after_five_rounds,
+    },
+)
+
+```
+
+```go title="Go" lines
+result := callModel(CallModelRequest{
+	Model: "openai/gpt-5-nano",
+	Input: "Research and analyze",
+	Tools: []Tool{searchTool},
+	StopWhen: func(steps []Step) bool {
+		// Stop once 5 tool rounds have run
+		return len(steps) >= 5
+	},
+})
+```
+
+</CodeGroup>
+
+The function receives the steps completed so far (in TypeScript, as the `steps` field of its argument) and returns `true` to stop or `false` to continue.
 
 ### Accessing Tool Calls
 
 #### getToolCalls()
 
-Get all tool calls from the initial response (before auto-execution):
+Get the tool calls from the first response. `stepCountIs(1)` ends the run after one tool round, but a tool with an `execute` function still runs before the run ends. To read the calls without running anything, define the tool with `execute: false` as shown in [Manual Tools](#manual-tools):
+
+<CodeGroup>
 
 ```typescript lines
 const result = openrouter.callModel({
   model: 'openai/gpt-5-nano',
   input: 'What is the weather in Tokyo and Paris?',
-  tools: [weatherTool],
-  maxToolRounds: 0, // Don't auto-execute
+  tools: [weatherTool] as const,
+  stopWhen: stepCountIs(1), // Stop after the first tool round
+  allowFinalResponse: false, // No extra final-answer turn
 });
 
 const toolCalls = await result.getToolCalls();
@@ -607,9 +1846,58 @@ for (const call of toolCalls) {
 }
 ```
 
+```python title="Python" lines
+from openrouter_agent import step_count_is
+
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "What is the weather in Tokyo and Paris?",
+            "tools": [weather_tool],
+            "stop_when": step_count_is(1),  # Stop after the first tool round
+            "allow_final_response": False,  # No extra final-answer turn
+        },
+    )
+
+    tool_calls = await result.get_tool_calls()
+
+    for call in tool_calls:
+        print(f"Tool: {call.name}")
+        print(f"ID: {call.id}")
+        print("Arguments:", call.arguments)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+result := callModel(CallModelRequest{
+	Model:              "openai/gpt-5-nano",
+	Input:              "What is the weather in Tokyo and Paris?",
+	Tools:              []Tool{weatherTool},
+	StopWhen:           stepCountIs(1), // Stop after the first tool round
+	AllowFinalResponse: false,          // No extra final-answer turn
+})
+
+toolCalls := result.GetToolCalls()
+
+for _, call := range toolCalls {
+	fmt.Printf("Tool: %s\n", call.Name)
+	fmt.Printf("ID: %s\n", call.ID)
+	fmt.Println("Arguments:", call.Arguments)
+}
+```
+
+</CodeGroup>
+
 #### getToolCallsStream()
 
 Stream tool calls as they complete:
+
+<CodeGroup>
 
 ```typescript lines
 const result = openrouter.callModel({
@@ -628,11 +1916,58 @@ for await (const toolCall of result.getToolCallsStream()) {
 }
 ```
 
+```python title="Python" lines
+from openrouter_agent import step_count_is
+
+# Declaration-only tool: the SDK never runs it, so processing each call
+# below does not repeat an operation the SDK already performed
+manual_weather_tool = tool(
+    name="get_weather",
+    description="Get the current temperature for a location",
+    input_schema=WeatherInput,
+    execute=False,  # Manual handling
+)
+
+
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "Check weather in multiple cities",
+            "tools": [manual_weather_tool],
+            "stop_when": step_count_is(1),  # Stop after the first tool round
+            "allow_final_response": False,  # No extra final-answer turn
+        },
+    )
+
+    # The stream can report a completed call again when the final response
+    # arrives, so handle each call ID once
+    seen = set()
+    async for tool_call in result.get_tool_calls_stream():
+        if tool_call.id in seen:
+            continue
+        seen.add(tool_call.id)
+
+        print(f"Received tool call: {tool_call.name}")
+
+        # Process each tool call as it arrives
+        weather_result = await process_weather_request(tool_call.arguments)
+        print("Result:", weather_result)
+
+
+asyncio.run(main())
+```
+
+</CodeGroup>
+
 ### Tool Stream Events
 
 #### getToolStream()
 
 Stream both argument deltas and preliminary results:
+
+<CodeGroup>
 
 ```typescript expandable lines
 const searchTool = tool({
@@ -652,7 +1987,7 @@ const searchTool = tool({
 const result = openrouter.callModel({
   model: 'openai/gpt-5-nano',
   input: 'Search for TypeScript tutorials',
-  tools: [searchTool],
+  tools: [searchTool] as const,
 });
 
 for await (const event of result.getToolStream()) {
@@ -669,6 +2004,106 @@ for await (const event of result.getToolStream()) {
 }
 ```
 
+```python title="Python" lines
+class SearchInput(BaseModel):
+    query: str
+
+
+class SearchProgress(BaseModel):
+    progress: int
+    status: str
+
+
+class SearchOutput(BaseModel):
+    results: list[str]
+
+
+async def run_search(params, ctx):
+    yield SearchProgress(progress=25, status="Searching...")
+    yield SearchProgress(progress=50, status="Processing...")
+    yield SearchProgress(progress=75, status="Ranking...")
+    yield SearchProgress(progress=100, status="Complete")
+    # The final yield is the tool's output
+    yield SearchOutput(results=["result1", "result2"])
+
+
+search_tool = tool(
+    name="search",
+    input_schema=SearchInput,
+    event_schema=SearchProgress,
+    output_schema=SearchOutput,
+    execute=run_search,
+)
+
+
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "Search for TypeScript tutorials",
+            "tools": [search_tool],
+        },
+    )
+
+    # Tool stream events are dicts keyed by "type"
+    async for event in result.get_tool_stream():
+        if event["type"] == "delta":
+            # Raw argument delta from the model
+            print(event["content"], end="", flush=True)
+        elif event["type"] == "preliminary_result":
+            # Progress from generator tool
+            progress = SearchProgress.model_validate(event["result"])
+            print(f"Progress: {progress.progress}% - {progress.status}")
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+type SearchProgress struct {
+	Progress int
+	Status   string
+}
+
+searchTool := Tool{
+	Name: "search",
+	InputSchema: map[string]any{
+		"type":       "object",
+		"properties": map[string]any{"query": map[string]any{"type": "string"}},
+		"required":   []string{"query"},
+	},
+	Execute: func(args map[string]any, yield func(any)) any {
+		yield(SearchProgress{25, "Searching..."})
+		yield(SearchProgress{50, "Processing..."})
+		yield(SearchProgress{75, "Ranking..."})
+		yield(SearchProgress{100, "Complete"})
+		return map[string]any{"results": []string{"result1", "result2"}}
+	},
+}
+
+result := callModel(CallModelRequest{
+	Model: "openai/gpt-5-nano",
+	Input: "Search for TypeScript tutorials",
+	Tools: []Tool{searchTool},
+})
+
+for event := range result.GetToolStream() {
+	switch event.Type {
+	case "delta":
+		// Raw argument delta from the model
+		fmt.Print(event.Content)
+	case "preliminary_result":
+		// Progress from generator tool
+		p := event.Result.(SearchProgress)
+		fmt.Printf("Progress: %d%% - %s\n", p.Progress, p.Status)
+	}
+}
+```
+
+</CodeGroup>
+
 #### Event Types
 
 | Type | Description |
@@ -679,6 +2114,8 @@ for await (const event of result.getToolStream()) {
 ### Tool Result Events
 
 When using `getFullResponsesStream()`, you can also receive `tool.result` events that fire when a tool execution completes:
+
+<CodeGroup>
 
 ```typescript lines
 for await (const event of result.getFullResponsesStream()) {
@@ -699,6 +2136,58 @@ for await (const event of result.getFullResponsesStream()) {
   }
 }
 ```
+
+```python title="Python" lines
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "Search for TypeScript tutorials",
+            "tools": [search_tool],
+        },
+    )
+
+    def field(event, name):
+        # Events may be dicts or objects; read both the same way
+        return event.get(name) if isinstance(event, dict) else getattr(event, name, None)
+
+    async for event in result.get_full_responses_stream():
+        event_type = field(event, "type")
+        if event_type == "tool.preliminary_result":
+            # Intermediate progress from generator tools
+            print(f"Progress ({field(event, 'tool_call_id')}):", field(event, "result"))
+        elif event_type == "tool.result":
+            # Final result when tool execution completes
+            print(f"Tool {field(event, 'tool_call_id')} completed")
+            print("Result:", field(event, "result"))
+            # Access any preliminary results that were emitted during execution
+            if field(event, "preliminary_results"):
+                print("All progress events:", field(event, "preliminary_results"))
+
+
+asyncio.run(main())
+```
+
+```go title="Go" lines
+for event := range result.GetFullResponsesStream() {
+	switch event.Type {
+	case "tool.preliminary_result":
+		// Intermediate progress from generator tools
+		fmt.Printf("Progress (%s): %+v\n", event.ToolCallID, event.Result)
+	case "tool.result":
+		// Final result when tool execution completes
+		fmt.Printf("Tool %s completed\n", event.ToolCallID)
+		fmt.Printf("Result: %+v\n", event.Result)
+		// Access any preliminary results that were emitted during execution
+		if len(event.PreliminaryResults) > 0 {
+			fmt.Printf("All progress events: %+v\n", event.PreliminaryResults)
+		}
+	}
+}
+```
+
+</CodeGroup>
 
 #### ToolResultEvent Type
 
@@ -728,6 +2217,8 @@ The `source` field was added in `@openrouter/agent` 0.8.0. This is an additive b
 
 Mixing an MCP tool (whose output schema is `unknown`) with fully-typed local tools used to collapse the entire result union to `unknown`. The `source` discriminant fixes that: narrow on `source === 'client'` to recover your schema-derived result types, and treat `source === 'mcp'` results as `unknown`.
 
+<CodeGroup>
+
 ```typescript lines
 for await (const event of result.getFullResponsesStream()) {
   if (event.type !== 'tool.result') continue;
@@ -742,6 +2233,54 @@ for await (const event of result.getFullResponsesStream()) {
 }
 ```
 
+```python title="Python" lines
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "What is the weather in San Francisco?",
+            "tools": [weather_tool],
+        },
+    )
+
+    def field(event, name):
+        # Events may be dicts or objects; read both the same way
+        return event.get(name) if isinstance(event, dict) else getattr(event, name, None)
+
+    async for event in result.get_full_responses_stream():
+        if field(event, "type") != "tool.result":
+            continue
+
+        if field(event, "source") == "client":
+            # The result matches the tool's output_schema
+            print("Local tool result:", field(event, "result"))
+        else:
+            # source == "mcp": result shape is unknown; validate before use
+            print("MCP tool result (unknown):", field(event, "result"))
+
+
+asyncio.run(main())
+```
+
+```go title="Go" lines
+for event := range result.GetFullResponsesStream() {
+	if event.Type != "tool.result" {
+		continue
+	}
+
+	if event.Source == "client" {
+		// event.Result is the value your local tool's Execute returned
+		fmt.Printf("Local tool result: %+v\n", event.Result)
+	} else {
+		// event.Source == "mcp": result shape is unknown; validate before use
+		fmt.Printf("MCP tool result (unknown): %+v\n", event.Result)
+	}
+}
+```
+
+</CodeGroup>
+
 Helpers exported from `@openrouter/agent`:
 
 - `markMcp(tool)`: brand a tool as originating from an MCP server. `@openrouter/mcp` brands its wrapped tools automatically, so most callers just spread `mcp.tools` and never call this directly.
@@ -754,20 +2293,72 @@ The brand is purely informational: MCP tools still execute locally and serialize
 
 When the model calls multiple tools, they execute in parallel:
 
+<CodeGroup>
+
 ```typescript lines
 const result = openrouter.callModel({
   model: 'openai/gpt-5-nano',
   input: 'Get weather in Paris, Tokyo, and New York simultaneously',
-  tools: [weatherTool],
+  tools: [weatherTool] as const,
 });
 
 // All three weather calls execute in parallel
 const text = await result.getText();
 ```
 
+```python title="Python" lines
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "Get weather in Paris, Tokyo, and New York simultaneously",
+            "tools": [weather_tool],
+        },
+    )
+
+    # All three weather calls execute in parallel
+    text = await result.get_text()
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+messages := []Message{{Role: "user", Content: "Get weather in Paris, Tokyo, and New York simultaneously"}}
+reply := chat("openai/gpt-5-nano", messages, []any{weatherTool})
+
+for len(reply.ToolCalls) > 0 {
+	messages = append(messages, reply)
+
+	// All weather calls execute in parallel
+	results := make([]Message, len(reply.ToolCalls))
+	var wg sync.WaitGroup
+	for i, call := range reply.ToolCalls {
+		wg.Add(1)
+		go func(i int, call ToolCall) {
+			defer wg.Done()
+			results[i] = Message{Role: "tool", ToolCallID: call.ID, Content: runTool(call)}
+		}(i, call)
+	}
+	wg.Wait()
+
+	messages = append(messages, results...)
+	reply = chat("openai/gpt-5-nano", messages, []any{weatherTool})
+}
+
+text := reply.Content
+```
+
+</CodeGroup>
+
 ### Manual Tool Handling
 
 For tools without execute functions:
+
+<CodeGroup>
 
 ```typescript expandable lines
 const confirmTool = tool({
@@ -802,15 +2393,96 @@ for (const call of toolCalls) {
 }
 ```
 
+```python title="Python" lines
+class EmailInput(BaseModel):
+    to: str
+    subject: str
+    body: str
+
+
+confirm_tool = tool(
+    name="send_email",
+    description="Send an email (requires confirmation)",
+    input_schema=EmailInput,
+    execute=False,  # Manual handling
+)
+
+
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "Send an email to alice@example.com with subject 'Meeting' and body 'See you at 3pm.'",
+            "tools": [confirm_tool],
+        },
+    )
+
+    tool_calls = await result.get_tool_calls()
+
+    if not tool_calls:
+        print("No tool calls requested:", await result.get_text())
+
+    for call in tool_calls:
+        if call.name == "send_email":
+            # Show confirmation UI
+            confirmed = await show_confirm_dialog(call.arguments)
+
+            if confirmed:
+                await send_email(call.arguments)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+confirmTool := map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "send_email",
+		"description": "Send an email (requires confirmation)",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"to":      map[string]any{"type": "string", "format": "email"},
+				"subject": map[string]any{"type": "string"},
+				"body":    map[string]any{"type": "string"},
+			},
+			"required": []string{"to", "subject", "body"},
+		},
+	},
+}
+
+// Manual handling: one request, no automatic tool loop
+messages := []Message{{Role: "user", Content: "Send an email to alice@example.com"}}
+reply := chat("openai/gpt-5-nano", messages, []any{confirmTool})
+
+for _, call := range reply.ToolCalls {
+	if call.Function.Name == "send_email" {
+		// Show confirmation UI
+		confirmed := showConfirmDialog(call.Function.Arguments)
+
+		if confirmed {
+			sendEmail(call.Function.Arguments)
+		}
+	}
+}
+```
+
+</CodeGroup>
+
 ### Execution Results
 
 Access execution metadata through getResponse():
+
+<CodeGroup>
 
 ```typescript lines
 const result = openrouter.callModel({
   model: 'openai/gpt-5-nano',
   input: 'What is 2+2 and the weather in Paris?',
-  tools: [calculatorTool, weatherTool],
+  tools: [calculatorTool, weatherTool] as const,
 });
 
 const response = await result.getResponse();
@@ -818,13 +2490,64 @@ const response = await result.getResponse();
 // Response includes all execution rounds
 console.log('Final output:', response.output);
 console.log('Usage:', response.usage);
+
 ```
+
+```python title="Python" lines
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": "What is 2+2 and the weather in Paris?",
+            "tools": [calculator_tool, weather_tool],
+        },
+    )
+
+    response = await result.get_response()
+
+    # Response includes all execution rounds
+    print("Final output:", response.output)
+    print("Usage:", response.usage)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+messages := []Message{{Role: "user", Content: "What is 2+2 and the weather in Paris?"}}
+tools := []any{calculatorTool, weatherTool}
+// complete is application-defined: it exits on an HTTP error or an empty
+// choices list, so indexing Choices[0] below is safe
+resp := complete("openai/gpt-5-nano", messages, tools)
+
+// Run every execution round until the model stops calling tools
+for len(resp.Choices[0].Message.ToolCalls) > 0 {
+	reply := resp.Choices[0].Message
+	messages = append(messages, reply)
+	for _, call := range reply.ToolCalls {
+		messages = append(messages, Message{Role: "tool", ToolCallID: call.ID, Content: runTool(call)})
+	}
+	resp = complete("openai/gpt-5-nano", messages, tools)
+}
+
+fmt.Printf("Final output: %+v\n", resp.Choices[0].Message)
+// resp is overwritten each round, so this is the last request's usage only.
+// Sum Usage inside the loop for a run-wide total.
+fmt.Printf("Final-round usage: %+v\n", resp.Usage)
+
+```
+
+</CodeGroup>
 
 ## Error Handling
 
 ### Tool Execution Errors
 
 Errors in execute functions are caught and sent back to the model:
+
+<CodeGroup>
 
 ```typescript expandable lines
 const riskyTool = tool({
@@ -842,7 +2565,7 @@ const riskyTool = tool({
 const result = openrouter.callModel({
   model: 'openai/gpt-5-nano',
   input: 'Try the risky operation with "fail"',
-  tools: [riskyTool],
+  tools: [riskyTool] as const,
 });
 
 // Model receives error message and can respond appropriately
@@ -850,9 +2573,100 @@ const text = await result.getText();
 // "I tried the operation but it failed with: Operation failed: invalid input"
 ```
 
+```python title="Python" lines
+class RiskyInput(BaseModel):
+    input: str
+
+
+class RiskyOutput(BaseModel):
+    result: str
+
+
+def risky_execute(params, ctx):
+    if params.input == "fail":
+        raise Exception("Operation failed: invalid input")
+    return RiskyOutput(result="success")
+
+
+risky_tool = tool(
+    name="risky_operation",
+    input_schema=RiskyInput,
+    output_schema=RiskyOutput,
+    execute=risky_execute,
+)
+
+
+async def main():
+    result = call_model(
+        client,
+        {
+            "model": "openai/gpt-5-nano",
+            "input": 'Try the risky operation with "fail"',
+            "tools": [risky_tool],
+        },
+    )
+
+    # Model receives error message and can respond appropriately
+    text = await result.get_text()
+    # "I tried the operation but it failed with: Operation failed: invalid input"
+    print(text)
+
+
+asyncio.run(main())
+```
+
+```go title="Go" lines
+riskyTool := map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name": "risky_operation",
+		"parameters": map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"input": map[string]any{"type": "string"}},
+			"required":   []string{"input"},
+		},
+	},
+}
+
+riskyOperation := func(args string) (string, error) {
+	var params struct{ Input string `json:"input"` }
+	if err := json.Unmarshal([]byte(args), &params); err != nil {
+		return "", fmt.Errorf("malformed arguments: %w", err)
+	}
+	if params.Input == "fail" {
+		return "", errors.New("Operation failed: invalid input")
+	}
+	return `{"result":"success"}`, nil
+}
+
+messages := []Message{{Role: "user", Content: `Try the risky operation with "fail"`}}
+reply := chat("openai/gpt-5-nano", messages, []any{riskyTool})
+
+for len(reply.ToolCalls) > 0 {
+	messages = append(messages, reply)
+	for _, call := range reply.ToolCalls {
+		out, err := riskyOperation(call.Function.Arguments)
+		if err != nil {
+			// Send the error back to the model as the tool result
+			out = fmt.Sprintf(`{"error":%q}`, err.Error())
+		}
+		messages = append(messages, Message{Role: "tool", ToolCallID: call.ID, Content: out})
+	}
+	reply = chat("openai/gpt-5-nano", messages, []any{riskyTool})
+}
+
+// Model receives error message and can respond appropriately
+text := reply.Content
+// "I tried the operation but it failed with: Operation failed: invalid input"
+```
+
+</CodeGroup>
+
 ### Validation Errors
 
 Invalid tool arguments are caught before execution:
+
+<CodeGroup>
 
 ```typescript lines
 const strictTool = tool({
@@ -868,9 +2682,73 @@ const strictTool = tool({
 });
 ```
 
+```python title="Python" lines
+from pydantic import BaseModel, Field
+
+class StrictInput(BaseModel):
+    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    age: int = Field(ge=0, le=150)
+
+
+def strict_execute(params, ctx):
+    # Only runs with valid input
+    return {"valid": True}
+
+
+strict_tool = tool(
+    name="strict",
+    input_schema=StrictInput,
+    execute=strict_execute,
+)
+
+```
+
+```go title="Go" lines
+strictTool := map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name": "strict",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"email": map[string]any{"type": "string", "format": "email"},
+				"age":   map[string]any{"type": "number", "minimum": 0, "maximum": 150},
+			},
+			"required": []string{"email", "age"},
+		},
+	},
+}
+
+strict := func(args string) (string, error) {
+	var params struct {
+		Email string  `json:"email"`
+		Age   *float64 `json:"age"` // pointer: nil when missing or null, so a real 0 stays valid
+	}
+	if err := json.Unmarshal([]byte(args), &params); err != nil {
+		return "", err
+	}
+	// Validate arguments before execution
+	if _, err := mail.ParseAddress(params.Email); err != nil {
+		return "", fmt.Errorf("invalid email: %w", err)
+	}
+	if params.Age == nil {
+		return "", errors.New("age is required")
+	}
+	if *params.Age < 0 || *params.Age > 150 {
+		return "", errors.New("age must be between 0 and 150")
+	}
+	// Only runs with valid input
+	return `{"valid":true}`, nil
+}
+```
+
+</CodeGroup>
+
 ### Graceful Error Handling
 
 Handle errors gracefully in execute functions:
+
+<CodeGroup>
 
 ```typescript lines
 const robustTool = tool({
@@ -894,9 +2772,54 @@ const robustTool = tool({
 });
 ```
 
+```python title="Python" lines
+from typing import Any
+
+import httpx
+from pydantic import BaseModel, HttpUrl
+
+class FetchInput(BaseModel):
+    url: HttpUrl
+
+
+class FetchOutput(BaseModel):
+    data: Any | None = None
+    error: str | None = None
+
+
+# The URL comes from the model, so only fetch from the hosts this tool is meant to reach
+ALLOWED_HOSTS = {"httpbin.org"}
+
+
+async def fetch_data(params, ctx):
+    if params.url.scheme != "https" or params.url.host not in ALLOWED_HOSTS:
+        return FetchOutput(error=f"Host not allowed: {params.url.host}")
+    try:
+        # Redirects stay off: a redirect could lead to a host outside the allow-list
+        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as http:
+            response = await http.get(str(params.url))
+        if not response.is_success:
+            return FetchOutput(error=f"HTTP {response.status_code}: {response.reason_phrase}")
+        return FetchOutput(data=response.json())
+    except Exception as error:
+        return FetchOutput(error=f"Failed to fetch: {error}")
+
+
+robust_tool = tool(
+    name="fetch_data",
+    input_schema=FetchInput,
+    output_schema=FetchOutput,
+    execute=fetch_data,
+)
+```
+
+</CodeGroup>
+
 ## Best Practices
 
 ### Descriptive Names and Descriptions
+
+<CodeGroup>
 
 ```typescript lines
 // Good: Clear name and description
@@ -913,6 +2836,49 @@ const tool2 = tool({
   // ...
 });
 ```
+
+```python title="Python" lines
+# Good: Clear name and description
+tool1 = tool(
+    name="search_knowledge_base",
+    description="Search the company knowledge base for documents, FAQs, and policies. Returns relevant articles with snippets.",
+    input_schema=SearchInput,
+    execute=search,
+)
+
+# Avoid: Vague or generic
+tool2 = tool(
+    name="search",
+    description="Searches stuff",
+    input_schema=SearchInput,
+    execute=search,
+)
+
+```
+
+```go title="Go" lines
+// Good: Clear name and description
+tool1 := map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "search_knowledge_base",
+		"description": "Search the company knowledge base for documents, FAQs, and policies. Returns relevant articles with snippets.",
+		// ...
+	},
+}
+
+// Avoid: Vague or generic
+tool2 := map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "search",
+		"description": "Searches stuff",
+		// ...
+	},
+}
+```
+
+</CodeGroup>
 
 ### Schema Descriptions
 
@@ -934,7 +2900,9 @@ const inputSchema = z.object({
 
 ### Idempotent Tools
 
-Design tools to be safely re-executable:
+Design tools to be safely re-executable. A lookup followed by a separate create is not atomic: two concurrent calls with the same email can both pass the lookup. These samples rely on the backing store enforcing a unique constraint on email, so the second create fails instead of adding a duplicate. If your store has no such constraint, replace the two steps with a single atomic create-or-get (upsert).
+
+<CodeGroup>
 
 ```typescript lines
 const createUserTool = tool({
@@ -956,9 +2924,73 @@ const createUserTool = tool({
 });
 ```
 
+```python title="Python" lines
+from pydantic import BaseModel, Field
+
+class CreateUserInput(BaseModel):
+    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    name: str
+
+
+async def create_user_execute(params, ctx):
+    # Check if user exists first
+    existing = await find_user_by_email(params.email)
+    if existing:
+        return {"userId": existing["id"], "created": False}
+
+    user = await create_user(params)
+    return {"userId": user["id"], "created": True}
+
+
+create_user_tool = tool(
+    name="create_user",
+    input_schema=CreateUserInput,
+    execute=create_user_execute,
+)
+
+```
+
+```go title="Go" lines
+createUserTool := map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name": "create_user",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"email": map[string]any{"type": "string", "format": "email"},
+				"name":  map[string]any{"type": "string"},
+			},
+			"required": []string{"email", "name"},
+		},
+	},
+}
+
+createUserExec := func(args string) (string, error) {
+	var params struct {
+		Email string `json:"email"`
+		Name  string `json:"name"`
+	}
+	if err := json.Unmarshal([]byte(args), &params); err != nil {
+		return "", err
+	}
+	// Check if user exists first
+	if existing := findUserByEmail(params.Email); existing != nil {
+		return fmt.Sprintf(`{"userId":%q,"created":false}`, existing.ID), nil
+	}
+
+	user := createUser(params.Email, params.Name)
+	return fmt.Sprintf(`{"userId":%q,"created":true}`, user.ID), nil
+}
+```
+
+</CodeGroup>
+
 ### Timeout Handling
 
 Wrap long-running operations:
+
+<CodeGroup>
 
 ```typescript lines
 const longRunningTool = tool({
@@ -978,6 +3010,63 @@ const longRunningTool = tool({
   },
 });
 ```
+
+```python title="Python" lines
+class ProcessDataInput(BaseModel):
+    data_id: str
+
+
+async def process_data_execute(params, ctx):
+    timeout_s = 30
+
+    try:
+        return await asyncio.wait_for(process_data(params.data_id), timeout=timeout_s)
+    except asyncio.TimeoutError:
+        raise Exception("Operation timed out")
+
+
+long_running_tool = tool(
+    name="process_data",
+    input_schema=ProcessDataInput,
+    execute=process_data_execute,
+)
+
+```
+
+```go title="Go" lines
+longRunningTool := map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name": "process_data",
+		"parameters": map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"dataId": map[string]any{"type": "string"}},
+			"required":   []string{"dataId"},
+		},
+	},
+}
+
+longRunningExec := func(args string) (string, error) {
+	var params struct {
+		DataID string `json:"dataId"`
+	}
+	if err := json.Unmarshal([]byte(args), &params); err != nil {
+		return "", err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// processData stops its work when ctx is cancelled, so nothing keeps
+	// running after the timeout
+	result, err := processData(ctx, params.DataID)
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "", errors.New("operation timed out")
+	}
+	return result, err
+}
+```
+
+</CodeGroup>
 
 ## Next Steps
 

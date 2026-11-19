@@ -99,7 +99,101 @@ curl https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5.2",
+		"input": "What are the latest developments in AI?",
+		"plugins": []map[string]any{
+			{"id": "web"},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	// An error response has no output, so check the status before decoding
+	if resp.StatusCode != http.StatusOK {
+		panic("OpenRouter rejected the request: " + resp.Status)
+	}
+
+	var data struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		panic(err)
+	}
+
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range data.Output[i].Content {
+			if part.Type == "output_text" {
+				fmt.Println(part.Text)
+				return
+			}
+		}
+		return
+	}
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+As of **November 17, 2026**, the biggest “latest developments” in AI cluster around a few themes:
+
+## 1) New model launches + cheaper “frontier-ish” performance
+- **Microsoft** announced **six new AI models** at its Ignite conference, positioning them as specialized, lower-cost options that can rival leading models from other top labs for certain use cases—while also signaling it’s progressing toward building its own general-purpose frontier model. ([axios.com](https://www.axios.com/2026/11/17/microsoft-ai-models-openai-anthropic-ignite?utm_source=openai))  
+- **Google** has been rolling AI deeper into consumer surfaces (notably Search) with an update reported as being powered by its newest **Gemini 4 “Hydrogen”** model. ([androidcentral.com](https://www.androidcentral.com/apps-software/ai/visual-flair-googles-gemini-4-hydrogen-ai-search-a-lot-more-casual?utm_source=openai))  
+
+## 2) “Agentic AI” is moving from demos to real deployments (and real risk)
+- Research is converging on agents that can **plan multi-step workflows, use tools/APIs, retrieve information (RAG), and coordinate in multi-agent setups**—with a growing literature cataloging capabilities and open problems. ([link.springer.com](https://link.springer.com/article/10.1007/s44163-026-02342-5?utm_source=openai))  
+- Microsoft Research highlighted work on agents learning usable “skills” from **tutorial-like multimodal resources** (i.e., turning documentation/videos into executable workflows). ([microsoft.com](https://www.microsoft.com/en-us/research/articles/resource2skill-teaching-ai-agents-to-learn-skills-from-tutorials-and-other-multimodal-resources/?utm_source=openai))  
+- At the same time, agents are becoming a **policy and legal flashpoint**: California has reportedly sued OpenAI seeking court-ordered changes after what was described as a “Hugging Face hack” involving autonomous agents. ([apnews.com](https://apnews.com/article/1dd7be56134b4f09fb2fb974803edc69?utm_source=openai))  
+
+## 3) Regulation is becoming more concrete—especially around “frontier” thresholds
+- The White House published **Executive Order 14409 (June 2, 2026)** on AI innovation and security, including government processes around assessing high-end systems. ([whitehouse.gov](https://www.whitehouse.gov/wp-content/uploads/2026/06/eo-14409.pdf?utm_source=openai))  
+- A Congressional Research Service writeup summarizes that the order called for a **classified benchmarking process** to determine whether a system qualifies as a **“covered frontier model”** (with deadlines specified in mid-2026). ([everycrsreport.com](https://www.everycrsreport.com/files/2026-07-09_IF13268_27c6b7744b8ad38961f4c3c00689ce5b8fe1d63c.pdf?utm_source=openai))  
+
+## 4) Compute, chips, and infrastructure are the bottleneck—and the battlefield
+- AI’s power demand and data-center buildout are under scrutiny; reporting notes signs of a **data-center construction slowdown** alongside growing attention to energy impacts. ([axios.com](https://www.axios.com/newsletters/axios-future-of-energy-db9b4190-e1c8-11f1-9adf-df0950ba531f?utm_source=openai))  
+- On the hardware/software stack, there’s momentum toward **heterogeneous inference** (splitting workloads across CPU/GPU/NPU) and OS/runtime layers that make local inference easier. ([tomshardware.com](https://www.tomshardware.com/software/linux/cyanogen-co-founder-unveils-kora-a-linux-os-that-splits-ai-models-across-the-cpu-gpu-and-npu-snapdragon-x2-elite-and-hexagon-npu-get-full-support-first?utm_source=openai))  
+- Internationally, Huawei described “SuperCluster” concepts aimed at scaling AI compute by linking massive numbers of chips. ([livescience.com](https://www.livescience.com/technology/computing/huawei-unveils-supercluster-architecture-designed-to-make-1-million-ai-chips-work-as-a-single-computer?utm_source=openai))  
+
+## 5) Geopolitics: export controls and “AI supply chain” controls are tightening
+- U.S. policy focus continues to be on preventing **indirect access** to advanced American AI technology (chips, infrastructure, and related pathways), per recent reporting. ([apnews.com](https://apnews.com/article/60f868d3bb430b85a8657b27d421096e?utm_source=openai))  
+
+## 6) AI creation tools keep expanding (with more “control” emphasis)
+- Creator software (e.g., Adobe ecosystem announcements around Adobe Max) continues integrating AI features, alongside messaging that some users want non-AI workflows and more control over how AI is used. ([digitalcameraworld.com](https://www.digitalcameraworld.com/tech/live/the-biggest-lightroom-and-photoshop-updates-could-be-just-around-the-corner-heres-how-to-watch-adobe-maxs-biggest-announcements?utm_source=openai))  
+
+If you tell me whether you care most about **model releases**, **AI agents**, **regulation**, **hardware/NPUs**, or **enterprise adoption**, I can zoom in and list the most important recent announcements in that slice (with dates and who shipped what).
+```
 
 ## Using Multiple Plugins
 

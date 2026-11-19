@@ -24,9 +24,54 @@ Every `ori` command launches your agent with OpenRouter credentials and organiza
 
 <Tabs>
   <Tab title="macOS, Linux, WSL">
+    <CodeGroup>
+
     ```sh
     curl -fsSL https://openrouter.ai/labs/ori/install.sh | bash
     ```
+
+    ```python title="Python" lines
+    import subprocess
+    import urllib.request
+
+    # urlopen raises on a non-2xx status, so a failed download never reaches bash
+    with urllib.request.urlopen("https://openrouter.ai/labs/ori/install.sh", timeout=60) as response:
+        script = response.read().decode()
+    subprocess.run(["bash"], input=script, text=True, check=True)
+
+    ```
+
+    ```go title="Go" lines
+    package main
+
+    import (
+    	"log"
+    	"net/http"
+    	"os"
+    	"os/exec"
+    )
+
+    func main() {
+    	resp, err := http.Get("https://openrouter.ai/labs/ori/install.sh")
+    	if err != nil {
+    		log.Fatal(err)
+    	}
+    	defer resp.Body.Close()
+    	if resp.StatusCode != http.StatusOK {
+    		log.Fatalf("download failed: %s", resp.Status)
+    	}
+
+    	cmd := exec.Command("bash")
+    	cmd.Stdin = resp.Body
+    	cmd.Stdout = os.Stdout
+    	cmd.Stderr = os.Stderr
+    	if err := cmd.Run(); err != nil {
+    		log.Fatal(err)
+    	}
+    }
+    ```
+
+    </CodeGroup>
   </Tab>
 
   <Tab title="Windows PowerShell">

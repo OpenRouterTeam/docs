@@ -89,7 +89,122 @@ curl https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5.2",
+		"input": "Which models on OpenRouter can take image input and have at least 128k context?",
+		"tools": []map[string]string{
+			{"type": "openrouter:experimental__search_models"},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	// An error response has no output, so check the status before decoding
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("OpenRouter rejected the request: %s", resp.Status)
+	}
+
+	var data struct {
+		Output []struct {
+			Type    string          `json:"type"`
+			Content json.RawMessage `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Fatal(err)
+	}
+
+	for i := len(data.Output) - 1; i >= 0; i-- {
+		if data.Output[i].Type != "message" {
+			continue
+		}
+		var parts []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		}
+		if err := json.Unmarshal(data.Output[i].Content, &parts); err != nil {
+			log.Fatal(err)
+		}
+		for _, part := range parts {
+			if part.Type == "output_text" {
+				fmt.Println(part.Text)
+				break
+			}
+		}
+		break
+	}
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Models I can confirm via OpenRouter’s model registry search that accept **image input** and have **≥ 128k context** (showing model IDs):
+
+## OpenAI (GPT series)
+- `openai/gpt-4.1` (1M)
+- `openai/gpt-4.1-mini` (1M)
+- `openai/gpt-4.1-nano` (1M)
+- `openai/codex-mini` (200k)
+
+## Anthropic (Claude series)
+- `anthropic/claude-opus-5.5` (1M)
+- `anthropic/claude-sonnet-5.5` (1M)
+- `anthropic/claude-haiku-5.5` (1M)
+- `anthropic/claude-fable-5.2` (1M)
+- `anthropic/claude-fable-5.1` (1M)
+
+## Google (Gemini series)
+- `google/gemini-4-argon` (1M)
+- `google/gemini-4-carbon` (1M)
+- `google/gemini-4-hydrogen` (1M)
+- `google/gemini-omni-1.2-flash` (131072)
+- `google/gemini-omni-1.1-flash` (131072)
+
+## Meta (Llama vision)
+**Llama 3.x**
+- `meta-llama/llama-3.2-11b-vision-instruct` (131072)
+- `meta-llama/llama-3.2-90b-vision-instruct` (131072)
+
+**Llama 4.x**
+- `meta-llama/llama-4-maverick` (1M)
+- `meta-llama/llama-4-scout` (10M)
+- `deepcogito/cogito-v2-preview-llama-109b-moe` (131072)
+
+## Alibaba / Qwen
+- `qwen/qwen4-max` (1M)
+- `qwen/qwen3.8-max-prime` (1M)
+- `qwen/qwen3.8-omni-flash` (1M)
+- `prism-ml/ternary-bonsai-2-9b` (262144)
+- `prism-ml/ternary-bonsai-2-27b` (262144)
+
+## Amazon (Nova)
+...
+```
+
+This output is truncated: the list continues past the Amazon heading, and the Amazon models the search found are omitted here.
 
 ## Configuration
 
