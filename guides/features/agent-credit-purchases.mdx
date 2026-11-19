@@ -2,21 +2,23 @@
 publish: true
 title: Agent Credit Purchases
 hidden: true
-description: Let an agent buy OpenRouter credits with a USDC machine payment on Tempo
+description: Let an agent buy OpenRouter credits with a stablecoin machine payment on Tempo
 ---
 
-An agent can top up its account without a browser by paying for credits over the [Machine Payments Protocol](https://mpp.dev) (MPP), an HTTP `402` payment flow. The agent sends USDC on the Tempo network; the OpenRouter management key on the request decides which account gets the credits, and the paying wallet only supplies the funds.
+An agent can top up its account without a browser by paying for credits over the [Machine Payments Protocol](https://mpp.dev) (MPP), an HTTP `402` payment flow. The agent sends the stablecoin named in the Tempo challenge; the OpenRouter management key on the request decides which account gets the credits, and the paying wallet only supplies the funds.
 
 Buying credits needs the same permission as buying them in the dashboard, so the request must use an organization-level [management key](/guides/overview/auth/management-api-keys) with read-write access. Regular API keys, read-only management keys, and management keys scoped to a workspace can't buy credits. Reading a purchase back works with any organization-level management key of the account, including a read-only one.
 
 This endpoint is in limited availability and only works for accounts that have it enabled.
 
+Bridged USDC (USDC.e) and Open USD (OUSD) use the same MPP purchase flow, with USDC.e offered first. Discover currencies through the OpenAPI operation's `x-payment-info.offers`, then let your MPP client choose a runtime challenge by its `request.currency` contract address. The JSON body contains only `credit_amount_usd`, not a token selector. Production currently refuses OUSD selections and does not issue payable OUSD challenges. Keep the amount and key unchanged on retries; never pay another offer if an earlier payment may have gone out. The [setup guide](https://openrouter.ai/api/v1/credits/purchases/setup) covers wallet setup and recovery.
+
 ## Flow
 
 1. Call `POST /api/v1/credits/purchases` with your management key, an `Idempotency-Key` header, and the amount of credits to buy, from $10 up to a $10,000 total charge. The body is `{"credit_amount_usd": "25.00"}`: the amount is a string with at most two decimals, not a number.
-2. OpenRouter answers `402 Payment Required` with an MPP challenge in the `WWW-Authenticate: Payment ...` header. The challenge names the total to pay (credits plus the platform fee), the currency, and the deposit address.
+2. OpenRouter answers `402 Payment Required` with an MPP challenge per available currency in the `WWW-Authenticate: Payment ...` header. Choose one challenge; each names the total to pay (credits plus the platform fee), the currency, and the deposit address.
 3. Sign a transfer for that challenge with an MPP client and retry the same request, with the same `Idempotency-Key`, sending the credential in `Payment-Authorization: Payment ...`. If you send the management key as `X-Api-Key`, you can send the credential in `Authorization: Payment ...` instead.
-4. The paid request answers `202`, and the credits arrive asynchronously. A USDC purchase starts at `status: awaiting_payment` until Stripe detects the deposit, then moves to `processing` while Stripe screens it; a card purchase starts at `processing`. Poll the URL in the `Location` header, `GET /api/v1/credits/purchases/{id}`, until `status` is `credited` or `failed`.
+4. The paid request answers `202`, and the credits arrive asynchronously. A Tempo purchase starts at `status: awaiting_payment` until Stripe detects the deposit, then moves to `processing` while Stripe screens it; a card purchase starts at `processing`. Poll the URL in the `Location` header, `GET /api/v1/credits/purchases/{id}`, until `status` is `credited` or `failed`.
 
 ```bash
 curl -i https://openrouter.ai/api/v1/credits/purchases \
@@ -28,7 +30,7 @@ curl -i https://openrouter.ai/api/v1/credits/purchases \
 
 ## What a quote creates
 
-The first request, with no payment, charges nothing. It creates one Stripe payment for this purchase, with its own deposit address, and answers the `402`. The challenge expires 10 minutes after the `402`. If you haven't paid it, resend the same request with the same `Idempotency-Key` and no credential for a fresh challenge. For 24 hours, the same `Idempotency-Key` gets the same USDC deposit address. If you already sent a payment and don't know whether it went through, still recover with the same `Idempotency-Key` as the `503` steps under errors say, but don't pay any new challenge you get back. An unpaid quote is never charged, so you can leave it.
+The first request, with no payment, charges nothing. It creates one Stripe payment for this purchase, with its own deposit address, and answers the `402`. The challenge expires 10 minutes after the `402`. If you haven't paid it, resend the same request with the same `Idempotency-Key` and no credential for a fresh challenge. For 24 hours, the same body and `Idempotency-Key` get the same Tempo deposit address. Fund and pay only the token contract and network named in the challenge; do not substitute another stablecoin. If you already sent a payment and don't know whether it went through, still recover with the same `Idempotency-Key` as the `503` steps under errors say, but don't pay any new challenge you get back. An unpaid quote is never charged, so you can leave it.
 
 ## Purchase status
 
@@ -46,5 +48,5 @@ Retrying with the same `Idempotency-Key` returns the same purchase, so a retry n
 - `401`: the request has no management key, or the key is invalid. Regular API keys and cookie sessions can't buy credits this way.
 - `403`: the management key can't buy credits: it's read-only or scoped to a workspace, or the account can't buy credits with this payment method.
 - `404`: the account isn't enabled for agent credit purchases, or the purchase doesn't exist.
-- `409`: the `Idempotency-Key` was already used with a different amount, or the price changed between the `402` and the paid retry (for example, a fee waiver ended). No funds move. Start a new purchase with a new `Idempotency-Key`.
-- `503`: machine payments are temporarily unavailable, or the outcome of a paid retry is unknown. When the outcome is unknown and the purchase is known, the response names it in a `Location` header and in `error.metadata.purchase_id`. Poll that purchase before signing a new credential: `awaiting_payment` means no transfer has been seen yet. A `503` without a `Location` header names no purchase, so resend the request with the same `Idempotency-Key` instead: with the same credential if you paid by card, and with no credential if you paid with USDC. Don't pay again after a `503`, even if the resend answers `402`: the first payment may still arrive. `GET /api/v1/credits/purchases/setup` has the full recovery steps for each payment method.
+- `409`: the amount or quoted price conflicts with the purchase previously created under this `Idempotency-Key` (for example, a fee waiver ended). Currency alternatives share one Tempo quote and deposit address; a card has its own price. Do not pay another offer if an earlier transfer may have gone out; recover or poll the original purchase instead. Use a new key only for a genuinely new purchase.
+- `503`: machine payments are temporarily unavailable, or the outcome of a paid retry is unknown. When the outcome is unknown and the purchase is known, the response names it in a `Location` header and in `error.metadata.purchase_id`. Poll that purchase before signing a new credential: `awaiting_payment` means no transfer has been seen yet. A `503` without a `Location` header names no purchase, so resend the request with the same `Idempotency-Key` instead: with the same credential if you paid by card, and with no credential if you paid with Tempo. Don't pay again after a `503`, even if the resend answers `402`: the first payment may still arrive. `GET /api/v1/credits/purchases/setup` has the full recovery steps for each payment method.
