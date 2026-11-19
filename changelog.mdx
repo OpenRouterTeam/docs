@@ -16,7 +16,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="November 19, 2026" tags={["Breaking","Credits","Images","SCIM"]} rss="1 breaking change, 5 modified endpoints, 4 modified schemas.">
+<Update label="November 19, 2026" tags={["Breaking","Credits","Images","SCIM","STT"]} rss="1 breaking change, 6 modified endpoints, 5 modified schemas.">
 
 ## Breaking changes
 
@@ -30,6 +30,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 - [`PATCH /scim/group-mappings/{id}`](/api/api-reference/scim/update-a-scim-group-mapping): deprecated property_added; description updated; response schema updated
 - [`POST /scim/sync-jobs`](/api/api-reference/scim/start-a-scim-directory-sync): deprecated property_added; description updated; response schema updated
 - [`POST /credits/purchases`](/api/api-reference/credits/buy-credits-with-a-machine-payment): extension `x-payment-info` added; description updated
+- [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription): request schema updated
 
 ## Modified schemas
 
@@ -41,6 +42,8 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
 - `UpdateWorkspaceRequest`: description updated; example modified
   - Used by [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+- `STTRequest`: new property `prompt`
+  - Used by [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
 
 </Update>
 
