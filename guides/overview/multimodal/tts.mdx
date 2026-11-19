@@ -26,12 +26,61 @@ OpenRouter supports text-to-speech (TTS) via a dedicated `/api/v1/audio/speech` 
 
 You can find TTS models in several ways:
 
-### Via the API
+### Via the Speech Models API
 
-Use the `output_modalities` query parameter on the [Models API](/api/api-reference/models/list-all-models-and-their-properties) to discover TTS models:
+The dedicated speech models endpoint lists the public speech catalog with the parameters each model accepts. It leaves out private models and BYOK-only endpoints, so a model missing here can still be available to your account:
 
 ```bash lines
-# List only TTS models
+curl "https://openrouter.ai/api/v1/audio/speech/models"
+```
+
+To read a single model, request it by author and slug:
+
+```bash lines
+curl "https://openrouter.ai/api/v1/audio/speech/models/elevenlabs/eleven-v3"
+```
+
+Each model carries its inputs and its speech output parameters, merged across every endpoint that serves it, plus an `endpoints` array with each endpoint's own values. This example leaves out `voice`; the table below shows its shape:
+
+```json lines
+{
+  "id": "elevenlabs/eleven-v3",
+  "name": "ElevenLabs: Eleven v3",
+  "input_modalities": [{ "type": "text" }],
+  "output_modalities": [
+    {
+      "type": "speech",
+      "supported_parameters": {
+        "response_format": { "type": "enum", "values": ["mp3", "pcm"] },
+        "speed": { "type": "range", "min": 0.7, "max": 1.2 }
+      }
+    }
+  ],
+  "endpoints": [
+    {
+      "provider_name": "ElevenLabs",
+      "provider_slug": "elevenlabs",
+      "input_modalities": [{ "type": "text" }],
+      "output_modalities": [{ "type": "speech", "supported_parameters": { "...": "..." } }]
+    }
+  ]
+}
+```
+
+| Parameter | Description |
+|---|---|
+| `voice` | `enum` lists the voice IDs published for the model, for example `{ "type": "enum", "values": ["george", "sarah", "adam"] }`. A provider can also accept custom or cloned voices that aren't listed. `unknown` means no voice list is published, so check the provider's documentation for valid IDs. |
+| `response_format` | Output audio formats the model can return. |
+| `speed` | Published playback speed range. When `speed` is missing, no range is published, which doesn't always mean the model ignores `speed`. |
+| `instructions` | Present when the model accepts free-text delivery instructions. |
+
+Endpoint values can be narrower than the model's merged values, and `endpoints` shows what each provider supports. To limit a request to providers that support your voice and format, set `provider.only` or exclude others with `provider.ignore`. `provider.order` only sets a preference, so fallback can still route to another provider.
+
+### Via the Models API
+
+Use the `output_modalities` query parameter on the [Models API](/api/api-reference/models/list-all-models-and-their-properties) to include TTS models in the general catalog:
+
+```bash lines
 curl "https://openrouter.ai/api/v1/models?output_modalities=speech"
 ```
 
@@ -45,7 +94,7 @@ Send a `POST` request to `/api/v1/audio/speech` with the text you want to synthe
 
 ### Basic Example
 
-These examples use Voxtral Mini TTS with its `en_paul_neutral` voice. When choosing another model, check both its `endpoints` and `supported_voices` in the [speech catalog](https://openrouter.ai/api/v1/models?output_modalities=speech); voice identifiers are model-specific.
+These examples use Voxtral Mini TTS with its `en_paul_neutral` voice. When choosing another model, check its `voice` parameter in the [speech models API](https://openrouter.ai/api/v1/audio/speech/models); voice identifiers are model-specific.
 
 <CodeGroup>
 
@@ -179,7 +228,7 @@ curl https://openrouter.ai/api/v1/audio/speech \
 | `response_format` | string | No | Audio output format: `mp3` or `pcm`. Defaults to `pcm`. HeyGen Voice and Gemini TTS only return `pcm` and return a 400 for `mp3`. MiniMax returns `pcm` only after the whole clip is synthesized, while its `mp3` streams; MiniMax `pcm` clips longer than about 2.5 minutes return a 502, so use `mp3` or shorter inputs for long clips |
 | `speed` | number | No | Playback speed multiplier. Honored by models that support it (e.g., OpenAI TTS). Other providers either ignore it or return a 400 for a non-default value when the model has no speed control. Defaults to `1.0` |
 | `input_references` | array | No | Reference content for stateless voice cloning or voice design: one to three `input_audio` parts (each optionally paired with a `text` transcript), optionally plus one `image_url` scene image on providers that support it, or exactly one `image_url` part on its own. See [Voice Cloning](#voice-cloning) below |
-| `provider` | object | No | Data policy routing preferences (`zdr`, `data_collection`) and provider-specific passthrough options under `provider.options`. With `zdr: true`, the request only routes to [Zero Data Retention](/guides/features/zdr) endpoints. Other routing preferences (`order`, `only`, `ignore`) are not applied to speech requests |
+| `provider` | object | No | Provider routing preferences (`order`, `only`, `ignore`, `allow_fallbacks`), data policy routing preferences (`zdr`, `data_collection`), and provider-specific passthrough options under `provider.options`. With `zdr: true`, the request only routes to [Zero Data Retention](/guides/features/zdr) endpoints |
 
 When `voice` is omitted, OpenRouter only forwards the request to providers whose adapter supports a provider-side default voice. For other providers, the request is rejected with a validation error.
 
@@ -352,7 +401,7 @@ Seed Audio 1.0 takes no provider options; every field it reads is derived from t
 
 #### Azure (MAI-Voice)
 
-Azure serves `microsoft/mai-voice-2`, `microsoft/mai-voice-2.1`, and `microsoft/mai-voice-2.1-flash`. Azure TTS uses SSML internally, but this is fully abstracted, so you only need the standard parameters. The `voice` parameter takes a full Azure voice ID with the model suffix (`:MAI-Voice-2`, `:MAI-Voice-2.1`, or `:MAI-Voice-2.1-Flash`, e.g., `en-US-Harper:MAI-Voice-2.1`), and the voice's locale sets the synthesis language. Set `response_format` to `mp3` or `pcm` (24 kHz mono). The full list of voices for each model is in the `supported_voices` field of the [models API](https://openrouter.ai/api/v1/models?output_modalities=speech).
+Azure serves `microsoft/mai-voice-2`, `microsoft/mai-voice-2.1`, and `microsoft/mai-voice-2.1-flash`. Azure TTS uses SSML internally, but this is fully abstracted, so you only need the standard parameters. The `voice` parameter takes a full Azure voice ID with the model suffix (`:MAI-Voice-2`, `:MAI-Voice-2.1`, or `:MAI-Voice-2.1-Flash`, e.g., `en-US-Harper:MAI-Voice-2.1`), and the voice's locale sets the synthesis language. Set `response_format` to `mp3` or `pcm` (24 kHz mono). The full list of voices for each model is in its `voice` parameter in the speech models API, at `/api/v1/audio/speech/models/{author}/{slug}` for the model you use, for example [`microsoft/mai-voice-2.1`](https://openrouter.ai/api/v1/audio/speech/models/microsoft/mai-voice-2.1).
 
 ```json lines
 {
@@ -369,7 +418,7 @@ Fish Audio models take delivery directions in square brackets inside the text, f
 
 #### HeyGen Voice
 
-HeyGen serves `heygen/heygen-voice-1`, `heygen/heygen-voice-1-turbo`, and `heygen/heygen-voice-1-turbo:free`. Audio is `pcm` only (44.1 kHz mono), with no speed control: `response_format: "mp3"` or a `speed` other than `1` returns a 400. `input` is limited to 10,000 characters. The default voices for each model are in the `supported_voices` field of the [models API](https://openrouter.ai/api/v1/models?output_modalities=speech).
+HeyGen serves `heygen/heygen-voice-1`, `heygen/heygen-voice-1-turbo`, and `heygen/heygen-voice-1-turbo:free`. Audio is `pcm` only (44.1 kHz mono), with no speed control: `response_format: "mp3"` or a `speed` other than `1` returns a 400. `input` is limited to 10,000 characters. The voices for each model are in its `voice` parameter in the speech models API, at `/api/v1/audio/speech/models/{author}/{slug}` for the model you use, for example [`heygen/heygen-voice-1`](https://openrouter.ai/api/v1/audio/speech/models/heygen/heygen-voice-1).
 
 HeyGen Voice models perform audio tags with the default voices and with cloned voices: a tag from HeyGen's list, in square brackets inside `input`, that changes how the following text is spoken (`[sad]`, `[whispers]`, `[slowly]`) or adds a sound at that spot (`[laughs]`, `[sighs]`). OpenRouter sends `input` to HeyGen unchanged, so tags need no extra parameter. The `instructions` parameter has no effect on HeyGen Voice; use tags instead.
 
