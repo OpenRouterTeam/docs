@@ -45,6 +45,8 @@ Your existing OpenRouter client, system prompt, and retrieval are reused, but th
 
 The `draftAnswer` flow sends a Responses request with the system prompt as `instructions` and an `input` that includes the help center excerpts formatted as numbered `[i]` entries, followed by the customer question. It awaits the response and throws if the response is a stream or did not complete, since Jev needs the complete answer text in step 2. Otherwise it extracts the `output_text` part of the `message` item in `result.output` and verifies it's a string. Hold on to the same `excerpts` array, because Jev reads it in step 2.
 
+<CodeGroup>
+
 ```typescript lines
 import { OpenRouter } from '@openrouter/sdk';
 
@@ -78,6 +80,198 @@ async function draftAnswer(model: string, question: string, excerpts: string[]):
   }
   return content;
 }
+
+const excerpts = [
+  'Northwind orders ship within 2 business days of purchase.',
+  'Returns are accepted within 30 days of delivery for a full refund.',
+];
+const question = 'How long do I have to return an order?';
+
+const draft = await draftAnswer(DRAFT_MODEL, question, excerpts);
+console.log(draft);
+
+```
+
+```python title="Python" lines
+import os
+from openrouter import OpenRouter
+
+openrouter = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+DRAFT_MODEL = "~openai/gpt-luna-latest"
+ESCALATION_MODEL = "~openai/gpt-astra-latest"
+
+SYSTEM_PROMPT = (
+    "You are the support assistant for Northwind. Answer only from the help center excerpts provided. "
+    "If they do not cover the question, say so and offer to connect the customer with support."
+)
+
+
+def draft_answer(model: str, question: str, excerpts: list[str]) -> str:
+    numbered = "\n".join(f"[{i + 1}] {text}" for i, text in enumerate(excerpts))
+    result = openrouter.responses.send(
+        model=model,
+        instructions=SYSTEM_PROMPT,
+        input=f"Help center excerpts:\n{numbered}\n\nCustomer question: {question}",
+        stream=False,
+    )
+    if not hasattr(result, "output"):
+        raise RuntimeError("Expected a non-streaming response")
+    if result.status != "completed":
+        error = getattr(result, "error", None)
+        raise RuntimeError(error.message if error else f"Draft response ended as {result.status}")
+    message = next((item for item in result.output if getattr(item, "type", None) == "message"), None)
+    part = next((p for p in (message.content if message else []) if getattr(p, "type", None) == "output_text"), None)
+    content = getattr(part, "text", None)
+    if not isinstance(content, str):
+        raise RuntimeError("Expected text content")
+    return content
+
+
+excerpts = [
+    "Northwind orders ship within 2 business days of purchase.",
+    "Returns are accepted within 30 days of delivery for a full refund.",
+]
+question = "How long do I have to return an order?"
+
+draft = draft_answer(DRAFT_MODEL, question, excerpts)
+print(draft)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+const (
+	DRAFT_MODEL      = "~openai/gpt-luna-latest"
+	ESCALATION_MODEL = "~openai/gpt-astra-latest"
+)
+
+const SYSTEM_PROMPT = "You are the support assistant for Northwind. Answer only from the help center excerpts provided. If they do not cover the question, say so and offer to connect the customer with support."
+
+type responsesResult struct {
+	Status string `json:"status"`
+	Error  *struct {
+		Message string `json:"message"`
+	} `json:"error"`
+	Output []struct {
+		Type    string `json:"type"`
+		Content []struct {
+			Type string  `json:"type"`
+			Text *string `json:"text"`
+		} `json:"content"`
+	} `json:"output"`
+}
+
+func draftAnswer(model, question string, excerpts []string) (string, error) {
+	lines := make([]string, len(excerpts))
+	for i, text := range excerpts {
+		lines[i] = fmt.Sprintf("[%d] %s", i+1, text)
+	}
+	body, _ := json.Marshal(map[string]any{
+		"model":        model,
+		"instructions": SYSTEM_PROMPT,
+		"input":        fmt.Sprintf("Help center excerpts:\n%s\n\nCustomer question: %s", strings.Join(lines, "\n"), question),
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var result responsesResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	if result.Status != "completed" {
+		if result.Error != nil {
+			return "", fmt.Errorf("%s", result.Error.Message)
+		}
+		return "", fmt.Errorf("Draft response ended as %s (HTTP %d)", result.Status, resp.StatusCode)
+	}
+	for _, item := range result.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, part := range item.Content {
+			if part.Type == "output_text" && part.Text != nil {
+				return *part.Text, nil
+			}
+		}
+		break
+	}
+	return "", fmt.Errorf("Expected text content")
+}
+
+func main() {
+	excerpts := []string{
+		"Northwind orders ship within 2 business days of purchase.",
+		"Returns are accepted within 30 days of delivery for a full refund.",
+	}
+	question := "How long do I have to return an order?"
+
+	draft, err := draftAnswer(DRAFT_MODEL, question, excerpts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(draft)
+}
+
+```
+
+```bash title="cURL" lines
+#!/bin/bash
+DRAFT_MODEL='~openai/gpt-luna-latest'
+ESCALATION_MODEL='~openai/gpt-astra-latest'
+
+SYSTEM_PROMPT='You are the support assistant for Northwind. Answer only from the help center excerpts provided. If they do not cover the question, say so and offer to connect the customer with support.'
+
+# draft_answer MODEL QUESTION EXCERPTS_JSON prints the model's answer.
+draft_answer() {
+  local model=$1 question=$2 excerpts=$3 input response
+  input=$(jq -rn --argjson excerpts "$excerpts" --arg question "$question" \
+    '"Help center excerpts:\n" + ($excerpts | to_entries | map("[\(.key + 1)] \(.value)") | join("\n"))
+      + "\n\nCustomer question: " + $question') || return 1
+
+  response=$(curl -s --max-time 60 https://openrouter.ai/api/v1/responses \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n --arg model "$model" --arg instructions "$SYSTEM_PROMPT" --arg input "$input" \
+      '{model: $model, instructions: $instructions, input: $input}')") || return 1
+
+  if [ "$(echo "$response" | jq -r '.status')" != "completed" ]; then
+    echo "$response" | jq -r '.error.message // "Draft response ended as \(.status)"' >&2
+    return 1
+  fi
+
+  echo "$response" | jq -er 'first(.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text)'
+}
+
+EXCERPTS='["Northwind orders ship within 2 business days of purchase.","Returns are accepted within 30 days of delivery for a full refund."]'
+QUESTION='How long do I have to return an order?'
+
+DRAFT=$(draft_answer "$DRAFT_MODEL" "$QUESTION" "$EXCERPTS") || exit 1
+echo "$DRAFT"
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+You can return an order within 30 days of delivery for a full refund.
 ```
 
 <Warning>
@@ -89,6 +283,8 @@ Every tier is paid. The cost per question is your cheap draft plus one Jev check
 The state object has three fields: `help_center_excerpts`, `customer_question`, and `assistant_answer`. The one choice question has three labels. `supported` means the draft addresses the question and every fact, number, and policy in it appears in the excerpts. `unsupported` means the draft states something the excerpts don't contain or contradict, or answers a different question. `declined` means the draft says the excerpts don't cover the question and adds no facts of its own.
 
 The Decisions API is at `https://openrouter.ai/api/alpha/decisions`, outside the `/api/v1` prefix the Responses client uses. Use a separate OpenRouter instance with `serverURL` set to `https://openrouter.ai`, since the default SDK base URL doesn't work for this path. `verifyAnswer` returns a verdict: the chosen label, a confidence number, and an object with a probability per label.
+
+<CodeGroup>
 
 ```typescript lines
 const decisions = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY, serverURL: 'https://openrouter.ai' });
@@ -129,6 +325,177 @@ async function verifyAnswer(question: string, excerpts: string[], answer: string
 }
 ```
 
+```python title="Python" lines
+import os
+import requests
+
+
+def verify_answer(question, excerpts, answer):
+    response = requests.post(
+        "https://openrouter.ai/api/alpha/decisions",
+        headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+        timeout=60,
+        json={
+            "model": "typesafe/jev-1.13",
+            "state": {"help_center_excerpts": excerpts, "customer_question": question, "assistant_answer": answer},
+            "questions": {
+                "support": {
+                    "type": "choice",
+                    "instructions": "Compare assistant_answer against help_center_excerpts. Which one describes it?",
+                    "criteria": {
+                        "supported": "The answer addresses customer_question, and every fact, number, and policy in it is stated in the excerpts.",
+                        "unsupported": "The answer states at least one fact, number, or policy that the excerpts do not contain or that contradicts them, or it answers a different question than customer_question.",
+                        "declined": "The answer says the excerpts do not cover the question and does not assert facts of its own.",
+                    },
+                },
+            },
+        },
+    )
+    response.raise_for_status()
+    verdict = response.json()["answers"]["support"]
+    if verdict.get("type") != "choice" or verdict.get("choice") not in ("supported", "unsupported", "declined"):
+        raise RuntimeError("Expected a choice answer with a known label")
+    return {
+        "choice": verdict["choice"],
+        "confidence": verdict.get("confidence") or 0,
+        "probabilities": verdict.get("probabilities") or {},
+    }
+
+
+excerpts = [
+    "Northwind orders ship within 2 business days of purchase.",
+    "Returns are accepted within 30 days of delivery for a full refund.",
+]
+question = "How long do I have to return an order?"
+draft = "You can return an order within 30 days of delivery for a full refund."
+
+print(verify_answer(question, excerpts, draft))
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+type Verdict struct {
+	Choice        string             `json:"choice"`
+	Confidence    float64            `json:"confidence"`
+	Probabilities map[string]float64 `json:"probabilities"`
+}
+
+func verifyAnswer(question string, excerpts []string, answer string) (Verdict, error) {
+	body, _ := json.Marshal(map[string]any{
+		"model": "typesafe/jev-1.13",
+		"state": map[string]any{"help_center_excerpts": excerpts, "customer_question": question, "assistant_answer": answer},
+		"questions": map[string]any{
+			"support": map[string]any{
+				"type":         "choice",
+				"instructions": "Compare assistant_answer against help_center_excerpts. Which one describes it?",
+				"criteria": map[string]string{
+					"supported":   "The answer addresses customer_question, and every fact, number, and policy in it is stated in the excerpts.",
+					"unsupported": "The answer states at least one fact, number, or policy that the excerpts do not contain or that contradicts them, or it answers a different question than customer_question.",
+					"declined":    "The answer says the excerpts do not cover the question and does not assert facts of its own.",
+				},
+			},
+		},
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/alpha/decisions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return Verdict{}, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Answers map[string]struct {
+			Type string `json:"type"`
+			Verdict
+		} `json:"answers"`
+		Error *struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return Verdict{}, err
+	}
+	if result.Error != nil {
+		return Verdict{}, fmt.Errorf("%s", result.Error.Message)
+	}
+	v, ok := result.Answers["support"]
+	if !ok || v.Type != "choice" || (v.Choice != "supported" && v.Choice != "unsupported" && v.Choice != "declined") {
+		return Verdict{}, fmt.Errorf("Expected a choice answer with a known label (HTTP %d)", resp.StatusCode)
+	}
+	if v.Probabilities == nil {
+		v.Probabilities = map[string]float64{}
+	}
+	return v.Verdict, nil
+}
+
+func main() {
+	excerpts := []string{
+		"Northwind orders ship within 2 business days of purchase.",
+		"Returns are accepted within 30 days of delivery for a full refund.",
+	}
+	question := "How long do I have to return an order?"
+	draft := "You can return an order within 30 days of delivery for a full refund."
+
+	verdict, err := verifyAnswer(question, excerpts, draft)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s (confidence %.2f) %v\n", verdict.Choice, verdict.Confidence, verdict.Probabilities)
+}
+
+```
+
+```bash title="cURL" lines
+# verify_answer QUESTION EXCERPTS_JSON ANSWER prints the verdict as one line of JSON.
+verify_answer() {
+  local question=$1 excerpts=$2 answer=$3 response
+  response=$(curl -s --max-time 60 https://openrouter.ai/api/alpha/decisions \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n --argjson excerpts "$excerpts" --arg question "$question" --arg answer "$answer" '{
+      model: "typesafe/jev-1.13",
+      state: {help_center_excerpts: $excerpts, customer_question: $question, assistant_answer: $answer},
+      questions: {
+        support: {
+          type: "choice",
+          instructions: "Compare assistant_answer against help_center_excerpts. Which one describes it?",
+          criteria: {
+            supported: "The answer addresses customer_question, and every fact, number, and policy in it is stated in the excerpts.",
+            unsupported: "The answer states at least one fact, number, or policy that the excerpts do not contain or that contradicts them, or it answers a different question than customer_question.",
+            declined: "The answer says the excerpts do not cover the question and does not assert facts of its own."
+          }
+        }
+      }
+    }')") || return 1
+
+  echo "$response" | jq -ec '.answers.support
+    | select(.type == "choice" and (.choice | IN("supported", "unsupported", "declined")))
+    | {choice, confidence: (.confidence // 0), probabilities: (.probabilities // {})}' \
+    || { echo "Expected a choice answer with a known label: $response" >&2; return 1; }
+}
+
+verify_answer "$QUESTION" "$EXCERPTS" "$DRAFT" || exit 1
+```
+
+</CodeGroup>
+
+```text title="Output"
+{'choice': 'supported', 'confidence': 1, 'probabilities': {'supported': 1, 'unsupported': 0, 'declined': 0}}
+```
+
 <Info>
 **Confidence.** Confidence is Jev's probability that the chosen label is correct. It ranges from 0 to 1 and appears only with `choice` and `score` answers. `probabilities` has one value per label. The [Decisions schema](/api/api-reference/alphadecisions/submit-a-decisions-request) marks both optional, so the code above defaults a missing confidence to `0`, which fails acceptance in step 3, and a missing probabilities object to `{}`.
 </Info>
@@ -140,6 +507,8 @@ The acceptance threshold is `ACCEPT_CONFIDENCE = 0.8`. The `CascadeResult` objec
 `answerWithCascade` loops over `[DRAFT_MODEL, ESCALATION_MODEL]`. Each iteration runs `draftAnswer` then `verifyAnswer` and appends the verdict. Send if the verdict is `supported` and confidence is at or above `ACCEPT_CONFIDENCE`: `route` is `send`, `model` is the current tier, and `verdicts` has one entry from the draft tier. Hand off immediately if the verdict is `declined`: `route` is `handoff`, there's no frontier call, and `answer` keeps the draft's wording for human reuse. Any other verdict gets one escalation. If the frontier answer fails too, `route` is `handoff` with the frontier model, its rejected answer, and both verdicts.
 
 Call `answerWithCascade` where your app currently calls the model. On `send`, reply with `answer`. On `handoff`, create a ticket or queue item and attach `answer` and `verdicts` for human handling.
+
+<CodeGroup>
 
 ```typescript lines
 const ACCEPT_CONFIDENCE = 0.8;
@@ -169,6 +538,84 @@ async function answerWithCascade(question: string, excerpts: string[]): Promise<
 }
 ```
 
+```python title="Python" lines
+ACCEPT_CONFIDENCE = 0.8
+
+
+def answer_with_cascade(question: str, excerpts: list[str]) -> dict:
+    verdicts = []
+    answer = ""
+    for model in [DRAFT_MODEL, ESCALATION_MODEL]:
+        answer = draft_answer(model, question, excerpts)
+        verdict = verify_answer(question, excerpts, answer)
+        verdicts.append(verdict)
+        if verdict["choice"] == "supported" and verdict["confidence"] >= ACCEPT_CONFIDENCE:
+            return {"route": "send", "model": model, "answer": answer, "verdicts": verdicts}
+        if verdict["choice"] == "declined":
+            return {"route": "handoff", "model": model, "answer": answer, "verdicts": verdicts}
+    return {"route": "handoff", "model": ESCALATION_MODEL, "answer": answer, "verdicts": verdicts}
+
+```
+
+```go title="Go" lines
+const acceptConfidence = 0.8
+
+type CascadeResult struct {
+	Route    string    `json:"route"`
+	Model    string    `json:"model"`
+	Answer   string    `json:"answer"`
+	Verdicts []Verdict `json:"verdicts"`
+}
+
+func answerWithCascade(question string, excerpts []string) (CascadeResult, error) {
+	var verdicts []Verdict
+	answer := ""
+	for _, model := range []string{draftModel, escalationModel} {
+		var err error
+		answer, err = draftAnswer(model, question, excerpts)
+		if err != nil {
+			return CascadeResult{}, err
+		}
+		verdict, err := verifyAnswer(question, excerpts, answer)
+		if err != nil {
+			return CascadeResult{}, err
+		}
+		verdicts = append(verdicts, verdict)
+		if verdict.Choice == "supported" && verdict.Confidence >= acceptConfidence {
+			return CascadeResult{"send", model, answer, verdicts}, nil
+		}
+		if verdict.Choice == "declined" {
+			return CascadeResult{"handoff", model, answer, verdicts}, nil
+		}
+	}
+	return CascadeResult{"handoff", escalationModel, answer, verdicts}, nil
+}
+```
+
+```bash title="cURL" lines
+ACCEPT_CONFIDENCE=0.8
+
+answer_with_cascade() {
+  local question=$1 excerpts=$2 verdicts='[]' answer='' model verdict route
+  for model in "$DRAFT_MODEL" "$ESCALATION_MODEL"; do
+    answer=$(draft_answer "$model" "$question" "$excerpts") || return 1
+    verdict=$(verify_answer "$question" "$excerpts" "$answer") || return 1
+    verdicts=$(jq -c --argjson v "$verdict" '. + [$v]' <<<"$verdicts")
+    route=$(jq -r --argjson min "$ACCEPT_CONFIDENCE" 'if .choice == "supported" and .confidence >= $min then "send"
+      elif .choice == "declined" then "handoff" else "" end' <<<"$verdict")
+    if [ -n "$route" ]; then
+      jq -n --arg route "$route" --arg model "$model" --arg answer "$answer" --argjson verdicts "$verdicts" \
+        '{route: $route, model: $model, answer: $answer, verdicts: $verdicts}'
+      return
+    fi
+  done
+  jq -n --arg model "$ESCALATION_MODEL" --arg answer "$answer" --argjson verdicts "$verdicts" \
+    '{route: "handoff", model: $model, answer: $answer, verdicts: $verdicts}'
+}
+```
+
+</CodeGroup>
+
 ## 4. Log verdicts and tune the threshold (optional)
 
 You'll probably want to log `route`, `model`, and `verdicts`. You can use this to set the `ACCEPT_CONFIDENCE` threshold from your own traffic. Start with `0.8` and review the handoff queue for a week. If any wrong `supported` answers got shipped, raise the threshold to `0.9`. If the handoff queue is mostly correct answers, you can lower it to `0.7`. TypeSafe's [confidence guide](https://docs.typesafe.ai/confidence) explains how the probability distribution collapses into this number.
@@ -176,6 +623,8 @@ You'll probably want to log `route`, `model`, and `verdicts`. You can use this t
 ## Worked example
 
 **Captured output.** The retrieved context for these runs is three excerpts: one on Free and Team workspace member and project limits, one on billing and downgrades, and one on data export. The code above ran unchanged. `question` is added to each result for readability.
+
+<CodeGroup>
 
 ```typescript lines
 const excerpts = [
@@ -185,7 +634,50 @@ const excerpts = [
 ];
 
 const result = await answerWithCascade('How many people can I add on the free plan?', excerpts);
+console.log(JSON.stringify(result, null, 2));
 ```
+
+```python title="Python" lines
+import json
+
+excerpts = [
+    "Plan limits: Free workspaces have up to 5 members and 3 projects. Team workspaces ($8 per member per month, billed annually) have unlimited projects and up to 250 members.",
+    "Billing: Team plans are billed annually. Downgrading to Free takes effect at the end of the current billing period. We do not issue prorated refunds for unused time.",
+    "Data export: Workspace owners can export all projects as CSV or JSON from Settings > Data. Exports include tasks, comments, and attachment metadata but not attachment files.",
+]
+
+result = answer_with_cascade("How many people can I add on the free plan?", excerpts)
+print(json.dumps(result, indent=2))
+
+```
+
+```go title="Go" lines
+excerpts := []string{
+	"Plan limits: Free workspaces have up to 5 members and 3 projects. Team workspaces ($8 per member per month, billed annually) have unlimited projects and up to 250 members.",
+	"Billing: Team plans are billed annually. Downgrading to Free takes effect at the end of the current billing period. We do not issue prorated refunds for unused time.",
+	"Data export: Workspace owners can export all projects as CSV or JSON from Settings > Data. Exports include tasks, comments, and attachment metadata but not attachment files.",
+}
+
+result, err := answerWithCascade("How many people can I add on the free plan?", excerpts)
+if err != nil {
+	log.Fatal(err)
+}
+out, _ := json.MarshalIndent(result, "", "  ")
+fmt.Println(string(out))
+```
+
+```bash title="cURL" lines
+excerpts=$(jq -nc '[
+  "Plan limits: Free workspaces have up to 5 members and 3 projects. Team workspaces ($8 per member per month, billed annually) have unlimited projects and up to 250 members.",
+  "Billing: Team plans are billed annually. Downgrading to Free takes effect at the end of the current billing period. We do not issue prorated refunds for unused time.",
+  "Data export: Workspace owners can export all projects as CSV or JSON from Settings > Data. Exports include tasks, comments, and attachment metadata but not attachment files."
+]')
+
+result=$(answer_with_cascade 'How many people can I add on the free plan?' "$excerpts") || exit 1
+jq . <<<"$result"
+```
+
+</CodeGroup>
 
 The free-plan question is answerable from the excerpts. The system sends from `DRAFT_MODEL` with a `supported` verdict at confidence 1.
 

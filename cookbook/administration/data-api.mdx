@@ -180,7 +180,56 @@ const payload = (await res.json()) as {
 };
 console.log(payload.meta.as_of, payload.data.length, "rows");
 ```
+
+```go title="Go" lines
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	req, _ := http.NewRequest("GET", "https://openrouter.ai/api/v1/datasets/rankings-daily?start_date=2026-04-01&end_date=2026-04-30", nil)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		log.Fatalf("Data API request failed: %d", res.StatusCode)
+	}
+
+	var payload struct {
+		Data []struct {
+			Date           string `json:"date"`
+			ModelPermaslug string `json:"model_permaslug"`
+			TotalTokens    string `json:"total_tokens"`
+		} `json:"data"`
+		Meta struct {
+			AsOf      string `json:"as_of"`
+			Version   string `json:"version"`
+			StartDate string `json:"start_date"`
+			EndDate   string `json:"end_date"`
+		} `json:"meta"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(payload.Meta.AsOf, len(payload.Data), "rows")
+}
+
+```
 </CodeGroup>
+
+```text title="Output"
+2026-11-17T20:38:48.892Z 1530 rows
+```
 
 ### Acceptable use and attribution
 
@@ -312,7 +361,69 @@ for (const app of payload.data) {
   console.log(`#${app.rank} ${app.app_name} — ${app.total_tokens} tokens`);
 }
 ```
+
+```go title="Go" lines
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	req, _ := http.NewRequest("GET", "https://openrouter.ai/api/v1/datasets/app-rankings?sort=popular&category=coding&limit=10", nil)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		log.Fatalf("App rankings request failed: %d", res.StatusCode)
+	}
+
+	var payload struct {
+		Data []struct {
+			Rank          int    `json:"rank"`
+			AppID         int    `json:"app_id"`
+			AppName       string `json:"app_name"`
+			TotalTokens   string `json:"total_tokens"`
+			TotalRequests int    `json:"total_requests"`
+		} `json:"data"`
+		Meta struct {
+			AsOf      string `json:"as_of"`
+			Version   string `json:"version"`
+			StartDate string `json:"start_date"`
+			EndDate   string `json:"end_date"`
+		} `json:"meta"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		log.Fatal(err)
+	}
+	for _, app := range payload.Data {
+		fmt.Printf("#%d %s — %s tokens\n", app.Rank, app.AppName, app.TotalTokens)
+	}
+}
+
+```
 </CodeGroup>
+
+```text title="Output"
+#1 Hermes Agent — 54128724839691 tokens
+#2 Claude Code — 46722523683251 tokens
+#3 Kilo Code — 24845200990183 tokens
+#4 pi — 18952365340144 tokens
+#5 Codex — 14081655814557 tokens
+#6 OpenClaw — 13600021255229 tokens
+#7 omp — 10519171266461 tokens
+#8 Strix — 8181550676929 tokens
+#9 Portkey AI — 5668956802551 tokens
+#10 Cline — 4131522931374 tokens
+```
 
 ## Benchmarks
 
@@ -526,6 +637,7 @@ curl -G https://openrouter.ai/api/v1/benchmarks \
 
 ```python title="Python" lines
 import os
+import json
 import requests
 
 # Get the top models on the Artificial Analysis Legal Index
@@ -536,8 +648,13 @@ resp = requests.get(
     timeout=30,
 )
 resp.raise_for_status()
-for model in resp.json()["data"]:
+payload = resp.json()
+print(f"{len(payload['data'])} models returned")
+if not payload["data"]:
+    print(json.dumps(payload, indent=2))
+for model in payload["data"]:
     print(f"{model['display_name']}: legal={model['legal_index']}")
+
 ```
 
 ```typescript title="TypeScript" lines
@@ -552,11 +669,84 @@ const res = await fetch(
 if (!res.ok) throw new Error(`Benchmarks request failed: ${res.status}`);
 
 const payload = await res.json();
+console.log(`${payload.data.length} models returned`);
+if (payload.data.length === 0) {
+  console.log(JSON.stringify(payload, null, 2));
+}
 for (const model of payload.data) {
   console.log(`${model.display_name}: legal=${model.legal_index}`);
 }
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	req, _ := http.NewRequest("GET", "https://openrouter.ai/api/v1/benchmarks?source=artificial-analysis&task_type=legal&max_results=10", nil)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		log.Fatalf("Benchmarks request failed: %d", res.StatusCode)
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var payload struct {
+		Data []struct {
+			DisplayName string          `json:"display_name"`
+			LegalIndex  json.RawMessage `json:"legal_index"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%d models returned\n", len(payload.Data))
+	if len(payload.Data) == 0 {
+		var pretty bytes.Buffer
+		json.Indent(&pretty, body, "", "  ")
+		fmt.Println(pretty.String())
+	}
+	for _, model := range payload.Data {
+		fmt.Printf("%s: legal=%s\n", model.DisplayName, model.LegalIndex)
+	}
+}
+
 ```
 </CodeGroup>
+
+```text title="Output"
+0 models returned
+{
+  "data": [],
+  "meta": {
+    "as_of": "2026-11-17T20:40:00.349Z",
+    "version": "v1",
+    "source": "artificial-analysis",
+    "source_url": "https://artificialanalysis.ai",
+    "citation": "Source: Artificial Analysis (artificialanalysis.ai) via OpenRouter (openrouter.ai/rankings).",
+    "model_count": 0,
+    "task_type": "legal"
+  }
+}
+```
 
 
 ## Task Classifications
@@ -741,7 +931,76 @@ for (const cls of data.classifications.slice(0, 5)) {
   console.log(`${cls.display_name}: ${(cls.usage_share * 100).toFixed(1)}% requests (top model: ${topModel})`);
 }
 ```
+
+```go title="Go" lines
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	req, _ := http.NewRequest("GET", "https://openrouter.ai/api/v1/classifications/task?window=7d", nil)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		log.Fatalf("Classifications request failed: %d", res.StatusCode)
+	}
+
+	var payload struct {
+		Data struct {
+			WindowDays      int    `json:"window_days"`
+			AsOf            string `json:"as_of"`
+			Classifications []struct {
+				Tag           string  `json:"tag"`
+				DisplayName   string  `json:"display_name"`
+				MacroCategory string  `json:"macro_category"`
+				UsageShare    float64 `json:"usage_share"`
+				TokenShare    float64 `json:"token_share"`
+				Models        []struct {
+					ID            string  `json:"id"`
+					TagUsageShare float64 `json:"tag_usage_share"`
+					TagTokenShare float64 `json:"tag_token_share"`
+				} `json:"models"`
+			} `json:"classifications"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		log.Fatal(err)
+	}
+
+	classes := payload.Data.Classifications
+	if len(classes) > 5 {
+		classes = classes[:5]
+	}
+	for _, cls := range classes {
+		topModel := "n/a"
+		if len(cls.Models) > 0 {
+			topModel = cls.Models[0].ID
+		}
+		fmt.Printf("%s: %.1f%% requests (top model: %s)\n", cls.DisplayName, cls.UsageShare*100, topModel)
+	}
+}
+
+```
 </CodeGroup>
+
+```text title="Output"
+Classification: 36.1% requests (top model: typesafe/jev-1.13-20260917)
+Data Extraction: 11.3% requests (top model: deepseek/deepseek-v4.1-flash-20261017)
+Workflow Execution: 8.8% requests (top model: deepseek/deepseek-v4.1-flash-20261017)
+Roleplay & Fiction: 6.8% requests (top model: deepseek/deepseek-v4-flash-20260731)
+Content Writing: 4.0% requests (top model: deepseek/deepseek-v4-flash-20260731)
+```
 
 ### Acceptable use and attribution
 

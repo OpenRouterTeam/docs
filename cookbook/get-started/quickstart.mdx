@@ -155,6 +155,8 @@ npm install --save-dev tsx
 
 Create `chat.ts` with a client instance and a single [Responses API](/api_reference/responses/overview) request. The `apiKey` reads from the environment so you never hard-code credentials.
 
+<CodeGroup>
+
 ```typescript lines
 import { OpenRouter } from '@openrouter/sdk';
 
@@ -182,10 +184,122 @@ console.log({
 });
 ```
 
+```python title="Python" lines
+import os
+from openrouter import OpenRouter
+
+with OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"]) as client:
+    response = client.responses.send(
+        model="google/gemini-3.1-flash-lite",
+        input="Say hello in one sentence.",
+        stream=False,
+    )
+
+message = next((item for item in reversed(response.output) if item.type == "message"), None)
+text = next((part for part in message.content if part.type == "output_text"), None) if message else None
+print(text.text if text else None)
+print({
+    "input_tokens": response.usage.input_tokens if response.usage else None,
+    "output_tokens": response.usage.output_tokens if response.usage else None,
+})
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "google/gemini-3.1-flash-lite",
+		"input": "Say hello in one sentence.",
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		log.Fatalf("request failed: %s", res.Status)
+	}
+
+	var response struct {
+		Output []struct {
+			Type    string
+			Content []struct{ Type, Text string }
+		}
+		Usage struct {
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
+		}
+	}
+	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
+		log.Fatal(err)
+	}
+
+	for i := len(response.Output) - 1; i >= 0; i-- {
+		if response.Output[i].Type != "message" {
+			continue
+		}
+		for _, part := range response.Output[i].Content {
+			if part.Type == "output_text" {
+				fmt.Println(part.Text)
+				break
+			}
+		}
+		break
+	}
+	fmt.Printf("{inputTokens: %d, outputTokens: %d}\n", response.Usage.InputTokens, response.Usage.OutputTokens)
+}
+
+```
+
+```bash title="cURL" lines
+curl -sS https://openrouter.ai/api/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+    "model": "google/gemini-3.1-flash-lite",
+    "input": "Say hello in one sentence."
+  }' | jq -r '
+    ([.output[] | select(.type == "message")] | last | .content[] | select(.type == "output_text") | .text),
+    {inputTokens: .usage.input_tokens, outputTokens: .usage.output_tokens}'
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Hello, it is a pleasure to meet you!
+{
+  inputTokens: 6,
+  outputTokens: 10,
+}
+```
+
 Run it with your API key:
 
 ```bash lines
 OPENROUTER_API_KEY=sk-or-v1-... npx tsx chat.ts
+```
+
+To run the Python tab instead, install the Python SDK, save the example as `chat.py`, and run it:
+
+```bash lines
+pip install openrouter
+OPENROUTER_API_KEY=sk-or-v1-... python chat.py
 ```
 
 You should see a single text response printed to the console. The text is in the `output_text` part of the `message` item in `response.output`, and the SDK returns token usage in camelCase fields such as `inputTokens` and `outputTokens`. The `response.output` array follows the same shape as the [Responses API response](/api/api-reference/responses/create-a-response). Without `stream: true`, `client.responses.send` is typed to return the full response, so the `'output' in response` check is only a runtime safety guard.
@@ -193,6 +307,8 @@ You should see a single text response printed to the console. The text is in the
 ## 3. Stream the response
 
 Streaming returns text as it is generated instead of waiting for the full response. Pass `stream: true` and iterate over the returned event stream. Each `response.output_text.delta` event contains a `delta` with the new text fragment.
+
+<CodeGroup>
 
 ```typescript expandable lines
 import { OpenRouter } from '@openrouter/sdk';
@@ -221,15 +337,106 @@ for await (const event of stream) {
 console.log();
 ```
 
+```python title="Python" lines
+import os
+from openrouter import OpenRouter
+
+with OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"]) as client:
+    stream = client.responses.send(
+        model="google/gemini-3.1-flash-lite",
+        input="Explain how routers work in three sentences.",
+        stream=True,
+    )
+
+    for event in stream:
+        if event.type == "response.output_text.delta":
+            print(event.delta, end="", flush=True)
+    print()
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":  "google/gemini-3.1-flash-lite",
+		"input":  "Explain how routers work in three sentences.",
+		"stream": true,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		log.Fatalf("request failed: %s", res.Status)
+	}
+
+	scanner := bufio.NewScanner(res.Body)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+	for scanner.Scan() {
+		data, ok := strings.CutPrefix(scanner.Text(), "data: ")
+		if !ok || data == "[DONE]" {
+			continue
+		}
+		var event struct{ Type, Delta string }
+		if json.Unmarshal([]byte(data), &event) == nil && event.Type == "response.output_text.delta" {
+			fmt.Print(event.Delta)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println()
+}
+
+```
+
+```bash title="cURL" lines
+curl -sSN https://openrouter.ai/api/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+    "model": "google/gemini-3.1-flash-lite",
+    "input": "Explain how routers work in three sentences.",
+    "stream": true
+  }' | jq --unbuffered -Rrj '
+    ltrimstr("data: ") | fromjson? | select(.type == "response.output_text.delta") | .delta'
+echo
+```
+
+</CodeGroup>
+
+```text title="Output"
+Routers act as traffic directors for data by connecting multiple networks and determining the most efficient path for information to travel between them. When a data packet arrives, the router inspects its destination IP address and consults a stored routing table to decide which network interface should receive it next. By constantly updating these paths, routers ensure that data packets reach their intended destination across the internet or within a local network.
+```
+
 Text now prints incrementally. See the [Streaming reference](/api_reference/streaming) for the full SSE event format.
 
 ## 4. Add multi-turn conversation
 
 Multi-turn works by sending the full conversation history with each request. The model uses all previous turns as context. Append each user input and assistant response to an `input` array of `{ role, content }` items before the next call.
 
+<CodeGroup>
+
 ```typescript expandable lines
 import { OpenRouter } from '@openrouter/sdk';
-import * as readline from 'node:readline';
 
 const client = new OpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -237,65 +444,235 @@ const client = new OpenRouter({
 
 const input: { role: 'user' | 'assistant'; content: string }[] = [];
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
+// Each user turn is appended to the history; the model sees all previous turns.
+const turns = [
+  'My name is Ada. Say hello to me in one sentence.',
+  'What is my name?',
+];
 
-function ask(): void {
-  rl.question('You: ', async (line) => {
-    if (line.toLowerCase() === 'exit') {
-      rl.close();
-      return;
-    }
+for (const line of turns) {
+  console.log(`You: ${line}`);
+  input.push({ role: 'user', content: line });
 
-    input.push({ role: 'user', content: line });
-
-    const stream = await client.responses.send({
-      responsesRequest: {
-        model: 'google/gemini-3.1-flash-lite',
-        input,
-        stream: true,
-      },
-    });
-    if ('output' in stream) {
-      throw new Error('Expected a streaming response');
-    }
-
-    let response = '';
-    let completed = false;
-    process.stdout.write('Assistant: ');
-    for await (const event of stream) {
-      if (event.type === 'response.output_text.delta') {
-        process.stdout.write(event.delta);
-        response += event.delta;
-      }
-      if (event.type === 'response.completed') {
-        completed = true;
-      }
-    }
-    console.log();
-
-    // A stream that ends with response.failed or response.incomplete leaves a
-    // partial answer; keep only completed turns in the history.
-    if (completed) {
-      input.push({ role: 'assistant', content: response });
-    } else {
-      input.pop();
-      console.log('(The response did not complete, so that turn was not saved.)');
-    }
-    ask();
+  const stream = await client.responses.send({
+    responsesRequest: {
+      model: 'google/gemini-3.1-flash-lite',
+      input,
+      stream: true,
+    },
   });
+  if ('output' in stream) {
+    throw new Error('Expected a streaming response');
+  }
+
+  let response = '';
+  let completed = false;
+  process.stdout.write('Assistant: ');
+  for await (const event of stream) {
+    if (event.type === 'response.output_text.delta') {
+      process.stdout.write(event.delta);
+      response += event.delta;
+    }
+    if (event.type === 'response.completed') {
+      completed = true;
+    }
+  }
+  console.log();
+
+  // A stream that ends with response.failed or response.incomplete leaves a
+  // partial answer; keep only completed turns in the history.
+  if (completed) {
+    input.push({ role: 'assistant', content: response });
+  } else {
+    input.pop();
+    console.log('(The response did not complete, so that turn was not saved.)');
+  }
 }
 
-ask();
 ```
 
-Run the file and type messages. The model remembers prior turns because the full `input` array is sent with each request. Type `exit` to quit.
+```python title="Python" lines
+import os
+from openrouter import OpenRouter
+
+input = []
+
+# Each user turn is appended to the history; the model sees all previous turns.
+turns = [
+    "My name is Ada. Say hello to me in one sentence.",
+    "What is my name?",
+]
+
+with OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"]) as client:
+    for line in turns:
+        print(f"You: {line}")
+        input.append({"role": "user", "content": line})
+
+        stream = client.responses.send(
+            model="google/gemini-3.1-flash-lite",
+            input=input,
+            stream=True,
+        )
+
+        response = ""
+        completed = False
+        print("Assistant: ", end="", flush=True)
+        for event in stream:
+            if event.type == "response.output_text.delta":
+                print(event.delta, end="", flush=True)
+                response += event.delta
+            if event.type == "response.completed":
+                completed = True
+        print()
+
+        # A stream that ends with response.failed or response.incomplete leaves a
+        # partial answer; keep only completed turns in the history.
+        if completed:
+            input.append({"role": "assistant", "content": response})
+        else:
+            input.pop()
+            print("(The response did not complete, so that turn was not saved.)")
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+type message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+func main() {
+	var input []message
+
+	// Each user turn is appended to the history; the model sees all previous turns.
+	turns := []string{
+		"My name is Ada. Say hello to me in one sentence.",
+		"What is my name?",
+	}
+
+	for _, line := range turns {
+		fmt.Printf("You: %s\n", line)
+		input = append(input, message{Role: "user", Content: line})
+
+		body, _ := json.Marshal(map[string]any{
+			"model":  "google/gemini-3.1-flash-lite",
+			"input":  input,
+			"stream": true,
+		})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if res.StatusCode != http.StatusOK {
+			log.Fatalf("request failed: %s", res.Status)
+		}
+
+		var response strings.Builder
+		completed := false
+		fmt.Print("Assistant: ")
+		scanner := bufio.NewScanner(res.Body)
+		scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+		for scanner.Scan() {
+			data, ok := strings.CutPrefix(scanner.Text(), "data: ")
+			if !ok || data == "[DONE]" {
+				continue
+			}
+			var event struct{ Type, Delta string }
+			if json.Unmarshal([]byte(data), &event) != nil {
+				continue
+			}
+			switch event.Type {
+			case "response.output_text.delta":
+				fmt.Print(event.Delta)
+				response.WriteString(event.Delta)
+			case "response.completed":
+				completed = true
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			log.Fatal(err)
+		}
+		res.Body.Close()
+		fmt.Println()
+
+		// A stream that ends with response.failed or response.incomplete leaves a
+		// partial answer; keep only completed turns in the history.
+		if completed {
+			input = append(input, message{Role: "assistant", Content: response.String()})
+		} else {
+			input = input[:len(input)-1]
+			fmt.Println("(The response did not complete, so that turn was not saved.)")
+		}
+	}
+}
+
+```
+
+```bash title="cURL" lines
+input='[]'
+events=$(mktemp)
+
+# Each user turn is appended to the history; the model sees all previous turns.
+for line in 'My name is Ada. Say hello to me in one sentence.' 'What is my name?'; do
+  echo "You: $line"
+  input=$(jq -c --arg c "$line" '. + [{role: "user", content: $c}]' <<< "$input")
+
+  printf 'Assistant: '
+  curl -sSN https://openrouter.ai/api/v1/responses \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -d "$(jq -n --argjson input "$input" \
+      '{model: "google/gemini-3.1-flash-lite", input: $input, stream: true}')" \
+    | tee "$events" | jq --unbuffered -Rrj '
+      ltrimstr("data: ") | fromjson? | select(.type == "response.output_text.delta") | .delta'
+  echo
+
+  # A stream that ends with response.failed or response.incomplete leaves a
+  # partial answer; keep only completed turns in the history.
+  if jq -Rse 'split("\n") | map(ltrimstr("data: ") | fromjson?) | any(.type == "response.completed")' "$events" > /dev/null; then
+    reply=$(jq -Rrj 'ltrimstr("data: ") | fromjson? | select(.type == "response.output_text.delta") | .delta' "$events")
+    input=$(jq -c --arg c "$reply" '. + [{role: "assistant", content: $c}]' <<< "$input")
+  else
+    input=$(jq -c '.[:-1]' <<< "$input")
+    echo '(The response did not complete, so that turn was not saved.)'
+  fi
+done
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+You: My name is Ada. Say hello to me in one sentence.
+Assistant: Hello, Ada, it is a pleasure to meet you!
+You: What is my name?
+Assistant: Your name is Ada.
+```
+
+Run the file. It sends the two fixed prompts in `turns` and exits without reading any input. The second answer shows that the model remembers the first turn, because the full `input` array is sent with each request. To chat interactively, replace the `turns` list with lines read from standard input.
 
 ## 5. Swap models
 
 OpenRouter gives you access to hundreds of models through one API. Change the `model` string to switch providers, no other code changes needed.
+
+<CodeGroup>
 
 ```typescript lines
 // Use OpenAI's latest chat model
@@ -307,6 +684,27 @@ model: '~anthropic/claude-sonnet-latest',
 // Use a free model
 model: 'openrouter/free',
 ```
+
+```go title="Go" lines
+// Use OpenAI's latest chat model
+"model": "openai/gpt-chat-latest",
+
+// Use Anthropic Claude Sonnet latest
+// "model": "~anthropic/claude-sonnet-latest",
+
+// Use a free model
+// "model": "openrouter/free",
+```
+
+```bash title="cURL" lines
+# Pick one model string; the rest of the request stays the same.
+model='openai/gpt-chat-latest'            # OpenAI's latest chat model
+# model='~anthropic/claude-sonnet-latest'  # Anthropic Claude Sonnet latest
+# model='openrouter/free'                  # A free model
+
+```
+
+</CodeGroup>
 
 Browse all available models at [openrouter.ai/models](https://openrouter.ai/models) or query the [Models API](/api/api-reference/models/list-all-models-and-their-properties) programmatically.
 
