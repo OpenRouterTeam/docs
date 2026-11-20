@@ -18,6 +18,64 @@ rss: true
 
 Curated release notes for the Ori CLI, newest version first. If you are new to Ori, start with [Ori Harness](/guides/ori/harness), which covers installing Ori and running your existing agent CLI. [File Writing](/guides/ori/files) explains what Ori puts in your project.
 
+<Update label="0.17.3" description="November 20, 2026" tags={["Breaking","Patch"]} rss={{ title: "Ori 0.17.3", description: "Ori 0.17.3 removes the old agent commands from the CLI." }}>
+
+Ori 0.17.3 removes the old agent commands from the CLI. Rust interns get memory, which learns from conversation and shows in a new What Ori knows section of desktop Settings. Slack gains slash commands, display blocks and private interns. The desktop app opens threads faster and gets a feedback dialog. `ori omp` starts again on Oh My Pi 18.7 and later.
+
+## Breaking changes
+
+- **Old agent commands.** The CLI no longer has the commands of the retired TypeScript agent. The removed commands are `at`, `backup`, `ci`, `code`, `daemon`, `dev`, `features`, `init`, `interns`, `link`, `logs`, `mcp`, `operations`, `pack`, `restore`, `schedules`, `sessions`, `skills`, `start`, `trial`, `tui`, `unlink`, `workflows`, `workspace` and `harness test`. Scripts that call these commands need a change.
+- **Bare `ori`.** Running `ori` with no command shows help. Use `ori codex` or another launcher for a coding session.
+
+## Memory
+
+- **Memory on Rust interns.** Memory is on for every Rust intern. The intern saves facts and rules through its `memory` tool. Set `[features.memory] enabled = false` to turn memory off for one intern.
+- **Learning from conversation.** Memory learns lasting facts from conversation by default. A grounded correction replaces the fact that it corrects. A rule that a person sets or edits in Settings stays protected from chat changes. Set `ORI_MEMORY_LEARNING = "off"` under `[features.memory.env]` to turn learning off.
+- **Full memory.** When memory is full, memory retires the least lasting eligible fact first. Rules and facts from the current session are never retired. When no fact can be retired, memory refuses the new save. A fact that a person saves always counts as most lasting.
+- **Seed file.** Memory imports an `import.jsonl` seed file from its data folder one time at startup.
+- **Retries.** A retried correction answers with the saved replacement instead of "not found".
+
+## Desktop app
+
+- **What Ori knows.** Settings has a What Ori knows section. You can see, page through and delete what Ori remembers, grouped by category. You can add a rule there and turn each rule on or off. The section shows only for an intern that has memory, and it appears without a restart when memory turns on.
+- **Saved memory in replies.** A reply shows the memory that its turn saved, beneath the reply.
+- **Memory fixes.** Memory rows and the no-room line stay correct when a request fails. The memory setting stays correct while Settings stays open.
+- **Faster thread opens.** A thread opens from its newest history on Rust and TypeScript interns, so a long thread loads much less data. A launch with many threads makes fewer requests.
+- **Empty and failed threads.** An empty thread shows only the composer, with no greeting or suggestions. A thread that fails to load shows the reason and a Try again button. Opening a thread from the sidebar no longer changes the selected intern.
+- **Stop.** Stop interrupts the current work and cancels inputs that the intern already queued. A Stop that fails shows its error.
+- **Feedback.** A Send feedback dialog sends your feedback through your dashboard session.
+- **Settings search.** The Settings page has a search filter.
+- **Models.** A change to an intern's default model or thinking effort saves at once, with no intern restart. A chat on Default uses the intern's saved model. After a model change for a personal intern, every Settings tab and personal session stays visible.
+- **Fixes.** The dock icon and the Ori app menu stay after the menu bar popover or quick ask opens. A thread brief keeps a leading emoji whole.
+
+## Slack
+
+- **Slash commands.** Type `/<intern slug> <command> <input>` to run a feature's command or a skill. The intern posts what you ran and answers in that thread. You can also type a feature's command by its short name everywhere.
+- **Display blocks.** An intern can post Slack messages with header, section, divider, context, rich text, markdown, table and actions blocks. Link buttons are allowed. Interactive elements, images and channel pings are refused, and the error names the refused type.
+- **Private interns.** When the private-by-default gate is on for its creator, an unshared Rust intern answers only its creator. Other members get a notice that only they can see.
+- **Reply style.** The default Slack reply style drops two rules about how to finish a Slack assignment.
+
+## Interns and features
+
+- **Pages.** Rust interns save HTML pages with a built-in artifacts feature. A saved page includes its scripts, styles and fonts from common CDNs. The intern can list and delete its pages.
+- **Turn end event.** A feature can register an interceptor for the `ori/turn` event to learn when a thread's turn ends.
+- **Registered automations.** A feature can list, pause, resume and invoke the automations that it registers. A thread's token can no longer run an automation that posts into another session.
+- **Feature HTTP.** A feature that sets `ori_http = true` gets `ORI_FEATURE_HTTP_PORT` and `ORI_FEATURE_HTTP_TOKEN`.
+- **Uploads.** Uploads to a Rust intern stay inside the storage limit when many files arrive at once. A Rust intern clears interrupted uploads when it starts.
+
+## Schedules
+
+- **Approval for chat schedules.** A schedule that a member asks for in chat names that member. The member approves it on the dashboard, and its runs then act as that member.
+- **Scheduled runs.** The desktop app shows a Rust intern's automation runs under Scheduled.
+- **Grant check.** The vault refuses a schedule grant whose session ID holds a line break.
+
+## CLI and launchers
+
+- **Oh My Pi.** `ori omp` starts on Oh My Pi 18.7 and later instead of exiting with a model kind error. With no `--model`, `ori omp` starts on Oh My Pi's own OpenRouter default, `openai/gpt-5.5`, instead of a retired model.
+- **Launch settings.** A managed launch still downloads launch settings when Ori cannot read the harness version.
+- **Sign-in status.** `ori auth` reports an OIDC session that is mid-refresh as active.
+
+</Update>
 <Update label="0.17.2" description="November 19, 2026" tags={["Patch"]} rss={{ title: "Ori 0.17.2", description: "The desktop app gets one rebuilt Settings page, a clearer turn view and a mature import of Claude Code and Codex sessions." }}>
 
 The desktop app gets one rebuilt Settings page, a clearer turn view and a mature import of Claude Code and Codex sessions. New interns can run on Substrate, and the desktop app opens any file that an intern links to. Schedules, Slack follow-ups and telemetry get smaller improvements, and the built-in harness gets safety and reliability fixes.
