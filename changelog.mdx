@@ -16,12 +16,133 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="November 19, 2026" tags={["Breaking","Credits","Images","SCIM","STT","Schemas","TTS"]} rss="1 breaking change, 2 new endpoints, 6 modified endpoints, 11 new schemas, 6 modified schemas.">
+<Update label="November 20, 2026" tags={["Analytics","Breaking","Observability","Schemas","Workspaces"]} rss="8 breaking changes, 6 modified endpoints, 6 modified schemas.">
+
+## Breaking changes
+
+- `Workspace`: required `default_image_model` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /workspaces`](/api/api-reference/workspaces/list-workspaces)
+    - [`GET /workspaces/{id}`](/api/api-reference/workspaces/get-a-workspace)
+    - [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+    - [`POST /workspaces`](/api/api-reference/workspaces/create-a-workspace)
+  </Expandable>
+- `Workspace`: required `default_provider_sort` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /workspaces`](/api/api-reference/workspaces/list-workspaces)
+    - [`GET /workspaces/{id}`](/api/api-reference/workspaces/get-a-workspace)
+    - [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+    - [`POST /workspaces`](/api/api-reference/workspaces/create-a-workspace)
+  </Expandable>
+- `Workspace`: required `default_text_model` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /workspaces`](/api/api-reference/workspaces/list-workspaces)
+    - [`GET /workspaces/{id}`](/api/api-reference/workspaces/get-a-workspace)
+    - [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+    - [`POST /workspaces`](/api/api-reference/workspaces/create-a-workspace)
+  </Expandable>
+- `Workspace`: required `io_logging_api_key_ids` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /workspaces`](/api/api-reference/workspaces/list-workspaces)
+    - [`GET /workspaces/{id}`](/api/api-reference/workspaces/get-a-workspace)
+    - [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+    - [`POST /workspaces`](/api/api-reference/workspaces/create-a-workspace)
+  </Expandable>
+- `Workspace`: required `io_logging_sampling_rate` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /workspaces`](/api/api-reference/workspaces/list-workspaces)
+    - [`GET /workspaces/{id}`](/api/api-reference/workspaces/get-a-workspace)
+    - [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+    - [`POST /workspaces`](/api/api-reference/workspaces/create-a-workspace)
+  </Expandable>
+- `Workspace`: required `is_data_discount_logging_enabled` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /workspaces`](/api/api-reference/workspaces/list-workspaces)
+    - [`GET /workspaces/{id}`](/api/api-reference/workspaces/get-a-workspace)
+    - [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+    - [`POST /workspaces`](/api/api-reference/workspaces/create-a-workspace)
+  </Expandable>
+- `Workspace`: required `is_observability_broadcast_enabled` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /workspaces`](/api/api-reference/workspaces/list-workspaces)
+    - [`GET /workspaces/{id}`](/api/api-reference/workspaces/get-a-workspace)
+    - [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+    - [`POST /workspaces`](/api/api-reference/workspaces/create-a-workspace)
+  </Expandable>
+- `Workspace`: required `is_observability_io_logging_enabled` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /workspaces`](/api/api-reference/workspaces/list-workspaces)
+    - [`GET /workspaces/{id}`](/api/api-reference/workspaces/get-a-workspace)
+    - [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+    - [`POST /workspaces`](/api/api-reference/workspaces/create-a-workspace)
+  </Expandable>
+
+## Modified endpoints
+
+- [`PUT /workspaces/{workspace_ref}/budgets/{interval}`](/api/api-reference/workspaces/create-or-update-a-workspace-budget): description updated
+- [`GET /activity`](/api/api-reference/analytics/get-user-activity-grouped-by-endpoint): description updated
+- [`GET /analytics/meta`](/api/api-reference/analytics/get-available-analytics-metrics-and-dimensions): description updated
+- [`POST /analytics/query`](/api/api-reference/analytics/query-analytics-data): description updated
+- [`POST /observability/destinations`](/api/api-reference/observability/create-an-observability-destination): description updated
+- [`PATCH /observability/destinations/{id}`](/api/api-reference/observability/update-an-observability-destination): description updated
+
+## Modified schemas
+
+- `PublicEndpoint`: description updated
+  - Used by [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints), [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model)
+- `ChatWebSearchShorthand`: description updated
+  - Used by [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion), [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+- `WebSearchConfig`: description updated
+
+  <Expandable title="4 endpoints using this schema">
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+  </Expandable>
+- `WebSearchServerToolConfig`: description updated
+  - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `XSearchOptions`: description updated
+
+  <Expandable title="8 endpoints using this schema">
+    - [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch)
+    - [`POST /batches`](/api/api-reference/batch/create-a-batch)
+    - [`POST /chat/completions`](/api/api-reference/chat/create-a-chat-completion)
+    - [`POST /messages`](/api/api-reference/anthropic-messages/create-a-message)
+    - [`POST /presets/{slug}/chat/completions`](/api/api-reference/presets/create-a-preset-from-a-chat-completions-request-body)
+    - [`POST /presets/{slug}/messages`](/api/api-reference/presets/create-a-preset-from-a-messages-request-body)
+    - [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body)
+    - [`POST /responses`](/api/api-reference/responses/create-a-response)
+  </Expandable>
+- `Workspace`: description updated
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /workspaces`](/api/api-reference/workspaces/list-workspaces)
+    - [`GET /workspaces/{id}`](/api/api-reference/workspaces/get-a-workspace)
+    - [`PATCH /workspaces/{id}`](/api/api-reference/workspaces/update-a-workspace)
+    - [`POST /workspaces`](/api/api-reference/workspaces/create-a-workspace)
+  </Expandable>
+
+</Update>
+
+<Update label="November 19, 2026" tags={["Breaking","Credits","Images","Private Endpoints","SCIM","STT","Schemas","TTS"]} rss="3 breaking changes, 2 new endpoints, 6 modified endpoints, 11 new schemas, 10 modified schemas.">
 
 ## Breaking changes
 
 - `ImageGenerationResponse.data`: required `b64_json` property removed<Badge stroke color="red" icon="triangle-exclamation" className="changelog-status-badge">Action required</Badge>
   - Used by [`POST /images`](/api/api-reference/images/generate-an-image)
+- `CreatePrivateEndpointRequest.declared_parameters`: maxItems changed from `25` to `26`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
+- `UpdatePrivateEndpointRequest.declared_parameters`: maxItems changed from `25` to `26`<Badge stroke color="gray" className="changelog-status-badge">No action needed</Badge>
+  - Used by [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
 
 ## New endpoints
 
@@ -76,6 +197,22 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - Used by [`POST /audio/transcriptions`](/api/api-reference/stt/create-transcription)
 - `VideoGenerationResponse`: example modified; new property `progress`; new property `status_detail`
   - Used by [`GET /videos/{jobId}`](/api/api-reference/video-generation/poll-video-generation-status), [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+- `Parameter`: enum property_added
+
+  <Expandable title="6 endpoints using this schema">
+    - [`GET /embeddings/models`](/api/api-reference/embeddings/list-all-embeddings-models)
+    - [`GET /endpoints/zdr`](/api/api-reference/endpoints/preview-the-impact-of-zdr-on-the-available-endpoints)
+    - [`GET /model/{author}/{slug}`](/api/api-reference/models/get-a-model-by-its-slug)
+    - [`GET /models`](/api/api-reference/models/list-all-models-and-their-properties)
+    - [`GET /models/user`](/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails)
+    - [`GET /models/{author}/{slug}/endpoints`](/api/api-reference/endpoints/list-all-endpoints-for-a-model)
+  </Expandable>
+- `PrivateEndpointDeclaredParameter`: enum property_added
+  - Used by [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint), [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
+- `PrivateEndpointSettings`: enum property_added
+  - Used by [`GET /private-endpoints/{id}`](/api/api-reference/private-endpoints/get-a-private-endpoint), [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint)
+- `UpdatePrivateEndpointSettingsRequest`: enum property_added
+  - Used by [`PATCH /private-endpoints/{id}`](/api/api-reference/private-endpoints/update-a-private-endpoint), [`POST /private-endpoints`](/api/api-reference/private-endpoints/create-a-private-endpoint)
 
 </Update>
 
