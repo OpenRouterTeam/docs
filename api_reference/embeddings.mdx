@@ -628,6 +628,136 @@ func main() {
 Embedding dimension: 3072
 ```
 
+### Contextual embeddings
+
+Some embedding models embed every chunk of a document with the rest of that document as context, so each chunk's vector carries the meaning of the document it came from. This improves retrieval when chunks are short or ambiguous on their own, such as a paragraph that refers to "it" or "the company" without naming the subject.
+
+To use contextual mode, send `input` as an array of documents, where each document is an ordered array of chunk strings, and set `input_type` to `"document"`. You get one embedding back per chunk, in document order.
+
+<Template data={{
+  API_KEY_REF,
+  MODEL: 'perplexity/pplx-embed-v2-context-9b'
+}}>
+<CodeGroup>
+
+```python title="Python" lines
+import requests
+
+response = requests.post(
+  "https://openrouter.ai/api/v1/embeddings",
+  headers={
+    "Authorization": f"Bearer {{API_KEY_REF}}",
+    "Content-Type": "application/json",
+  },
+  json={
+    "model": "{{MODEL}}",
+    "input_type": "document",
+    "input": [
+      ["Paris is the capital of France.", "It sits on the Seine.", "Its population is about two million."],
+      ["Berlin is the capital of Germany."]
+    ]
+  }
+)
+
+data = response.json()
+for item in data["data"]:
+  print(item["document_index"], item["index"], len(item["embedding"]))
+```
+
+```typescript title="TypeScript (fetch)" lines
+const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer {{API_KEY_REF}}',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: '{{MODEL}}',
+    input_type: 'document',
+    input: [
+      ['Paris is the capital of France.', 'It sits on the Seine.', 'Its population is about two million.'],
+      ['Berlin is the capital of Germany.'],
+    ],
+  }),
+});
+
+const data = await response.json();
+for (const item of data.data) {
+  console.log(item.document_index, item.index, item.embedding.length);
+}
+```
+
+```shell title="Shell" lines
+curl https://openrouter.ai/api/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+    "model": "{{MODEL}}",
+    "input_type": "document",
+    "input": [
+      ["Paris is the capital of France.", "It sits on the Seine.", "Its population is about two million."],
+      ["Berlin is the capital of Germany."]
+    ]
+  }'
+```
+
+</CodeGroup>
+</Template>
+
+#### Response shape
+
+The response is the same flat `data` array as every other embeddings request, with one extra field. `index` counts across all chunks in the request, and `document_index` is the position of the chunk's document in your `input`:
+
+```json
+{
+  "object": "list",
+  "model": "perplexity/pplx-embed-v2-context-9b",
+  "data": [
+    { "object": "embedding", "index": 0, "document_index": 0, "embedding": [...] },
+    { "object": "embedding", "index": 1, "document_index": 0, "embedding": [...] },
+    { "object": "embedding", "index": 2, "document_index": 0, "embedding": [...] },
+    { "object": "embedding", "index": 3, "document_index": 1, "embedding": [...] }
+  ],
+  "usage": { "prompt_tokens": 33, "total_tokens": 33 }
+}
+```
+
+<Note>
+Providers that offer contextual embeddings natively, such as Perplexity, return a nested response: one list per document, each with its own `data` array and a chunk `index` that restarts at 0 in every document. OpenRouter flattens that into the single `data` array that existing embeddings clients expect. If you are porting code from a provider's SDK, read `document_index` instead of nesting, and treat `index` as global rather than per document.
+</Note>
+
+Chunks of the same document are contiguous and in the order you sent them, so grouping is a one-liner:
+
+```python lines
+by_document = {}
+for item in data["data"]:
+  by_document.setdefault(item["document_index"], []).append(item["embedding"])
+```
+
+#### Querying a contextual index
+
+Embed search queries as a plain string or string array with `input_type: "query"`. Queries have no document context, so they never use the nested shape:
+
+```json
+{
+  "model": "perplexity/pplx-embed-v2-context-9b",
+  "input_type": "query",
+  "input": "Which city is on the Seine?"
+}
+```
+
+#### Constraints
+
+| Request | Result |
+| --- | --- |
+| Nested `input` with a model that does not support contextual embeddings | `404` No endpoints found that support document-chunk (`string[][]`) input |
+| Nested `input` with `input_type: "query"` | `400` Document-chunk input is only supported with `input_type: "document"` |
+| Flat `input` on a Perplexity v2 model without `input_type` | `400` Perplexity embeddings require `input_type` |
+| An empty chunk string, or an empty document alongside a non-empty one | `400` schema validation error |
+| Nested `input` through the [Batch API](/guides/features/batch-api) | `400` not supported |
+
+Only models that advertise contextual embeddings accept nested `input`; other models accept strings and string arrays, and token arrays only where the provider supports them. Contextual input is text only.
+
 ## API reference
 
 For detailed information about request parameters, response format, and all available options, see the [Embeddings API Reference](/api/api-reference/embeddings/submit-an-embedding-request).
