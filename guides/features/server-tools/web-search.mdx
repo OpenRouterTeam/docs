@@ -216,7 +216,7 @@ The web search tool accepts optional `parameters` to customize search behavior:
 | `user_location` | object | N/A | Approximate user location for location-biased results. Currently only supported by native provider search; ignored with Exa, Firecrawl, Parallel, and Perplexity (see below) |
 | `allowed_domains` | string[] | N/A | Limit results to these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, and most native providers (see [domain filtering](#domain-filtering)) |
 | `excluded_domains` | string[] | N/A | Exclude results from these domains. Supported by Exa, Firecrawl, Parallel, Perplexity, and some native providers (see [domain filtering](#domain-filtering)) |
-| `x_search` | object | N/A | Opt in to X/Twitter search on SpaceXAI models, with optional filters. Only used with native provider search on SpaceXAI; ignored elsewhere (see [X search](#x-search-spacexai)) |
+| `x_search` | object | N/A | Opt in to X/Twitter search on SpaceXSI models, with optional filters. Only used with native provider search on SpaceXSI; ignored elsewhere (see [X search](#x-search-spacexsi)) |
 
 ### User Location
 
@@ -239,9 +239,9 @@ Pass an approximate user location to bias search results geographically:
 
 All fields within `user_location` are optional.
 
-### X Search (SpaceXAI)
+### X Search (SpaceXSI)
 
-On SpaceXAI models, native web search sends only xAI's `web_search` tool. To also search X/Twitter, add an `x_search` object. An empty object enables X search with no filters:
+On SpaceXSI models, native web search sends only xAI's `web_search` tool. To also search X/Twitter, add an `x_search` object. An empty object enables X search with no filters:
 
 ```json lines
 {
@@ -268,7 +268,7 @@ On SpaceXAI models, native web search sends only xAI's `web_search` tool. To als
 If a `web` plugin (from `plugins`, an `:online` model suffix, or a preset) is also present, `x_search` follows the same [precedence rules](#migrating-from-the-web-search-plugin) as the other server tool parameters.
 
 <Note>
-**Why opt-in.** SpaceXAI announced that starting September 21, 2026 at 12:00 PM PT, X Search is billed per item returned instead of per tool call: $5 per 1,000 posts fetched and $10 per 1,000 user profiles fetched, replacing the previous $5 per 1,000 tool calls. Web search pricing is unchanged. Because a single X search can now return many billable items, OpenRouter no longer adds `x_search` automatically. The legacy top-level `x_search_filter` request field still enables X search for backward compatibility.
+**Why opt-in.** SpaceXSI announced that starting September 21, 2026 at 12:00 PM PT, X Search is billed per item returned instead of per tool call: $5 per 1,000 posts fetched and $10 per 1,000 user profiles fetched, replacing the previous $5 per 1,000 tool calls. Web search pricing is unchanged. Because a single X search can now return many billable items, OpenRouter no longer adds `x_search` automatically. The legacy top-level `x_search_filter` request field still enables X search for backward compatibility.
 </Note>
 
 ## Native Search Providers
@@ -278,7 +278,7 @@ When `engine` is `"auto"` (the default) or `"native"`, OpenRouter uses the provi
 - **[OpenAI](https://platform.openai.com/docs/guides/tools/web-search)**: GPT-4.1, GPT-4.1 Mini, GPT-4.1 Nano, GPT-5 and later, o3, o3 Pro, o4-mini
 - **[Anthropic](https://docs.claude.com/en/docs/agents-and-tools/tool-use/web-search-tool)**: Claude 3.5 Haiku, Claude 3.7 Sonnet, Claude 4 and later (all Opus/Sonnet variants)
 - **[Google](https://ai.google.dev/gemini-api/docs/grounding)**: Gemini 3 Flash, Gemini 3 Pro, Gemini 3.1 Flash/Lite, Gemini 3.5 Flash
-- **[SpaceXAI](https://docs.x.ai/docs/guides/web-search)**: Grok 4 and later (web search; X search requires the [`x_search` opt-in](#x-search-spacexai))
+- **[SpaceXSI](https://docs.x.ai/docs/guides/web-search)**: Grok 4 and later (web search; X search requires the [`x_search` opt-in](#x-search-spacexsi))
 - **[Perplexity](https://docs.perplexity.ai/api-reference/chat-completions-post)**: all Perplexity models (search is core to their API)
 
 <Note>
@@ -414,7 +414,7 @@ Restrict which domains appear in search results using `allowed_domains` and `exc
 | **Native (Anthropic)** | Yes | Yes | Mutually exclusive |
 | **Native (OpenAI)** | Yes | No | `excluded_domains` ignored (no error) |
 | **Native (Google)** | No | No | Not supported. With `engine: "auto"`, falls back to Exa when filters are set. With `engine: "native"`, returns a 400 error |
-| **Native (SpaceXAI)** | Yes | Yes | Mutually exclusive |
+| **Native (SpaceXSI)** | Yes | Yes | Mutually exclusive |
 
 ## Controlling Total Results
 
@@ -628,7 +628,7 @@ The `web_search_requests` field counts the total number of search queries the mo
 | **Parallel** | Turbo or Fast: \$0.001/request; Basic or Advanced: \$0.005/request. Includes up to 10 results, then \$0.001 per additional result |
 | **Perplexity** | \$0.005 per request using OpenRouter credits |
 | **Firecrawl** | $0.005 per search plus $0.0125 per returned result |
-| **Native** | Passed through from the provider ([OpenAI](https://platform.openai.com/docs/pricing#built-in-tools), [Anthropic](https://docs.claude.com/en/docs/agents-and-tools/tool-use/web-search-tool#usage-and-pricing), [Google](https://ai.google.dev/pricing), [Perplexity](https://docs.perplexity.ai/getting-started/pricing), [SpaceXAI](https://docs.x.ai/developers/pricing#tool-invocation-costs)) |
+| **Native** | Passed through from the provider ([OpenAI](https://platform.openai.com/docs/pricing#built-in-tools), [Anthropic](https://docs.claude.com/en/docs/agents-and-tools/tool-use/web-search-tool#usage-and-pricing), [Google](https://ai.google.dev/pricing), [Perplexity](https://docs.perplexity.ai/getting-started/pricing), [SpaceXSI](https://docs.x.ai/developers/pricing#tool-invocation-costs)) |
 
 All pricing is in addition to standard LLM token costs for processing the search result content.
 
