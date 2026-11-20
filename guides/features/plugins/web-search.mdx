@@ -52,10 +52,10 @@ You can also append `:online` to `:free` model variants like so:
 }
 ```
 
-The web search plugin is powered by native search for Anthropic, Google, OpenAI, Perplexity, and SpaceXAI models. See the [server tools web search docs](/guides/features/server-tools/web-search#native-search-providers) for the full list of supported model families per provider.
+The web search plugin is powered by native search for Anthropic, Google, OpenAI, Perplexity, and SpaceXSI models. See the [server tools web search docs](/guides/features/server-tools/web-search#native-search-providers) for the full list of supported model families per provider.
 
 <Note>
-  For SpaceXAI models, the web search plugin enables both Web Search and X Search.
+  For SpaceXSI models, the web search plugin uses native Web Search. X Search is opt-in: add an `x_search` object to the plugin to enable it. See [X Search (SpaceXSI only)](#x-search-spacexsi-only).
 
 </Note>
 
@@ -152,13 +152,13 @@ When using native search, domain filter support depends on the provider:
 - **Anthropic**: Supports both `include_domains` and `exclude_domains`, but they are mutually exclusive — you cannot use both at once
 - **Google**: Domain filtering is not supported. With the default engine (auto), OpenRouter falls back to Exa when filters are set. With `"engine": "native"`, returns a 400 error
 - **OpenAI**: Supports `include_domains` only; `exclude_domains` is silently ignored
-- **SpaceXAI**: Supports both, but they are mutually exclusive with a maximum of 5 domains each
+- **SpaceXSI**: Supports both, but they are mutually exclusive with a maximum of 5 domains each
 
 <span id="x-search-filters-xai-only"></span>
 
-## X Search (SpaceXAI only)
+## X Search (SpaceXSI only)
 
-X search is opt-in. With native web search enabled on a SpaceXAI model, OpenRouter sends only the `web_search` tool. To also search X/Twitter, add an `x_search` object to the plugin. An empty object enables X search with no filters:
+X search is opt-in. With native web search enabled on a SpaceXSI model, OpenRouter sends only the `web_search` tool. To also search X/Twitter, add an `x_search` object to the plugin. An empty object enables X search with no filters:
 
 ```json lines
 {
@@ -185,7 +185,7 @@ X search is opt-in. With native web search enabled on a SpaceXAI model, OpenRout
 The same object is accepted as `parameters.x_search` on the [`openrouter:web_search` server tool](/guides/features/server-tools/web-search), which is the preferred surface.
 
 <Note>
-  **Why opt-in.** SpaceXAI announced that starting September 21, 2026 at 12:00 PM PT, X Search is billed per item returned instead of per tool call: $5 per 1,000 posts fetched and $10 per 1,000 user profiles fetched, replacing the previous $5 per 1,000 tool calls. Web search pricing is unchanged. Because a single X search can now return many billable items, OpenRouter no longer adds `x_search` automatically.
+  **Why opt-in.** SpaceXSI announced that starting September 21, 2026 at 12:00 PM PT, X Search is billed per item returned instead of per tool call: $5 per 1,000 posts fetched and $10 per 1,000 user profiles fetched, replacing the previous $5 per 1,000 tool calls. Web search pricing is unchanged. Because a single X search can now return many billable items, OpenRouter no longer adds `x_search` automatically.
 </Note>
 
 <Accordion title="Legacy top-level x_search_filter">
@@ -231,7 +231,7 @@ The web search plugin supports the following options for the `engine` parameter:
 
 When the `engine` parameter is not specified:
 
-- **Native search is used by default** for OpenAI, Anthropic, Google, Perplexity, and SpaceXAI models that support it
+- **Native search is used by default** for OpenAI, Anthropic, Google, Perplexity, and SpaceXSI models that support it
 - **Exa search is used** for all other models or when native search is not supported
 
 Specifying `"engine": "native"` sends the provider's own search tool and substitutes no other engine. The engine list on the Server Tools page governs `openrouter:web_search` requests, not this plugin's `engine` setting; see [Engine Selection](/guides/features/server-tools/web-search#engine-selection) for that path.
@@ -400,7 +400,7 @@ Refer to each provider's documentation for their native web search pricing info:
 - [Anthropic Pricing](https://docs.claude.com/en/docs/agents-and-tools/tool-use/web-search-tool#usage-and-pricing)
 - [Google Pricing](https://ai.google.dev/pricing)
 - [Perplexity Pricing](https://docs.perplexity.ai/getting-started/pricing)
-- [SpaceXAI Pricing](https://docs.x.ai/developers/pricing#tool-invocation-costs)
+- [SpaceXSI Pricing](https://docs.x.ai/developers/pricing#tool-invocation-costs)
 
 Native web search pricing only applies when using `"engine": "native"` or when native search is used by default for supported models. When using `"engine": "exa"`, the Exa search pricing applies instead.
 
