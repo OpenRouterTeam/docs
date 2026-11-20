@@ -115,7 +115,11 @@ resource "openrouter_private_endpoint" "gpt4o" {
 }
 ```
 
-`terraform apply` creates, validates, and activates the endpoint. Changing `pricing` updates it in place; changing the model, provider, base URL, upstream model ID, declarations, or `activate` workspace replaces it. `terraform destroy` disables and deletes it, and `terraform import openrouter_private_endpoint.gpt4o <endpoint-id>` adopts an endpoint that already exists.
+`terraform apply` creates, validates, and activates a new endpoint when `activate` is set. Without it, the new endpoint stays a draft. After creation, adding, changing, or removing `activate` only updates Terraform state; it does not replace the endpoint or make a draft routable.
+
+To activate an existing draft, finish setup from the Private Endpoints list. If you use the API, call `POST /api/v1/private-endpoints/{id}/validate` with the ID of a workspace that has a BYOK key for the provider (`workspace_id`). After validation passes, call `POST /api/v1/private-endpoints/{id}/activate`.
+
+Changing `pricing` updates the endpoint in place. Changing the model, provider, base URL, upstream model ID, `declared_zdr`, or `declared_region` replaces it. `terraform destroy` disables and deletes it, and `terraform import openrouter_private_endpoint.gpt4o <endpoint-id>` adopts an endpoint that already exists.
 
 ## Private providers
 
