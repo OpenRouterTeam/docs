@@ -29,6 +29,12 @@ To enable broadcast for your account or organization:
 2. Toggle the "Enable Broadcast" switch to turn on the feature
 3. Add one or more destinations where you want to send your traces
 
+{/* Keep the limit in sync with MAX_DESTINATIONS_PER_WORKSPACE in packages/schemas/broadcast/destination-limits.ts */}
+
+<Note>
+Each [workspace](/guides/features/workspaces) can have up to 5 enabled destinations across all destination types. Disabled destinations do not count toward the limit. A workspace already above the limit keeps its enabled destinations but cannot add or enable more until fewer than 5 are enabled. Every enabled destination in a workspace can receive a trace for each request made in that workspace, subject to its [API key filtering](#api-key-filtering) and [sampling rate](#sampling-rate). A destination in another workspace only receives that workspace's requests.
+</Note>
+
 <Tip>
 If you're using an organization account, you must be an organization admin to edit broadcast settings.
 </Tip>

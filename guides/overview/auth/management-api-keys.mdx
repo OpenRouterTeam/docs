@@ -74,7 +74,7 @@ A workspace-scoped key can call only the routes below, and only for its own work
 | Guardrail policies | `GET`, `POST /api/v1/guardrails/policies/{type}`<br />`GET`, `PUT`, `DELETE /api/v1/guardrails/policies/{type}/{id}`<br />`GET`, `PUT /api/v1/guardrails/policies/assignments/api-keys/{hash}`<br />`GET`, `PUT /api/v1/guardrails/policies/assignments/members/{member_id}` | `{type}` is `budget`, `moderation` or `model-availability`. Account policies (`/api/v1/guardrails/policies/account`) need an organization-scoped key. |
 | BYOK | `GET`, `POST /api/v1/byok`<br />`GET`, `PATCH`, `DELETE /api/v1/byok/{id}` | `allowed_api_key_hashes` can name only keys in the workspace. |
 | Observability | `GET`, `POST /api/v1/observability/destinations`<br />`GET`, `PATCH`, `DELETE /api/v1/observability/destinations/{id}` | `api_key_hashes` can name only keys in the destination's workspace. |
-| Analytics | `GET /api/v1/analytics/meta`<br />`POST /api/v1/analytics/query` | The key needs `activity:view_all` on its workspace. Results cover only the workspace and exclude legacy rows with no workspace. Possible-cache metrics such as `possible_cached_tokens` return `400`. |
+| Analytics | `GET /api/v1/analytics/meta`<br />`POST /api/v1/analytics/query` | Available to workspace keys with a read-only or read/write base. A Custom key cannot gain Analytics through its Activity grant. Workspace results exclude legacy rows with no workspace; possible-cache metrics such as `possible_cached_tokens` return `400`. |
 | Activity | `GET /api/v1/activity` | The key needs `activity:view_all` on its workspace. `api_key_hash` and `user_id` match only keys and members of the workspace. Results exclude legacy rows with no workspace, including for the default workspace. |
 | Presets | `POST /api/v1/presets/{slug}/chat/completions`<br />`POST /api/v1/presets/{slug}/messages`<br />`POST /api/v1/presets/{slug}/responses`<br />`DELETE /api/v1/presets/{slug}`<br />`POST /api/v1/presets/{slug}/restore` | Creates, archives and restores presets in the workspace. |
 
@@ -91,6 +91,17 @@ Organizations choose a management key's access level when creating it, under **A
 
 - **Read/write** keys can call every management route their scope allows.
 - **Read only** keys can call every read (`GET`, and read-only queries such as `POST /api/v1/analytics/query`) that a read/write key of the same scope can call, and nothing else. Any request that would create, change or delete something returns `403 Forbidden`. One exception: `GET /api/v1/guardrails/policies/assignments/members/{member_id}` and `GET /api/v1/guardrails/policies/assignments/api-keys/{hash}` need a read/write key, because reading an assignment creates it if it doesn't exist yet.
+- **Custom** keys use `access_level: "custom"` and grant only the actions listed in `extra_permissions`. At least one action is required; unselected resources grant nothing. On the alpha site, eligible organization and workspace admins can grant access per resource. The picker shows only resources with a grant available in the selected scope. **Read & Write** includes only the supported actions for that resource, not full management access. Switching to a workspace removes any selected organization-only permissions and lists what was removed.
+
+| Custom resource | Read Only | Additional actions with Read & Write |
+| --- | --- | --- |
+| Workspaces | Read workspace metadata in scope. An organization key can also list workspaces. This grant does not give access to API key identifiers, protected settings, budget limits, or usage. | An organization key can create a workspace with a name, slug and optional description. It cannot edit workspace settings or delete a workspace. |
+| Workspace members | List explicit members of a non-default workspace in scope. | Remove members from that workspace. Removal also requires **API keys → Read Only** because refusals can report active key ownership. Adding members assigns roles and is not included. |
+| Skills | Read skills in scope. | Create and delete skills in scope. Updating an existing skill or publishing another version is not included. |
+| Activity | Read activity in scope. Filtering by API key hash also needs API key read access. Filtering by user ID requires access to the applicable member directory; a workspace-member grant does not expose the organization directory. | None. |
+| Analytics | Read analytics metadata and run analytics queries with an organization-scoped key. Grouping or filtering by key ID or tag also needs API key read access; Custom keys cannot group or filter by user because organization member read access is not available as a Custom grant. | None. |
+| Models | Read the personalized model and endpoint catalog, parameter metadata, and tool metadata with an organization-scoped key. Listing the workspace’s presets also requires **Presets → Read Only**. Public catalog data remains public. | None; metadata access does not run a model or tool. |
+| SCIM | List SCIM groups, list and read SCIM group mappings, and read SCIM sync job status with an organization-scoped key. | None; SCIM writes are dashboard-only. |
 
 Use read-only keys for monitoring, reporting and auditing: listing API keys and their usage, reading activity and analytics, checking guardrails, budgets and BYOK credentials, and listing workspaces and their members.
 

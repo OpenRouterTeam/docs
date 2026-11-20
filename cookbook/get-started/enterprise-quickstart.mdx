@@ -149,7 +149,9 @@ See [Presets](/guides/features/presets) for the full guide including creating pr
 
 Broadcast automatically sends traces from your OpenRouter requests to external observability platforms without additional instrumentation. Supported destinations include Datadog, Langfuse, LangSmith, Braintrust, OpenTelemetry Collector, S3, and more.
 
-Configure broadcast at [Settings > Observability](https://openrouter.ai/settings/observability). You can filter traces by API key, set sampling rates, and configure up to 5 destinations of the same type for different environments.
+Configure broadcast at [Settings > Observability](https://openrouter.ai/settings/observability). You can filter traces by API key, set sampling rates, and enable up to 5 destinations per workspace.
+
+{/* Keep the limit in sync with MAX_DESTINATIONS_PER_WORKSPACE in packages/schemas/broadcast/destination-limits.ts */}
 
 See [Broadcast](/guides/features/broadcast) for setup instructions and destination-specific walkthroughs.
 
