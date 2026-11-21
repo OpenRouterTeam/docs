@@ -916,7 +916,7 @@ What the batch document declares differently:
 
 - Text-only input: it declares no image modality, so OpenRouter turns off image input on the batch endpoint while the standard endpoint keeps accepting image URLs. Like any input-source change on an existing endpoint, this waits for review.
 - A 262,144-token context, a 65,536-token output limit, and `streaming: false`. OpenRouter does not apply `streaming` from your feed yet, and batch results are never streamed.
-- Its own supported parameters (`max_tokens` up to 65,536, and `tools`) and its own prompt and completion prices. Only plain sampling parameters apply from your feed: `tools` and the other capability-tested parameters stay off until OpenRouter's tests pass on the batch endpoint.
+- Its own supported parameters (`max_tokens` up to 65,536, and `tools`) and its own prompt and completion prices. Only plain sampling parameters apply from your feed: `tools` and the other capability-tested parameters stay off until OpenRouter's tests pass on the batch endpoint. You can start those tests yourself from the endpoint's capabilities in the provider dashboard. They run as one batch job sent to your batch API, so the result can take up to 6 hours, and they are limited to one run at a time per endpoint, 3 runs per endpoint and 20 per provider in any 24 hours.
 
 Rules:
 
