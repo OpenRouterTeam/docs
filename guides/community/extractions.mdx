@@ -20,12 +20,13 @@ models:
   - inception/mercury-decide
   - inference-net/schematron-v2-small
   - inference-net/schematron-v2-turbo
-  - levanto/sage-2
   - liquid/d1.2
   - liquid/d1.2-ultra
   - perplexity/pplx-decider-v1.3
   - perplexity/pplx-decider-flash-v1.3
   - scaledown/extract
+retiredModels:
+  - levanto/sage-2
 ---
 
 import ExtractionsFieldTypes from '/snippets/exports/ExtractionsFieldTypes.mdx';
@@ -41,7 +42,6 @@ The route is alpha and its shape can change. It takes the [Decisions](/api/api-r
 | [`cloudflare/clairic`](https://openrouter.ai/cloudflare/clairic) | Text and up to 4 PNG, JPEG, or WebP images | Every type in the table below (no `null_threshold` on `list`, `estimate`, or `forecast`) | `include_quantiles`, `return_state_text` under `provider.options.cloudflare` |
 | [`inception/mercury-decide`](https://openrouter.ai/inception/mercury-decide) | Text only | `text`, and `list` with `items: "text"` | `snap_to_words`, `threshold`, `group_fields` under `provider.options.inception` |
 | [`inference-net/schematron-v2-small`](https://openrouter.ai/inference-net/schematron-v2-small), [`inference-net/schematron-v2-turbo`](https://openrouter.ai/inference-net/schematron-v2-turbo) | Text only | `text`, `number` (as stated: no `unit`), `date`, `time`, `datetime`, and `list` of `text`, `number`, or `date` items; no `null_threshold` or `reference_date` | None |
-| [`levanto/sage-2`](https://openrouter.ai/levanto/sage-2) | Text only | `text`, `number` (as stated: no `unit`), `date`, `time`, `datetime`, `duration`, and `list` of any item type (no `null_threshold` on lists); no `reference_date` | None |
 | [`liquid/d1.2`](https://openrouter.ai/liquid/d1.2), [`liquid/d1.2-ultra`](https://openrouter.ai/liquid/d1.2-ultra) | Text, or up to 8 PNG, JPEG, or WebP images with `estimate` fields only | `text`, `number`, `date`, `list` with `items: "text"`, and `estimate` over numbers on a linear scale; no `reference_date` | None |
 | [`perplexity/pplx-decider-v1.3`](https://openrouter.ai/perplexity/pplx-decider-v1.3), [`perplexity/pplx-decider-flash-v1.3`](https://openrouter.ai/perplexity/pplx-decider-flash-v1.3) | Text only | `text`, and `list` with `items: "text"` (no `null_threshold`); no `reference_date`; up to 128 fields | None |
 | [`scaledown/extract`](https://openrouter.ai/scaledown/extract) | Text, or one PDF or image | `text`, and `list` with `items: "text"` | `threshold`, `top_n` under `provider.options.scaledown` |

@@ -16,6 +16,7 @@ nofollow: false
 icon: arrow-right-arrow-left
 models:
   - anthropic/claude-fable-5.1
+  - anthropic/claude-fable-5.2
   - anthropic/claude-fable-latest
 ---
 
@@ -28,6 +29,8 @@ Claude Fable 5.1 ships as [`anthropic/claude-fable-5.1`](https://openrouter.ai/a
 3. **Per-turn effort changes (beta)** — raise or lower effort mid-conversation without a cache bust
 4. **Mid-thinking display updates (beta)** — request real-time progress summaries during long tool-using turns
 5. **Prefix-locked thinking** — thinking blocks are bound to the transcript prefix that produced them; enforcement through OpenRouter depends on the provider (see below)
+
+The same five changes apply to Claude Fable 5.2 ([`anthropic/claude-fable-5.2`](https://openrouter.ai/anthropic/claude-fable-5.2)).
 
 The new request controls are available on OpenRouter's [Messages API](/api/api-reference/anthropic-messages/create-a-message) (`/api/v1/messages`) only. You do **not** need to send the Anthropic beta headers for any of them: OpenRouter detects requests that use each feature, attaches the corresponding beta for you, and routes those requests only to providers that support it.
 
