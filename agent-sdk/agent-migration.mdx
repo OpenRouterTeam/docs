@@ -96,9 +96,21 @@ Replace `@openrouter/sdk` subpath imports with the equivalent `@openrouter/agent
 
 You can also import the client from a direct subpath:
 
+<CodeGroup>
+
 ```typescript lines
 import { OpenRouter } from '@openrouter/agent/openrouter';
 ```
+
+```python title="Python" lines
+from openrouter_agent import OpenRouter
+```
+
+```go title="Go" lines
+import openrouter "github.com/OpenRouterTeam/go-sdk"
+```
+
+</CodeGroup>
 
 ### Core imports
 
@@ -236,11 +248,29 @@ Only if you use non-agent REST API features like `client.models.list()`, `client
 
 Yes. They are designed to work side by side. Use `@openrouter/sdk` for REST API features and `@openrouter/agent` for the agent toolkit:
 
+<CodeGroup>
+
 ```typescript lines
 import { OpenRouter } from '@openrouter/sdk';
 import { callModel } from '@openrouter/agent/call-model';
 import { tool } from '@openrouter/agent/tool';
 ```
+
+```python title="Python" lines
+from openrouter import OpenRouter
+from openrouter_agent import call_model, tool
+
+```
+
+```go title="Go" lines
+import (
+	"net/http"
+
+	openrouter "github.com/OpenRouterTeam/go-sdk"
+)
+```
+
+</CodeGroup>
 
 ### Will the old imports keep working?
 

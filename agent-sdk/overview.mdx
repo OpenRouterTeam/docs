@@ -83,6 +83,8 @@ The Python and Go packages are ports of `@openrouter/agent` kept in sync automat
 
 ## Quick example
 
+<CodeGroup>
+
 ```typescript expandable lines
 import { OpenRouter, tool } from '@openrouter/agent';
 import { z } from 'zod';
@@ -112,6 +114,130 @@ const text = await result.getText();
 console.log(text);
 ```
 
+```python title="Python" lines
+import asyncio
+import os
+from pydantic import BaseModel, Field
+from openrouter_agent import OpenRouter, call_model, tool
+
+
+class WeatherInput(BaseModel):
+    location: str = Field(description="City name")
+
+
+weather_tool = tool(
+    name="get_weather",
+    description="Get the current weather for a location",
+    input_schema=WeatherInput,
+    execute=lambda params, ctx: {
+        "temperature": 72,
+        "condition": "sunny",
+        "location": params.location,
+    },
+)
+
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        client,
+        {
+            "model": "~anthropic/claude-sonnet-latest",
+            "input": "What is the weather in San Francisco?",
+            "tools": [weather_tool],
+        },
+    )
+
+    text = await result.get_text()
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+type M = map[string]any
+
+func getWeather(location string) M {
+	return M{"temperature": 72, "condition": "sunny", "location": location}
+}
+
+func main() {
+	tools := []any{M{"type": "function", "function": M{
+		"name":        "get_weather",
+		"description": "Get the current weather for a location",
+		"parameters": M{
+			"type":       "object",
+			"properties": M{"location": M{"type": "string", "description": "City name"}},
+			"required":   []string{"location"},
+		},
+	}}}
+	messages := []any{M{"role": "user", "content": "What is the weather in San Francisco?"}}
+
+	for {
+		body, _ := json.Marshal(M{"model": "~anthropic/claude-sonnet-latest", "messages": messages, "tools": tools})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		raw, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			log.Fatalf("%d: %s", resp.StatusCode, raw)
+		}
+		var out struct {
+			Choices []struct{ Message M } `json:"choices"`
+		}
+		if err := json.Unmarshal(raw, &out); err != nil {
+			log.Fatal(err)
+		}
+		// An error can arrive with HTTP 200 and no choices
+		if len(out.Choices) == 0 {
+			log.Fatalf("no choices in response: %s", raw)
+		}
+		msg := out.Choices[0].Message
+		messages = append(messages, msg)
+
+		calls, _ := msg["tool_calls"].([]any)
+		if len(calls) == 0 {
+			fmt.Println(msg["content"])
+			return
+		}
+		for _, c := range calls {
+			call := c.(M)
+			var args struct{ Location string }
+			json.Unmarshal([]byte(call["function"].(M)["arguments"].(string)), &args)
+			result, _ := json.Marshal(getWeather(args.Location))
+			messages = append(messages, M{"role": "tool", "tool_call_id": call["id"], "content": string(result)})
+		}
+	}
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+San Francisco is sunny right now, and the temperature is 72°. The tool didn't say whether that's °F or °C. It's probably °F, since 72°C would be impossibly hot.
+```
+
 The SDK sends the input to the model, receives a tool call, executes `get_weather`, feeds the result back, and returns the final response, all in one `callModel` invocation.
 
 ## Core concepts
@@ -131,6 +257,8 @@ See the [Call Model documentation](/agent-sdk/call-model) for the full API.
 
 Define tools with the `tool()` helper. Each tool has a name, description, Zod parameter schema, and an `execute` function. The SDK handles serialization, validation, and dispatch.
 
+<CodeGroup>
+
 ```typescript lines
 import { tool } from '@openrouter/agent';
 import { z } from 'zod';
@@ -146,23 +274,246 @@ const searchTool = tool({
 });
 ```
 
+```python title="Python" lines
+from pydantic import BaseModel
+from openrouter_agent import tool
+
+
+class SearchInput(BaseModel):
+    query: str
+
+
+def run_search(params, ctx):
+    # Your search implementation
+    return {"results": ["..."]}
+
+
+search_tool = tool(
+    name="search",
+    description="Search the web",
+    input_schema=SearchInput,
+    execute=run_search,
+)
+
+```
+
+```go title="Go" lines
+var searchTool = M{"type": "function", "function": M{
+	"name":        "search",
+	"description": "Search the web",
+	"parameters": M{
+		"type":       "object",
+		"properties": M{"query": M{"type": "string"}},
+		"required":   []string{"query"},
+	},
+}}
+
+func search(query string) M {
+	// Your search implementation
+	return M{"results": []string{"..."}}
+}
+
+```
+
+</CodeGroup>
+
 ### Stop conditions
 
 Control when the agent loop terminates:
 
+<CodeGroup>
+
 ```typescript lines
-import { OpenRouter, stepCountIs, maxCost } from '@openrouter/agent';
+import { OpenRouter, callModel, tool, stepCountIs, maxCost } from '@openrouter/agent';
+import { z } from 'zod';
 
 const openrouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-const result = openrouter.callModel({
+const searchTool = tool({
+  name: 'search',
+  description: 'Search the web',
+  inputSchema: z.object({ query: z.string() }),
+  execute: async ({ query }) => {
+    // Your search implementation
+    return { results: ['...'] };
+  },
+});
+
+const result = callModel(openrouter, {
   model: '~anthropic/claude-sonnet-latest',
   input: 'Research this topic thoroughly',
   tools: [searchTool],
   stopWhen: [stepCountIs(10), maxCost(0.50)],
 });
+
+const text = await result.getText();
+console.log(text);
+
+```
+
+```python title="Python" lines
+import asyncio
+import os
+from pydantic import BaseModel
+from openrouter_agent import OpenRouter, call_model, tool, step_count_is, max_cost
+
+
+class SearchInput(BaseModel):
+    query: str
+
+
+def run_search(params, ctx):
+    # Your search implementation
+    return {"results": ["..."]}
+
+
+search_tool = tool(
+    name="search",
+    description="Search the web",
+    input_schema=SearchInput,
+    execute=run_search,
+)
+
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    result = call_model(
+        client,
+        {
+            "model": "~anthropic/claude-sonnet-latest",
+            "input": "Research this topic thoroughly",
+            "tools": [search_tool],
+            "stop_when": [step_count_is(10), max_cost(0.50)],
+        },
+    )
+
+    text = await result.get_text()
+    print(text)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+type M = map[string]any
+
+func search(query string) M {
+	// Your search implementation
+	return M{"results": []string{"..."}}
+}
+
+// complete sends one chat completion request and returns the assistant message and its cost.
+// Pass nil tools to make the model answer without calling a tool.
+func complete(messages, tools []any) (M, float64) {
+	payload := M{"model": "~anthropic/claude-sonnet-latest", "messages": messages}
+	if tools != nil {
+		payload["tools"] = tools
+	}
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		log.Fatalf("%d: %s", resp.StatusCode, raw)
+	}
+	var out struct {
+		Choices []struct{ Message M } `json:"choices"`
+		Usage   struct{ Cost float64 } `json:"usage"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		log.Fatal(err)
+	}
+	if len(out.Choices) == 0 {
+		log.Fatalf("no choices in response: %s", raw)
+	}
+	return out.Choices[0].Message, out.Usage.Cost
+}
+
+func main() {
+	tools := []any{M{"type": "function", "function": M{
+		"name":        "search",
+		"description": "Search the web",
+		"parameters": M{
+			"type":       "object",
+			"properties": M{"query": M{"type": "string"}},
+			"required":   []string{"query"},
+		},
+	}}}
+	messages := []any{M{"role": "user", "content": "Research this topic thoroughly"}}
+
+	// Stop conditions: at most 10 steps or $0.50 total cost
+	const maxSteps, maxCost = 10, 0.50
+	totalCost := 0.0
+	var last M
+	hasPendingToolResults := false
+
+	for step := 0; step < maxSteps && totalCost < maxCost; step++ {
+		message, cost := complete(messages, tools)
+		totalCost += cost
+		last = message
+		messages = append(messages, last)
+
+		calls, _ := last["tool_calls"].([]any)
+		hasPendingToolResults = len(calls) > 0
+		if !hasPendingToolResults {
+			break
+		}
+		for _, c := range calls {
+			call := c.(M)
+			var args struct{ Query string }
+			if err := json.Unmarshal([]byte(call["function"].(M)["arguments"].(string)), &args); err != nil {
+				log.Fatal(err)
+			}
+			result, _ := json.Marshal(search(args.Query))
+			messages = append(messages, M{"role": "tool", "tool_call_id": call["id"], "content": string(result)})
+		}
+	}
+
+	// A stop condition ended the loop right after a tool ran: send the tool
+	// results back once more, without tools, so the model writes a final answer
+	if hasPendingToolResults {
+		last, _ = complete(messages, nil)
+	}
+
+	fmt.Println(last["content"])
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+You asked me to research "this topic," but I don't see a topic in your message. What would you like me to look into?
+
+It would help to know:
+- **The subject:** a specific question, event, technology, person, or concept.
+- **The scope:** whether you want a broad overview or a focus on one aspect, such as recent developments, history, pros and cons, or comparisons.
+- **The purpose and depth:** for example, a quick briefing, a detailed report, or background for a decision or paper.
+- **Any constraints:** a time frame, a region, or preferred source types, such as academic, news, or official data.
+
+When you send the topic, I'll run several searches and give you a synthesized summary with sources.
 ```
 
 ## Agent SDK vs Client SDKs
