@@ -123,6 +123,8 @@ Keep this packet small. Full diffs, raw conversation history, logs, and customer
 
 The sample below shows the routing pattern and Chat Completions request shape. Adapt the same budget gate and `tools` shape inside your existing OpenRouter call, including Agent SDK `callModel` if that is your agent loop.
 
+<CodeGroup>
+
 ```js expandable lines
 const ADVISOR_WORTHY_SIGNALS = new Set([
   "billing-path",
@@ -211,6 +213,53 @@ const { requestBody, telemetryContext } = buildReviewRequest({
   advisorModel: "~anthropic/claude-opus-latest",
 });
 ```
+
+```bash title="cURL" lines
+ADVISOR_WORTHY_SIGNALS='["billing-path","large-diff","missing-rollback","missing-tests","schema-change","unknown-owner"]'
+UNCERTAINTY_SIGNALS='["schema-change","missing-rollback","billing-path"]'
+EXECUTOR_MODEL="openai/gpt-4o-mini"
+ADVISOR_MODEL="~anthropic/claude-opus-latest"
+
+IS_ADVISOR_ENABLED=$(jq -n --argjson worthy "$ADVISOR_WORTHY_SIGNALS" --argjson signals "$UNCERTAINTY_SIGNALS" \
+  'any($signals[]; IN($worthy[]))')
+
+TASK_PACKET=$(jq -rn --argjson signals "$UNCERTAINTY_SIGNALS" '[
+  "Title: Move usage-event writes to a monthly partitioned table",
+  "Question: Should we ship this migration plan, or ask for another design pass?",
+  "Changed files: packages/db/migrations/2026-06-10-usage-partitions.sql, services/cfw-api/src/usage/write-usage-event.ts",
+  "Uncertainty signals: \($signals | join(", "))",
+  "Diff summary: Adds monthly partitions for usage_events and routes new writes by workspace_id and created_at."
+] | join("\n")')
+
+REQUEST_BODY=$(jq -n --arg executor "$EXECUTOR_MODEL" --arg advisor "$ADVISOR_MODEL" \
+  --arg packet "$TASK_PACKET" --argjson enabled "$IS_ADVISOR_ENABLED" '{
+  model: $executor,
+  messages: [
+    {role: "system", content: "You are a token-efficient implementation-plan reviewer. Use the cheap executor model for routine reasoning. If the plan-reviewer tool is available, call it at most once when a compact second-model check can change the answer. Send the advisor a compact prompt only. Do not paste full diffs, logs, secrets, or chat transcripts into the advisor prompt."},
+    {role: "user", content: $packet}
+  ],
+  max_tokens: 500,
+  temperature: 0.2
+} + (if $enabled then {
+  tools: [{
+    type: "openrouter:advisor",
+    parameters: {
+      name: "plan-reviewer",
+      model: $advisor,
+      instructions: "You are a senior engineering reviewer. Review only the compact task packet. Identify hidden assumptions, missing rollback steps, missing tests, and cheaper alternatives. Be concise.",
+      forward_transcript: false,
+      max_completion_tokens: 220,
+      temperature: 0
+    }
+  }],
+  tool_choice: "auto"
+} else {} end)')
+
+TELEMETRY_CONTEXT=$(jq -n --arg executor "$EXECUTOR_MODEL" --arg advisor "$ADVISOR_MODEL" --argjson enabled "$IS_ADVISOR_ENABLED" \
+  '{executor_model: $executor, advisor_model: (if $enabled then $advisor else null end), did_enable_advisor: $enabled}')
+```
+
+</CodeGroup>
 
 Send `requestBody` through the request path your app already uses. For routine tasks, `tools` is omitted and the request stays on the cheap executor model. For uncertain tasks, the request offers one named Advisor tool:
 

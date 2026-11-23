@@ -184,8 +184,10 @@ The tool splits into two commands: **check** (the fast gate, called by the hook)
 
 The check command runs on every Stop event and must complete in under a second.
 
+<CodeGroup>
+
 ```typescript expandable lines
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import {
   existsSync,
   readFileSync,
@@ -204,6 +206,20 @@ function getDiffStat(): string {
   return execSync("git status --porcelain", {
     encoding: "utf-8",
   }).trim();
+}
+
+// Content hashes of untracked files. `git diff HEAD` and the porcelain listing
+// both stay the same when an already-untracked file is edited.
+function getUntrackedHashes(): string {
+  const files = execSync("git ls-files --others --exclude-standard -z", {
+    encoding: "utf-8",
+  })
+    .split("\0")
+    .filter((f) => f && !f.endsWith("/")); // a nested repository is listed as a directory
+  if (files.length === 0) return "";
+  return execFileSync("git", ["hash-object", "--", ...files], {
+    encoding: "utf-8",
+  });
 }
 
 function hash(s: string): string {
@@ -225,7 +241,14 @@ function check(model?: string): void {
     encoding: "utf-8",
   }).trim();
   const hashFile = join(gitDir, "redline-last-diff");
-  const currentHash = hash(diffStat);
+  // Fingerprint the changed content, the untracked-file list, and the untracked
+  // file contents. The stat summary alone misses a new untracked file and an edit
+  // that keeps the same line counts.
+  const currentHash = hash(
+    execSync("git diff HEAD", { encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 }) +
+      execSync("git status --porcelain", { encoding: "utf-8" }) +
+      getUntrackedHashes(),
+  );
 
   if (existsSync(hashFile)) {
     const lastHash = readFileSync(
@@ -270,7 +293,218 @@ function check(model?: string): void {
 }
 ```
 
-The check uses `git diff --stat HEAD` for a concise summary of what changed, falling back to `git status --porcelain` for untracked files. It hashes the diff stat and stores it in `.git/redline-last-diff` — if the diff hasn't changed since the last check, the hook exits silently. This prevents the same diff from repeatedly firing the hook. The diff stat is included in the reason text so Claude can decide whether the changes warrant a review.
+```python title="Python" lines
+import argparse
+import hashlib
+import json
+import os
+import subprocess
+import sys
+
+
+def git(*args: str) -> str:
+    return subprocess.run(
+        ["git", *args], capture_output=True, text=True
+    ).stdout.strip()
+
+
+def get_diff_stat() -> str:
+    # Prefer diff --stat for a concise summary
+    diff = git("diff", "--stat", "HEAD")
+    if diff:
+        return diff
+
+    # Fall back to status for untracked files
+    return git("status", "--porcelain")
+
+
+def get_untracked_hashes() -> str:
+    # Content hashes of untracked files. `git diff HEAD` and the porcelain listing
+    # both stay the same when an already-untracked file is edited.
+    files = [f for f in git("ls-files", "--others", "--exclude-standard", "-z").split("\0") if f and not f.endswith("/")]  # skip nested repositories
+    if not files:
+        return ""
+    return git("hash-object", "--", *files)
+
+
+def check(model: str | None = None) -> None:
+    diff_stat = get_diff_stat()
+    if not diff_stat:
+        print("Redline: no uncommitted changes; skipping review.")
+        sys.exit(0)
+
+    # Deduplicate: skip if diff unchanged since last check
+    hash_file = os.path.join(git("rev-parse", "--git-dir"), "redline-last-diff")
+    # Fingerprint the changed content, the untracked-file list, and the untracked
+    # file contents. The stat summary alone misses a new untracked file and an edit
+    # that keeps the same line counts.
+    fingerprint = git("diff", "HEAD") + git("status", "--porcelain") + get_untracked_hashes()
+    current_hash = hashlib.sha1(fingerprint.encode()).hexdigest()
+
+    if os.path.exists(hash_file):
+        with open(hash_file) as f:
+            if f.read().strip() == current_hash:
+                print("Redline: diff unchanged since last check; skipping review.")
+                sys.exit(0)
+
+    with open(hash_file, "w") as f:
+        f.write(current_hash)
+
+    cmd = f"redline review --model {model}" if model else "redline review"
+
+    hook_output = {
+        "decision": "block",
+        "reason": "\n".join([
+            "Redline: Here is a summary of uncommitted",
+            "changes since the last review:",
+            "",
+            diff_stat,
+            "",
+            "If these changes are substantial enough to",
+            "warrant a code review (e.g., new logic, bug",
+            "fixes, refactors — not just formatting or",
+            "comments), run the following command as a",
+            "background task:",
+            "",
+            f"  {cmd}",
+            "",
+            "If the changes are trivial, or a review is",
+            "already running, skip it. When a review",
+            "completes, assess the findings and inform",
+            "the user of any issues.",
+        ]),
+    }
+
+    print(json.dumps(hook_output))
+
+
+if __name__ == "__main__":
+    # Same flag as the hook command: `check --model MODEL`
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model")
+    check(parser.parse_args().model)
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"encoding/json"
+	"flag"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+)
+
+func run(args ...string) string {
+	out, _ := exec.Command("git", args...).Output()
+	return strings.TrimSpace(string(out))
+}
+
+func getDiffStat() string {
+	// Prefer diff --stat for a concise summary
+	if diff := run("diff", "--stat", "HEAD"); diff != "" {
+		return diff
+	}
+	// Fall back to status for untracked files
+	return run("status", "--porcelain")
+}
+
+// Content hashes of untracked files. `git diff HEAD` and the porcelain listing
+// both stay the same when an already-untracked file is edited.
+func getUntrackedHashes() string {
+	args := []string{"hash-object", "--"}
+	for _, file := range strings.Split(run("ls-files", "--others", "--exclude-standard", "-z"), "\x00") {
+		if file != "" && !strings.HasSuffix(file, "/") { // skip nested repositories
+			args = append(args, file)
+		}
+	}
+	if len(args) == 2 {
+		return ""
+	}
+	return run(args...)
+}
+
+func hash(s string) string {
+	var h int32
+	for _, c := range s {
+		h = (h << 5) - h + int32(c)
+	}
+	return strconv.FormatInt(int64(h), 36)
+}
+
+func check(model string) {
+	diffStat := getDiffStat()
+	if diffStat == "" {
+		fmt.Println("Redline: no uncommitted changes; nothing to review.")
+		return
+	}
+
+	// Deduplicate: skip if diff unchanged since last check
+	hashFile := filepath.Join(run("rev-parse", "--git-dir"), "redline-last-diff")
+	// Fingerprint the changed content, the untracked-file list, and the untracked
+	// file contents. The stat summary alone misses a new untracked file and an edit
+	// that keeps the same line counts.
+	currentHash := hash(run("diff", "HEAD") + run("status", "--porcelain") + getUntrackedHashes())
+	if last, err := os.ReadFile(hashFile); err == nil &&
+		strings.TrimSpace(string(last)) == currentHash {
+		fmt.Println("Redline: diff unchanged since last check; skipping.")
+		return
+	}
+	os.WriteFile(hashFile, []byte(currentHash), 0o644)
+
+	cmd := "redline review"
+	if model != "" {
+		cmd = "redline review --model " + model
+	}
+
+	hookOutput := map[string]string{
+		"decision": "block",
+		"reason": strings.Join([]string{
+			"Redline: Here is a summary of uncommitted",
+			"changes since the last review:",
+			"",
+			diffStat,
+			"",
+			"If these changes are substantial enough to",
+			"warrant a code review (e.g., new logic, bug",
+			"fixes, refactors — not just formatting or",
+			"comments), run the following command as a",
+			"background task:",
+			"",
+			"  " + cmd,
+			"",
+			"If the changes are trivial, or a review is",
+			"already running, skip it. When a review",
+			"completes, assess the findings and inform",
+			"the user of any issues.",
+		}, "\n"),
+	}
+
+	out, _ := json.Marshal(hookOutput)
+	fmt.Println(string(out))
+}
+
+func main() {
+	// Same flag as the hook command: `check --model MODEL`
+	model := flag.String("model", "", "model to pass to the review command")
+	flag.Parse()
+	check(*model)
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Redline: no uncommitted changes; skipping review.
+```
+
+The check uses `git diff --stat HEAD` for a concise summary of what changed, falling back to `git status --porcelain` for untracked files. It hashes the full diff together with the status output and stores the hash in `.git/redline-last-diff` — if nothing has changed since the last check, the hook exits silently. This prevents the same diff from repeatedly firing the hook. The diff stat is included in the reason text so Claude can decide whether the changes warrant a review.
 
 ### Building the review command
 

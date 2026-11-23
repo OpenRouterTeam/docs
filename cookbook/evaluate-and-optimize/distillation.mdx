@@ -70,10 +70,13 @@ const response = await openRouter.responses.send({
     stream: false,
   },
 });
+
+console.log(JSON.stringify(response, null, 2));
+
 ```
 
 ```typescript title="TypeScript (fetch)" lines
-fetch('https://openrouter.ai/api/v1/responses', {
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer <OPENROUTER_API_KEY>',
@@ -89,6 +92,10 @@ fetch('https://openrouter.ai/api/v1/responses', {
     },
   }),
 });
+
+const data = await response.json();
+console.log(JSON.stringify(data, null, 2));
+
 ```
 
 ```python title="Python" lines
@@ -108,6 +115,9 @@ response = requests.post('https://openrouter.ai/api/v1/responses', headers=heade
     'enforce_distillable_text': True,
   },
 })
+
+print(response.json())
+
 ```
 
 ```bash title="cURL" lines
@@ -125,7 +135,93 @@ curl https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "meta-llama/llama-3.1-70b-instruct",
+		"input": "Explain quantum computing",
+		"provider": map[string]any{
+			"enforce_distillable_text": true,
+		},
+		"stream": false,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+	var out bytes.Buffer
+	if err := json.Indent(&out, data, "", "  "); err != nil {
+		log.Fatalf("%s: %s", resp.Status, data)
+	}
+	fmt.Println(out.String())
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+{
+  "background": false,
+  "completedAt": 1794948691,
+  "createdAt": 1794948684,
+  "error": null,
+  "frequencyPenalty": 0,
+  "id": "gen-1794948684-Xct5OpLBa4wGKT6eyZ6z",
+  "incompleteDetails": null,
+  "instructions": null,
+  "maxOutputTokens": null,
+  "maxToolCalls": null,
+  "metadata": {},
+  "model": "meta-llama/llama-3.1-70b-instruct",
+  "object": "response",
+  "output": [
+    {
+      "content": [
+        {
+          "annotations": [],
+          "logprobs": [],
+          "text": "\n\nQuantum computing! One of the most mind-bending and fascinating topics in modern physics.\n\n**What is Quantum Computing?**\n\nQuantum computing is a new paradigm for computing that uses the principles of quantum mechanics to perform calculations and operations on data. Classical computers use bits, which can have a value of either 0 or 1, to process information. Quantum computers, on the other hand, use quantum bits or qubits, which can exist in multiple states simultaneously, represented by a combination of 0 and 1. This property, known as superposition, allows quantum computers to process vast amounts of information in parallel, making them potentially much faster than classical computers for certain types of calculations.\n\n**Key Concepts:**\n\n1. **Superposition**: Qubits can exist in multiple states at the same time, which means they can process multiple possibilities simultaneously.\n2. **Entanglement**: Qubits can become \"entangled,\" meaning their properties are connected, even when separated by large distances.\n3. **Quantum measurement**: When a qubit is measured, its state is said to \"collapse\" to one of the possible outcomes.\n4. **Quantum gates**: Quantum computers use quantum gates, similar to logic gates in classical computing, to manipulate qubits and perform operations.\n\n**How Quantum Computing Works:**\n\n1. **Preparation**: Qubits are prepared in a specific state, often a superposition of 0 and 1.\n2. **Quantum gates**: Quantum gates are applied to the qubits to manipulate their states and perform operations, such as rotations, entanglement, and measurements.\n3. **Entanglement**: Qubits become entangled, allowing them to be connected and processed together.\n4. **Measurement**: The qubits are measured, causing their states to collapse to one of the possible outcomes.\n5. **Error correction**: Quantum computers use error correction techniques, such as quantum error correction codes, to mitigate errors caused by the fragile nature of qubits.\n\n**Advantages of Quantum Computing:**\n\n1. **Speedup**: Quantum computers can solve certain problems much faster than classical computers, such as factoring large numbers (Shor's algorithm) and simulating complex quantum systems.\n2. **Optimization**: Quantum computers can efficiently solve optimization problems, like the traveling salesman problem, which is important for logistics and finance.\n3. **Simulation**: Quantum computers can accurately simulate complex quantum systems, leading to breakthroughs in fields like chemistry and materials science.\n\n**Challenges and Limitations:**\n\n1. **Noise and error correction**: Qubits are prone to errors due to their fragile nature, making error correction a significant challenge.\n2. **Scalability**: Currently, quantum computers are small-scale and need to be scaled up to perform practical tasks.\n3. **Quantum control**: Maintaining control over qubits and their interactions is a complex task.\n\n**Applications:**\n\n1. **Cryptography**: Quantum computers can break certain classical encryption algorithms, but they can also be used to create unbreakable quantum encryption.\n2. **Optimization**: Quantum computers can be used to optimize complex systems, like logistics and finance.\n3. **Materials science**: Quantum computers can simulate complex materials and molecules, leading to breakthroughs in fields like chemistry and materials science.\n\n**Current State and Future Prospects:**\n\nQuantum computing is an active area of research, with significant progress being made in recent years. Companies like Google, IBM, and Microsoft are investing heavily in quantum computing, and several quantum computers are already available for use. However, significant technical challenges remain, and it's still unclear when practical, large-scale quantum computers will become available.\n\nI hope this introduction to quantum computing has sparked your interest in this fascinating field!",
+          "type": "output_text"
+        }
+      ],
+      "id": "msg_tmp_g12gl4kylrr",
+      "role": "assistant",
+      "status": "completed",
+      "type": "message"
+    }
+  ],
+  "parallelToolCalls": true,
+  "presencePenalty": 0,
+  "previousResponseId": null,
+  "promptCacheKey": null,
+  "promptCacheOptions": null,
+  "reasoning": null,
+  "safetyIdentifier": null,
+  "serviceTier": "auto",
+  "status": "completed",
+  "store": false,
+```
 
 ## Use Cases
 

@@ -98,9 +98,57 @@ See [Single Sign-On](/guides/features/sso) and [SCIM Group Mappings](/guides/fea
 
 Employees who use coding agent CLIs can run them through [Ori Harness](/guides/ori/harness). Install it once:
 
+<CodeGroup>
+
 ```sh
 curl -fsSL https://openrouter.ai/labs/ori/install.sh | bash
 ```
+
+```typescript title="TypeScript (Bun)" lines
+// Run with Bun: Bun.spawnSync is not available in Node.js.
+const response = await fetch("https://openrouter.ai/labs/ori/install.sh");
+if (!response.ok) {
+  throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+}
+
+const script = await response.text();
+const { exitCode } = Bun.spawnSync(["bash", "-c", script], { stdout: "inherit", stderr: "inherit" });
+if (exitCode !== 0) {
+  throw new Error(`Installer exited with code ${exitCode}`);
+}
+
+```
+
+```python title="Python" lines
+import subprocess
+import requests
+
+script = requests.get("https://openrouter.ai/labs/ori/install.sh", timeout=60)
+script.raise_for_status()
+subprocess.run(["bash"], input=script.text, text=True, check=True)
+
+```
+
+```go title="Go" lines
+resp, err := http.Get("https://openrouter.ai/labs/ori/install.sh")
+if err != nil {
+	log.Fatal(err)
+}
+defer resp.Body.Close()
+if resp.StatusCode != http.StatusOK {
+	log.Fatalf("download failed: %s", resp.Status)
+}
+
+cmd := exec.Command("bash")
+cmd.Stdin = resp.Body
+cmd.Stdout = os.Stdout
+cmd.Stderr = os.Stderr
+if err := cmd.Run(); err != nil {
+	log.Fatal(err)
+}
+```
+
+</CodeGroup>
 
 Then sign in with OAuth on your company OpenRouter organization, and there are no API keys to distribute. Employees can run `ori claude`, `ori codex`, `ori hermes`, or `ori opencode`, among others. This is not the full list, see [Bring your own agent](/guides/ori/harness#bring-your-own-agent) for every supported harness. Your organization's allowlists, budgets, and workspace permissions apply to every agent, with usage on one bill.
 
