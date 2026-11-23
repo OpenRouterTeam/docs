@@ -1,11 +1,11 @@
 ---
 publish: true
 title: Text-to-Speech
-description: How to generate speech audio from text with OpenRouter models
-seoTitle: 'OpenRouter Text-to-Speech (TTS) | Complete Documentation'
+description: Generate speech audio from text with OpenRouter's unified Text-to-Speech API across OpenAI, Gemini, ElevenLabs, Fish Audio, and more
+seoTitle: 'Text-to-Speech (TTS) API | OpenRouter Documentation'
 og:site_name: OpenRouter Documentation
-og:title: 'OpenRouter Text-to-Speech - Complete Documentation'
-og:description: 'Generate speech audio from text using AI models through the OpenRouter API.'
+og:title: 'Text-to-Speech (TTS) API - OpenRouter Documentation'
+og:description: 'Generate natural speech from text through one unified Text-to-Speech API, with voice selection, voice cloning, and streaming audio output.'
 og:image: https://openrouter.ai/dynamic-og?title=OpenRouter%20Text-to-Speech&description=Generate%20speech%20audio%20from%20text%20using%20AI%20models%20through%20the%20OpenRouter%20API.
 og:image:width: 1200
 og:image:height: 630
@@ -262,6 +262,9 @@ curl https://openrouter.ai/api/v1/audio/speech \
 | `speed` | number | No | Playback speed multiplier. Honored by models that support it (e.g., OpenAI TTS). Other providers either ignore it or return a 400 for a non-default value when the model has no speed control. Defaults to `1.0` |
 | `input_references` | array | No | Reference content for stateless voice cloning or voice design: one to three `input_audio` parts (each optionally paired with a `text` transcript), optionally plus one `image_url` scene image on providers that support it, or exactly one `image_url` part on its own. See [Voice Cloning](#voice-cloning) below |
 | `provider` | object | No | Provider routing preferences (`order`, `only`, `ignore`, `allow_fallbacks`), data policy routing preferences (`zdr`, `data_collection`), and provider-specific passthrough options under `provider.options`. With `zdr: true`, the request only routes to [Zero Data Retention](/guides/features/zdr) endpoints |
+| `user` | string | No | Stable identifier for your end-user, forwarded to Broadcast and private logging as the end-user ID; never sent to the provider |
+| `session_id` | string | No | Unique identifier (max 256 characters) for grouping related requests in Broadcast and private logging; never sent to the provider. Overrides the `x-session-id` header if both are set. |
+| `trace` | object | No | Observability and tracing metadata forwarded to configured Broadcast destinations. Named fields (`trace_id`, `trace_name`, `span_name`, `generation_name`, `parent_span_id`) are optional strings; custom keys may hold other JSON value types |
 
 When `voice` is omitted, OpenRouter only forwards the request to providers whose adapter supports a provider-side default voice. For other providers, the request is rejected with a validation error.
 

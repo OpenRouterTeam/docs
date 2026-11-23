@@ -1,11 +1,11 @@
 ---
 publish: true
 title: Image Generation
-description: How to generate images with OpenRouter's dedicated Image API
-seoTitle: 'OpenRouter Image Generation | Complete Documentation'
+description: Generate and edit images with OpenRouter's unified Image Generation API across GPT Image, Gemini, Seedream, Flux, and more
+seoTitle: 'AI Image Generation API | OpenRouter Documentation'
 og:site_name: OpenRouter Documentation
-og:title: 'OpenRouter Image Generation - Complete Documentation'
-og:description: 'Generate images using AI models through the OpenRouter Image API.'
+og:title: 'AI Image Generation API - OpenRouter Documentation'
+og:description: 'Generate and edit images through one unified AI Image Generation API across GPT Image, Gemini, Seedream, Flux, and more.'
 og:image: https://openrouter.ai/dynamic-og?title=OpenRouter%20Image%20Generation&description=Generate%20images%20using%20AI%20models%20through%20the%20OpenRouter%20Image%20API.
 og:image:width: 1200
 og:image:height: 630
@@ -227,6 +227,16 @@ fmt.Println(string(body))
 ### On the Models Page
 
 Visit the [Models page](https://openrouter.ai/models?output_modalities=image) and filter by output modalities to find models with image generation capabilities.
+
+### Free Image Models
+
+`GET /api/v1/images/models` lists a model's free variant as its own entry, with an ID ending in `:free` (for example, `recraft/recraft-v4.1-flash-v2:free`), alongside the paid entry when both exist. To list only the free image models:
+
+```bash lines
+curl -s "https://openrouter.ai/api/v1/images/models" | jq '[.data[] | select(.id | endswith(":free")) | .id]'
+```
+
+Pass a `:free` ID as `model` to `POST /api/v1/images`, or to `GET /api/v1/images/models/{author}/{slug}:free/endpoints` to see the free endpoints and their parameters. See [Free Variants](/guides/routing/model-variants/free) for routing behavior and [Rate limits](/api_reference/limits#rate-limits) for free-tier per-minute and daily quotas.
 
 ## API Usage
 
@@ -873,6 +883,15 @@ If a client disconnects mid-generation, the upstream provider may still finish r
 
 For streaming requests, any partial preview images delivered before the stream ends do **not** create partial charges. Billing keys off completion of the final image, so a stream that terminates early (client disconnect or mid-stream error) is billed exactly as a failed generation: not at all.
 
+### Handling 402 and 403 Billing Errors
+
+Paid Image API requests are subject to your account credit balance, per-key credit limits, and the [in-flight spending budget](/api_reference/limits#in-flight-spending-budget), which holds an estimated cost while requests run and settle.
+
+- **`402 Payment Required`** with `error.metadata.limit_source`:
+  - `openrouter_in_flight_budget`: running and recently completed requests filled your in-flight spending budget. This is transient; wait for the `Retry-After` header and retry.
+  - `openrouter_credits`: your account balance cannot cover the request (image authorization checks a minimum available balance before generation, so resizing will not clear a low-balance failure), or the single request's estimated cost exceeds your whole in-flight budget. Add credits to resolve a low-balance failure, or reduce image count/resolution when a single request exceeds the in-flight ceiling.
+- **`403 Forbidden`** with `error.metadata.limit_source: "openrouter_key_limit"`: the API key's spending cap is exhausted, including when pending charges fill the cap. Raise the key limit or wait for its window to reset.
+
 ## Request Parameters
 
 | Parameter | Type | Required | Description |
@@ -895,6 +914,8 @@ For streaming requests, any partial preview images delivered before the stream e
 | `stream` | boolean | No | Stream partial images via SSE |
 | `input_references` | array | No | Reference images for image-to-image generation |
 | `user` | string | No | Stable identifier for your end-user; folded into a hashed upstream identity and never sent raw (see [User Tracking](/cookbook/administration/user-tracking)) |
+| `session_id` | string | No | Unique identifier (max 256 characters) for grouping related requests in Broadcast and private logging; never sent to the provider. Overrides the `x-session-id` header if both are set. |
+| `trace` | object | No | Observability and tracing metadata forwarded to configured Broadcast destinations. Named fields (`trace_id`, `trace_name`, `span_name`, `generation_name`, `parent_span_id`) are optional strings; custom keys may hold other JSON value types |
 | `provider.only` | string[] | No | Allow only these provider slugs |
 | `provider.order` | string[] | No | Try provider slugs in this order |
 | `provider.ignore` | string[] | No | Exclude these provider slugs |
@@ -902,4 +923,4 @@ For streaming requests, any partial preview images delivered before the stream e
 | `provider.allow_fallbacks` | boolean | No | Allow another eligible provider when the primary fails |
 | `provider.options` | object | No | Provider-specific parameters keyed by provider slug |
 
-Use the [Image Models API](#via-the-image-models-api) to check which parameters each model and endpoint supports.
+Use the [Image Models API](#via-the-image-models-api) to check which model-specific parameters each model and endpoint supports. Request-level fields such as `user`, `session_id`, `trace`, and `provider` are accepted independently of a model's `supported_parameters` list.
