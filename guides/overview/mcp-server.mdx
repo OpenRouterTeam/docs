@@ -103,6 +103,8 @@ The MCP exposes these tools. Most are read-only lookups against live OpenRouter 
 | `list-models` | Search OpenRouter's live model catalog: free-text search, sort (including by any Artificial Analysis index, such as the Intelligence Index, the Capability Indexes, the Cyber, Openness, Multilingual and Decision indexes, and by Design Arena ELO), and filter by use case, prompt/completion price, minimum context, model age, Intelligence Index range (the deprecated Coding and Agentic Index ranges are still accepted and match no model), tool-calling success rate, model family, author, provider, input/output modality, supported parameters, and ZDR or region |
 | `get-model` | Full details for one model by `author/slug` (supports `:variant` suffixes and aliases) |
 | `list-model-endpoints` | Which providers serve a model, and their price, latency, throughput, and data policy |
+| `list-image-models` | Image generation models and the Image API parameters each one supports (`generate-image` accepts the subset in its own input schema) |
+| `list-image-model-endpoints` | Which providers serve an image model, with each endpoint's supported parameters and billing rates (each rate has a `unit`, such as per image or per megapixel) |
 | `list-providers` | List available providers for routing preferences |
 | `list-daily-model-rankings` | Which models are most used and trending by token volume |
 | `list-app-rankings` | Which apps drive the most OpenRouter traffic, filterable by category |

@@ -174,7 +174,7 @@ OpenRouter supports the majority of OpenAI SDK surfaces and methods:
 | **Chat Completions** (`client.chat.completions.create`) | `/v1/chat/completions` | Supported | Full support for streaming, tools, structured outputs, and vision across 400+ models. |
 | **Responses API** (`client.responses.create`) | `/v1/responses` | Supported | Next-generation request format supporting multimodal inputs and unified routing. |
 | **Embeddings** (`client.embeddings.create`) | `/v1/embeddings` | Supported | Generates text and image vectors across multiple embedding models. |
-| **Image Generation** (`client.images.generate`) | `/v1/images/generations` | Supported | Mounted at both `/api/v1/images` and `/api/v1/images/generations`. Returns base64 or partial SSE images. |
+| **Image Generation** (`client.images.generate`) | `/v1/images/generations` | Supported | Mounted at both `/api/v1/images` and `/api/v1/images/generations`. Returns signed URLs (`response_format: "url"`), base64, or partial SSE images. |
 | **Text to Speech** (`client.audio.speech.create`) | `/v1/audio/speech` | Supported | Streams binary MP3, WAV, or PCM audio from dedicated voice models. |
 | **Audio Transcription** (`client.audio.transcriptions.create`) | `/v1/audio/transcriptions` | Supported | Accepts multipart form uploads up to 25 MB or JSON `input_audio`. |
 | **Models List** (`client.models.list`) | `/v1/models` | Supported | Returns OpenRouter model catalog with pricing and modality metadata. |
