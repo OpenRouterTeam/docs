@@ -64,6 +64,12 @@ deno add npm:@openrouter/agent npm:@openrouter/sdk npm:zod
 
 </CodeGroup>
 
+The Python tab in the voice section needs Python 3.10+ and these packages:
+
+```bash title="pip" lines
+pip install openrouter-agent-sdk requests
+```
+
 ## 1. Set hard ceilings on every run
 
 Long-horizon agents must terminate. Combine multiple stop conditions so the loop ends as soon as the first one fires. The most useful for long runs are `maxCost`, `stepCountIs`, and `maxTokensUsed`.
@@ -245,28 +251,155 @@ The `[DONE]` sentinel is intentionally cheap: any model can produce it, and a pl
 
 Drive the same agent loop from a voice memo, phone call, or push-to-talk app. OpenRouter exposes a dedicated [`/api/v1/audio/transcriptions`](/guides/overview/multimodal/stt) endpoint with a single STT model parameter. Hand the transcript to `callModel` exactly like a text prompt.
 
+<CodeGroup>
+
 ```typescript lines
-import { OpenRouter as SDK } from '@openrouter/sdk';
-import { OpenRouter, stepCountIs, maxCost } from '@openrouter/agent';
+// Aliased so it doesn't collide with the `OpenRouter` class from '@openrouter/agent' used in earlier steps
+import { OpenRouter as OpenRouterClient } from '@openrouter/sdk';
+import { callModel, stepCountIs, maxCost } from '@openrouter/agent';
 import { readFile } from 'node:fs/promises';
 
-const sdk = new SDK({ apiKey: process.env.OPENROUTER_API_KEY });
-const agent = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+const client = new OpenRouterClient({ apiKey: process.env.OPENROUTER_API_KEY });
 
 const audio = await readFile('./voice-memo.wav');
-const transcription = await sdk.stt.createTranscription({
-  model: 'openai/whisper-1',
-  inputAudio: { data: audio.toString('base64'), format: 'wav' },
+const transcription = await client.stt.createTranscription({
+  sttRequest: {
+    model: 'openai/whisper-1',
+    inputAudio: { data: audio.toString('base64'), format: 'wav' },
+  },
 });
+console.log('Transcript:', transcription.text);
 
-const result = agent.callModel({
+const result = callModel(client, {
   model: '~anthropic/claude-opus-latest',
   input: transcription.text,
   stopWhen: [stepCountIs(50), maxCost(2)],
 });
 
 const reply = await result.getText();
+console.log(reply);
+
 ```
+
+```python title="Python" lines
+import asyncio
+import base64
+import os
+
+import requests
+from openrouter_agent import OpenRouter, call_model, max_cost, step_count_is
+
+
+async def main() -> None:
+    client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
+
+    with open("./voice-memo.wav", "rb") as f:
+        audio = base64.b64encode(f.read()).decode()
+
+    response = requests.post(
+        "https://openrouter.ai/api/v1/audio/transcriptions",
+        headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+        json={
+            "model": "openai/whisper-1",
+            "input_audio": {"data": audio, "format": "wav"},
+        },
+    )
+    # Surface an auth or quota error instead of failing on a missing "text" key
+    response.raise_for_status()
+    transcription = response.json()
+    print("Transcript:", transcription["text"])
+
+    result = call_model(
+        client,
+        {
+            "model": "~anthropic/claude-opus-latest",
+            "input": transcription["text"],
+            "stop_when": [step_count_is(50), max_cost(2)],
+        },
+    )
+
+    reply = await result.get_text()
+    print(reply)
+
+
+asyncio.run(main())
+
+```
+
+```go title="Go (single turn)" lines
+package main
+
+import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func post(path string, body any, out any) {
+	b, _ := json.Marshal(body)
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1"+path, bytes.NewReader(b))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		log.Fatalf("%s: HTTP %d", path, res.StatusCode)
+	}
+	if err := json.NewDecoder(res.Body).Decode(out); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func main() {
+	audio, err := os.ReadFile("./voice-memo.wav")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var transcription struct {
+		Text string `json:"text"`
+	}
+	post("/audio/transcriptions", map[string]any{
+		"model":       "openai/whisper-1",
+		"input_audio": map[string]string{"data": base64.StdEncoding.EncodeToString(audio), "format": "wav"},
+	}, &transcription)
+	fmt.Println("Transcript:", transcription.Text)
+
+	var completion struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	// Single chat request: no tool loop, step limit, or cost ceiling.
+	post("/chat/completions", map[string]any{
+		"model":    "~anthropic/claude-opus-latest",
+		"messages": []map[string]string{{"role": "user", "content": transcription.Text}},
+	}, &completion)
+	if len(completion.Choices) == 0 {
+		log.Fatal("no choices returned")
+	}
+	fmt.Println(completion.Choices[0].Message.Content)
+}
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+Transcript: Oh
+"Oh" can mean a lot of things! Did something surprise you, or did you mean to send more? What's on your mind?
+```
+
+The Go tab is a single-turn example: it transcribes the memo and sends the transcript in one chat request over raw HTTP, without the agent loop or the step and cost limits that `callModel` applies in the TypeScript and Python tabs.
 
 For a streaming microphone, capture audio chunks on the client, send them to your server, and call `createTranscription` once silence is detected. Use the [STT cookbook](/guides/overview/multimodal/stt) for the full request and response shape.
 
@@ -274,14 +407,19 @@ For a streaming microphone, capture audio chunks on the client, send them to you
 
 For voice-out, pipe the agent's reply through [`/api/v1/audio/speech`](/guides/overview/multimodal/tts) and write the resulting bytes to a file or stream them to the caller.
 
+<CodeGroup>
+
 ```typescript lines
 import { writeFile } from 'node:fs/promises';
 
-const stream = await sdk.tts.createSpeech({
-  model: 'openai/gpt-4o-mini-tts-2025-12-15',
-  input: reply,
-  voice: 'alloy',
-  responseFormat: 'mp3',
+// `client` and `reply` come from the voice-input step above.
+const stream = await client.tts.createSpeech({
+  speechRequest: {
+    model: 'openai/gpt-4o-mini-tts-2025-12-15',
+    input: reply,
+    voice: 'alloy',
+    responseFormat: 'mp3',
+  },
 });
 
 const chunks: Uint8Array[] = [];
@@ -294,6 +432,19 @@ while (true) {
 
 await writeFile('./reply.mp3', Buffer.concat(chunks));
 ```
+
+```bash title="cURL" lines
+# The agent's reply text. Voice names belong to a model, so keep the model and voice together.
+reply="The nightly build finished and every check passed."
+
+curl -sS --fail https://openrouter.ai/api/v1/audio/speech \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -n --arg input "$reply" '{model: "openai/gpt-4o-mini-tts-2025-12-15", input: $input, voice: "alloy", response_format: "mp3"}')" \
+  --output ./reply.mp3
+```
+
+</CodeGroup>
 
 ## 7. Notify on completion
 
@@ -327,7 +478,7 @@ A correct long-horizon implementation should pass all of the following:
 - A run with a low `maxCost` (for example, `maxCost(0.10)`) returns from `callModel` once the ceiling is hit, even if the agent has more work queued.
 - Killing the process mid-run and starting a new `callModel` invocation with the same `StateAccessor` resumes from the saved `ConversationState`. The message history grows rather than starting over.
 - `getToolCallsStream()` and `getTextStream()` yield events while the agent is still running, not only at the end.
-- Sending a voice file through `sdk.stt.createTranscription` returns the expected text, and feeding that text into `callModel` produces a response that references the spoken request.
+- Sending a voice file through `client.stt.createTranscription` returns the expected text, and feeding that text into `callModel` produces a response that references the spoken request.
 - A webhook (or other notification) fires after `getResponse()` resolves.
 
 ## Resources

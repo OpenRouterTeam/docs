@@ -1,0 +1,62 @@
+---
+publish: true
+title: Rankings Methodology
+description: How OpenRouter counts tokens on the Rankings page, including the cap on sustained BYOK-heavy traffic
+seoTitle: 'Rankings Methodology | OpenRouter Documentation'
+og:site_name: OpenRouter Documentation
+og:title: 'Rankings Methodology - How OpenRouter ranks models'
+og:description: 'Learn how OpenRouter counts tokens on the Rankings page and how it caps bring-your-own-key (BYOK) traffic for models with sustained BYOK-heavy usage.'
+og:image: https://openrouter.ai/dynamic-og?pathname=rankings-methodology&title=Rankings%20Methodology&description=How%20OpenRouter%20ranks%20models
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: ranking-star
+---
+
+The [Rankings](https://openrouter.ai/rankings) page ranks models by the tokens they process through OpenRouter. This page explains how those tokens are counted and how OpenRouter adjusts the count for models whose traffic comes mostly from [bring your own key (BYOK)](/guides/overview/auth/byok) requests.
+
+## What the rankings count
+
+Each model is ranked by the sum of its prompt and completion tokens, including reasoning tokens. The BYOK cap described below is applied to daily totals in UTC. The Today view uses hourly totals for its rolling 24 hours, and the Trending view sorts by token growth instead of total volume. Requests that a user or app keeps private are excluded.
+
+The rankings measure traffic routed through OpenRouter. They don't measure users, spend, or model quality.
+
+## How the cap works
+
+The cap has two steps. Step 1 decides whether a model is flagged. Step 2 limits how much BYOK traffic counts on each day for a flagged model.
+
+<Steps>
+  <Step title="Check the model's last 90 days">
+    A model is flagged when its BYOK tokens over the trailing 90 days are more than twice its non-BYOK tokens over the same 90 days.
+
+    Each model is compared only with its own non-BYOK traffic, never with other models.
+  </Step>
+  <Step title="Cap each day's BYOK tokens">
+    While a model is flagged, each day's BYOK tokens count toward the rankings only up to twice that day's non-BYOK tokens:
+
+    ```text
+    ranked tokens = non-BYOK tokens + min(BYOK tokens, 2 × non-BYOK tokens)
+    ```
+
+    Non-BYOK tokens always count in full. Only the BYOK tokens above the cap are left out.
+  </Step>
+</Steps>
+
+For example, a flagged model that processes 10 billion non-BYOK tokens and 90 billion BYOK tokens in a day is ranked on 30 billion tokens: 10 billion non-BYOK plus 20 billion BYOK. The other 70 billion BYOK tokens don't count toward its rank.
+
+### Details
+
+- **New models:** If a model has been live for fewer than 90 days, only the days it has been live count. A new model can be flagged from its first day if its BYOK tokens are already more than twice its non-BYOK tokens and it is above the daily minimum.
+- **Minimum volume:** A day is capped only when the model's BYOK volume that day is above a minimum. Low-volume models aren't flagged.
+- **Model variants:** A model's variants, such as a free variant, are added together for both steps. Splitting BYOK traffic across variants doesn't avoid the cap.
+- **No hindsight:** Each day is judged on the 90 days that end on that day. Later traffic never changes an earlier day's result. The current day can change until it ends.
+- **Weeks and months:** Weekly and monthly totals are the sum of the capped daily totals.
+- **Scope:** The cap applies to token rankings across all traffic. Days before OpenRouter recorded BYOK and non-BYOK tokens separately aren't capped.
+
+## What you see on the Rankings page
+
+- **Asterisk:** A model is marked with an asterisk (\*) when at least one day in the period you're viewing is capped. The mark isn't permanent. A model that was capped only outside that period has no asterisk.
+- **Full totals:** To see every model's full token count, open the chart's options menu and turn on **Include Significant BYOK Activity**. The asterisk stays, so you can still tell which models are affected.

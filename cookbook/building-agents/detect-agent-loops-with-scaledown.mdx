@@ -69,6 +69,8 @@ const QUESTIONS = {
 
 `judgeRun` sends the transcript and the questions, and checks the answers against a schema. If the response is an error or doesn't match the schema, `judgeRun` throws. Step 3 decides what that means for the loop.
 
+<CodeGroup>
+
 ```typescript lines
 const RUN_STATES = ['progressing', 'stuck', 'looping'] as const;
 
@@ -107,6 +109,118 @@ export async function judgeRun(transcript: string): Promise<Judgement> {
   return DecisionsResponseSchema.parse(await res.json());
 }
 ```
+
+```go title="Go" lines
+const decisionsModel = "scaledown/classify-1"
+
+// The questions from step 1
+var questions = map[string]any{
+	"run_state": map[string]any{
+		"type":         "choice",
+		"instructions": "Which single state best describes this agent run?",
+		"criteria": map[string]string{
+			"progressing": "The agent is making new progress: trying different actions, producing new results, or moving closer to the goal.",
+			"stuck":       "The agent is blocked by an error or missing information it cannot resolve, even when it tries different actions.",
+			"looping":     "The agent is repeating the same tool calls or reasoning with the same outcome.",
+		},
+	},
+	"is_repeating": map[string]any{
+		"type":         "noul",
+		"instructions": "In the last third of the transcript, does the agent repeat a tool call it already made with the same arguments and get the same result?",
+	},
+	"completion": map[string]any{
+		"type":         "score",
+		"instructions": "How close is the agent to completing the user's task?",
+		"criteria":     []string{"Has not started or is far from done", "Partway there, with meaningful work remaining", "Essentially done, only wrap-up left"},
+	},
+}
+
+var runStates = []string{"progressing", "stuck", "looping"}
+
+type Answers struct {
+	RunState struct {
+		Type          string             `json:"type"`
+		Choice        string             `json:"choice"`
+		Probabilities map[string]float64 `json:"probabilities"`
+	} `json:"run_state"`
+	IsRepeating struct {
+		Type string   `json:"type"`
+		Noul *float64 `json:"noul"`
+	} `json:"is_repeating"`
+	Completion struct {
+		Type  string   `json:"type"`
+		Score *float64 `json:"score"`
+	} `json:"completion"`
+}
+
+type Judgement struct {
+	ID      string  `json:"id"`
+	Model   string  `json:"model"`
+	Answers Answers `json:"answers"`
+	Usage   struct {
+		InputTokens  float64 `json:"input_tokens"`
+		OutputTokens float64 `json:"output_tokens"`
+		Cost         float64 `json:"cost"`
+	} `json:"usage"`
+}
+
+func (j *Judgement) validate() error {
+	a := j.Answers
+	if j.ID == "" || j.Model == "" {
+		return errors.New("missing id or model")
+	}
+	if a.RunState.Type != "choice" || !slices.Contains(runStates, a.RunState.Choice) {
+		return fmt.Errorf("invalid run_state: %+v", a.RunState)
+	}
+	// Every run state needs a probability: a partial judgment is rejected, not acted on
+	if len(a.RunState.Probabilities) != len(runStates) {
+		return fmt.Errorf("incomplete probabilities: %v", a.RunState.Probabilities)
+	}
+	for k, p := range a.RunState.Probabilities {
+		if !slices.Contains(runStates, k) || p < 0 || p > 1 {
+			return fmt.Errorf("invalid probability %s=%v", k, p)
+		}
+	}
+	if a.IsRepeating.Type != "noul" || a.IsRepeating.Noul == nil || *a.IsRepeating.Noul < 0 || *a.IsRepeating.Noul > 1 {
+		return fmt.Errorf("invalid is_repeating: %+v", a.IsRepeating)
+	}
+	if a.Completion.Type != "score" || a.Completion.Score == nil || *a.Completion.Score < 0 || *a.Completion.Score > 2 {
+		return fmt.Errorf("invalid completion: %+v", a.Completion)
+	}
+	return nil
+}
+
+func judgeRun(transcript string) (*Judgement, error) {
+	body, _ := json.Marshal(map[string]any{
+		"model":     decisionsModel,
+		"state":     map[string]string{"text": transcript},
+		"questions": questions,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/alpha/decisions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := (&http.Client{Timeout: 60 * time.Second}).Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	data, _ := io.ReadAll(res.Body)
+	if res.StatusCode >= 300 {
+		return nil, fmt.Errorf("decisions %d: %s", res.StatusCode, data)
+	}
+	var j Judgement
+	if err := json.Unmarshal(data, &j); err != nil {
+		return nil, err
+	}
+	if err := j.validate(); err != nil {
+		return nil, err
+	}
+	return &j, nil
+}
+```
+
+</CodeGroup>
 
 **Captured output.** The response for the looping transcript from the worked example below: 14,244 characters in which the agent runs `bun test packages/billing/invoice.test.ts` sixty times and fails the same way each time.
 
@@ -151,6 +265,8 @@ Decide on the probabilities, not just the label: `choice` says `looping` whether
 
 If a check itself fails, the supervisor lets the run continue: `supervise` logs the error and returns `'continue'`, so a Decisions outage or a schema change never kills a healthy run. A [tool-call gate](/cookbook/building-agents/gate-tool-calls-with-jev) does the opposite and blocks on error, because a wrongly approved tool call can do harm. Here, a missed check costs at most a few more steps of a run that may already be wasted.
 
+<CodeGroup>
+
 ```typescript lines
 type Action = 'continue' | 'nudge' | 'halt';
 
@@ -194,6 +310,56 @@ export async function supervise(transcript: string): Promise<Action> {
 }
 ```
 
+```go title="Go" lines
+type Action string
+
+const (
+	Continue Action = "continue"
+	Nudge    Action = "nudge"
+	Halt     Action = "halt"
+)
+
+const (
+	haltLooping   = 0.8
+	haltRepeating = 0.8
+	nudgeLooping  = 0.5
+	nudgeStuck    = 0.4
+)
+
+func chooseAction(a Answers) Action {
+	looping := a.RunState.Probabilities["looping"]
+	stuck := a.RunState.Probabilities["stuck"]
+	if looping >= haltLooping && *a.IsRepeating.Noul >= haltRepeating {
+		return Halt
+	}
+	if looping >= nudgeLooping || stuck >= nudgeStuck {
+		return Nudge
+	}
+	return Continue
+}
+
+func supervise(transcript string) Action {
+	j, err := judgeRun(transcript)
+	if err != nil {
+		log.Printf("supervisor check failed, continuing: %v", err)
+		return Continue
+	}
+	action := chooseAction(j.Answers)
+	out, _ := json.Marshal(map[string]any{
+		"id":           j.ID,
+		"action":       action,
+		"run_state":    j.Answers.RunState.Probabilities,
+		"is_repeating": *j.Answers.IsRepeating.Noul,
+		"completion":   *j.Answers.Completion.Score,
+		"usage":        j.Usage,
+	})
+	fmt.Println(string(out))
+	return action
+}
+```
+
+</CodeGroup>
+
 The API returns probabilities, not reasons, so the log line is your record of why the supervisor acted. Keep it with the run.
 
 ## 4. Hook it into the loop
@@ -223,7 +389,7 @@ for (let step = 1; step <= MAX_STEPS; step++) {
 
 ## Worked example
 
-The three transcripts below are made up, but they're the ones the captured output came from, so you can run them yourself. All three start from the same task. The looping transcript runs one failing test command sixty times. The stuck transcript tries twelve different ways to read a fixture file owned by root, then gives up. The progressing transcript reads the test, finds the import-time `Date.now()`, injects a clock, runs the tests, and opens a PR. Save steps 1 to 3 and these two blocks as one file and run it with `bun run supervise.ts`.
+The three transcripts below are made up, but they're the ones the captured output came from, so you can run them yourself. All three start from the same task. The looping transcript runs one failing test command sixty times. The stuck transcript tries twelve different ways to read a fixture file owned by root, then gives up. The progressing transcript reads the test, finds the import-time `Date.now()`, injects a clock, runs the tests, and opens a PR. Save steps 1 to 3 and these two blocks as one file and run it with `bun run supervise.ts`. For Go, save the Go tab below as `main.go`, append the Go tabs from steps 2 and 3, and run it with `go run main.go`.
 
 ```typescript expandable lines
 type Kind = 'looping' | 'stuck' | 'progressing';
@@ -282,11 +448,102 @@ function transcript(kind: Kind): string {
 }
 ```
 
+<CodeGroup>
+
 ```typescript lines
 for (const kind of ['looping', 'stuck', 'progressing'] as const) {
   await supervise(transcript(kind));
 }
 ```
+
+```go title="Go" expandable lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"slices"
+	"strings"
+	"time"
+)
+
+// Step is one agent turn: what it said, the tool, the arguments, and the result
+type Step [4]string
+
+const task = "[user]\nMake the failing test in packages/billing/invoice.test.ts pass and open a PR."
+
+var loopingStep = Step{"Running the test suite again.", "run_command", "{\"cmd\":\"bun test packages/billing/invoice.test.ts\"}", "FAIL invoice.test.ts > renders due date\n  expected \"2026-09-30\" received \"2026-10-12\"\n 0 pass, 1 fail"}
+
+var stuckSteps = []Step{
+	{"Reading the fixture the test loads.", "read_file", "{\"path\":\"fixtures/invoice.json\"}", "EACCES: permission denied, open fixtures/invoice.json"},
+	{"Checking who owns the file.", "run_command", "{\"cmd\":\"ls -la fixtures/\"}", "-rw------- 1 root root 2048 invoice.json"},
+	{"Trying to relax the permissions.", "run_command", "{\"cmd\":\"chmod 644 fixtures/invoice.json\"}", "chmod: changing permissions of fixtures/invoice.json: Operation not permitted"},
+	{"Trying sudo.", "run_command", "{\"cmd\":\"sudo chmod 644 fixtures/invoice.json\"}", "sudo: a terminal is required to read the password"},
+	{"Copying it somewhere readable.", "run_command", "{\"cmd\":\"cp fixtures/invoice.json /tmp/invoice.json\"}", "cp: cannot open fixtures/invoice.json for reading: Permission denied"},
+	{"Looking for the fixture in git history.", "run_command", "{\"cmd\":\"git log --oneline -- fixtures/invoice.json\"}", "a91c2e0 add invoice fixture (root-only on CI)"},
+	{"Checking out an older copy.", "run_command", "{\"cmd\":\"git show a91c2e0:fixtures/invoice.json\"}", "error: unable to read sha1 file of fixtures/invoice.json (object missing, partial clone)"},
+	{"Fetching the missing object.", "run_command", "{\"cmd\":\"git fetch --unshallow\"}", "fatal: unable to access remote: Could not resolve host: github.com"},
+	{"Searching for another copy of the fixture.", "run_command", "{\"cmd\":\"rg -l \"NW-2026-0417\" .\"}", "rg: fixtures/invoice.json: Permission denied (os error 13)"},
+	{"Checking whether the test can run without it.", "run_command", "{\"cmd\":\"bun test packages/billing/invoice.test.ts\"}", "ENOENT/EACCES in beforeAll: cannot read fixtures/invoice.json\n 0 pass, 1 fail"},
+	{"Checking the CI config for how the fixture is provisioned.", "read_file", "{\"path\":\".github/workflows/ci.yaml\"}", "EACCES: permission denied, open .github/workflows/ci.yaml"},
+	{"Asking whether a service account can read it.", "run_command", "{\"cmd\":\"id\"}", "uid=1001(agent) gid=1001(agent) groups=1001(agent)"},
+}
+
+var progressingSteps = []Step{
+	{"Reading the failing test first.", "read_file", "{\"path\":\"packages/billing/invoice.test.ts\"}", "expect(renderDueDate(invoice)).toBe(\"2026-09-30\") // line 41"},
+	{"Running only that test to see the failure.", "run_command", "{\"cmd\":\"bun test packages/billing/invoice.test.ts\"}", "FAIL renders due date: expected \"2026-09-30\" received \"2026-10-12\""},
+	{"Reading renderDueDate.", "read_file", "{\"path\":\"packages/billing/invoice.ts\"}", "const NOW = Date.now();\nexport function renderDueDate(i: Invoice): string { return addDays(NOW, i.terms_days) }"},
+	{"The module captures Date.now() at import, so the due date depends on when the test runs. Checking how other packages inject a clock.", "run_command", "{\"cmd\":\"rg -n \"clock\" packages --type ts -l\"}", "packages/ledger/clock.ts\npackages/ledger/clock.test.ts"},
+	{"Reading the ledger clock helper.", "read_file", "{\"path\":\"packages/ledger/clock.ts\"}", "export type Clock = () => number;\nexport const systemClock: Clock = () => Date.now();"},
+	{"Refactoring renderDueDate to take a clock parameter.", "edit_file", "{\"path\":\"packages/billing/invoice.ts\",\"replace\":\"export function renderDueDate(i: Invoice, clock: Clock = systemClock): string { return addDays(clock(), i.terms_days) }\"}", "edited packages/billing/invoice.ts (+3 -2)"},
+	{"Updating the test to pass a fixed clock.", "edit_file", "{\"path\":\"packages/billing/invoice.test.ts\",\"replace\":\"renderDueDate(invoice, () => Date.parse(\"2026-09-15\"))\"}", "edited packages/billing/invoice.test.ts (+1 -1)"},
+	{"Running the billing tests.", "run_command", "{\"cmd\":\"bun test packages/billing\"}", " 42 pass, 0 fail"},
+	{"Type-checking the package.", "run_command", "{\"cmd\":\"bun run typecheck --filter @openrouter-monorepo/billing\"}", "Found 0 errors."},
+	{"Checking the other call sites of renderDueDate.", "run_command", "{\"cmd\":\"rg -n \"renderDueDate\\(\" packages projects\"}", "projects/web/app/invoices/page.tsx:88: renderDueDate(invoice)"},
+	{"The default clock keeps that call site working. Running lint.", "run_command", "{\"cmd\":\"bun run lint\"}", "No issues found."},
+	{"Creating a branch and committing.", "run_command", "{\"cmd\":\"git checkout -b fix/invoice-clock && git commit -am \"fix: inject clock into renderDueDate\"\"}", "[fix/invoice-clock 3f9a1c2] fix: inject clock into renderDueDate\n 2 files changed, 4 insertions(+), 3 deletions(-)"},
+	{"Pushing and opening the PR.", "run_command", "{\"cmd\":\"git push -u origin fix/invoice-clock && gh pr create --fill\"}", "https://github.com/example/repo/pull/4821"},
+}
+
+func renderSteps(steps []Step) []string {
+	var out []string
+	for _, s := range steps {
+		out = append(out, fmt.Sprintf("[assistant]\n%s\n[tool_call %s] %s", s[0], s[1], s[2]), "[tool_result]\n"+s[3])
+	}
+	return out
+}
+
+func transcript(kind string) string {
+	parts := []string{task}
+	switch kind {
+	case "looping":
+		for i := 0; i < 60; i++ {
+			parts = append(parts, renderSteps([]Step{loopingStep})...)
+		}
+	case "stuck":
+		parts = append(parts, renderSteps(stuckSteps)...)
+		parts = append(parts, "[assistant]\nI have no way to read fixtures/invoice.json from this environment. Every route to it is blocked by permissions and the network is unavailable.")
+	case "progressing":
+		parts = append(parts, renderSteps(progressingSteps)...)
+	}
+	return strings.Join(parts, "\n\n")
+}
+
+func main() {
+	for _, kind := range []string{"looping", "stuck", "progressing"} {
+		supervise(transcript(kind))
+	}
+}
+
+```
+
+</CodeGroup>
 
 **Captured output.** One `supervise` log line per transcript, probabilities rounded. We ran each transcript three times; the table has the ranges.
 
