@@ -564,6 +564,19 @@ type ResponseUsage = {
     tool_calls_executed?: number;
     web_search_requests?: number;
   };
+
+  /**
+   * Totals across every model turn with settled usage in a `universal` deferred-tools run;
+   * omitted on `portable` and standard requests. When present, native token fields reflect only
+   * the final upstream call while `cost` and `cost_details` sum every turn and any billable
+   * router-run tools in the run.
+   */
+  deferred_tools_details?: {
+    turns: number;              // Model turns with settled usage in the run (positive integer)
+    prompt_tokens: number;      // Prompt tokens summed over every settled model turn
+    completion_tokens: number;  // Completion tokens summed over every settled model turn
+    total_tokens: number;       // Sum of prompt_tokens and completion_tokens
+  };
 };
 ```
 

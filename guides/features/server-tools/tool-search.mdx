@@ -176,6 +176,18 @@ A continuation that cannot be verified returns a `400` whose message says what h
 
 To recover, resend the conversation exactly as OpenRouter returned it, or start a new conversation.
 
+### Usage and Billing
+
+A deferred-tools request may execute multiple upstream model turns before returning a single response:
+
+- **Final-turn native token counts (`universal` profile):** Under the `universal` profile, native `usage` token fields (`prompt_tokens` / `input_tokens`, `completion_tokens` / `output_tokens`, `total_tokens`, and cache or reasoning token details) reflect only the final upstream model turn so agent harnesses (such as Claude Code and Codex) track real context-window fill without premature auto-compaction. Under the `portable` profile, native token fields report cumulative totals across all turns and `deferred_tools_details` is omitted.
+- **Summed cost:** `usage.cost` and `usage.cost_details` report the sum across every upstream model turn plus any billable router-run tools (`cost_details.server_tool_cost`) executed for the request.
+- **Run totals in `usage.deferred_tools_details` (`universal` profile):** Across Chat Completions, Responses, and Messages (streaming and non-streaming), `universal` runs include `usage.deferred_tools_details` with `{ turns, prompt_tokens, completion_tokens, total_tokens }` summed across every model turn with settled usage. On Anthropic Messages streams, if a billable search turn completes and a later upstream turn fails, the stream can emit an `error` event without a final `message_delta.usage`; missing usage is not evidence that no work was billed.
+- **Per-turn Logs rows:** Each upstream model turn is recorded and billed as its own generation row in [Logs](/guides/features/logs), linked to the parent request via `parent_generation_id` (child turns carry `spawned_by: "tool_search"`).
+- **Pre-turn spend threshold:** Spend added after turn 1 (subsequent turns, billed failed attempts, and billable router-run tool costs) is gated by a threshold of `max($10, 6 × turn 1 cost)` checked before starting another turn. It is not a hard cap on billing: a turn that starts below the threshold finishes and is billed in full even if it exceeds the threshold, and no further turn is started. Every upstream turn that completed before a threshold or turn-limit stop remains billed.
+
+See [Usage Accounting](/cookbook/administration/usage-accounting#deferred-tools-usage) for response examples and API-specific token field details.
+
 ## Supported APIs
 
 The `openrouter:tool_search` tool type is accepted by the [Responses API](/api_reference/responses/overview) and the [Messages API](/api/api-reference/anthropic-messages/create-a-message). The Chat Completions API does not accept it in `tools` and returns a `400`; on Chat Completions, use the [`deferred_tools` protocol](#deferred-tools-protocol) instead.

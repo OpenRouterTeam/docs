@@ -407,6 +407,34 @@ For a request that invokes an OpenRouter server tool, the `usage` object include
 
 These fields describe tool activity; the request's overall `usage.cost` includes applicable server-tool charges.
 
+### Deferred-Tools Usage
+
+When a request executes a managed multi-turn deferred-tools run under the `universal` profile, native token fields (`input_tokens`, `output_tokens`, `total_tokens`, `input_tokens_details`, and `output_tokens_details`) report the final upstream model turn, `cost` and `cost_details` sum all turns plus any billable router-run tools, and `deferred_tools_details` reports the summed token totals across every model turn with settled usage. Multi-turn runs under the `portable` profile report cumulative native token counts and omit `deferred_tools_details`, as do standard requests:
+
+```json lines
+{
+  "usage": {
+    "input_tokens": 1300,
+    "output_tokens": 60,
+    "total_tokens": 1360,
+    "cost": 0.012,
+    "deferred_tools_details": {
+      "turns": 2,
+      "prompt_tokens": 2300,
+      "completion_tokens": 100,
+      "total_tokens": 2400
+    }
+  }
+}
+```
+
+- `turns`: Model turns with settled usage in the run (positive integer; failed upstream attempts with no settled usage are not counted).
+- `prompt_tokens`: Prompt tokens summed across every settled model turn.
+- `completion_tokens`: Completion tokens summed across every settled model turn.
+- `total_tokens`: Sum of `prompt_tokens` and `completion_tokens` across every settled model turn.
+
+See [Usage Accounting](/cookbook/administration/usage-accounting#deferred-tools-usage) for per-turn Logs rows, spend thresholds, and behavior across APIs.
+
 ## Streaming Responses
 
 Enable streaming for real-time response generation:
