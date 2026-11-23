@@ -32,6 +32,8 @@ Before you start, you need:
 
 A batch has one model, one endpoint, and a list of requests. Each request `body` is the same body you send to the sync endpoint.
 
+For text generation, the cost estimate uses the output limit for the request format: `max_completion_tokens` (or the older `max_tokens`) for Chat Completions, `max_output_tokens` for Responses, and `max_tokens` for Messages. If you omit an optional output limit, the estimate uses 1,024 completion tokens per request.
+
 | Field | Required | Description |
 |-------|----------|-------------|
 | `endpoint` | Yes | `/v1/chat/completions`, `/v1/responses`, `/v1/messages`, or `/v1/embeddings`. Every request uses this endpoint. |
