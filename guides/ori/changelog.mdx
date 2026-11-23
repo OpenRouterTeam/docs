@@ -18,6 +18,53 @@ rss: true
 
 Curated release notes for the Ori CLI, newest version first. If you are new to Ori, start with [Ori Harness](/guides/ori/harness), which covers installing Ori and running your existing agent CLI. [File Writing](/guides/ori/files) explains what Ori puts in your project.
 
+<Update label="0.17.4" description="November 23, 2026" tags={["Patch"]} rss={{ title: "Ori 0.17.4", description: "Ori 0.17.4 brings back `ori code`, which now installs and starts the Ori Code agent." }}>
+
+Ori 0.17.4 brings back `ori code`, which now installs and starts the Ori Code agent. The desktop app gets more reliable updates, custom sidebar sections and the Companion design on its surfaces. Hosted Rust intern sessions are shared between the CLI and the desktop app. Memory, Slack, routines and telemetry get smaller fixes and additions.
+
+## Ori Code
+
+- **`ori code`.** The `ori code` command starts the Ori Code agent. Each CLI release installs the Ori Code build that is pinned to that release.
+- **OpenRouter key.** Ori Code uses the launcher's OpenRouter key. Ori Code identifies itself to OpenRouter by name. The runtime refreshes the key through the launcher's credential helper.
+- **Old servers.** `ori code` never sends a turn to a server that started under another sign-in, endpoint or version. It waits for that server to finish, then starts its own.
+- **Managed workspaces.** In a workspace that sets Allowed harnesses, an administrator must add `code` before `ori code` runs.
+
+## Desktop app
+
+- **Update checks.** The desktop app checks for updates every 5 minutes. The app keeps checking after an update is ready. Before the restart, the app checks again for the latest build.
+- **Update restarts.** The desktop app restores quickly after an update restart. An active turn is not lost during the update restart.
+- **Update ready card.** The Update ready notice is back on the sidebar card. The card shows in a compact form for a new build.
+- **Custom sections.** You can create your own sections in the threads view. The desktop app asks for confirmation before it deletes a custom section.
+- **Scheduled.** The Scheduled section shows above Threads and shows a count. Opening a thread clears its unread dot.
+- **Removed pages.** The Threads library page and its saved views are gone. The Overview page is gone, and the account menu now holds only Settings.
+- **Organization name.** Account and Settings show the organization of the signed-in key.
+- **Message times.** Each chat message shows the time that it was sent.
+- **Thread history.** A thread keeps its earlier turns when tool output fills the shown history. The turn view shows custom tool calls from Rust interns.
+- **Connections in chat.** When an intern asks for a connection, the chat shows one connect block. The block runs the same actions as Settings.
+- **Retry.** Retry checks whether the backend received the turn. Retry then picks the matching retry path.
+- **Thinking defaults.** A new chat uses the intern's default thinking effort.
+- **Design.** The interface font is Plus Jakarta Sans. The shell, sidebar, conversation, composer, model picker, Settings, Inside and intern lifecycle pages use the Companion design. Leftover strokes and off-scale styles are gone.
+- **Accessibility.** Screen readers announce toasts. Color swatches have better contrast. The danger color is correct, and a failed intern's avatar mark uses the negative color. Menus and nested sheets have the correct widths.
+
+## Interns
+
+- **Shared sessions.** A hosted Rust intern session is shared between the CLI and the desktop app. You can continue the session in either one.
+- **Memory.** Memory keeps rules and facts only in memory. Memory never writes them into `AGENTS.md`.
+
+## Schedules
+
+- **Several runs a day.** One routine can run at several times each day.
+
+## Slack
+
+- **Message links.** A message keeps its link when Slack sends a block or file type that Ori does not know.
+- **Status skill.** The status skill accepts the forms of the older status command.
+
+## Telemetry
+
+- **OpenTelemetry.** Features can export OpenTelemetry data. A feature passes the `traceparent` trace context to the MCP servers that it calls.
+
+</Update>
 <Update label="0.17.3" description="November 20, 2026" tags={["Breaking","Patch"]} rss={{ title: "Ori 0.17.3", description: "Ori 0.17.3 removes the old agent commands from the CLI." }}>
 
 Ori 0.17.3 removes the old agent commands from the CLI. Rust interns get memory, which learns from conversation and shows in a new What Ori knows section of desktop Settings. Slack gains slash commands, display blocks and private interns. The desktop app opens threads faster and gets a feedback dialog. `ori omp` starts again on Oh My Pi 18.7 and later.
