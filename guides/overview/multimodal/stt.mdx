@@ -1,11 +1,11 @@
 ---
 publish: true
 title: Speech-to-Text
-description: How to transcribe audio into text with OpenRouter models
-seoTitle: 'OpenRouter Speech-to-Text (STT) | Complete Documentation'
+description: Transcribe audio to text with OpenRouter's unified Speech-to-Text API across Whisper, GPT-4o Transcribe, Deepgram, ElevenLabs, and more
+seoTitle: 'Speech-to-Text (STT) API | OpenRouter Documentation'
 og:site_name: OpenRouter Documentation
-og:title: 'OpenRouter Speech-to-Text - Complete Documentation'
-og:description: 'Transcribe audio into text using AI models through the OpenRouter API. Access multiple STT providers with a single unified interface.'
+og:title: 'Speech-to-Text (STT) API - OpenRouter Documentation'
+og:description: 'Transcribe audio into text through one unified Speech-to-Text API, with word timestamps, speaker diarization, and OpenAI-compatible multipart uploads.'
 og:image: https://openrouter.ai/dynamic-og?title=OpenRouter%20Speech-to-Text&description=Transcribe%20audio%20into%20text%20using%20AI%20models%20through%20the%20OpenRouter%20API.
 og:image:width: 1200
 og:image:height: 630
@@ -241,6 +241,11 @@ Oh
 | `response_format` | string | No | `json` (default) or `verbose_json`. See [Verbose Transcripts](#verbose-transcripts-timestamps-and-speakers) |
 | `timestamp_granularities` | string[] | No | `["segment"]` and/or `["word"]`. Only used with `verbose_json` |
 | `provider` | object | No | Data policy routing preferences (`zdr`, `data_collection`) and provider-specific options under `provider.options`. With `zdr: true`, the request only routes to [Zero Data Retention](/guides/features/zdr) endpoints. Other routing preferences (`order`, `only`, `ignore`) are not applied to transcription requests. See [Provider-Specific Options](#provider-specific-options) |
+| `diarize` | boolean | No | Label each word with its speaker on the `words` array. Requires `response_format: "verbose_json"` and adds word timestamps without setting `timestamp_granularities`. Every labeled word has `speaker`; `speaker_label` is present only when the provider returns one (Deepgram returns only `speaker`). Only some providers support it; the request is rejected with a 400 when the selected model cannot diarize, and providers may charge extra |
+| `keyterms` | string[] | No | Domain terms, names, or phrases to bias recognition toward. Only some providers support it; the request is rejected with a 400 when the selected model cannot use keyterms, and providers may cap the number or length of terms |
+| `user` | string | No | Stable identifier for your end-user, forwarded to Broadcast and private logging as the end-user ID; never sent to the provider |
+| `session_id` | string | No | Unique identifier (max 256 characters) for grouping related requests in Broadcast and private logging; never sent to the provider. Overrides the `x-session-id` header if both are set. |
+| `trace` | object | No | Observability and tracing metadata forwarded to configured Broadcast destinations. Named fields (`trace_id`, `trace_name`, `span_name`, `generation_name`, `parent_span_id`) are optional strings; custom keys may hold other JSON value types |
 
 ### OpenAI-Compatible Multipart Requests
 
@@ -358,7 +363,7 @@ Full response: {
 }
 ```
 
-The `file`, `model`, `language`, `prompt`, `temperature`, `response_format`, and `timestamp_granularities` fields are supported. `response_format` may be `json` (the default) or `verbose_json` (see [Verbose Transcripts](#verbose-transcripts-timestamps-and-speakers)). `text`, `srt`, and `vtt` are rejected with a 400. With `verbose_json`, pass `timestamp_granularities[]=word` to also receive word-level timestamps in the `words` array.
+The `file`, `model`, `language`, `prompt`, `temperature`, `response_format`, `timestamp_granularities`, `diarize`, `keyterms[]`, `user`, `session_id`, and `trace` fields are supported. On providers that support it, send `source_url` (a public http(s) URL the provider downloads directly) instead of `file`; exactly one of the two is required. Send `trace` as one text part holding a JSON-encoded object, and repeat `keyterms[]` once per term; a JSON array in a single `keyterms[]` part is treated as one literal term. `response_format` may be `json` (the default) or `verbose_json` (see [Verbose Transcripts](#verbose-transcripts-timestamps-and-speakers)). `text`, `srt`, and `vtt` are rejected with a 400. With `verbose_json`, pass `timestamp_granularities[]=word` to also receive word-level timestamps in the `words` array.
 
 Multipart uploads are limited to 25 MB, the same cap OpenAI enforces. For compressed formats this covers long recordings, roughly 26 minutes of 128 kbps MP3, 52 minutes at 64 kbps, or over 2 hours of 24 kbps Opus voice notes. Uncompressed WAV fills the cap much faster (about 13 minutes at 16 kHz mono); prefer `mp3` or `opus` for long recordings. Larger files should be sent as base64 JSON via `input_audio` on OpenAI and Groq models, which offload the large body through a Durable Object and accept files past the 25 MB multipart cap, or as `input_audio.url` for models that accept a URL — the provider downloads it directly, so the 25 MB inline cap does not apply. On other providers, base64 JSON past the multipart cap is rejected, so those models are limited to the 25 MB multipart upload. Recordings longer than about a minute of processing time should be split anyway, since upstream providers time out after 60 seconds per request.
 
@@ -436,7 +441,7 @@ Features a provider exposes only through its own options, such as speaker diariz
 
 Set `response_format` to `verbose_json` to request structured fields such as `language`, `duration`, and a `segments` array with start and end times (OpenAI-compatible providers also return `task`). Which of these fields are present varies by provider. Add `"word"` to `timestamp_granularities` to also request a `words` array. Providers that do not return structured output reject `verbose_json` with a 400, as do some individual models (for example `openai/gpt-4o-transcribe` and `microsoft/mai-transcribe-1.5`).
 
-Speaker diarization is enabled through the provider's own option under `provider.options` (see [Provider-Specific Options](#provider-specific-options)). When the provider returns speaker labels, each segment (and word, where the provider supports it) carries a `speaker` index. This example enables diarization on the `azure` endpoint of `microsoft/mai-transcribe-2`:
+Enable speaker diarization with the top-level `diarize: true` flag on providers that support it (it adds word timestamps on its own), or through the provider's own option under `provider.options` (see [Provider-Specific Options](#provider-specific-options)). When the provider returns speaker labels, each segment (and word, where the provider supports it) carries a `speaker` index. This example enables diarization on the `azure` endpoint of `microsoft/mai-transcribe-2`:
 
 ```bash title="cURL" lines
 AUDIO_BASE64=$(base64 < audio.mp3 | tr -d '\n')
