@@ -119,6 +119,11 @@ The response returns a `data` array where each model includes:
 | `supported_resolutions` | List of supported output resolutions (e.g., `720p`, `1080p`) |
 | `supported_aspect_ratios` | List of supported aspect ratios (e.g., `16:9`, `9:16`) |
 | `supported_sizes` | List of supported pixel dimensions (e.g., `1280x720`) |
+| `supported_frame_images` | Frame positions advertised for `frame_images` (`first_frame`, `last_frame`), or `null` if none are advertised |
+| `generate_audio` | The serving endpoint's default for the `generate_audio` request parameter, or `null` if not declared. `false` means audio is off by default, not necessarily unsupported |
+| `seed` | Whether the endpoint declares support for a `seed` for reproducible output, or `null` if not declared (not an explicit no) |
+| `upscale_factor` | Advertised range for the `upscale_factor` request parameter as `min` and `max`, either of which can be `null` for no bound on that side; `null` if no factor range is advertised (some models upscale by target resolution instead) |
+| `creativity` | Supported `creativity` levels (upscaling models), or `null` |
 | `pricing_skus` | Pricing information per SKU |
 | `allowed_passthrough_parameters` | Provider-specific parameters that can be passed through via the `provider` option |
 
@@ -180,8 +185,8 @@ Unlike text or image generation, video generation is **asynchronous** because ge
 
 1. **Submit** a generation request to `POST /api/v1/videos`
 2. **Receive** a job ID and polling URL immediately
-3. **Poll** the polling URL (`GET /api/v1/videos/{jobId}`) until the status is `completed`
-4. **Download** the video from the content URL (`GET /api/v1/videos/{jobId}/content`)
+3. **Poll** the polling URL (`GET /api/v1/videos/{jobId}`) until the job reaches a terminal status: `completed`, `failed`, `cancelled` or `expired`
+4. **Download** the video from the content URL (`GET /api/v1/videos/{jobId}/content`) once the status is `completed`
 
 ## API Usage
 
@@ -207,6 +212,7 @@ payload = {
 
 # Step 1: Submit the generation request
 response = requests.post(url, headers=headers, json=payload)
+response.raise_for_status()
 result = response.json()
 
 job_id = result["id"]
@@ -218,6 +224,7 @@ print(f"Status: {result['status']}")
 while True:
     time.sleep(30)  # Wait 30 seconds between polls
     poll_response = requests.get(polling_url, headers=headers)
+    poll_response.raise_for_status()
     status = poll_response.json()
 
     print(f"Status: {status['status']}")
@@ -226,13 +233,13 @@ while True:
         # Step 3: Download the video
         content_url = status["unsigned_urls"][0]
         video_response = requests.get(content_url, headers=headers)
+        video_response.raise_for_status()
         with open("output.mp4", "wb") as f:
             f.write(video_response.content)
         print("Video saved to output.mp4")
         break
-    elif status["status"] == "failed":
-        print(f"Generation failed: {status.get('error', 'Unknown error')}")
-        break
+    elif status["status"] in ("failed", "cancelled", "expired"):
+        raise RuntimeError(f"Generation {status['status']}: {status.get('error', 'Unknown error')}")
 ```
 
 ```typescript title="TypeScript (fetch)" expandable lines
@@ -250,6 +257,9 @@ const response = await fetch('https://openrouter.ai/api/v1/videos', {
     prompt: 'A golden retriever playing fetch on a sunny beach with waves crashing in the background',
   }),
 });
+if (!response.ok) {
+  throw new Error(`Submission failed: ${response.status} ${await response.text()}`);
+}
 
 const result = await response.json();
 const jobId = result.id;
@@ -261,6 +271,9 @@ console.log(`Status: ${result.status}`);
 while (true) {
   await new Promise((resolve) => setTimeout(resolve, 30000)); // Wait 30 seconds
   const pollResponse = await fetch(pollingUrl, { headers });
+  if (!pollResponse.ok) {
+    throw new Error(`Polling failed: ${pollResponse.status} ${await pollResponse.text()}`);
+  }
   const status = await pollResponse.json();
 
   console.log(`Status: ${status.status}`);
@@ -269,13 +282,15 @@ while (true) {
     // Step 3: Download the video
     const contentUrl = status.unsigned_urls[0];
     const videoResponse = await fetch(contentUrl, { headers });
+    if (!videoResponse.ok) {
+      throw new Error(`Download failed: ${videoResponse.status} ${await videoResponse.text()}`);
+    }
     const videoBuffer = await videoResponse.arrayBuffer();
     // Save or process the video buffer
     console.log(`Video ready: ${contentUrl}`);
     break;
-  } else if (status.status === 'failed') {
-    console.error(`Generation failed: ${status.error ?? 'Unknown error'}`);
-    break;
+  } else if (['failed', 'cancelled', 'expired'].includes(status.status)) {
+    throw new Error(`Generation ${status.status}: ${status.error ?? 'Unknown error'}`);
   }
 }
 ```
@@ -319,7 +334,7 @@ curl "https://openrouter.ai/api/v1/videos/<job_id>" \
 | `size` | string | No | Exact pixel dimensions in `WIDTHxHEIGHT` format (e.g., `1280x720`). Interchangeable with `resolution` + `aspect_ratio` |
 | `frame_images` | array | No | Images for first/last frames (image-to-video) |
 | `input_references` | array | No | Reference images for style guidance (reference-to-video) |
-| `generate_audio` | boolean | No | Whether to generate audio alongside the video. Defaults to `true` for models that support audio output |
+| `generate_audio` | boolean | No | Whether to generate audio alongside the video. When omitted, the serving endpoint's default applies (see `generate_audio` in the models endpoint), which can be `false` |
 | `seed` | integer | No | Seed for deterministic generation (not guaranteed by all providers) |
 | `callback_url` | string | No | URL to receive a webhook notification when the job completes. Overrides the workspace-level default callback URL if set. Must be HTTPS |
 | `previous_job_id` | string | No | ID of a completed video job to edit or extend. The new job runs on the same model and endpoint as the previous one. Only models that support continuation accept it. The API checks that the job belongs to your account, not to the request's `user`, so if you share one OpenRouter account across end users, verify that the signed-in user owns the job before forwarding a client-supplied ID |
@@ -481,6 +496,10 @@ When polling the job status, the response includes additional fields as the job 
 | `in_progress` | The video is being generated |
 | `completed` | The video is ready to download |
 | `failed` | The generation failed (check the `error` field) |
+| `cancelled` | The job was cancelled before the video was ready (check the `error` field) |
+| `expired` | The job ran past its time limit without finishing (check the `error` field) |
+
+`completed`, `failed`, `cancelled` and `expired` are terminal: stop polling once the job reaches any of them.
 
 ### Downloading the Video
 
@@ -806,7 +825,7 @@ Use the **raw request body** (the exact bytes received) for verification. Parsin
 - **Detailed Prompts**: Provide specific, descriptive prompts for better video quality. Include details about motion, camera angles, lighting, and scene composition
 - **Appropriate Resolution**: Higher resolutions take longer to generate and cost more. Choose the resolution that fits your use case
 - **Polling Interval**: Use a reasonable polling interval (e.g., 30 seconds) to avoid excessive API calls. Video generation typically takes 30 seconds to several minutes depending on the model and parameters
-- **Error Handling**: Always check the job status for `failed` state and handle the `error` field appropriately
+- **Error Handling**: Treat `failed`, `cancelled` and `expired` as terminal states and handle the `error` field appropriately
 - **Reference Images**: When using reference images, ensure they are high quality and relevant to the desired video output
 
 ## Zero Data Retention

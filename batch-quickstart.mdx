@@ -548,7 +548,78 @@ Batches are listed newest first. Every API key in a workspace sees the same batc
 
 ## Read the results
 
-When the status is `completed`, `results` holds one entry per request. There is no separate download endpoint. The one exception is a Google Vertex BYOK batch submitted with an `input` file or table: its `results` stay `null` and, when Vertex reported an output location, `output.uri` names the output folder in your bucket or the output table in your dataset. See [BYOK](#byok). Each entry has either a `response` or an `error`. Results are not in input order, so match them on `custom_id`.
+When the status is `completed`, `GET /api/v1/batches/{id}` includes `results` inline with one entry per request. For large outputs or batches submitted with a caller-owned `input` file or table, paginate through normalized OpenRouter-format rows with `GET /api/v1/batches/{id}/results`. Each entry has either a `response` or an `error`. Results are not in input order, so match them on `custom_id`.
+
+### Paginate results
+
+Call `GET /api/v1/batches/{id}/results` with `limit` (default `500`, max `1000`) and pass each page's `next_cursor` as `cursor` until `has_more` is `false`. For large inline batches, poll the first `/results` page directly and retry on `409` while the batch is still running so you never download the full inline `results` array from `GET /api/v1/batches/{id}`. Pages are backed by byte-range reads over the immutable normalized output artifact, so retrying a request with the same `cursor` returns the same page without skipping or duplicating rows. Paginated results are not supported for `/v1/audio/speech` batches; use `GET /api/v1/batches/{id}` for speech output.
+
+```typescript title="Paginate batch results" lines
+let cursor: string | null = null;
+
+while (true) {
+  const params = new URLSearchParams({ limit: '500' });
+  if (cursor) params.set('cursor', cursor);
+
+  const response = await fetch(
+    `https://openrouter.ai/api/v1/batches/${batchId}/results?${params.toString()}`,
+    { headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` } },
+  );
+  if (response.status === 409) {
+    // Batch is still running — wait and poll the first page again.
+    await new Promise((resolve) => setTimeout(resolve, 10_000));
+    continue;
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch batch results: ${response.status}`);
+  }
+
+  const page = await response.json();
+  await processResults(page.data);
+  if (!page.has_more || page.next_cursor === null) {
+    break;
+  }
+  cursor = page.next_cursor;
+}
+```
+
+```json title="Paginated results page" lines
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "batch_req_1",
+      "custom_id": "review-1",
+      "response": {
+        "status_code": 200,
+        "request_id": "request_1",
+        "body": {
+          "id": "gen-batch-1782097200-a1b2c3d4e5f6a7b8c9d0",
+          "object": "response",
+          "model": "anthropic/claude-haiku-5.5",
+          "status": "completed",
+          "output": [
+            {
+              "type": "message",
+              "id": "msg_abc123",
+              "status": "completed",
+              "role": "assistant",
+              "content": [{ "type": "output_text", "text": "positive", "annotations": [] }]
+            }
+          ]
+        }
+      },
+      "error": null
+    }
+  ],
+  "has_more": true,
+  "next_cursor": "djE6YmF0Y2hfYWJjMTIzOjUxMg"
+}
+```
+
+### Read inline results
+
+For smaller inline batches, you can also read `batch.results` directly from `GET /api/v1/batches/{id}`:
 
 ```typescript title="Read the results" lines
 const batch = await waitForBatch(batchId);
@@ -657,7 +728,7 @@ console.log(`Cost $${batch.usage.cost}. ${retry.length} requests to retry.`);
 Each `response.body` has the same shape as the sync endpoint's response. Its `id` is the generation ID. To report a bad generation, submit that ID through [Report Feedback](/guides/overview/report-feedback).
 
 <Note>
-  OpenRouter deletes requests and results 30 days after you submit. After that, `GET` on the batch returns `410 Gone`. Save the results you need before then. A Google Vertex BYOK batch submitted with an `input` file or table is the exception: OpenRouter serves no results for it, so `GET` keeps returning the batch and, when Vertex reported one, its `output` location. See [BYOK](#byok).
+  OpenRouter retains stored batch requests and finalized results artifacts for 30 days from when each artifact is written. After the results artifact expires, `GET /api/v1/batches/{id}` and `GET /api/v1/batches/{id}/results` return `410 Gone`. For a Google Vertex BYOK batch submitted with a caller-owned `input` file or table, `GET /api/v1/batches/{id}` keeps returning `200` with metadata and `output.uri` after expiration, while `GET /api/v1/batches/{id}/results` returns `410 Gone` once the normalized artifact expires. Save the results you need before then.
 </Note>
 
 ---
@@ -880,7 +951,7 @@ A model covered by an exclusive key (`is_exclusive`) runs only on a covering exc
 
     OpenRouter does not have the requests, so it cannot estimate tokens for a line or row that reports none, and activity for these batches carries no `user` value.
 
-    OpenRouter does not serve the results of these batches. When the batch has ended, `GET /api/v1/batches/{id}` returns `"results": null` and, when Vertex reported an output location, an `output` field that names it. For an input file that is a Cloud Storage folder:
+    `GET /api/v1/batches/{id}` does not inline the results of these batches: when the batch has ended, it returns `"results": null` and, when Vertex reported an output location, an `output` field that names it. To read normalized OpenRouter-format rows during the 30-day retention window, paginate `GET /api/v1/batches/{id}/results` (older caller-owned Vertex batches with only a legacy raw-output pointer return `400` from `/results`; read the provider output at `output.uri` instead). For an input file, `output.uri` is a Cloud Storage folder:
 
     ```json title="Completed batch submitted with an input file"
     {
@@ -893,7 +964,7 @@ A model covered by an exclusive key (`is_exclusive`) runs only on a covering exc
     }
     ```
 
-    Read the `predictions` JSONL files in that folder from your bucket, as you would for a job you ran on Vertex yourself. The lines are in Vertex's own batch output format. OpenRouter does not convert them to the `results` format, does not restore the order of your input lines, and adds no generation IDs. For a batch Vertex completed, `output` appears only once billing has read the output, so the batch can report `finalizing` for a short time first. A `failed`, `cancelled`, or `expired` batch also names the folder when Vertex reported one. That folder may hold rows Vertex exported before the job ended, and it can be empty. OpenRouter does not read or bill those rows. `output` is left out of batch lists.
+    You can also read the raw `predictions` JSONL files directly from that folder in your bucket, as you would for a job you ran on Vertex yourself; those files stay in Vertex's own batch output format and order. For a batch Vertex completed, `output` appears only once billing has read the output, so the batch can report `finalizing` for a short time first. A `failed`, `cancelled`, or `expired` batch also names the folder when Vertex reported one. That folder may hold rows Vertex exported before the job ended, and it can be empty. OpenRouter does not read or bill those rows. `output` is left out of batch lists.
 
     For an input table, `output.uri` names the output table instead:
 
