@@ -16,6 +16,40 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
+<Update label="November 24, 2026" tags={["BYOK"]} rss="4 modified endpoints, 7 modified schemas.">
+
+## Modified endpoints
+
+- [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials): response schema updated
+- [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential): response schema updated
+- [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential): response schema updated
+- [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential): response schema updated
+
+## Modified schemas
+
+- `BYOKKey`: example modified; new property `is_exclusive` (always present)
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials)
+    - [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential)
+    - [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+    - [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+  </Expandable>
+- `CreateBYOKKeyRequest`: new property `is_exclusive`
+  - Used by [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+- `CreateBYOKKeyResponse`: example modified
+  - Used by [`POST /byok`](/api/api-reference/byok/create-a-byok-provider-credential)
+- `GetBYOKKeyResponse`: example modified
+  - Used by [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential)
+- `ListBYOKKeysResponse`: example modified
+  - Used by [`GET /byok`](/api/api-reference/byok/list-byok-provider-credentials)
+- `UpdateBYOKKeyRequest`: new property `is_exclusive`
+  - Used by [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+- `UpdateBYOKKeyResponse`: example modified
+  - Used by [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
+
+</Update>
+
 <Update label="November 23, 2026" tags={["Images","SCIM","Schemas"]} rss="2 modified endpoints, 6 new schemas, 7 modified schemas.">
 
 ## Modified endpoints
