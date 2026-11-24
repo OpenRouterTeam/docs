@@ -20,7 +20,7 @@ import {
   API_KEY_REF,
 } from '/snippets/exports/constants.mdx';
 
-OpenRouter supports text-to-speech (TTS) via a dedicated `/api/v1/audio/speech` endpoint that is compatible with the [OpenAI Audio Speech API](https://platform.openai.com/docs/api-reference/audio/createSpeech). Send text and receive a raw audio byte stream in your chosen format.
+OpenRouter supports text-to-speech (TTS) via a dedicated `/api/v1/audio/speech` endpoint that is compatible with the [OpenAI Audio Speech API](https://platform.openai.com/docs/api-reference/audio/createSpeech). Send text and receive a raw audio byte stream in your chosen format by default, or opt into a 24-hour signed download URL with `output_delivery: "url"`.
 
 ## Model Discovery
 
@@ -259,6 +259,7 @@ curl https://openrouter.ai/api/v1/audio/speech \
 | `voice` | string | Provider-dependent | Voice identifier. Available voices vary by model, so check each model's page on the [Models page](/guides/overview/models) for supported voices. Omit this parameter only when the selected provider documents a default voice; otherwise an explicit voice is required. |
 | `instructions` | string | No | Delivery instructions such as tone, pacing, or emotion, for example `Speak in a warm and friendly tone.` Supported by OpenAI `gpt-4o-mini-tts`, Gemini TTS, and Fish Audio models. Ignored by other providers |
 | `response_format` | string | No | Audio output format: `mp3` or `pcm`. Defaults to `pcm`. HeyGen Voice and Gemini TTS only return `pcm` and return a 400 for `mp3`. MiniMax returns `pcm` only after the whole clip is synthesized, while its `mp3` streams; MiniMax `pcm` clips longer than about 2.5 minutes return a 502, so use `mp3` or shorter inputs for long clips |
+| `output_delivery` | string | No | Audio delivery mode: `stream` (default) returns a raw audio byte stream; `url` stores the generated audio and returns a JSON response with a signed download `url` (expires after 24 hours), `expires_at`, and `media_type`. Falls back to raw audio streaming when zero-data-retention applies |
 | `speed` | number | No | Playback speed multiplier. Honored by models that support it (e.g., OpenAI TTS). Other providers either ignore it or return a 400 for a non-default value when the model has no speed control. Defaults to `1.0` |
 | `input_references` | array | No | Reference content for stateless voice cloning or voice design: one to three `input_audio` parts (each optionally paired with a `text` transcript), optionally plus one `image_url` scene image on providers that support it, or exactly one `image_url` part on its own. See [Voice Cloning](#voice-cloning) below |
 | `provider` | object | No | Provider routing preferences (`order`, `only`, `ignore`, `allow_fallbacks`), data policy routing preferences (`zdr`, `data_collection`), and provider-specific passthrough options under `provider.options`. With `zdr: true`, the request only routes to [Zero Data Retention](/guides/features/zdr) endpoints |
@@ -499,11 +500,11 @@ For multi-speaker input, OpenRouter builds Gemini's `multiSpeakerVoiceConfig` fr
 
 ## Response Format
 
-The TTS endpoint returns a **raw audio byte stream**, not JSON. The response includes the following headers:
+By default (`output_delivery` omitted or set to `stream`), the TTS endpoint returns a **raw audio byte stream**, not JSON. Set `output_delivery` to `url` to receive a JSON response containing a signed download URL instead. Both modes include the following headers:
 
 | Header | Description |
 |---|---|
-| `Content-Type` | The MIME type of the audio. `audio/mpeg` for `mp3` format, `audio/pcm` for `pcm` format |
+| `Content-Type` | `audio/mpeg` or `audio/pcm` for streamed audio responses, or `application/json` when a signed download URL is returned |
 | `X-Generation-Id` | The unique generation ID for the request, useful for tracking and debugging |
 
 ### Output Formats
@@ -512,6 +513,86 @@ The TTS endpoint returns a **raw audio byte stream**, not JSON. The response inc
 |---|---|---|
 | `mp3` | `audio/mpeg` | Compressed audio, smaller file size. Good for storage and playback |
 | `pcm` | `audio/pcm` | Uncompressed raw audio. Lower latency, suitable for real-time streaming pipelines |
+
+### Signed URL Output
+
+Set `output_delivery` to `url` to store the generated audio and receive a JSON response with a signed download URL instead of raw audio bytes. `response_format` still selects the audio codec (`mp3` or `pcm`).
+
+URLs expire after 24 hours, with the expiry timestamp reported in `expires_at`. Treat the URL as a bearer link: anyone holding it can download the audio until it expires, and the stored copy is deleted within the following day. When zero-data-retention applies (account settings, guardrails, `provider.zdr: true`, or a ZDR endpoint), OpenRouter does not store the audio and falls back to streaming raw audio bytes, so check the response `Content-Type` header if your requests may use ZDR.
+
+<CodeGroup>
+
+```typescript title="TypeScript (fetch)" lines
+const response = await fetch('https://openrouter.ai/api/v1/audio/speech', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${API_KEY_REF}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'mistralai/voxtral-mini-tts-2603',
+    input: 'Hello! This is a text-to-speech test.',
+    voice: 'en_paul_neutral',
+    response_format: 'mp3',
+    output_delivery: 'url',
+  }),
+});
+
+if (!response.ok) {
+  const err = await response.json();
+  throw new Error(`TTS error ${response.status}: ${JSON.stringify(err)}`);
+}
+
+const result = await response.json();
+console.log('Audio URL:', result.url, 'expires at:', result.expires_at);
+```
+
+```python title="Python" lines
+import requests
+
+response = requests.post(
+  url="https://openrouter.ai/api/v1/audio/speech",
+  headers={
+    "Authorization": f"Bearer {API_KEY_REF}",
+    "Content-Type": "application/json"
+  },
+  json={
+    "model": "mistralai/voxtral-mini-tts-2603",
+    "input": "Hello! This is a text-to-speech test.",
+    "voice": "en_paul_neutral",
+    "response_format": "mp3",
+    "output_delivery": "url"
+  }
+)
+response.raise_for_status()
+
+result = response.json()
+print("Audio URL:", result["url"], "expires at:", result["expires_at"])
+```
+
+```bash title="cURL" lines
+curl https://openrouter.ai/api/v1/audio/speech \
+  --fail \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+    "model": "mistralai/voxtral-mini-tts-2603",
+    "input": "Hello! This is a text-to-speech test.",
+    "voice": "en_paul_neutral",
+    "response_format": "mp3",
+    "output_delivery": "url"
+  }'
+```
+
+</CodeGroup>
+
+```json title="Response" lines
+{
+  "url": "https://openrouter.ai/api/v1/audio/speech/media/...",
+  "expires_at": 1748458800,
+  "media_type": "audio/mpeg"
+}
+```
 
 ## Pricing
 
