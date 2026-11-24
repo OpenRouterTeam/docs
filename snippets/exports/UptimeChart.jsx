@@ -4,7 +4,7 @@
 
   projects/docs must not import from other packages in the repo, so this fetches
   the public endpoint directly in the browser instead of importing monorepo code.
-  Source of truth: https://openrouter.ai/api/frontend/v1/stats/model-uptime-recent?permaslug=...
+  Source of truth: https://openrouter.ai/api/frontend/v1/public/stats/model-uptime-recent?permaslug=...
 */
 export const UptimeChart = ({ permaslug }) => {
   const [uptime, setUptime] = useState(null);
@@ -96,7 +96,7 @@ export const UptimeChart = ({ permaslug }) => {
 
   useEffect(() => {
     const controller = new AbortController();
-    const url = `https://openrouter.ai/api/frontend/v1/stats/model-uptime-recent?permaslug=${encodeURIComponent(permaslug)}`;
+    const url = `https://openrouter.ai/api/frontend/v1/public/stats/model-uptime-recent?permaslug=${encodeURIComponent(permaslug)}`;
     fetch(url, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
       .then((body) => {
