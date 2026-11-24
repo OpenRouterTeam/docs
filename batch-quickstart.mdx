@@ -839,6 +839,8 @@ When the BYOK-only switch is on for your account or workspace, batches run only 
 - If none of your keys covers the model, the submit fails with `404` instead of `202 Accepted`.
 - Keys for providers that can't run a batch on your own key (Fireworks, Mistral, Sail Research, and Claude Platform on AWS) don't count.
 
+A model covered by an exclusive key (`is_exclusive`) runs only on a covering exclusive key, the same as sync requests. Other providers, your other keys, and OpenRouter capacity are skipped, and the submit fails with `404` when no covering key can run the batch.
+
 <AccordionGroup>
   <Accordion title="Google Vertex">
     Vertex batches use a bucket in your GCP project for input and output. Leave out `bucket`, and OpenRouter creates a private bucket on the first batch in each region. You can also give an existing bucket. See [Google Vertex API keys](/guides/overview/auth/byok#google-vertex-api-keys) for permissions.
