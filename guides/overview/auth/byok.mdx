@@ -180,7 +180,7 @@ OpenRouter fails closed where it cannot rely on your account alone to keep the r
 - Cross-region inference profiles, such as Bedrock `global.` profiles, which can process a request in any region.
 - Video generation models.
 
-A [guardrail](/guides/features/guardrails) that restricts `allowed_data_regions` does not yet recognize the declaration. It judges every endpoint, including your key's, by OpenRouter's own classification, so under such a guardrail the key's endpoint for a shared endpoint outside the region is removed even though the region declaration would otherwise allow it. Until the guardrail learns about declarations, a region declaration only widens routing for requests whose guardrails do not restrict `allowed_data_regions`.
+A [guardrail](/guides/features/guardrails) that restricts `allowed_data_regions` recognizes the declaration under the same rules. Your key's endpoint passes the guardrail when the key declares a region the guardrail allows, the declaration can apply to that endpoint, and the provider supports a declared region (OpenAI, Azure, or Anthropic). For any other provider, the guardrail judges your key's endpoint by OpenRouter's classification only. OpenRouter's own endpoints are still judged by OpenRouter's classification, so a declaration never makes an OpenRouter-credit endpoint pass the guardrail.
 
 ### BYOK and Guardrail Budgets
 
