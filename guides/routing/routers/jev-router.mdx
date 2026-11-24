@@ -20,6 +20,8 @@ The [Jev Router](https://openrouter.ai/typesafe/jev-router) (`typesafe/jev-route
 
 Use it as a model, or add the `jev-router` plugin to choose a cost tier and set model preferences. Jev makes the routing decision; the selected model generates the response.
 
+The plugin id `decisions-router` is an alias of `jev-router`. Either id configures the same plugin, and router metadata always reports the stage as `jev-router`.
+
 ## How it works
 
 1. **Assess the request.** Jev evaluates the conversation to identify what the task needs.
