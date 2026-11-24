@@ -1,0 +1,98 @@
+---
+publish: true
+title: Compaction
+description: Server-side context compaction with the Responses API
+seoTitle: 'Responses API Compaction | Server-Side Context Management'
+og:site_name: OpenRouter Documentation
+og:title: 'Responses API Compaction - Server-Side Context Management'
+og:description: "Compact long conversations server-side with the context_management parameter on OpenRouter's Responses API."
+og:image: https://openrouter.ai/dynamic-og?title=Responses%20API%20Compaction&description=Server-side%20context%20management
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: compress
+---
+
+The `context_management` parameter asks the provider to compact a long conversation on the server. When the input grows past `compact_threshold` tokens, the provider summarizes the earlier context and returns it as an encrypted `compaction` output item.
+
+<Warning>
+Compaction is supported for OpenAI models served by OpenAI or Azure. Providers whose requests are translated to another API format, such as Chat Completions or Anthropic Messages, drop the field and return a normal response without a `compaction` item. Other Responses-compatible providers receive the field as-is, and their behavior isn't guaranteed.
+</Warning>
+
+## Enable compaction
+
+Send `context_management` with a `compaction` entry:
+
+<CodeGroup>
+
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'openai/gpt-5-mini',
+    input: conversation,
+    context_management: [
+      { type: 'compaction', compact_threshold: 200000 },
+    ],
+  }),
+});
+
+const result = await response.json();
+```
+
+```python title="Python" lines
+import os
+import requests
+
+response = requests.post(
+    'https://openrouter.ai/api/v1/responses',
+    headers={
+        'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
+        'Content-Type': 'application/json',
+    },
+    json={
+        'model': 'openai/gpt-5-mini',
+        'input': conversation,
+        'context_management': [
+            {'type': 'compaction', 'compact_threshold': 200000},
+        ],
+    },
+)
+
+result = response.json()
+```
+
+</CodeGroup>
+
+## Response format
+
+When compaction runs, `output` includes a `compaction` item before the model's reply:
+
+```json title="Compaction output item"
+{
+  "type": "compaction",
+  "id": "cmp_abc123",
+  "encrypted_content": "gAAAAABo..."
+}
+```
+
+## Continue the conversation
+
+The Responses API on OpenRouter is stateless, so send the full history on every turn. Keep the returned `compaction` item in `input` in place of the context it replaced, followed in order by the output items that came after it, then append new messages. The provider expands the encrypted summary on the next request.
+
+```json title="Next turn input"
+[
+  { "type": "compaction", "id": "cmp_abc123", "encrypted_content": "gAAAAABo..." },
+  { "type": "message", "role": "assistant", "content": [{ "type": "output_text", "text": "Here are three suggestions..." }] },
+  { "type": "message", "role": "user", "content": "Tell me more about your second suggestion." }
+]
+```
+
+Only the provider that produced a `compaction` item can read it. Send follow-up turns to the same OpenAI or Azure endpoint, for example with [provider routing](/guides/routing/provider-selection).
