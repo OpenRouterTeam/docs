@@ -134,6 +134,10 @@ The key fields are:
 - `cached_tokens`: Number of tokens read from the cache (cache hit). When this is greater than zero, you're benefiting from cached content.
 - `cache_write_tokens`: Number of tokens written to the cache. This appears on the first request when establishing a new cache entry.
 
+### Cancelled requests
+
+A cancelled stream usually does not get the cache discount. Most providers report cached tokens only at the end of the stream. OpenRouter stops the upstream stream as soon as the client cancels, so you are not billed for output you never receive, and the provider's final usage never arrives. Without the provider's cache counts, OpenRouter bills the prompt at the uncached input rate, since that is the best estimate available.
+
 ## OpenAI
 
 Caching price changes:
