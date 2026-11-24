@@ -16,7 +16,11 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="November 24, 2026" tags={["BYOK","Schemas","TTS"]} rss="5 modified endpoints, 1 new schema, 9 modified schemas.">
+<Update label="November 24, 2026" tags={["BYOK","Batch","Schemas","TTS"]} rss="1 new endpoint, 5 modified endpoints, 3 new schemas, 9 modified schemas.">
+
+## New endpoints
+
+- [`GET /batches/{id}/results`](/api/api-reference/batch/get-batch-results): Get batch results
 
 ## Modified endpoints
 
@@ -30,6 +34,10 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 - `ResponsesContextManagement`
   - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `BatchResult`
+  - Used by [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch), [`GET /batches/{id}/results`](/api/api-reference/batch/get-batch-results), [`POST /batches`](/api/api-reference/batch/create-a-batch)
+- `BatchResultsPageResponse`
+  - Used by [`GET /batches/{id}/results`](/api/api-reference/batch/get-batch-results)
 
 ## Modified schemas
 
