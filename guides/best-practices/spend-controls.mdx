@@ -11,6 +11,8 @@ icon: wallet
 
 OpenRouter has two independent spend controls: **workspace budgets** and **guardrails**. They work in layers. Understanding how they compose is the key to a spend policy that scales with your organization.
 
+A guardrail carries policies, and a budget is one policy type. The policy model, including where each type applies and how several policies combine on one request, is in [Guardrail Policies](/guides/features/guardrails/policies).
+
 This guide covers the recommended patterns and the most common pitfalls.
 
 ## The Two Layers
@@ -18,7 +20,7 @@ This guide covers the recommended patterns and the most common pitfalls.
 | Layer | Scope | What it does |
 |---|---|---|
 | **Workspace budget** | Entire workspace | Pooled cap on collective spend across all members and keys in the workspace |
-| **Guardrail budget** | Per member or per API key | Per-person or per-key limit that stacks with workspace budgets |
+| **Guardrail budget policy** | Per member or per API key | Per-person or per-key limit that stacks with workspace budgets |
 
 A request is checked against workspace budgets first. If it passes, OpenRouter checks all applicable guardrail budgets. Each guardrail budget is enforced independently; the first limit reached blocks the request.
 
