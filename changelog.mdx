@@ -16,7 +16,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="November 24, 2026" tags={["BYOK","TTS"]} rss="5 modified endpoints, 8 modified schemas.">
+<Update label="November 24, 2026" tags={["BYOK","Schemas","TTS"]} rss="5 modified endpoints, 1 new schema, 9 modified schemas.">
 
 ## Modified endpoints
 
@@ -25,6 +25,11 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 - [`GET /byok/{id}`](/api/api-reference/byok/get-a-byok-provider-credential): response schema updated
 - [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential): response schema updated
 - [`POST /audio/speech`](/api/api-reference/tts/create-speech): description updated
+
+## New schemas
+
+- `ResponsesContextManagement`
+  - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
 
 ## Modified schemas
 
@@ -50,6 +55,8 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - Used by [`PATCH /byok/{id}`](/api/api-reference/byok/update-a-byok-provider-credential)
 - `SpeechRequest`: new property `output_delivery`
   - Used by [`POST /audio/speech`](/api/api-reference/tts/create-speech)
+- `ResponsesRequest`: new property `context_management`
+  - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
 
 </Update>
 
