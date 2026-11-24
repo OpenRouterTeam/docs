@@ -36,7 +36,7 @@ The Video Generation API consists of four endpoints:
 Video generation follows three sequential steps:
 
 1. **Submit**: Send a generation request with a video model and prompt to `POST /api/v1/videos`. Receive a job ID (`id`) and relative polling URL (`polling_url`).
-2. **Poll**: Query `GET /api/v1/videos/{jobId}` at regular intervals (recommended: every 10–30 seconds) until `status` becomes `completed` or `failed`. Alternatively, supply a `callback_url` to receive a webhook notification upon completion.
+2. **Poll**: Query `GET /api/v1/videos/{jobId}` at regular intervals (recommended: every 10–30 seconds) until `status` reaches a terminal value: `completed`, `failed`, `cancelled` or `expired`. Alternatively, supply a `callback_url` to receive a webhook notification upon completion.
 3. **Download**: Once completed, retrieve the generated video using either the signed storage URL (`urls[0]`) or the authenticated content proxy endpoint (`unsigned_urls[0]`).
 
 In a multi-user app, one API key can poll, download, and continue every job the app created. Record which end user owns each job ID, and check that ownership before you act on a job ID supplied by a client.
