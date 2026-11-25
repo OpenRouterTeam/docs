@@ -459,7 +459,7 @@ async function waitForBatch(id: string) {
 
 The status moves through `validating`, `in_progress`, and `finalizing` before it reaches a final status. If you use both a webhook and polling, process each batch once.
 
-This example waits for `results` on a `completed` batch. Do not use it as written for a Google Vertex BYOK batch submitted with an `input` file or table: its `results` stay `null`, so the loop never ends. For that kind of batch, stop as soon as the status is final. See [BYOK](#byok).
+This example waits for `results` on a `completed` batch. Do not use it as written for a Google Vertex BYOK batch submitted with an `input` file or table: its `results` stay `null`, so the loop never ends. For that kind of batch, stop as soon as the status is final—or poll `GET /api/v1/batches/{id}/results` directly. See [Paginating large batch results](#paginating-large-batch-results) and [BYOK](#byok).
 
 While a batch is `in_progress`, `request_counts.completed` and `request_counts.failed` can rise as the provider reports finished requests. Treat them as an estimate: not every provider reports progress, the numbers can lag by several minutes, and they can briefly return to `0`. The counts are final once the batch reaches a final status.
 
@@ -548,78 +548,9 @@ Batches are listed newest first. Every API key in a workspace sees the same batc
 
 ## Read the results
 
-When the status is `completed`, `GET /api/v1/batches/{id}` includes `results` inline with one entry per request. For large outputs or batches submitted with a caller-owned `input` file or table, paginate through normalized OpenRouter-format rows with `GET /api/v1/batches/{id}/results`. Each entry has either a `response` or an `error`. Results are not in input order, so match them on `custom_id`.
+When the status is `completed`, `GET /api/v1/batches/{id}` includes `results` inline with one entry per request. For large outputs or batches submitted with a caller-owned `input` file or table, [paginate results](#paginating-large-batch-results) with `GET /api/v1/batches/{id}/results` instead of downloading the full inline array. Each entry has either a `response` or an `error`. Results are not in input order, so match them on `custom_id`.
 
-### Paginate results
-
-Call `GET /api/v1/batches/{id}/results` with `limit` (default `500`, max `1000`) and pass each page's `next_cursor` as `cursor` until `has_more` is `false`. For large inline batches, poll the first `/results` page directly and retry on `409` while the batch is still running so you never download the full inline `results` array from `GET /api/v1/batches/{id}`. Pages are backed by byte-range reads over the immutable normalized output artifact, so retrying a request with the same `cursor` returns the same page without skipping or duplicating rows. Paginated results are not supported for `/v1/audio/speech` batches; use `GET /api/v1/batches/{id}` for speech output.
-
-```typescript title="Paginate batch results" lines
-let cursor: string | null = null;
-
-while (true) {
-  const params = new URLSearchParams({ limit: '500' });
-  if (cursor) params.set('cursor', cursor);
-
-  const response = await fetch(
-    `https://openrouter.ai/api/v1/batches/${batchId}/results?${params.toString()}`,
-    { headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` } },
-  );
-  if (response.status === 409) {
-    // Batch is still running — wait and poll the first page again.
-    await new Promise((resolve) => setTimeout(resolve, 10_000));
-    continue;
-  }
-  if (!response.ok) {
-    throw new Error(`Failed to fetch batch results: ${response.status}`);
-  }
-
-  const page = await response.json();
-  await processResults(page.data);
-  if (!page.has_more || page.next_cursor === null) {
-    break;
-  }
-  cursor = page.next_cursor;
-}
-```
-
-```json title="Paginated results page" lines
-{
-  "object": "list",
-  "data": [
-    {
-      "id": "batch_req_1",
-      "custom_id": "review-1",
-      "response": {
-        "status_code": 200,
-        "request_id": "request_1",
-        "body": {
-          "id": "gen-batch-1782097200-a1b2c3d4e5f6a7b8c9d0",
-          "object": "response",
-          "model": "anthropic/claude-haiku-5.5",
-          "status": "completed",
-          "output": [
-            {
-              "type": "message",
-              "id": "msg_abc123",
-              "status": "completed",
-              "role": "assistant",
-              "content": [{ "type": "output_text", "text": "positive", "annotations": [] }]
-            }
-          ]
-        }
-      },
-      "error": null
-    }
-  ],
-  "has_more": true,
-  "next_cursor": "djE6YmF0Y2hfYWJjMTIzOjUxMg"
-}
-```
-
-### Read inline results
-
-For smaller inline batches, you can also read `batch.results` directly from `GET /api/v1/batches/{id}`:
+For smaller inline batches, read `batch.results` directly from `GET /api/v1/batches/{id}`:
 
 ```typescript title="Read the results" lines
 const batch = await waitForBatch(batchId);
@@ -730,6 +661,223 @@ Each `response.body` has the same shape as the sync endpoint's response. Its `id
 <Note>
   OpenRouter retains stored batch requests and finalized results artifacts for 30 days from when each artifact is written. After the results artifact expires, `GET /api/v1/batches/{id}` and `GET /api/v1/batches/{id}/results` return `410 Gone`. For a Google Vertex BYOK batch submitted with a caller-owned `input` file or table, `GET /api/v1/batches/{id}` keeps returning `200` with metadata and `output.uri` after expiration, while `GET /api/v1/batches/{id}/results` returns `410 Gone` once the normalized artifact expires. Save the results you need before then.
 </Note>
+
+---
+
+## Paginating large batch results
+
+For large batches—or when polling an in-flight batch without risking a massive inline `results` download on completion—stream results in bounded 4 MiB pages with `GET /api/v1/batches/{id}/results` instead of fetching everything at once from `GET /api/v1/batches/{id}`. Also use this endpoint for batches submitted with a caller-owned `input` file or table.
+
+| Query parameter | Default | Description |
+|-----------------|---------|-------------|
+| `limit` | `500` | Maximum result rows to return (`1`–`1000`). |
+| `cursor` | None | Opaque token from the previous page's `next_cursor`. Omit for the first page. |
+
+- **4 MiB row-byte budget:** A page stops before result-row bytes exceed 4 MiB even if fewer than `limit` rows were collected (the serialized JSON envelope and `next_cursor` add a small overhead beyond 4 MiB). Keep paging whenever `has_more` is `true` and `next_cursor` is non-null; never stop just because `data.length < limit`.
+- **Retry-safe, batch-bound cursors:** Each `next_cursor` is opaque and bound to its batch ID. Retrying a request with the same `cursor` returns the same slice of rows for the 30-day retention window without skipping or duplicating items. A malformed cursor or a cursor from another batch returns `400`.
+- **Poll `/results` directly for large batches:** Skip `GET /api/v1/batches/{id}` and poll the first `/results` page directly so you never download the full inline `results` array. Retry `409` while the batch is running, finalizing, or settling. Right after `202 Accepted`, allow a short bounded retry on `404` in case the job row is not visible yet.
+- **Check batch status on an empty first page:** A failed, expired, or cancelled batch with no output artifact returns `200` with `data: []`, `has_more: false`, and `next_cursor: null`. When the first page is empty, call `GET /api/v1/batches/{id}` to inspect `status` and `error.message`.
+- **Unsupported batch types:** `/v1/audio/speech` batches and older caller-owned Vertex batches without a normalized artifact return `400`. Use `GET /api/v1/batches/{id}` (or `output.uri` for legacy Vertex batches) instead.
+
+<CodeGroup>
+
+```shell title="Shell" lines
+# First page
+curl --fail-with-body "https://openrouter.ai/api/v1/batches/$BATCH_ID/results?limit=500" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY"
+
+# Next page (pass next_cursor from the previous response)
+curl --fail-with-body "https://openrouter.ai/api/v1/batches/$BATCH_ID/results?limit=500&cursor=$NEXT_CURSOR" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY"
+```
+
+```typescript title="TypeScript (fetch)" lines
+async function readAllBatchResults(batchId: string, pollTimeoutMs = 96 * 60 * 60 * 1_000) {
+  let cursor: string | null = null;
+  let notFoundRetries = 0;
+  let transientRetries = 0;
+  const pollDeadline = Date.now() + pollTimeoutMs;
+
+  while (true) {
+    const params = new URLSearchParams({ limit: '500' });
+    if (cursor) params.set('cursor', cursor);
+
+    const response = await fetch(
+      `https://openrouter.ai/api/v1/batches/${batchId}/results?${params.toString()}`,
+      { headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` } },
+    );
+
+    if (response.status === 404 && cursor === null && notFoundRetries < 3) {
+      // Freshly accepted batches can briefly return 404 before the job row is visible.
+      await response.body?.cancel();
+      notFoundRetries += 1;
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      continue;
+    }
+
+    if (response.status === 409) {
+      if (Date.now() < pollDeadline) {
+        // Batch is still running, finalizing, or settling.
+        await response.body?.cancel();
+        await new Promise((resolve) => setTimeout(resolve, 10_000));
+        continue;
+      }
+      const detail = await response.json().then((b) => b?.error?.message).catch(() => null);
+      throw new Error(detail ?? `Batch ${batchId} still not ready after polling deadline (409)`);
+    }
+
+    if ((response.status === 429 || response.status >= 500) && transientRetries < 5) {
+      await response.body?.cancel();
+      transientRetries += 1;
+      await new Promise((resolve) =>
+        setTimeout(resolve, response.status === 429 ? 30_000 : 5_000),
+      );
+      continue;
+    }
+
+    if (!response.ok) {
+      const detail = await response.json().then((b) => b?.error?.message).catch(() => null);
+      throw new Error(detail ?? `Failed to fetch batch results: ${response.status}`);
+    }
+
+    transientRetries = 0;
+    const page = await response.json();
+    if (cursor === null && page.data.length === 0 && !page.has_more) {
+      // Failed, expired, or cancelled batches with no output return an empty 200 page.
+      const metaResponse = await fetch(`https://openrouter.ai/api/v1/batches/${batchId}`, {
+        headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` },
+      });
+      if (!metaResponse.ok) {
+        throw new Error(`Failed to fetch batch status: ${metaResponse.status}`);
+      }
+      const meta = await metaResponse.json();
+      if (meta.status !== 'completed') {
+        throw new Error(meta.error?.message ?? `Batch ended as ${meta.status}`);
+      }
+      break;
+    }
+
+    await processResults(page.data);
+    if (!page.has_more || page.next_cursor === null) {
+      break;
+    }
+    cursor = page.next_cursor;
+  }
+}
+```
+
+```python title="Python" lines
+import os
+import time
+import requests
+
+headers = {"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"}
+
+
+def read_all_batch_results(batch_id: str, poll_timeout_s: float = 96 * 60 * 60) -> None:
+    cursor: str | None = None
+    not_found_retries = 0
+    transient_retries = 0
+    poll_deadline = time.monotonic() + poll_timeout_s
+
+    while True:
+        params: dict[str, str | int] = {"limit": 500}
+        if cursor is not None:
+            params["cursor"] = cursor
+
+        response = requests.get(
+            f"https://openrouter.ai/api/v1/batches/{batch_id}/results",
+            headers=headers,
+            params=params,
+        )
+
+        if response.status_code == 404 and cursor is None and not_found_retries < 3:
+            not_found_retries += 1
+            time.sleep(2)
+            continue
+
+        if response.status_code == 409 and time.monotonic() < poll_deadline:
+            time.sleep(10)
+            continue
+
+        if (response.status_code == 429 or response.status_code >= 500) and transient_retries < 5:
+            transient_retries += 1
+            time.sleep(30 if response.status_code == 429 else 5)
+            continue
+
+        response.raise_for_status()
+        transient_retries = 0
+        page = response.json()
+
+        if cursor is None and not page["data"] and not page["has_more"]:
+            meta = requests.get(
+                f"https://openrouter.ai/api/v1/batches/{batch_id}",
+                headers=headers,
+            )
+            meta.raise_for_status()
+            batch = meta.json()
+            if batch["status"] != "completed":
+                error_message = (batch.get("error") or {}).get("message")
+                raise RuntimeError(error_message or f"Batch ended as {batch['status']}")
+            break
+
+        process_results(page["data"])
+        if not page["has_more"] or page["next_cursor"] is None:
+            break
+        cursor = page["next_cursor"]
+```
+
+</CodeGroup>
+
+```json title="200 OK — Paginated results page" lines
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "batch_req_1",
+      "custom_id": "review-1",
+      "response": {
+        "status_code": 200,
+        "request_id": "request_1",
+        "body": {
+          "id": "gen-batch-1782097200-a1b2c3d4e5f6a7b8c9d0",
+          "object": "response",
+          "model": "anthropic/claude-haiku-5.5",
+          "status": "completed",
+          "output": [
+            {
+              "type": "message",
+              "id": "msg_abc123",
+              "status": "completed",
+              "role": "assistant",
+              "content": [{ "type": "output_text", "text": "positive", "annotations": [] }]
+            }
+          ]
+        }
+      },
+      "error": null
+    }
+  ],
+  "has_more": true,
+  "next_cursor": "djE6YmF0Y2hfYWJjMTIzOjUxMg"
+}
+```
+
+### Results pagination errors
+
+| Status | Cause | Action |
+|--------|-------|--------|
+| `400` | Invalid `limit` or `cursor`, cursor from another batch, `/v1/audio/speech` batch, or legacy caller-owned Vertex batch without a normalized artifact. | Fix query params or restart from page 1. For speech or legacy Vertex batches, use `GET /api/v1/batches/{id}`. |
+| `402` | Finalized batch cost exceeds your available balance (when payment gating is enforced). | Add credits and retry. The batch is not re-run. |
+| `404` | Batch does not exist, was deleted, or is not visible to this key. | Right after submit, retry briefly; otherwise stop. |
+| `409` | Batch is still running, finalizing, or settling. | Wait and retry the first page within your polling deadline. |
+| `410` | OpenRouter results artifact expired after 30 days. | OpenRouter-stored results cannot be recovered. For caller-owned Vertex input batches, read `output.uri` from `GET /api/v1/batches/{id}` if your GCS or BigQuery storage retained it. |
+| `413` | A single result row exceeds the 4 MiB row-byte budget. | Read via `GET /api/v1/batches/{id}` (inline batches) or `output.uri` from `GET /api/v1/batches/{id}` (caller-owned input batches). |
+| `429` | Rate limit exceeded. | Back off and retry with the same `cursor`. |
+
+### Paginating the batch list
+
+To list many batches (including in-flight batches), `GET /api/v1/batches` uses ID-based forward cursor pagination (`after` + `last_id`) rather than `cursor`/`next_cursor`. Pass `last_id` as `after` while `has_more` is `true` (up to `limit=100`, default `20`, newest first). Offset and `before` are not supported. See [Option B: Poll](#option-b-poll) for list filters (`status`, `created_after`, `created_before`) and workspace-scoping behavior.
 
 ---
 
@@ -1012,14 +1160,14 @@ A model covered by an exclusive key (`is_exclusive`) runs only on a covering exc
 
 | Status | Cause | Fix |
 |--------|-------|-----|
-| `400` | Bad input, `requests` before other fields, a private or unresolvable `callback_url`, or a model with no batch variant. | Read `error.message`. Pick a model from the [batch models list](https://openrouter.ai/models?variant=batch). |
+| `400` | Bad input, `requests` before other fields, a private or unresolvable `callback_url`, a model with no batch variant, or an invalid `/results` query (`limit`, `cursor`, `/v1/audio/speech`, or legacy Vertex batch). | Read `error.message`. Pick a model from the [batch models list](https://openrouter.ai/models?variant=batch), fix query params, or use `GET /api/v1/batches/{id}` for speech and legacy Vertex batches. |
 | `400` | `input` was sent, but the batch did not resolve to a Google Vertex endpoint on your own provider key. | Add a Vertex provider key that covers the model. If you also have a key for another provider that serves the model, pin the batch with `provider: { only: ["google-vertex"] }`. Otherwise send `requests`. |
-| `402` | The estimated cost is more than your balance. | Add credits, or split the batch. |
+| `402` | On submit, the estimated cost is more than your balance. On `GET /api/v1/batches/{id}` or `/results` (when payment gating is enforced), the finalized cost exceeds your balance and results are withheld. | Add credits (or split the batch on submit). Finalized batches are not re-run. |
 | `403` | `input` was sent, and input files are not enabled for your account. | Send `requests`. |
 | `404` | No provider in `provider.only`, your account's allowlist, or your guardrails serves the model in batch mode, or every batch endpoint for the model requires your own [provider key](/guides/overview/auth/byok) and no eligible key is configured (the error names those providers). | Change `provider.only`, your provider settings, or the guardrail on your key; add a provider key; or pick a model with a platform-billed batch endpoint. |
-| `409` | You tried to delete a batch that is still running. | Wait until it finishes. |
-| `410` | The batch is older than 30 days, so its results were deleted. | Results cannot be recovered. |
-| `413` | The batch has more requests than the [per-batch limit](/guides/features/batch-api#limits), or is larger than 200 MB. `error.message` states the limit. | Split the batch, or use file URLs instead of inline files. |
+| `409` | You called `DELETE` or `GET /api/v1/batches/{id}/results` while the batch is still running, finalizing, or settling, or you called `DELETE` on a finished BYOK batch whose original provider key was disabled or deleted. | For in-progress batches, wait until it finishes and retry. For `DELETE` on a finished BYOK batch, follow `error.message`: re-enable a disabled original provider key and retry (a deleted key prevents upstream cleanup). |
+| `410` | The OpenRouter results artifact expired after 30 days. | OpenRouter-stored results cannot be recovered. For caller-owned Vertex input batches, read `output.uri` from `GET /api/v1/batches/{id}` if your GCS or BigQuery storage retained it. |
+| `413` | On submit, the batch exceeds the [per-batch limit](/guides/features/batch-api#limits) or 200 MB. On `/results`, a single result row exceeds the 4 MiB row-byte budget. | Split the batch or use file URLs on submit; for an oversized result row, read via `GET /api/v1/batches/{id}` or `output.uri`. |
 | `422` | The model targets the `:online` variant, or the batch uses a feature batch rejects at submit. | Remove it, or use the sync API. |
 | `429` | Too many submits, or too many batches or requests in progress. | Wait for running batches to finish, then retry. |
 
