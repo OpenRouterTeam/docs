@@ -16,11 +16,20 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="November 25, 2026" tags={["Schemas","Video Generation"]} rss="1 modified endpoint, 5 modified schemas.">
+<Update label="November 25, 2026" tags={["Batch","Schemas","Video Generation"]} rss="6 modified endpoints, 1 new response code, 5 modified schemas.">
 
 ## Modified endpoints
 
 - [`GET /videos/models`](/api/api-reference/video-generation/list-all-video-generation-models): response schema updated
+- [`GET /batches`](/api/api-reference/batch/list-batches): description updated
+- [`POST /batches`](/api/api-reference/batch/create-a-batch): description updated
+- [`DELETE /batches/{id}`](/api/api-reference/batch/delete-a-batch): description updated
+- [`GET /batches/{id}`](/api/api-reference/batch/get-a-batch): description updated
+- [`GET /batches/{id}/results`](/api/api-reference/batch/get-batch-results): description updated
+
+## New response codes
+
+- [`DELETE /batches/{id}`](/api/api-reference/batch/delete-a-batch): now returns `503`
 
 ## Modified schemas
 
