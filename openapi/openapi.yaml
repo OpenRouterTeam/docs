@@ -53381,6 +53381,7 @@ paths:
       x-speakeasy-name-override: 'get'
   /models:
     get:
+      description: 'Lists available models with their pricing, context length, modalities, and supported parameters. An unfiltered call returns 500+ text models (~200 KB+ JSON); use query parameters such as `q`, `limit`, `offset`, `output_modalities`, `supported_parameters`, `min_price`, `max_price`, `context`, or `sort` to keep responses small, or call `GET /api/v1/model/{author}/{slug}` to inspect a single model.'
       operationId: 'getModels'
       parameters:
         - description: 'Number of records to skip for pagination. When both offset and limit are omitted, the full list is returned'

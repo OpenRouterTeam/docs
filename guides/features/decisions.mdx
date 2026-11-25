@@ -1062,12 +1062,13 @@ For detailed per-provider adapter compatibility tables and media size limits, se
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `model` | string | Yes | Model slug (e.g. `typesafe/jev-1.14`, `cloudflare/clef-flash`). |
-| `state` | string or array | Yes | Context evaluated by the questions. Can be a string or an array of text and media parts. |
+| `state` | string, object, or array | Yes | Context evaluated by the questions. Can be a string, JSON object, or array of text and media parts (`image_url`, `input_audio`, `video_url`). |
 | `questions` | object | Yes | Map of question keys to question specifications (`noul`, `choice`, `score`, `box`). |
-| `assets` | object | No | Map of image keys to image asset objects containing base64 data and image format. |
-| `provider` | object | No | Provider routing preferences (`order`, `only`, `ignore`, `options`). |
-| `session_id` | string | No | Grouping identifier for observability in Broadcast and logs. |
-| `user` | string | No | End-user identifier for analytics and rate limits. |
+| `assets` | object | No | Map of image keys to asset objects (`{ "format": "png" \| "jpg" \| "jpeg", "data_base64": "...", "type": "image" }`). Every asset must be referenced at least once. |
+| `provider` | object | No | [Provider routing preferences](/guides/routing/provider-selection) (`order`, `only`, `ignore`, `allow_fallbacks`, `zdr`, `data_collection`, `sort`, `max_price`, `options`). |
+| `session_id` | string | No | Grouping identifier (max 256 chars) for observability in Broadcast and logs. |
+| `trace` | object | No | Tracing metadata (`trace_id`, `trace_name`, `span_name`, `generation_name`, `parent_span_id`) for Broadcast observability. |
+| `user` | string | No | End-user identifier (max 256 chars) for analytics and rate limits. |
 
 `state`, each question's `instructions`, and each value in a question's `criteria` can nest objects and arrays at most 64 levels deep. A request that nests any of them deeper fails with a `400` that names the field.
 
@@ -1076,6 +1077,27 @@ Some models restrict question keys and reject other keys with a `400`. A key of 
 - **Gemini Decision 1.** Keys are 1 to 64 characters of `A-Z`, `a-z`, `0-9`, `_`, and `-`.
 - **Parallel Decisions Fast.** Keys contain only `A-Z`, `a-z`, `0-9`, `_`, and `-`.
 - **HeyGen Decision and HeyGen Decision Turbo.** Keys can't contain a colon or a newline (`\n`), and can't start or end with whitespace. Spaces inside a key are fine.
+
+## Response schema reference
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | No | Unique generation ID (e.g. `gen-dec-...`). |
+| `model` | string | Yes | Model identifier that served the request. |
+| `provider` | string | No | Name of the upstream provider that served the request. |
+| `answers` | object | Yes | Map of question keys to typed answer objects (`noul`, `choice`, `score`, `box`, or `refusal`). |
+| `annotations` | array | No | Web source citations (`{ "type": "url_citation", "url_citation": { "url", "title", "content" } }`) for the request as a whole, when returned by the provider. |
+| `usage` | object | Yes | Token and cost accounting: `input_tokens`, `output_tokens`, optional `cost` (credits), `cost_details`, `is_byok`, and `input_tokens_details.cached_tokens`. |
+
+Each value in `answers` is discriminated by `type`:
+
+| `type` | Fields |
+| --- | --- |
+| `"noul"` | `noul` (number, `0.0`–`1.0` probability of `true`), optional `confidence` (number) |
+| `"choice"` | `choice` (string, winning key), optional `probabilities` (map of key to number), optional `confidence` (number) |
+| `"score"` | `score` (number, expected score on `0`–`N-1`), optional `probabilities` (map of index string to number), optional `legend` (map of index string to criteria), optional `confidence` (number) |
+| `"box"` | `box` (`{ "top", "bottom", "left", "right" }` as fractions of image dimensions), optional `confidence` (number) |
+| `"refusal"` | Provider declined to answer this question; no score or probabilities returned |
 
 ## Handling provider refusals
 

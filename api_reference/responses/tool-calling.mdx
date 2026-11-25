@@ -362,49 +362,6 @@ func main() {
 
 </CodeGroup>
 
-```text title="Output"
-{
-  "id": "gen-1794947626-wfrC8WVOyUdKsBEDqJYy",
-  "object": "response",
-  "created_at": 1794947626,
-  "model": "openai/gpt-4o-mini",
-  "status": "completed",
-  "completed_at": 1794947627,
-  "output": [
-    {
-      "id": "fc_tmp_obdhb66hlx",
-      "type": "function_call",
-      "status": "completed",
-      "call_id": "call_gtKR0Mt9UXdJJQmARAwfQVCg",
-      "name": "get_weather",
-      "arguments": "{\"location\":\"San Francisco, CA\"}"
-    }
-  ],
-  "error": null,
-  "incomplete_details": null,
-  "access_programs": null,
-  "tools": [
-    {
-      "type": "function",
-      "name": "get_weather",
-      "description": "Get the current weather in a location",
-      "strict": null,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "location": {
-            "type": "string",
-            "description": "The city and state, e.g. San Francisco, CA"
-          },
-          "unit": {
-            "type": "string",
-            "enum": [
-              "celsius",
-              "fahrenheit"
-            ]
-          }
-```
-
 ### Tool Choice Options
 
 Control when and how tools are called:
@@ -417,607 +374,76 @@ Control when and how tools are called:
 
 #### Force Specific Tool
 
-<CodeGroup>
-
-```typescript title="TypeScript" expandable lines
-const response = await fetch('https://openrouter.ai/api/v1/responses', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    model: 'openai/gpt-4o-mini',
-    input: [
-      {
-        type: 'message',
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: 'Hello, how are you?',
-          },
-        ],
-      },
-    ],
-    tools: [weatherTool],
-    tool_choice: { type: 'function', name: 'get_weather' },
-    max_output_tokens: 9000,
-  }),
-});
-
-const result = await response.json();
-console.log(JSON.stringify(result, null, 2));
-```
-
-```python title="Python" expandable lines
-import json
-import os
-
-import requests
-
-response = requests.post(
-    'https://openrouter.ai/api/v1/responses',
-    headers={
-        'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
-        'Content-Type': 'application/json',
-    },
-    json={
-        'model': 'openai/gpt-4o-mini',
-        'input': [
-            {
-                'type': 'message',
-                'role': 'user',
-                'content': [
-                    {
-                        'type': 'input_text',
-                        'text': 'Hello, how are you?',
-                    },
-                ],
-            },
-        ],
-        'tools': [weather_tool],
-        'tool_choice': {'type': 'function', 'name': 'get_weather'},
-        'max_output_tokens': 9000,
+```json title="Request body" lines
+{
+  "model": "openai/gpt-4o-mini",
+  "input": [
+    {
+      "type": "message",
+      "role": "user",
+      "content": [{ "type": "input_text", "text": "Hello, how are you?" }]
     }
-)
-
-result = response.json()
-print(json.dumps(result, indent=2))
-
-```
-
-```go title="Go" lines
-body, _ := json.Marshal(map[string]any{
-	"model": "openai/gpt-4o-mini",
-	"input": []any{
-		map[string]any{
-			"type": "message",
-			"role": "user",
-			"content": []any{
-				map[string]any{"type": "input_text", "text": "Hello, how are you?"},
-			},
-		},
-	},
-	"tools":             []any{weatherTool},
-	"tool_choice":       map[string]any{"type": "function", "name": "get_weather"},
-	"max_output_tokens": 9000,
-})
-
-req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
-req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
-req.Header.Set("Content-Type", "application/json")
-
-resp, err := http.DefaultClient.Do(req)
-if err != nil {
-	panic(err)
-}
-defer resp.Body.Close()
-
-data, _ := io.ReadAll(resp.Body)
-var out bytes.Buffer
-if err := json.Indent(&out, data, "", "  "); err != nil {
-	fmt.Println(string(data))
-	return
-}
-fmt.Println(out.String())
-```
-
-```bash title="cURL" lines
-curl -X POST https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "openai/gpt-4o-mini",
-    "input": [
-      {
-        "type": "message",
-        "role": "user",
-        "content": [
-          {
-            "type": "input_text",
-            "text": "Hello, how are you?"
-          }
-        ]
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "name": "get_weather",
+      "description": "Get the current weather in a location",
+      "parameters": {
+        "type": "object",
+        "properties": { "location": { "type": "string" } },
+        "required": ["location"]
       }
-    ],
-    "tools": [
-      {
-        "type": "function",
-        "name": "get_weather",
-        "description": "Get the current weather in a location",
-        "parameters": {
-          "type": "object",
-          "properties": { "location": { "type": "string" } },
-          "required": ["location"]
-        }
-      }
-    ],
-    "tool_choice": { "type": "function", "name": "get_weather" },
-    "max_output_tokens": 9000
-  }'
+    }
+  ],
+  "tool_choice": { "type": "function", "name": "get_weather" },
+  "max_output_tokens": 9000
+}
 ```
-
-</CodeGroup>
 
 #### Disable Tool Calling
 
-<CodeGroup>
-
-```typescript title="TypeScript" expandable lines
-const response = await fetch('https://openrouter.ai/api/v1/responses', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    model: 'openai/gpt-4o-mini',
-    input: [
-      {
-        type: 'message',
-        role: 'user' as const,
-        content: [
-          {
-            type: 'input_text',
-            text: 'What is the weather in Paris?',
-          },
-        ],
-      },
-    ],
-    tools: [weatherTool] as const,
-    tool_choice: 'none',
-    max_output_tokens: 9000,
-  }),
-});
-```
-
-```python title="Python" expandable lines
-import json
-import os
-
-import requests
-
-response = requests.post(
-    'https://openrouter.ai/api/v1/responses',
-    headers={
-        'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
-        'Content-Type': 'application/json',
-    },
-    json={
-        'model': 'openai/gpt-4o-mini',
-        'input': [
-            {
-                'type': 'message',
-                'role': 'user',
-                'content': [
-                    {
-                        'type': 'input_text',
-                        'text': 'What is the weather in Paris?',
-                    },
-                ],
-            },
-        ],
-        'tools': [weather_tool],
-        'tool_choice': 'none',
-        'max_output_tokens': 9000,
+```json title="Request body" lines
+{
+  "model": "openai/gpt-4o-mini",
+  "input": [
+    {
+      "type": "message",
+      "role": "user",
+      "content": [{ "type": "input_text", "text": "What is the weather in Paris?" }]
     }
-)
-
-result = response.json()
-print(json.dumps(result, indent=2))
-
-```
-
-```go title="Go" lines
-body, _ := json.Marshal(map[string]any{
-	"model": "openai/gpt-4o-mini",
-	"input": []any{
-		map[string]any{
-			"type": "message",
-			"role": "user",
-			"content": []any{
-				map[string]any{"type": "input_text", "text": "What is the weather in Paris?"},
-			},
-		},
-	},
-	"tools":             []any{weatherTool},
-	"tool_choice":       "none",
-	"max_output_tokens": 9000,
-})
-
-req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
-req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
-req.Header.Set("Content-Type", "application/json")
-
-resp, err := http.DefaultClient.Do(req)
-if err != nil {
-	panic(err)
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "name": "get_weather",
+      "description": "Get the current weather in a location",
+      "parameters": {
+        "type": "object",
+        "properties": { "location": { "type": "string" } },
+        "required": ["location"]
+      }
+    }
+  ],
+  "tool_choice": "none",
+  "max_output_tokens": 9000
 }
-defer resp.Body.Close()
 ```
-
-```bash title="cURL" lines
-curl -X POST https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "openai/gpt-4o-mini",
-    "input": [
-      {
-        "type": "message",
-        "role": "user",
-        "content": [
-          {
-            "type": "input_text",
-            "text": "What is the weather in Paris?"
-          }
-        ]
-      }
-    ],
-    "tools": [
-      {
-        "type": "function",
-        "name": "get_weather",
-        "description": "Get the current weather in a location",
-        "parameters": {
-          "type": "object",
-          "properties": { "location": { "type": "string" } },
-          "required": ["location"]
-        }
-      }
-    ],
-    "tool_choice": "none",
-    "max_output_tokens": 9000
-  }'
-```
-
-</CodeGroup>
 
 ### Multiple Tools
 
 Define multiple tools for complex workflows:
 
-<CodeGroup>
-
-```typescript title="TypeScript" expandable lines
-const weatherTool = {
-  type: 'function' as const,
-  name: 'get_weather',
-  description: 'Get the current weather in a location',
-  strict: null,
-  parameters: {
-    type: 'object',
-    properties: {
-      location: {
-        type: 'string',
-        description: 'The city and state, e.g. San Francisco, CA',
-      },
-      unit: {
-        type: 'string',
-        enum: ['celsius', 'fahrenheit'],
-      },
-    },
-    required: ['location'],
-  },
-};
-
-const calculatorTool = {
-  type: 'function' as const,
-  name: 'calculate',
-  description: 'Perform mathematical calculations',
-  strict: null,
-  parameters: {
-    type: 'object',
-    properties: {
-      expression: {
-        type: 'string',
-        description: 'The mathematical expression to evaluate',
-      },
-    },
-    required: ['expression'],
-  },
-};
-
-const response = await fetch('https://openrouter.ai/api/v1/responses', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    model: 'openai/gpt-4o-mini',
-    input: [
-      {
-        type: 'message',
-        role: 'user' as const,
-        content: [
-          {
-            type: 'input_text',
-            text: 'What is 25 * 4?',
-          },
-        ],
-      },
-    ],
-    tools: [weatherTool, calculatorTool],
-    tool_choice: 'auto',
-    max_output_tokens: 9000,
-  }),
-});
-
-const result = await response.json();
-console.log(JSON.stringify(result, null, 2));
-
-```
-
-```python title="Python" expandable lines
-import json
-import os
-
-import requests
-
-weather_tool = {
-    'type': 'function',
-    'name': 'get_weather',
-    'description': 'Get the current weather in a location',
-    'strict': None,
-    'parameters': {
-        'type': 'object',
-        'properties': {
-            'location': {
-                'type': 'string',
-                'description': 'The city and state, e.g. San Francisco, CA',
-            },
-            'unit': {
-                'type': 'string',
-                'enum': ['celsius', 'fahrenheit'],
-            },
-        },
-        'required': ['location'],
-    },
-}
-
-calculator_tool = {
-    'type': 'function',
-    'name': 'calculate',
-    'description': 'Perform mathematical calculations',
-    'strict': None,
-    'parameters': {
-        'type': 'object',
-        'properties': {
-            'expression': {
-                'type': 'string',
-                'description': 'The mathematical expression to evaluate',
-            },
-        },
-        'required': ['expression'],
-    },
-}
-
-response = requests.post(
-    'https://openrouter.ai/api/v1/responses',
-    headers={
-        'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
-        'Content-Type': 'application/json',
-    },
-    json={
-        'model': 'openai/gpt-4o-mini',
-        'input': [
-            {
-                'type': 'message',
-                'role': 'user',
-                'content': [
-                    {
-                        'type': 'input_text',
-                        'text': 'What is 25 * 4?',
-                    },
-                ],
-            },
-        ],
-        'tools': [weather_tool, calculator_tool],
-        'tool_choice': 'auto',
-        'max_output_tokens': 9000,
-    }
-)
-
-result = response.json()
-print(json.dumps(result, indent=2))
-
-```
-
-```go title="Go" lines
-package main
-
-import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"os"
-)
-
-func main() {
-	weatherTool := map[string]any{
-		"type":        "function",
-		"name":        "get_weather",
-		"description": "Get the current weather in a location",
-		"strict":      nil,
-		"parameters": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"location": map[string]any{
-					"type":        "string",
-					"description": "The city and state, e.g. San Francisco, CA",
-				},
-				"unit": map[string]any{
-					"type": "string",
-					"enum": []string{"celsius", "fahrenheit"},
-				},
-			},
-			"required": []string{"location"},
-		},
-	}
-
-	calculatorTool := map[string]any{
-		"type":        "function",
-		"name":        "calculate",
-		"description": "Perform mathematical calculations",
-		"strict":      nil,
-		"parameters": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"expression": map[string]any{
-					"type":        "string",
-					"description": "The mathematical expression to evaluate",
-				},
-			},
-			"required": []string{"expression"},
-		},
-	}
-
-	body, _ := json.Marshal(map[string]any{
-		"model": "openai/gpt-4o-mini",
-		"input": []any{
-			map[string]any{
-				"type": "message",
-				"role": "user",
-				"content": []any{
-					map[string]any{"type": "input_text", "text": "What is 25 * 4?"},
-				},
-			},
-		},
-		"tools":             []any{weatherTool, calculatorTool},
-		"tool_choice":       "auto",
-		"max_output_tokens": 9000,
-	})
-
-	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	data, _ := io.ReadAll(resp.Body)
-	var out bytes.Buffer
-	if err := json.Indent(&out, data, "", "  "); err != nil {
-		fmt.Println(string(data))
-		return
-	}
-	fmt.Println(out.String())
-}
-
-```
-
-```bash title="cURL" lines
-curl -X POST https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "openai/gpt-4o-mini",
-    "input": [
-      {
-        "type": "message",
-        "role": "user",
-        "content": [
-          {
-            "type": "input_text",
-            "text": "What is 25 * 4?"
-          }
-        ]
-      }
-    ],
-    "tools": [
-      {
-        "type": "function",
-        "name": "get_weather",
-        "description": "Get the current weather in a location",
-        "strict": null,
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "location": {
-              "type": "string",
-              "description": "The city and state, e.g. San Francisco, CA"
-            },
-            "unit": {
-              "type": "string",
-              "enum": ["celsius", "fahrenheit"]
-            }
-          },
-          "required": ["location"]
-        }
-      },
-      {
-        "type": "function",
-        "name": "calculate",
-        "description": "Perform mathematical calculations",
-        "strict": null,
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "expression": {
-              "type": "string",
-              "description": "The mathematical expression to evaluate"
-            }
-          },
-          "required": ["expression"]
-        }
-      }
-    ],
-    "tool_choice": "auto",
-    "max_output_tokens": 9000
-  }'
-
-```
-
-</CodeGroup>
-
-```text title="Output"
+```json title="Request body" lines
 {
-  "id": "gen-1794947916-JqitACgZxVM6a051leDL",
-  "object": "response",
-  "created_at": 1794947916,
   "model": "openai/gpt-4o-mini",
-  "status": "completed",
-  "completed_at": 1794947916,
-  "output": [
+  "input": [
     {
-      "id": "fc_tmp_84h9i390srq",
-      "type": "function_call",
-      "status": "completed",
-      "call_id": "call_njcjjHkGCOfs99rVDKYW3Xs9",
-      "name": "calculate",
-      "arguments": "{\"expression\":\"25 * 4\"}"
+      "type": "message",
+      "role": "user",
+      "content": [{ "type": "input_text", "text": "What is 25 * 4?" }]
     }
   ],
-  "error": null,
-  "incomplete_details": null,
-  "access_programs": null,
   "tools": [
     {
       "type": "function",
@@ -1033,326 +459,68 @@ curl -X POST https://openrouter.ai/api/v1/responses \
           },
           "unit": {
             "type": "string",
-            "enum": [
-              "celsius",
-              "fahrenheit"
-            ]
+            "enum": ["celsius", "fahrenheit"]
           }
+        },
+        "required": ["location"]
+      }
+    },
+    {
+      "type": "function",
+      "name": "calculate",
+      "description": "Perform mathematical calculations",
+      "strict": null,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "expression": {
+            "type": "string",
+            "description": "The mathematical expression to evaluate"
+          }
+        },
+        "required": ["expression"]
+      }
+    }
+  ],
+  "tool_choice": "auto",
+  "max_output_tokens": 9000
+}
 ```
 
 ### Parallel Tool Calls
 
-The API supports parallel execution of multiple tools:
+The API supports parallel execution of multiple tools in a single turn. Pass the same `tools` array with a prompt requiring multiple lookups — the response `output` array returns multiple `function_call` items (set `"parallel_tool_calls": false` to limit to one call per turn):
 
-<CodeGroup>
-
-```typescript title="TypeScript" expandable lines
-const weatherTool = {
-  type: 'function' as const,
-  name: 'get_weather',
-  description: 'Get the current weather in a location',
-  strict: null,
-  parameters: {
-    type: 'object',
-    properties: {
-      location: {
-        type: 'string',
-        description: 'The city and state, e.g. San Francisco, CA',
-      },
-      unit: {
-        type: 'string',
-        enum: ['celsius', 'fahrenheit'],
-      },
-    },
-    required: ['location'],
-  },
-};
-
-const calculatorTool = {
-  type: 'function' as const,
-  name: 'calculate',
-  description: 'Perform mathematical calculations',
-  strict: null,
-  parameters: {
-    type: 'object',
-    properties: {
-      expression: {
-        type: 'string',
-        description: 'The mathematical expression to evaluate',
-      },
-    },
-    required: ['expression'],
-  },
-};
-
-const response = await fetch('https://openrouter.ai/api/v1/responses', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    model: 'openai/gpt-4o-mini',
-    input: [
-      {
-        type: 'message',
-        role: 'user' as const,
-        content: [
-          {
-            type: 'input_text',
-            text: 'Calculate 10*5 and also tell me the weather in Miami',
-          },
-        ],
-      },
-    ],
-    tools: [weatherTool, calculatorTool],
-    tool_choice: 'auto',
-    max_output_tokens: 9000,
-  }),
-});
-
-const result = await response.json();
-console.log(JSON.stringify(result, null, 2));
-
-```
-
-```python title="Python" expandable lines
-import os
-import json
-import requests
-
-weather_tool = {
-    'type': 'function',
-    'name': 'get_weather',
-    'description': 'Get the current weather in a location',
-    'strict': None,
-    'parameters': {
-        'type': 'object',
-        'properties': {
-            'location': {
-                'type': 'string',
-                'description': 'The city and state, e.g. San Francisco, CA',
-            },
-            'unit': {
-                'type': 'string',
-                'enum': ['celsius', 'fahrenheit'],
-            },
-        },
-        'required': ['location'],
-    },
-}
-
-calculator_tool = {
-    'type': 'function',
-    'name': 'calculate',
-    'description': 'Perform mathematical calculations',
-    'strict': None,
-    'parameters': {
-        'type': 'object',
-        'properties': {
-            'expression': {
-                'type': 'string',
-                'description': 'The mathematical expression to evaluate',
-            },
-        },
-        'required': ['expression'],
-    },
-}
-
-response = requests.post(
-    'https://openrouter.ai/api/v1/responses',
-    headers={
-        'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
-        'Content-Type': 'application/json',
-    },
-    json={
-        'model': 'openai/gpt-4o-mini',
-        'input': [
-            {
-                'type': 'message',
-                'role': 'user',
-                'content': [
-                    {
-                        'type': 'input_text',
-                        'text': 'Calculate 10*5 and also tell me the weather in Miami',
-                    },
-                ],
-            },
-        ],
-        'tools': [weather_tool, calculator_tool],
-        'tool_choice': 'auto',
-        'max_output_tokens': 9000,
-    }
-)
-
-result = response.json()
-print(json.dumps(result, indent=2))
-
-```
-
-```go title="Go" lines
-package main
-
-import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"os"
-)
-
-func main() {
-	weatherTool := map[string]any{
-		"type":        "function",
-		"name":        "get_weather",
-		"description": "Get the current weather in a location",
-		"strict":      nil,
-		"parameters": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"location": map[string]any{
-					"type":        "string",
-					"description": "The city and state, e.g. San Francisco, CA",
-				},
-				"unit": map[string]any{
-					"type": "string",
-					"enum": []string{"celsius", "fahrenheit"},
-				},
-			},
-			"required": []string{"location"},
-		},
-	}
-
-	calculatorTool := map[string]any{
-		"type":        "function",
-		"name":        "calculate",
-		"description": "Perform mathematical calculations",
-		"strict":      nil,
-		"parameters": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"expression": map[string]any{
-					"type":        "string",
-					"description": "The mathematical expression to evaluate",
-				},
-			},
-			"required": []string{"expression"},
-		},
-	}
-
-	body, _ := json.Marshal(map[string]any{
-		"model": "openai/gpt-4o-mini",
-		"input": []any{
-			map[string]any{
-				"type": "message",
-				"role": "user",
-				"content": []any{
-					map[string]any{"type": "input_text", "text": "Calculate 10*5 and also tell me the weather in Miami"},
-				},
-			},
-		},
-		"tools":             []any{weatherTool, calculatorTool},
-		"tool_choice":       "auto",
-		"max_output_tokens": 9000,
-	})
-
-	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	data, _ := io.ReadAll(resp.Body)
-	var out bytes.Buffer
-	if err := json.Indent(&out, data, "", "  "); err != nil {
-		fmt.Println(string(data))
-		return
-	}
-	fmt.Println(out.String())
-}
-
-```
-
-```bash title="cURL" lines
-curl -X POST https://openrouter.ai/api/v1/responses \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "openai/gpt-4o-mini",
-    "input": [
-      {
-        "type": "message",
-        "role": "user",
-        "content": [
-          {
-            "type": "input_text",
-            "text": "Calculate 10*5 and also tell me the weather in Miami"
-          }
-        ]
-      }
-    ],
-    "tools": [
-      {
-        "type": "function",
-        "name": "get_weather",
-        "description": "Get the current weather in a location",
-        "strict": null,
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "location": {
-              "type": "string",
-              "description": "The city and state, e.g. San Francisco, CA"
-            },
-            "unit": {
-              "type": "string",
-              "enum": ["celsius", "fahrenheit"]
-            }
-          },
-          "required": ["location"]
-        }
-      },
-      {
-        "type": "function",
-        "name": "calculate",
-        "description": "Perform mathematical calculations",
-        "strict": null,
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "expression": {
-              "type": "string",
-              "description": "The mathematical expression to evaluate"
-            }
-          },
-          "required": ["expression"]
-        }
-      }
-    ],
-    "tool_choice": "auto",
-    "max_output_tokens": 9000
-  }'
-
-```
-
-</CodeGroup>
-
-```text title="Output"
+```json title="Request body" lines
 {
-  "id": "gen-1794948028-pOJsgjWbBhVMri9oSatO",
+  "model": "openai/gpt-4o-mini",
+  "input": [
+    {
+      "type": "message",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "Calculate 10*5 and also tell me the weather in Miami"
+        }
+      ]
+    }
+  ],
+  "tools": [/* weatherTool, calculatorTool */],
+  "tool_choice": "auto",
+  "max_output_tokens": 9000
+}
+```
+
+```json title="Output (parallel function_call items)" lines
+{
+  "id": "resp_1234567890",
   "object": "response",
-  "created_at": 1794948028,
   "model": "openai/gpt-4o-mini",
   "status": "completed",
-  "completed_at": 1794948030,
   "output": [
     {
-      "id": "fc_tmp_4bzk69qn9xw",
+      "id": "fc_1",
       "type": "function_call",
       "status": "completed",
       "call_id": "call_ls7QxqPyMXCm0EGZyUTsvqpd",
@@ -1360,29 +528,15 @@ curl -X POST https://openrouter.ai/api/v1/responses \
       "arguments": "{\"expression\": \"10*5\"}"
     },
     {
-      "id": "fc_tmp_wv729ikcrq",
+      "id": "fc_2",
       "type": "function_call",
       "status": "completed",
       "call_id": "call_tyhKhpubo7N6m4YVBvg0g8Kg",
       "name": "get_weather",
       "arguments": "{\"location\": \"Miami, FL\"}"
     }
-  ],
-  "error": null,
-  "incomplete_details": null,
-  "access_programs": null,
-  "tools": [
-    {
-      "type": "function",
-      "name": "get_weather",
-      "description": "Get the current weather in a location",
-      "strict": null,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "location": {
-            "type": "string",
-            "description": "The city and state, e.g. San Francisco, CA"
+  ]
+}
 ```
 
 ### Tool Call Response
@@ -1694,49 +848,6 @@ curl -X POST https://openrouter.ai/api/v1/responses \
 ```
 
 </CodeGroup>
-
-```text title="Output"
-{
-  "id": "gen-1794948128-fwzhtqjBeTidFyD55QW5",
-  "object": "response",
-  "created_at": 1794948128,
-  "model": "openai/gpt-4o-mini",
-  "status": "completed",
-  "completed_at": 1794948130,
-  "output": [
-    {
-      "id": "msg_tmp_opeouv3gaa",
-      "type": "message",
-      "role": "assistant",
-      "status": "completed",
-      "content": [
-        {
-          "type": "output_text",
-          "text": "Yes, 72°F and sunny is typically considered great weather for a picnic! It's warm but not too hot, and the sunshine makes for a pleasant outdoor experience. Just be sure to bring some sunscreen and stay hydrated!",
-          "annotations": [],
-          "logprobs": []
-        }
-      ]
-    }
-  ],
-  "error": null,
-  "incomplete_details": null,
-  "access_programs": null,
-  "tools": [],
-  "tool_choice": "auto",
-  "parallel_tool_calls": true,
-  "max_output_tokens": 9000,
-  "temperature": 1,
-  "top_p": 1,
-  "presence_penalty": 0,
-  "frequency_penalty": 0,
-  "top_logprobs": 0,
-  "max_tool_calls": null,
-  "metadata": {},
-  "background": false,
-  "previous_response_id": null,
-  "service_tier": "default",
-```
 
 <Info>
 **Optional Field**
