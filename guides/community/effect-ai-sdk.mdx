@@ -64,6 +64,104 @@ Once that's done you can use the [LanguageModel](https://effect.website/docs/ai/
   )
   ```
 
+  ```python title="Python" lines
+  import os
+  from openrouter import OpenRouter
+
+  with OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"]) as client:
+      stream = client.chat.send(
+          model="openai/gpt-4o",
+          messages=[
+              {"role": "system", "content": "You are a comedian with a penchant for groan-inducing puns"},
+              {"role": "user", "content": [{"type": "text", "text": "Tell me a dad joke"}]},
+          ],
+          stream=True,
+      )
+
+      for chunk in stream:
+          if chunk.choices and chunk.choices[0].delta.content:
+              print(chunk.choices[0].delta.content, end="", flush=True)
+      print()
+
+  ```
+
+  ```go title="Go" lines
+  package main
+
+  import (
+  	"bufio"
+  	"bytes"
+  	"encoding/json"
+  	"fmt"
+  	"io"
+  	"net/http"
+  	"os"
+  	"strings"
+  )
+
+  func main() {
+  	body, _ := json.Marshal(map[string]any{
+  		"model":  "openai/gpt-4o",
+  		"stream": true,
+  		"messages": []map[string]any{
+  			{"role": "system", "content": "You are a comedian with a penchant for groan-inducing puns"},
+  			{"role": "user", "content": []map[string]string{{"type": "text", "text": "Tell me a dad joke"}}},
+  		},
+  	})
+
+  	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+  	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+  	req.Header.Set("Content-Type", "application/json")
+
+  	resp, err := http.DefaultClient.Do(req)
+  	if err != nil {
+  		panic(err)
+  	}
+  	defer resp.Body.Close()
+  	if resp.StatusCode != http.StatusOK {
+  		b, _ := io.ReadAll(resp.Body)
+  		fmt.Fprintln(os.Stderr, resp.Status, string(b))
+  		os.Exit(1)
+  	}
+
+  	scanner := bufio.NewScanner(resp.Body)
+  	for scanner.Scan() {
+  		data, ok := strings.CutPrefix(scanner.Text(), "data: ")
+  		if !ok || data == "[DONE]" {
+  			continue
+  		}
+  		var chunk struct {
+  			Choices []struct {
+  				Delta struct {
+  					Content string `json:"content"`
+  				} `json:"delta"`
+  			} `json:"choices"`
+  		}
+  		if json.Unmarshal([]byte(data), &chunk) == nil && len(chunk.Choices) > 0 {
+  			fmt.Print(chunk.Choices[0].Delta.Content)
+  		}
+  	}
+  	fmt.Println()
+  }
+
+  ```
+
+  ```bash title="cURL" lines
+  curl -sN https://openrouter.ai/api/v1/chat/completions \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "model": "openai/gpt-4o",
+      "stream": true,
+      "messages": [
+        { "role": "system", "content": "You are a comedian with a penchant for groan-inducing puns" },
+        { "role": "user", "content": [{ "type": "text", "text": "Tell me a dad joke" }] }
+      ]
+    }' | sed -n 's/^data: //p' | grep -v '^\[DONE\]$' | jq -j '.choices[0].delta.content // empty'
+  echo
+
+  ```
+
 </CodeGroup>
 
 ```text title="Output"

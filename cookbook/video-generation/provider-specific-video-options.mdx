@@ -225,6 +225,7 @@ fmt.Println("All provider parameters are supported.")
 ```
 
 ```bash title="cURL" lines
+set -o pipefail
 PROVIDER_PARAMETERS='{
   "negativePrompt": "blurry, low quality, distorted petals",
   "enhancePrompt": true
@@ -232,17 +233,15 @@ PROVIDER_PARAMETERS='{
 
 ALLOWED_PARAMS=$(curl -sSf https://openrouter.ai/api/v1/videos/models \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  | jq -c '.data[] | select(.id == "google/veo-3.1-lite") | .allowed_passthrough_parameters')
-
-if [ -z "$ALLOWED_PARAMS" ]; then
-  echo "google/veo-3.1-lite was not found in the video model list." >&2
+  | jq -ce '.data[] | select(.id == "google/veo-3.1-lite") | .allowed_passthrough_parameters | select(type == "array")') || {
+  echo "Could not load the model's passthrough parameter list." >&2
   exit 1
-fi
+}
 
 UNSUPPORTED=$(jq -rn \
   --argjson params "$PROVIDER_PARAMETERS" \
   --argjson allowed "$ALLOWED_PARAMS" \
-  '$params | keys - ($allowed // []) | join(", ")')
+  '$params | keys - $allowed | join(", ")') || exit 1
 
 if [ -n "$UNSUPPORTED" ]; then
   echo "Unsupported passthrough parameters: $UNSUPPORTED" >&2
@@ -449,6 +448,20 @@ if [ "$SELECTED_MODEL" = "google/veo-3.1-lite" ]; then
     '$base + {model: $model, provider: {options: {"google-vertex": {parameters: {negativePrompt: "blurry, low quality"}}}}}')
 else
   REQUEST_BODY=$(jq -n --argjson base "$BASE_REQUEST" --arg model "$SELECTED_MODEL" \
+    '$base + {model: $model}')
+fi
+```
+
+```bash title="cURL" lines
+base_request='{"prompt": "A short cinematic product shot of a white orchid blooming", "duration": 4, "resolution": "720p", "aspect_ratio": "16:9"}'
+
+selected_model="google/veo-3.1-lite"
+
+if [ "$selected_model" = "google/veo-3.1-lite" ]; then
+  request_body=$(jq -n --argjson base "$base_request" --arg model "$selected_model" \
+    '$base + {model: $model, provider: {options: {"google-vertex": {parameters: {negativePrompt: "blurry, low quality"}}}}}')
+else
+  request_body=$(jq -n --argjson base "$base_request" --arg model "$selected_model" \
     '$base + {model: $model}')
 fi
 ```

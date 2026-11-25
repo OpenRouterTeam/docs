@@ -174,14 +174,44 @@ The Python and Go tabs on this page assume you have ported the TypeScript tool a
 
 ```typescript lines
 import { OpenRouter } from '@openrouter/sdk';
-import { callModel } from '@openrouter/agent';
+import { callModel, tool } from '@openrouter/agent';
+import { z } from 'zod';
+
+const weatherTool = tool({
+  name: 'get_weather',
+  description: 'Get the current weather for a city',
+  inputSchema: z.object({
+    city: z.string().describe('City name, e.g. "Tokyo"'),
+    units: z.enum(['celsius', 'fahrenheit']).default('celsius'),
+  }),
+  outputSchema: z.object({
+    temperature: z.number(),
+    feelsLike: z.number(),
+    conditions: z.string(),
+    humidity: z.number(),
+    windSpeed: z.number(),
+    windDirection: z.string(),
+  }),
+  execute: async ({ city, units }) => {
+    // Replace with a call to a real weather API.
+    const celsius = units === 'celsius';
+    return {
+      temperature: celsius ? 22 : 72,
+      feelsLike: celsius ? 24 : 75,
+      conditions: `Partly cloudy in ${city}`,
+      humidity: 65,
+      windSpeed: 15,
+      windDirection: 'SW',
+    };
+  },
+});
 
 const openrouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
 
 const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'What is the weather like in Tokyo?',
-  tools: [weatherTool],
+  tools: [weatherTool] as const,
 });
 
 const text = await result.getText();
@@ -189,12 +219,52 @@ console.log(text);
 // "The current weather in Tokyo, Japan is partly cloudy with a temperature
 // of 22°C (feels like 24°C). Humidity is at 65% with winds from the
 // southwest at 15 km/h."
+
 ```
 
 ```python title="Python" lines
 import asyncio
 import os
-from openrouter_agent import OpenRouter, call_model
+from typing import Literal
+
+from pydantic import BaseModel, Field
+from openrouter_agent import OpenRouter, call_model, tool
+
+
+class WeatherInput(BaseModel):
+    city: str = Field(description='City name, e.g. "Tokyo"')
+    units: Literal["celsius", "fahrenheit"] = "celsius"
+
+
+class WeatherOutput(BaseModel):
+    temperature: float
+    feels_like: float
+    conditions: str
+    humidity: float
+    wind_speed: float
+    wind_direction: str
+
+
+async def get_weather(params: WeatherInput, ctx) -> WeatherOutput:
+    # Replace with a call to a real weather API.
+    celsius = params.units == "celsius"
+    return WeatherOutput(
+        temperature=22 if celsius else 72,
+        feels_like=24 if celsius else 75,
+        conditions=f"Partly cloudy in {params.city}",
+        humidity=65,
+        wind_speed=15,
+        wind_direction="SW",
+    )
+
+
+weather_tool = tool(
+    name="get_weather",
+    description="Get the current weather for a city",
+    input_schema=WeatherInput,
+    output_schema=WeatherOutput,
+    execute=get_weather,
+)
 
 client = OpenRouter(api_key=os.environ["OPENROUTER_API_KEY"])
 
@@ -219,73 +289,169 @@ asyncio.run(main())
 ```
 
 ```go title="Go" lines
-messages := []any{
-	map[string]any{"role": "user", "content": "What is the weather like in Tokyo?"},
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+type Weather struct {
+	Temperature   float64 `json:"temperature"`
+	FeelsLike     float64 `json:"feelsLike"`
+	Conditions    string  `json:"conditions"`
+	Humidity      float64 `json:"humidity"`
+	WindSpeed     float64 `json:"windSpeed"`
+	WindDirection string  `json:"windDirection"`
 }
 
-for {
-	body, _ := json.Marshal(map[string]any{
-		"model":    "openai/gpt-5-nano",
-		"messages": messages,
-		"tools":    []any{weatherTool},
-	})
-	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Fatal(err)
+// Replace with a call to a real weather API.
+func getWeather(city, units string) (Weather, error) {
+	celsius := units != "fahrenheit"
+	w := Weather{
+		Temperature:   72,
+		FeelsLike:     75,
+		Conditions:    "Partly cloudy in " + city,
+		Humidity:      65,
+		WindSpeed:     15,
+		WindDirection: "SW",
 	}
-	var out struct {
-		Choices []struct {
-			Message json.RawMessage `json:"message"`
-		} `json:"choices"`
+	if celsius {
+		w.Temperature, w.FeelsLike = 22, 24
 	}
-	json.NewDecoder(resp.Body).Decode(&out)
-	resp.Body.Close()
-	if len(out.Choices) == 0 {
-		log.Fatalf("no choices (status %s)", resp.Status)
+	return w, nil
+}
+
+var weatherTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "get_weather",
+		"description": "Get the current weather for a city",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"city": map[string]any{"type": "string", "description": "City name, e.g. \"Tokyo\""},
+				"units": map[string]any{"type": "string", "enum": []string{"celsius", "fahrenheit"}, "default": "celsius"},
+			},
+			"required": []string{"city"},
+		},
+	},
+}
+
+func main() {
+	messages := []any{
+		map[string]any{"role": "user", "content": "What is the weather like in Tokyo?"},
 	}
 
-	var msg struct {
-		Content   string `json:"content"`
-		ToolCalls []struct {
-			ID       string `json:"id"`
-			Function struct {
-				Arguments string `json:"arguments"`
-			} `json:"function"`
-		} `json:"tool_calls"`
-	}
-	json.Unmarshal(out.Choices[0].Message, &msg)
-	if len(msg.ToolCalls) == 0 {
-		fmt.Println(msg.Content)
-		break
-	}
-
-	messages = append(messages, out.Choices[0].Message)
-	for _, call := range msg.ToolCalls {
-		var args struct {
-			City  string `json:"city"`
-			Units string `json:"units"`
-		}
-		if err := json.Unmarshal([]byte(call.Function.Arguments), &args); err != nil {
-			log.Fatal(err)
-		}
-		weather, err := getWeather(args.City, args.Units)
+	for {
+		body, _ := json.Marshal(map[string]any{
+			"model":    "openai/gpt-5-nano",
+			"messages": messages,
+			"tools":    []any{weatherTool},
+		})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			log.Fatal(err)
 		}
-		content, _ := json.Marshal(weather)
-		messages = append(messages, map[string]any{
-			"role":         "tool",
-			"tool_call_id": call.ID,
-			"content":      string(content),
-		})
+		var out struct {
+			Choices []struct {
+				Message json.RawMessage `json:"message"`
+			} `json:"choices"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			log.Fatal(err)
+		}
+		resp.Body.Close()
+		if len(out.Choices) == 0 {
+			log.Fatalf("no choices (status %s)", resp.Status)
+		}
+
+		var msg struct {
+			Content   string `json:"content"`
+			ToolCalls []struct {
+				ID       string `json:"id"`
+				Function struct {
+					Arguments string `json:"arguments"`
+				} `json:"function"`
+			} `json:"tool_calls"`
+		}
+		json.Unmarshal(out.Choices[0].Message, &msg)
+		if len(msg.ToolCalls) == 0 {
+			fmt.Println(msg.Content)
+			break
+		}
+
+		messages = append(messages, out.Choices[0].Message)
+		for _, call := range msg.ToolCalls {
+			var args struct {
+				City  string `json:"city"`
+				Units string `json:"units"`
+			}
+			if err := json.Unmarshal([]byte(call.Function.Arguments), &args); err != nil {
+				log.Fatal(err)
+			}
+			weather, err := getWeather(args.City, args.Units)
+			if err != nil {
+				log.Fatal(err)
+			}
+			content, _ := json.Marshal(weather)
+			messages = append(messages, map[string]any{
+				"role":         "tool",
+				"tool_call_id": call.ID,
+				"content":      string(content),
+			})
+		}
 	}
 }
+
+```
+
+```bash title="cURL" lines
+#!/bin/bash
+TOOLS='[{"type":"function","function":{"name":"get_weather","description":"Get the current weather for a city","parameters":{"type":"object","properties":{"city":{"type":"string","description":"City name, e.g. \"Tokyo\""},"units":{"type":"string","enum":["celsius","fahrenheit"],"default":"celsius"}},"required":["city"]}}}]'
+MESSAGES='[{"role":"user","content":"What is the weather like in Tokyo?"}]'
+
+ask() {
+  curl -sS https://openrouter.ai/api/v1/chat/completions \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n --argjson m "$1" --argjson t "$TOOLS" '{model: "openai/gpt-5-nano", messages: $m, tools: $t}')"
+}
+
+MSG=$(ask "$MESSAGES" | jq '.choices[0].message')
+
+# Run get_weather for each tool call. Replace with a call to a real weather API.
+RESULTS=$(echo "$MSG" | jq '[.tool_calls[]? | (.function.arguments | fromjson) as $a
+  | ((($a.units // "celsius") == "celsius")) as $c
+  | {role: "tool", tool_call_id: .id, content: ({
+      temperature: (if $c then 22 else 72 end),
+      feelsLike: (if $c then 24 else 75 end),
+      conditions: "Partly cloudy in \($a.city)",
+      humidity: 65, windSpeed: 15, windDirection: "SW"} | tojson)}]')
+
+MESSAGES=$(jq -n --argjson m "$MESSAGES" --argjson a "$MSG" --argjson r "$RESULTS" '$m + [$a] + $r')
+ask "$MESSAGES" | jq -r '.choices[0].message.content'
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Right now in Tokyo:
+- Conditions: Partly cloudy
+- Temperature: 22°C (feels like 24°C)
+- Humidity: 65%
+- Wind: SW at 15 km/h
+
+Would you like this in Fahrenheit or want a forecast for the day or week?
+```
 
 ## With Multiple Cities
 
@@ -309,7 +475,7 @@ async def main():
         client,
         {
             "model": "openai/gpt-5-nano",
-            "input": "Compare the weather in New York and Los Angeles",
+            "input": "Use the get_weather tool to compare the current weather in New York and Los Angeles in fahrenheit",
             "tools": [weather_tool],
         },
     )
@@ -330,9 +496,30 @@ messages := []any{
 }
 ```
 
+```bash title="cURL" lines
+MESSAGES='[{"role":"user","content":"Compare the weather in New York and Los Angeles"}]'
+
+# The model will call the tool twice, once for each city
+while :; do
+  MSG=$(ask "$MESSAGES" | jq '.choices[0].message')
+  [ "$(echo "$MSG" | jq '.tool_calls | length')" -gt 0 ] || break
+  RESULTS=$(echo "$MSG" | jq '[.tool_calls[] | (.function.arguments | fromjson) as $a
+    | ((($a.units // "celsius") == "celsius")) as $c
+    | {role: "tool", tool_call_id: .id, content: ({
+        temperature: (if $c then 22 else 72 end),
+        feelsLike: (if $c then 24 else 75 end),
+        conditions: "Partly cloudy in \($a.city)",
+        humidity: 65, windSpeed: 15, windDirection: "SW"} | tojson)}]')
+  MESSAGES=$(jq -n --argjson m "$MESSAGES" --argjson a "$MSG" --argjson r "$RESULTS" '$m + [$a] + $r')
+done
+echo "$MSG" | jq -r '.content'
+```
+
 </CodeGroup>
 
 ## Extended Version with Forecast
+
+<CodeGroup>
 
 ```typescript expandable lines
 const forecastTool = tool({
@@ -395,6 +582,33 @@ const result = openrouter.callModel({
   tools: [weatherTool, forecastTool],
 });
 ```
+
+```bash title="cURL" lines
+TOOLS=$(echo "$TOOLS" | jq '. + [{"type":"function","function":{"name":"get_forecast","description":"Get weather forecast for the next few days","parameters":{"type":"object","properties":{"city":{"type":"string","description":"City name"},"days":{"type":"integer","minimum":1,"maximum":7,"default":3,"description":"Number of forecast days"},"units":{"type":"string","enum":["celsius","fahrenheit"],"default":"celsius"}},"required":["city"]}}}]')
+MESSAGES='[{"role":"user","content":"What is the weather in Paris today and for the next 3 days?"}]'
+
+# Use both tools together. Replace the stub data with a call to a real weather API.
+while :; do
+  MSG=$(ask "$MESSAGES" | jq '.choices[0].message')
+  [ "$(echo "$MSG" | jq '.tool_calls | length')" -gt 0 ] || break
+  RESULTS=$(echo "$MSG" | jq '[.tool_calls[] | (.function.arguments | fromjson) as $a
+    | ((($a.units // "celsius") == "celsius")) as $c
+    | {role: "tool", tool_call_id: .id, content: (if .function.name == "get_forecast" then
+        {location: $a.city, forecast: [range($a.days // 3) as $i | {
+          date: ((now | floor) + 86400 * $i | todate | .[0:10]),
+          maxTemp: (if $c then 20 + $i else 68 + $i end),
+          minTemp: (if $c then 12 else 54 end),
+          conditions: "Partly cloudy", chanceOfRain: 20}]}
+      else {temperature: (if $c then 22 else 72 end),
+        feelsLike: (if $c then 24 else 75 end),
+        conditions: "Partly cloudy in \($a.city)",
+        humidity: 65, windSpeed: 15, windDirection: "SW"} end | tojson)}]')
+  MESSAGES=$(jq -n --argjson m "$MESSAGES" --argjson a "$MSG" --argjson r "$RESULTS" '$m + [$a] + $r')
+done
+echo "$MSG" | jq -r '.content'
+```
+
+</CodeGroup>
 
 ## Error Handling
 

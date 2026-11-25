@@ -118,6 +118,102 @@ asyncio.run(main())
 
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func getWeather(args string) map[string]any {
+	var a struct {
+		Location string `json:"location"`
+		Unit     string `json:"unit"`
+	}
+	json.Unmarshal([]byte(args), &a)
+	temp, unit := 72, "fahrenheit"
+	if a.Unit == "celsius" {
+		temp, unit = 22, "celsius"
+	}
+	return map[string]any{"location": a.Location, "temperature": temp, "unit": unit, "condition": "sunny"}
+}
+
+func main() {
+	tools := []any{map[string]any{
+		"type":        "function",
+		"name":        "get_weather",
+		"description": "Get the current weather in a location",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"location": map[string]any{"type": "string", "description": "The city and state, e.g. San Francisco, CA"},
+				"unit":     map[string]any{"type": "string", "enum": []string{"celsius", "fahrenheit"}},
+			},
+			"required": []string{"location"},
+		},
+	}}
+	input := []any{map[string]any{"type": "message", "role": "user", "content": "What is the weather like in San Francisco?"}}
+
+	// Loop until the model stops calling tools.
+	for {
+		body, _ := json.Marshal(map[string]any{"model": "openai/gpt-4o-mini", "input": input, "tools": tools})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		raw, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			log.Fatalf("%d: %s", resp.StatusCode, raw)
+		}
+		var out struct {
+			Output []map[string]any `json:"output"`
+		}
+		if err := json.Unmarshal(raw, &out); err != nil {
+			log.Fatal(err)
+		}
+
+		calls := 0
+		for _, item := range out.Output {
+			input = append(input, item)
+			if item["type"] == "function_call" {
+				calls++
+				args, _ := item["arguments"].(string)
+				result, _ := json.Marshal(getWeather(args))
+				input = append(input, map[string]any{"type": "function_call_output", "call_id": item["call_id"], "output": string(result)})
+			}
+		}
+		if calls > 0 {
+			continue
+		}
+
+		// No more tool calls: print the model's final answer.
+		for _, item := range out.Output {
+			if item["type"] != "message" {
+				continue
+			}
+			parts, _ := item["content"].([]any)
+			for _, p := range parts {
+				if part, ok := p.(map[string]any); ok && part["type"] == "output_text" {
+					fmt.Println(part["text"])
+				}
+			}
+		}
+		return
+	}
+}
+
+```
+
 </CodeGroup>
 
 ```text title="Output"
@@ -420,6 +516,27 @@ Control when and how tools are called:
 <CodeGroup>
 
 ```typescript title="TypeScript" expandable lines
+const weatherTool = {
+  type: 'function',
+  name: 'get_weather',
+  description: 'Get the current weather in a location',
+  strict: null,
+  parameters: {
+    type: 'object',
+    properties: {
+      location: {
+        type: 'string',
+        description: 'The city and state, e.g. San Francisco, CA',
+      },
+      unit: {
+        type: 'string',
+        enum: ['celsius', 'fahrenheit'],
+      },
+    },
+    required: ['location'],
+  },
+};
+
 const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
@@ -448,6 +565,7 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
 
 const result = await response.json();
 console.log(JSON.stringify(result, null, 2));
+
 ```
 
 ```python title="Python" expandable lines
@@ -455,6 +573,27 @@ import json
 import os
 
 import requests
+
+weather_tool = {
+    'type': 'function',
+    'name': 'get_weather',
+    'description': 'Get the current weather in a location',
+    'strict': None,
+    'parameters': {
+        'type': 'object',
+        'properties': {
+            'location': {
+                'type': 'string',
+                'description': 'The city and state, e.g. San Francisco, CA',
+            },
+            'unit': {
+                'type': 'string',
+                'enum': ['celsius', 'fahrenheit'],
+            },
+        },
+        'required': ['location'],
+    },
+}
 
 response = requests.post(
     'https://openrouter.ai/api/v1/responses',
@@ -560,11 +699,75 @@ curl -X POST https://openrouter.ai/api/v1/responses \
 
 </CodeGroup>
 
+```text title="Output"
+{
+  "id": "gen-1795430705-UPhkMONZbKnoCZFS6sdX",
+  "object": "response",
+  "created_at": 1795430705,
+  "model": "openai/gpt-4o-mini",
+  "status": "completed",
+  "completed_at": 1795430706,
+  "output": [
+    {
+      "id": "fc_tmp_mbgdaaz47t",
+      "type": "function_call",
+      "status": "completed",
+      "call_id": "call_YDB09y0YLJlEdjUMfQbMtc33",
+      "name": "get_weather",
+      "arguments": "{\"location\":\"San Francisco, CA\"}"
+    }
+  ],
+  "error": null,
+  "incomplete_details": null,
+  "access_programs": null,
+  "tools": [
+    {
+      "type": "function",
+      "name": "get_weather",
+      "description": "Get the current weather in a location",
+      "strict": null,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "The city and state, e.g. San Francisco, CA"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "celsius",
+              "fahrenheit"
+            ]
+          }
+```
+
 #### Disable Tool Calling
 
 <CodeGroup>
 
 ```typescript title="TypeScript" expandable lines
+const weatherTool = {
+  type: 'function',
+  name: 'get_weather',
+  description: 'Get the current weather in a location',
+  strict: null,
+  parameters: {
+    type: 'object',
+    properties: {
+      location: {
+        type: 'string',
+        description: 'The city and state, e.g. San Francisco, CA',
+      },
+      unit: {
+        type: 'string',
+        enum: ['celsius', 'fahrenheit'],
+      },
+    },
+    required: ['location'],
+  },
+};
+
 const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
@@ -576,7 +779,7 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
     input: [
       {
         type: 'message',
-        role: 'user' as const,
+        role: 'user',
         content: [
           {
             type: 'input_text',
@@ -585,11 +788,14 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
         ],
       },
     ],
-    tools: [weatherTool] as const,
+    tools: [weatherTool],
     tool_choice: 'none',
     max_output_tokens: 9000,
   }),
 });
+
+const result = await response.json();
+console.log(JSON.stringify(result, null, 2));
 ```
 
 ```python title="Python" expandable lines
@@ -597,6 +803,27 @@ import json
 import os
 
 import requests
+
+weather_tool = {
+    'type': 'function',
+    'name': 'get_weather',
+    'description': 'Get the current weather in a location',
+    'strict': None,
+    'parameters': {
+        'type': 'object',
+        'properties': {
+            'location': {
+                'type': 'string',
+                'description': 'The city and state, e.g. San Francisco, CA',
+            },
+            'unit': {
+                'type': 'string',
+                'enum': ['celsius', 'fahrenheit'],
+            },
+        },
+        'required': ['location'],
+    },
+}
 
 response = requests.post(
     'https://openrouter.ai/api/v1/responses',
@@ -630,31 +857,77 @@ print(json.dumps(result, indent=2))
 ```
 
 ```go title="Go" lines
-body, _ := json.Marshal(map[string]any{
-	"model": "openai/gpt-4o-mini",
-	"input": []any{
-		map[string]any{
-			"type": "message",
-			"role": "user",
-			"content": []any{
-				map[string]any{"type": "input_text", "text": "What is the weather in Paris?"},
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	weatherTool := map[string]any{
+		"type":        "function",
+		"name":        "get_weather",
+		"description": "Get the current weather in a location",
+		"strict":      nil,
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"location": map[string]any{
+					"type":        "string",
+					"description": "The city and state, e.g. San Francisco, CA",
+				},
+				"unit": map[string]any{
+					"type": "string",
+					"enum": []string{"celsius", "fahrenheit"},
+				},
+			},
+			"required": []string{"location"},
+		},
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o-mini",
+		"input": []any{
+			map[string]any{
+				"type": "message",
+				"role": "user",
+				"content": []any{
+					map[string]any{"type": "input_text", "text": "What is the weather in Paris?"},
+				},
 			},
 		},
-	},
-	"tools":             []any{weatherTool},
-	"tool_choice":       "none",
-	"max_output_tokens": 9000,
-})
+		"tools":             []any{weatherTool},
+		"tool_choice":       "none",
+		"max_output_tokens": 9000,
+	})
 
-req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
-req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
-req.Header.Set("Content-Type", "application/json")
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
 
-resp, err := http.DefaultClient.Do(req)
-if err != nil {
-	panic(err)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, data, "", "  "); err != nil {
+		fmt.Println(string(data))
+		return
+	}
+	fmt.Println(pretty.String())
 }
-defer resp.Body.Close()
+
 ```
 
 ```bash title="cURL" lines
@@ -693,6 +966,49 @@ curl -X POST https://openrouter.ai/api/v1/responses \
 ```
 
 </CodeGroup>
+
+```text title="Output"
+{
+  "id": "gen-1795430793-xeP21XdFdNTiudUpkvre",
+  "object": "response",
+  "created_at": 1795430793,
+  "model": "openai/gpt-4o-mini",
+  "status": "completed",
+  "completed_at": 1795430794,
+  "output": [
+    {
+      "id": "msg_tmp_xp5n13ibztm",
+      "type": "message",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "I'm unable to provide real-time weather updates. For the most accurate and current weather information in Paris or any other location, I recommend checking a reliable weather website or app.",
+          "annotations": [],
+          "logprobs": []
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "incomplete_details": null,
+  "access_programs": null,
+  "tools": [
+    {
+      "type": "function",
+      "name": "get_weather",
+      "description": "Get the current weather in a location",
+      "strict": null,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "The city and state, e.g. San Francisco, CA"
+          },
+          "unit": {
+```
 
 ### Multiple Tools
 

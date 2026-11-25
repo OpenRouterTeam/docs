@@ -187,9 +187,68 @@ func main() {
 
 ```
 
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+    "model": "~anthropic/claude-opus-latest",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant with expertise in technology and science."},
+      {"role": "user", "content": "What is quantum computing?"}
+    ]
+  }' | jq -r '.choices[0].message.content'
+
+```
+
 </CodeGroup>
 
+```text title="Output"
+# Quantum Computing
+
+**Quantum computing** is a type of computation that uses the principles of quantum mechanics, the physics governing atoms and subatomic particles, to process information in ways classical computers can't.
+
+## The Key Difference: Bits vs. Qubits
+
+- **Classical computers** use **bits**, which are always either a 0 or a 1.
+- **Quantum computers** use **qubits**, which can exist in a combination of 0 and 1 at the same time until they're measured.
+
+## Core Quantum Principles
+
+1. **Superposition**: A qubit can be in a blend of the 0 and 1 states at once. Groups of qubits can represent many possible states simultaneously.
+
+2. **Entanglement**: Qubits can become linked so that the state of one is correlated with another, even at a distance. Entanglement lets quantum computers represent and manipulate complex relationships efficiently.
+
+3. **Interference**: Quantum algorithms are designed so that the probabilities of wrong answers cancel each other out while those of correct answers reinforce, making the right result more likely when measured.
+
+## What It's Good For
+
+Quantum computers aren't simply "faster computers." They excel at specific kinds of problems:
+
+- **Cryptography**: Shor's algorithm could theoretically break widely used encryption like RSA.
+- **Chemistry and materials science**: Simulating molecules for drug discovery or new materials.
+- **Optimization**: Logistics, finance, and scheduling problems.
+- **Search**: Grover's algorithm offers a speedup for searching unstructured data.
+
+For everyday tasks like email, browsing, or gaming, classical computers remain better suited.
+
+## Current Challenges
+
+- **Decoherence**: Qubits are extremely fragile and lose their quantum state from tiny disturbances like heat or vibration.
+- **Error rates**: Current machines make frequent errors, so error correction is a major research focus.
+- **Extreme conditions**: Many systems must be cooled to near absolute zero.
+- **Scale**: Practical applications may require thousands to millions of reliable qubits.
+
+## Where Things Stand
+
+Companies like IBM, Google, and Quantinuum, along with many startups and research labs, are building quantum hardware using approaches such as superconducting circuits, trapped ions, and photons. The field is still in what's often called the **NISQ era** (Noisy Intermediate-Scale Quantum): devices are real and improving, but large-scale, fault-tolerant quantum computers are likely still years away.
+
+Would you like me to go deeper into any part, such as how qubits are physically built or how a specific quantum algorithm works?
+```
+
 Keep the agent file free of model calls. Mastra imports it every time the server starts, so a call to `generate` at the top level would send a billable request on each startup, and a failed request would stop the server from starting. To try the agent, call it from a separate script such as `src/try-agent.ts`:
+
+<CodeGroup>
 
 ```typescript title="src/try-agent.ts" lines
 import { assistant } from './mastra/agents/agent';
@@ -197,6 +256,31 @@ import { assistant } from './mastra/agents/agent';
 const result = await assistant.generate('What is quantum computing?');
 console.log(result.text);
 ```
+
+```python title="Python" lines
+from agent import assistant
+
+print(assistant("What is quantum computing?"))
+
+```
+
+```go title="Go" lines
+result, err := assistant("What is quantum computing?")
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(result)
+
+```
+
+```bash title="cURL" lines
+source ./agent.sh
+
+assistant "What is quantum computing?"
+
+```
+
+</CodeGroup>
 
 ```text title="Output"
 # Quantum Computing
@@ -245,11 +329,10 @@ Also make sure to update your Mastra entry point at `src/mastra/index.ts` to use
 
 ```typescript lines
 import { Mastra } from '@mastra/core';
-
-import { assistant } from './agents/agent'; // Update the import path if you used a different filename
+import { assistant } from './agents/agent';
 
 export const mastra = new Mastra({
-  agents: { assistant }, // Use the same name here as you exported from your agent file
+  agents: { assistant },
 });
 ```
 
@@ -649,6 +732,19 @@ You can also pass provider-specific options in your requests:
 <CodeGroup>
 
 ```typescript lines
+import { Agent } from '@mastra/core/agent';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+const chefAgent = new Agent({
+  model: openrouter('~anthropic/claude-sonnet-latest'),
+  name: 'Chef',
+  instructions: 'You are a chef assistant specializing in keto cuisine.',
+});
+
 // Get a response with provider-specific options
 const response = await chefAgent.generate([
   {
@@ -667,9 +763,29 @@ const response = await chefAgent.generate([
     content: 'Can you suggest a keto breakfast?',
   },
 ]);
+
+console.log(response.text);
+
 ```
 
 ```python title="Python" lines
+import os
+import requests
+
+instructions = "You are a chef assistant specializing in keto cuisine."
+
+def chef_agent(messages: list[dict]) -> str:
+    res = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+        json={
+            "model": "~anthropic/claude-sonnet-latest",
+            "messages": [{"role": "system", "content": instructions}, *messages],
+        },
+    )
+    res.raise_for_status()
+    return res.json()["choices"][0]["message"]["content"]
+
 # Get a response with provider-specific options
 response = chef_agent([
     {
@@ -688,6 +804,8 @@ response = chef_agent([
         "content": "Can you suggest a keto breakfast?",
     },
 ])
+
+print(response)
 
 ```
 
@@ -778,7 +896,68 @@ response=$(curl -s https://openrouter.ai/api/v1/chat/completions \
   }')
 ```
 
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "~anthropic/claude-sonnet-latest",
+    "messages": [
+      {"role": "system", "content": "You are a chef assistant specializing in keto cuisine."},
+      {
+        "role": "system",
+        "content": [
+          {
+            "type": "text",
+            "text": "You are Chef Michel, a culinary expert specializing in ketogenic (keto) diet...",
+            "cache_control": {"type": "ephemeral"}
+          }
+        ]
+      },
+      {"role": "user", "content": "Can you suggest a keto breakfast?"}
+    ]
+  }' | jq -r '.choices[0].message.content'
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Bonjour! Chef Michel here. Let me suggest one of my favorites.
+
+## Spinach, Feta & Bacon Egg Muffins
+
+**Makes:** 6 muffins | **Prep:** 10 min | **Cook:** 20 min
+
+**Ingredients:**
+- 6 large eggs
+- 4 slices cooked bacon, crumbled
+- 1 cup fresh spinach, chopped
+- ¼ cup crumbled feta cheese
+- 2 tbsp heavy cream
+- Salt, pepper, and a pinch of garlic powder
+- Butter or olive oil for greasing
+
+**Instructions:**
+1. Preheat the oven to 350°F (175°C) and grease a 6-cup muffin tin.
+2. Whisk the eggs, cream, salt, pepper, and garlic powder.
+3. Divide the spinach, bacon, and feta among the cups.
+4. Pour the egg mixture over the top, about ¾ full.
+5. Bake for 18-20 minutes, until set and lightly golden.
+
+**Macros (per 2 muffins):** ~280 calories | 22g fat | 18g protein | ~2g net carbs
+
+**Chef's tips:**
+- These keep in the fridge for 4 days and freeze well, so they're great for meal prep.
+- Serve with sliced avocado for extra healthy fats.
+
+## Other Ideas
+- **Avocado baked eggs:** Crack an egg into a halved avocado and bake at 425°F for 15 minutes.
+- **Chia pudding:** Chia seeds soaked in unsweetened coconut milk, topped with a few raspberries.
+- **Smoked salmon roll-ups:** Smoked salmon, cream cheese, cucumber, and fresh dill.
+
+Would you like a sweet option, like keto pancakes, or something quick for busy mornings? 🍳
+```
 
 ### Using Multiple Models with OpenRouter
 

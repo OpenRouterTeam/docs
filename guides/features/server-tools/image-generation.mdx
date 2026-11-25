@@ -297,13 +297,17 @@ const text = message?.content.find(
 )?.text;
 if (text) console.log(text);
 
+// The generated image is a separate output item, as a data: URL
 const images = data.output.filter(
   (item: { type: string; result?: string }) => item.type === 'openrouter:image_generation',
 );
 for (const image of images) {
-  if (image.result) console.log(image.result);
+  if (image.result) {
+    // Print a short preview; the full data URL is very long
+    console.log(`${image.result.slice(0, 64)}... (${image.result.length} chars)`);
+  }
 }
-if (!text && !images.some((image) => image.result)) {
+if (!text && !images.some((image: { result?: string }) => image.result)) {
   throw new Error('Response contained neither text nor a generated image');
 }
 ```

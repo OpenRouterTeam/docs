@@ -107,6 +107,7 @@ const response = await fetch("https://openrouter.ai/api/v1/vault/secrets?limit=5
   headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` },
 });
 const secrets = await response.json();
+console.log(JSON.stringify(secrets, null, 2));
 ```
 
 ```python title="Python" lines
@@ -119,21 +120,35 @@ response = requests.get(
     params={"limit": 50, "offset": 0},
     headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
 )
+print(response.json())
 
 ```
 
 ```go title="Go" lines
-req, _ := http.NewRequest("GET", "https://openrouter.ai/api/v1/vault/secrets?limit=50&offset=0", nil)
-req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+package main
 
-resp, err := http.DefaultClient.Do(req)
-if err != nil {
-	log.Fatal(err)
+import (
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	req, _ := http.NewRequest("GET", "https://openrouter.ai/api/v1/vault/secrets?limit=50&offset=0", nil)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(body))
 }
-defer resp.Body.Close()
 
-body, _ := io.ReadAll(resp.Body)
-fmt.Println(string(body))
 ```
 
 </CodeGroup>

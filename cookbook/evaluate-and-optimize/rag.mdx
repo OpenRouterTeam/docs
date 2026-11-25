@@ -574,6 +574,26 @@ func rerankAndPrint(query string, results []ScoredDocument) {
 }
 ```
 
+```bash title="cURL" lines
+# Use the texts from the retrieval step (top 5 by cosine similarity)
+RETRIEVED=$(jq -c --slurpfile q query_embedding.json '
+  def dot(a; b): [a, b] | transpose | map(.[0] * .[1]) | add;
+  def norm(v): v | map(. * .) | add | sqrt;
+  $q[0].data[0].embedding as $qe
+  | map({text, score: (dot($qe; .embedding) / (norm($qe) * norm(.embedding)))})
+  | sort_by(-.score) | .[:5] | map(.text)
+' document_embeddings.json) || exit 1
+
+# Rerank them and keep the full response for step 4
+body=$(jq -n --arg q "$QUERY" --argjson docs "$RETRIEVED" \
+  '{model: "cohere/rerank-v3.5", query: $q, documents: $docs, top_n: 3}') || exit 1
+RERANKED=$(curl -fsS https://openrouter.ai/api/v1/rerank \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d "$body") || exit 1
+jq -r '"Reranked documents:", (.results[] | "  Score: \(.relevance_score * 10000 | round / 10000) | \(.document.text)")' <<< "$RERANKED"
+```
+
 </CodeGroup>
 
 ## Step 4: Generate an Answer with Context
@@ -1321,22 +1341,32 @@ if (!model) {
 ```
 
 ```shell title="Shell" lines
-curl https://openrouter.ai/api/v1/rerank \
+# Find a live rerank model that accepts image input
+MODEL=$(curl -sS --fail-with-body https://openrouter.ai/api/v1/models \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  | jq -r '[.data[] | select(.id | test("rerank")) | select((.architecture.input_modalities // []) | index("image"))][0].id // empty')
+
+if [ -z "$MODEL" ]; then
+  echo "No image-capable rerank model is currently available."
+  exit 0
+fi
+
+curl -sS --fail-with-body https://openrouter.ai/api/v1/rerank \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -d '{
-    "model": "nvidia/llama-nemotron-rerank-vl-1b-v2",
-    "query": "How is AI improving the capabilities of robots?",
-    "documents": [
-      { "text": "AI enables robots to perceive, plan, and act autonomously." },
-      { "image": "https://example.com/robot-diagram.png" },
+  -d "$(jq -n --arg model "$MODEL" '{
+    model: $model,
+    query: "How is AI improving the capabilities of robots?",
+    documents: [
+      { text: "AI enables robots to perceive, plan, and act autonomously." },
+      { image: "https://example.com/robot-diagram.png" },
       {
-        "text": "A robotic arm assembling components.",
-        "image": "https://example.com/robot-arm.png"
+        text: "A robotic arm assembling components.",
+        image: "https://example.com/robot-arm.png"
       }
     ],
-    "top_n": 2
-  }'
+    top_n: 2
+  }')" | jq .
 ```
 
 </CodeGroup>

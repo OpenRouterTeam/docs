@@ -97,22 +97,56 @@ video = requests.get(
     "https://openrouter.ai/api/v1/models",
     params={"output_modalities": "decisions", "input_modalities": "video"},
 ).json()
+
+for label, result in (("image", images), ("audio", audio), ("video", video)):
+    print(f"{label}:", [m["id"] for m in result.get("data", [])])
+
 ```
 
 ```go title="Go" lines
-// Decisions models that take images, audio, and video
-for _, modality := range []string{"image", "audio", "video"} {
-	resp, err := http.Get("https://openrouter.ai/api/v1/models?output_modalities=decisions&input_modalities=" + modality)
-	if err != nil {
-		log.Fatal(err)
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+)
+
+func main() {
+	// Decisions models that take images, audio, and video
+	for _, modality := range []string{"image", "audio", "video"} {
+		resp, err := http.Get("https://openrouter.ai/api/v1/models?output_modalities=decisions&input_modalities=" + modality)
+		if err != nil {
+			log.Fatal(err)
+		}
+		var result struct {
+			Data []struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&result)
+		resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+		ids := []string{}
+		for _, m := range result.Data {
+			ids = append(ids, m.ID)
+		}
+		fmt.Printf("%s: %v\n", modality, ids)
 	}
-	body, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	fmt.Println(string(body))
 }
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+{"data":[{"id":"baseten/groundhog-1","canonical_slug":"baseten/groundhog-1-20261120","hugging_face_id":"baselabs/groundhog-1","name":"Baseten: Groundhog 1","created":1795210420,"description":"Groundhog 1 is a decision model from Base Labs, Baseten's research team, built on Gemma 4 26B A4B, a mixture-of-experts model with 4B active parameters. Given a state (text, JSON,...","context_length":16384,"architecture":{"modality":"text+image->decisions","input_modalities":["text","image"],"output_modalities":["decisions"],"tokenizer":"Other","instruct_type":null},"pricing":{"prompt":"0.000000035","completion":"0"},"top_provider":{"context_length":16384,"max_completion_tokens":14745,"is_moderated":false},"per_request_limits":null,"supported_parameters":[],"default_parameters":{},"supported_voices":null,"knowledge_cutoff":null,"expiration_date":null,"links":{"details":"/api/v1/models/baseten/groundhog-1-20261120/endpoints"},"endpoints":["/api/alpha/decisions"]},{"id":"baseten/bison-1","canonical_slug":"baseten/bison-1-20261120","hugging_face_id":"baselabs/bison-1","name":"Baseten: Bison 1","created":1795210416,"description":"Bison 1 is a 31B decision model from Base Labs, Baseten's research team, built on Gemma 4 31B. Given a state (text, JSON, or images) and typed questions (yes/no, multiple...","context_length":32768,"architecture":{"modality":"text+image->decisions","input_modalities":["text","image"],"output_modalities":["decisions"],"tokenizer":"Other","instruct_type":null},"pricing":{"prompt":"0.0000001","completion":"0"},"top_provider":{"context_length":32768,"max_completion_tokens":29491,"is_moderated":false},"per_request_limits":null,"supported_parameters":[],"default_parameters":{},"supported_voices":null,"knowledge_cutoff":null,"expiration_date":null,"links":{"details":"/api/v1/models/baseten/bison-1-20261120/endpoints"},"endpoints":["/api/alpha/decisions"]},{"id":"microsoft/microsoft-decision-1.1","canonical_slug":"microsoft/microsoft-decision-1.1-20261117","hugging_face_id":null,"name":"Microsoft: Microsoft-Decision-1.1","created":1794938255,"description":"Microsoft-Decision-1.1 is a model from Microsoft built for fast decision-making, and the successor to Microsoft-Decision-1. Instead of generating text, it reads the provided content and returns a calibrated probability for...","context_length":32768,"architecture":{"modality":"text+image->decisions","input_modalities":["text","image"],"output_modalities":["decisions"],"tokenizer":"Other","instruct_type":null},"pricing":{"prompt":"0.000000042","completion":"0"},"top_provider":{"context_length":32768,"max_completion_tokens":29491,"is_moderated":false},"per_request_limits":null,"supported_parameters":[],"default_parameters":{},"supported_voices":null,"knowledge_cutoff":null,"expiration_date":null,"links":{"details":"/api/v1/models/microsoft/microsoft-decision-1.1-20261117/endpoints"},"endpoints":["/api/alpha/decisions"],"benchmarks":{"design_arena":[],"artificial_analysis":{"intelligence_index":null,"coding_index":null,"agentic_index":null,"finance_and_accounting_index":null,"strategy_and_ops_index":null,"legal_index":null,"healthcare_and_medical_index":null,"engineering_index":null,"economics_index":null,"cyber_index":null,"openness_index":null,"multilingual_index":null,"decision_index":67.8}}},{"id":"liquid/d1.2-ultra","canonical_slug":"liquid/d1.2-ultra-20261116","hugging_face_id":null,"name":"LiquidAI: d1.2-ultra","created":1794861918,"description":"d1.2-ultra is Liquid AI's most capable omnimodal decision model. Designed for complex classification, multimodal understanding, information extraction, and high-stakes automated decision-making.","context_length":65536,"architecture":{"modality":"text+image->decisions","input_modalities":["text","image"],"output_modalities":["decisions"],"tokenizer":"Other","instruct_type":null},"pricing":{"prompt":"0.000000042","completion":"0"},"top_provider":{"context_length":65536,"max_completion_tokens":58982,"is_moderated":false},"per_r
+…[41105 chars clipped]…
+"knowledge_cutoff":null,"expiration_date":null,"links":{"details":"/api/v1/models/heygen/heygen-decision-1-turbo-20261112/endpoints"},"endpoints":["/api/alpha/decisions"]},{"id":"heygen/heygen-decision-1","canonical_slug":"heygen/heygen-decision-1-20261112","hugging_face_id":null,"name":"HeyGen: HeyGen Decision","created":1794530508,"description":"HeyGen Decision 1 is a decision model from HeyGen. It reads text, images, and video and answers a set of named questions in one request, returning typed answers with probabilities:...","context_length":262144,"architecture":{"modality":"text+image+audio+video->decisions","input_modalities":["text","image","video","audio"],"output_modalities":["decisions"],"tokenizer":"Other","instruct_type":null},"pricing":{"prompt":"0.00000007","completion":"0"},"top_provider":{"context_length":262144,"max_completion_tokens":235929,"is_moderated":false},"per_request_limits":null,"supported_parameters":[],"default_parameters":{},"supported_voices":null,"knowledge_cutoff":null,"expiration_date":null,"links":{"details":"/api/v1/models/heygen/heygen-decision-1-20261112/endpoints"},"endpoints":["/api/alpha/decisions"]},{"id":"google/gemini-decision-1","canonical_slug":"google/gemini-decision-1-20261111","hugging_face_id":null,"name":"Google: Gemini Decision 1","created":1794402686,"description":"Gemini Decision 1 is Google's model for the Decisions API. It answers structured questions about an input state (true/false, multiple choice with up to 255 options, and score with up...","context_length":262144,"architecture":{"modality":"text+image+file+audio+video->decisions","input_modalities":["text","image","audio","video","file"],"output_modalities":["decisions"],"tokenizer":"Gemini","instruct_type":null},"pricing":{"prompt":"0.0000001","completion":"0","web_search":"0.014"},"top_provider":{"context_length":262144,"max_completion_tokens":235929,"is_moderated":false},"per_request_limits":null,"supported_parameters":[],"default_parameters":{},"supported_voices":null,"knowledge_cutoff":null,"expiration_date":null,"links":{"details":"/api/v1/models/google/gemini-decision-1-20261111/endpoints"},"endpoints":["/api/alpha/decisions"],"benchmarks":{"design_arena":[],"artificial_analysis":{"intelligence_index":null,"coding_index":null,"agentic_index":null,"finance_and_accounting_index":null,"strategy_and_ops_index":null,"legal_index":null,"healthcare_and_medical_index":null,"engineering_index":null,"economics_index":null,"cyber_index":null,"openness_index":null,"multilingual_index":null,"decision_index":66}}},{"id":"cloudflare/clef-omni","canonical_slug":"cloudflare/clef-omni-20261009","hugging_face_id":"Cloudflare/clef-omni","name":"Cloudflare: Clef Omni","created":1791577078,"description":"Clef Omni is the mixture-of-experts member of Cloudflare's open-source Clef decision model family, a fine-tune of Qwen3-Omni-30B-A3B (30B total, 3B active parameters) served on Workers AI. It turns a state...","context_length":65536,"architecture":{"modality":"text+image+audio+video->decisions","input_modalities":["text","image","audio","video"],"output_modalities":["decisions"],"tokenizer":"Qwen","instruct_type":null},"pricing":{"prompt":"0.00000015","completion":"0"},"top_provider":{"context_length":65536,"max_completion_tokens":58982,"is_moderated":false},"per_request_limits":null,"supported_parameters":[],"default_parameters":{},"supported_voices":null,"knowledge_cutoff":null,"expiration_date":null,"links":{"details":"/api/v1/models/cloudflare/clef-omni-20261009/endpoints"},"endpoints":["/api/alpha/decisions"],"benchmarks":{"design_arena":[],"artificial_analysis":{"intelligence_index":null,"coding_index":null,"agentic_index":null,"finance_and_accounting_index":null,"strategy_and_ops_index":null,"legal_index":null,"healthcare_and_medical_index":null,"engineering_index":null,"economics_index":null,"cyber_index":null,"openness_index":null,"multilingual_index":null,"decision_index":57.8}}}],"total_count":4,"links":{"next":null}}
+```
 
 Each model's `architecture.input_modalities` in the response lists what it accepts. Passing several `input_modalities` values as a comma-separated list (for example `input_modalities=image,audio`) returns only models that accept all of them.
 

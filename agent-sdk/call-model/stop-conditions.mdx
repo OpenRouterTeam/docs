@@ -48,7 +48,7 @@ const analysisTool = tool({
 
 const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
-  input: 'Research this topic thoroughly',
+  input: 'Research the history of the TypeScript language thoroughly: use the search tool, then analyze what you find.',
   tools: [searchTool, analysisTool],
   stopWhen: stepCountIs(5), // Stop after 5 steps
 });
@@ -202,23 +202,46 @@ func main() {
 </CodeGroup>
 
 ```text title="Output"
-I can do a thorough research pass, but I need your topic to start. Please provide:
+I started by searching for “TypeScript history” and then analyzed the results to synthesize a thorough history. Here’s a concise, well-rounded view of how TypeScript came to be, how it evolved, and why it matters today.
 
-- The topic or primary question you want researched
-- Any scope constraints (time period, geography, sector, etc.)
-- Desired deliverables (executive summary, literature review, annotated bibliography, critical analysis, data sources, etc.)
-- Preferred citation style (APA, MLA, Chicago, etc.)
-- Any constraints on sources (peer-reviewed only, include gray literature, languages, etc.)
-- Target length or deadline (rough word count or pages)
+Overview
+- TypeScript is a typed superset of JavaScript that compiles to plain JavaScript. It adds optional static typing, interfaces, enums, generics, and other features to JavaScript, with the goal of enabling large-scale application development while remaining compatible with existing JavaScript code.
+- It was designed and open-sourced by Microsoft, with Anders Hejlsberg (the designer of C# and Turbo Pascal) leading the effort.
+- TypeScript has grown through broad ecosystem support (editor tooling, npm packages, DefinitelyTyped) and adoption in popular frameworks (notably Angular) and toolchains.
 
-If you’d like, I can propose a few topics you can choose from, then proceed with a deep dive. For example:
-- The impact of AI on labor markets and wage polarization
-- Microplastics and their ecological/health effects
-- Advances and challenges in quantum computing for cryptography
-- The effects of remote work on productivity and teamwork in tech industries
-- Climate finance: barriers and opportunities in developing countries
+Key milestones and timeline (high-level)
+- 2012–2013: Origins and early development
+  - Microsoft begins work on a typed extension of JavaScript to address the needs of large-scale web apps.
+  - The project remains experimental and then begins to take shape as a language that preserves JavaScript semantics while adding optional static typing.
+- 2014: TypeScript 1.0 release
+  - Official 1.0 release marks the transition from a research/prototype project to a stable language with a defined release process.
+  - Core features include optional typing, interfaces, classes, modules, and generics, all compiles down to JavaScript.
+- Mid-to-late 2010s: Growth of the 2.x era and expansion of the type system
+  - TypeScript 2.x brings significant improvements to type inference, nullability handling, union types, and better tooling experiences.
+  - The language gains more sophisticated type capabilities (e.g., better generics, mapped types) and tighter editor support via the Language Service API.
+- Late 2010s to early 2020s: Ongoing feature evolution and ecosystem maturation
+  - 3.x series introduces more advanced type system features (inference improvements, conditional types, template literal types) and broader library support.
+  - The DefinitelyTyped ecosystem flourishes, providing type declaration files for a vast number of JavaScript libraries, which accelerates adoption.
+  - Editor tooling becomes highly responsive, with improved intellisense, refactoring, and compile-time checks integrated into popular editors.
+- 2020s: Modern language enhancements and broader adoption
+  - 4.x series introduces features that improve type expressiveness and developer ergonomics, such as variadic tuple types, more precise control over type inference, and improved performance in the compiler.
+  - New language capabilities like template literal types, improved module resolution, and incremental/build performance enhancements help TypeScript scale with modern codebases.
+  - The ecosystem expands beyond front-end (back-end, tooling, and other domains) and TypeScript becomes a staple in many large-scale projects.
+- 2023–present: Stabilization, refinement, and long-term direction
+  - TypeScript continues to evolve with regular releases that emphasize developer experience, performance, and compatibility with evolving JavaScript/ECMAScript features.
+  - The language remains deeply intertwined with popular frameworks (notably Angular) and is widely used in both client-side and server-side development.
 
-What topic should I research? If you prefer, tell me a field (e.g., biology, economics, history) and I’ll suggest a focused topic. Once you confirm, I’ll outline a plan and start compiling a comprehensive, sourced analysis with summaries and citations.
+Why TypeScript gained traction
+- Stronger guarantees for large codebases: Optional static typing helps catch errors at compile time, improves maintainability, and enables better tooling (refactoring, navigation, auto-completion).
+- Tight editor integration: The TypeScript Language Service powers rich IDE features across editors, making development smoother and faster.
+- Ecosystem support: DefinitelyTyped and npm allow a vast library ecosystem to be typed progressively, lowering the barrier to adopting TypeScript in existing projects.
+- Popular framework influence: Angular’s early adoption and heavy use of TypeScript helped popularize the language in enterprise-grade applications. Over time, many other projects and teams adopted TypeScript for the same benefits.
+- Compatibility and migration: TypeScript is designed to be a superset of JavaScript, with gradual typing—teams can adopt it gradually and progressively tighten types as needed.
+
+Design goals and characteristics
+- Optional, gradual typing: Developers can add types incrementally, starting with plain JavaScript and gradually introducing typings.
+- Structural typing: Type compatibility is based on shape rather than explicit declarations, enabling flexible, reusable interfaces.
+- Rich type system: Includes unions, intersections, generics, mapped types, conditional types, template literal types, and more, enabling expressive type expressions.
 ```
 
 ## Go helpers
@@ -226,6 +249,8 @@ What topic should I research? If you prefer, tell me a field (e.g., biology, eco
 The Go tabs on the rest of this page are fragments. They call the helpers below, which need the imports `bytes`, `encoding/json`, `fmt`, `io`, `net/http`, and `os`. `callTool` is application-defined: it takes a tool name and its decoded arguments and returns the tool's output. Tool definitions such as `searchTool` are built with `fn` from the example above.
 
 When a stop check fires on a reply that still contains tool calls, the fragments call `finish`, which runs the pending calls and then asks for one final answer with tool calling forbidden. Fragments that stop by leaving the loop after a tool round (a token, cost, or step budget in the loop condition) need the same final turn, shown in [Final response after stop](#final-response-after-stop).
+
+<CodeGroup>
 
 ```go title="Go" lines
 type ToolCall struct {
@@ -341,6 +366,189 @@ func finish(model string, messages []any, tools []any, msg Message, raw json.Raw
 }
 ```
 
+```typescript title="TypeScript" lines
+type ToolCall = { id: string; function: { name: string; arguments: string } };
+
+type Usage = { total_tokens: number; cost: number };
+
+// Message is one assistant reply, with the response's finish reason and usage attached
+type Message = { content: string; tool_calls?: ToolCall[]; finishReason: string; usage: Usage };
+
+// ToolResult is one executed tool call
+type ToolResult = { callId: string; toolName: string; result: Record<string, unknown> };
+
+// toolMessage is the tool-role message that returns the result to the model
+const toolMessage = (r: ToolResult) => ({
+  role: 'tool',
+  tool_call_id: r.callId,
+  content: JSON.stringify(r.result),
+});
+
+// send makes one request. Pass 'none' as toolChoice to keep the tools in the request but forbid calls.
+async function send(
+  model: string,
+  messages: unknown[],
+  tools: unknown[],
+  toolChoice?: string,
+): Promise<[Message, unknown]> {
+  const request: Record<string, unknown> = { model, messages, tools };
+  if (toolChoice) request.tool_choice = toolChoice;
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+  const raw = await resp.text();
+  if (!resp.ok) throw new Error(`request failed: ${resp.status}: ${raw}`);
+  const out = JSON.parse(raw);
+  if (!out.choices?.length) throw new Error(`no choices in response: ${raw}`);
+  const choice = out.choices[0];
+  if (choice.error) throw new Error(choice.error.message ?? 'provider failed');
+  const msg: Message = {
+    content: choice.message.content ?? '',
+    tool_calls: choice.message.tool_calls,
+    finishReason: choice.finish_reason,
+    usage: out.usage,
+  };
+  return [msg, choice.message];
+}
+
+// execTools runs each call through callTool and keeps the call ID with its result
+async function execTools(calls: ToolCall[]): Promise<ToolResult[]> {
+  const results: ToolResult[] = [];
+  for (const tc of calls) {
+    let result: Record<string, unknown> = { error: 'invalid arguments' };
+    try {
+      const args = JSON.parse(tc.function.arguments);
+      result = await callTool(tc.function.name, args);
+    } catch {}
+    results.push({ callId: tc.id, toolName: tc.function.name, result });
+  }
+  return results;
+}
+
+// runTools runs the calls and returns their tool-role messages
+async function runTools(calls: ToolCall[]) {
+  return (await execTools(calls)).map(toolMessage);
+}
+
+// finish runs any pending tool calls, then makes one final turn with tool calling forbidden
+async function finish(model: string, messages: unknown[], tools: unknown[], msg: Message, raw: unknown) {
+  if (!msg.tool_calls?.length) return msg.content;
+  messages = [...messages, raw, ...(await runTools(msg.tool_calls))];
+  const [final] = await send(model, messages, tools, 'none');
+  return final.content;
+}
+```
+
+```python title="Python" lines
+import json
+import os
+
+import requests
+
+
+def send(model, messages, tools, tool_choice=None):
+    """Make one request. Pass "none" as tool_choice to keep the tools in the request but forbid calls.
+
+    Returns the assistant message, the finish reason, and the response usage."""
+    request = {"model": model, "messages": messages, "tools": tools}
+    if tool_choice:
+        request["tool_choice"] = tool_choice
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+        json=request,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"request failed: {resp.status_code}: {resp.text}")
+    data = resp.json()
+    if not data.get("choices"):
+        raise RuntimeError(f"no choices in response: {data}")
+    choice = data["choices"][0]
+    return choice["message"], choice.get("finish_reason"), data.get("usage", {})
+
+
+def exec_tools(calls):
+    """Run each call through call_tool and keep the call ID with its result."""
+    results = []
+    for tc in calls:
+        try:
+            args = json.loads(tc["function"]["arguments"])
+            result = call_tool(tc["function"]["name"], args)
+        except (json.JSONDecodeError, TypeError):
+            result = {"error": "invalid arguments"}
+        results.append({"call_id": tc["id"], "tool_name": tc["function"]["name"], "result": result})
+    return results
+
+
+def tool_message(r):
+    """The tool-role message that returns a result to the model."""
+    return {"role": "tool", "tool_call_id": r["call_id"], "content": json.dumps(r["result"])}
+
+
+def run_tools(calls):
+    """Run the calls and return their tool-role messages."""
+    return [tool_message(r) for r in exec_tools(calls)]
+
+
+def finish(model, messages, tools, msg):
+    """Run any pending tool calls, then make one final turn with tool calling forbidden."""
+    if not msg.get("tool_calls"):
+        return msg.get("content") or ""
+    messages = messages + [msg] + run_tools(msg["tool_calls"])
+    final, _, _ = send(model, messages, tools, "none")
+    return final.get("content") or ""
+
+```
+
+```bash title="cURL" lines
+# send MODEL MESSAGES TOOLS [TOOL_CHOICE]: makes one request and prints the response JSON.
+# Pass "none" as TOOL_CHOICE to keep the tools in the request but forbid calls.
+send() {
+  jq -n --arg model "$1" --argjson messages "$2" --argjson tools "$3" --arg choice "${4:-}" \
+    '{model: $model, messages: $messages, tools: $tools} + (if $choice != "" then {tool_choice: $choice} else {} end)' |
+  curl -sS --fail-with-body https://openrouter.ai/api/v1/chat/completions \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d @- | jq -e 'if (.choices | length) > 0 then . else error("no choices in response") end'
+}
+
+# run_tools MESSAGE: runs each tool call through call_tool and prints the tool-role messages as a JSON array
+run_tools() {
+  local results="[]" call args result
+  while read -r call; do
+    args=$(jq -r '.function.arguments' <<<"$call")
+    if jq -e 'type == "object"' <<<"$args" >/dev/null 2>&1; then
+      result=$(call_tool "$(jq -r '.function.name' <<<"$call")" "$args")
+    else
+      result='{"error":"invalid arguments"}'
+    fi
+    results=$(jq -c --argjson call "$call" --arg content "$result" \
+      '. + [{role: "tool", tool_call_id: $call.id, content: $content}]' <<<"$results")
+  done < <(jq -c '.tool_calls // [] | .[]' <<<"$1")
+  echo "$results"
+}
+
+# finish MODEL MESSAGES TOOLS RESPONSE: runs any pending tool calls, then makes one final turn with tool calling forbidden
+finish() {
+  local msg results messages
+  msg=$(jq -c '.choices[0].message' <<<"$4")
+  if [ "$(jq '.tool_calls // [] | length' <<<"$msg")" -eq 0 ]; then
+    jq -r '.content' <<<"$msg"
+    return
+  fi
+  results=$(run_tools "$msg")
+  messages=$(jq -c --argjson msg "$msg" --argjson results "$results" '. + [$msg] + $results' <<<"$2")
+  send "$1" "$messages" "$3" none | jq -r '.choices[0].message.content'
+}
+```
+
+</CodeGroup>
+
 ## Built-in Stop Conditions
 
 ### stepCountIs(n)
@@ -352,7 +560,7 @@ Stop after a specific number of steps:
 ```typescript lines
 import { stepCountIs } from '@openrouter/agent';
 
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'Analyze this data',
   tools: [analysisTool],
@@ -580,9 +788,9 @@ Stop on a specific finish reason:
 <CodeGroup>
 
 ```typescript lines
-import { finishReasonIs } from '@openrouter/agent';
+import { callModel, finishReasonIs } from '@openrouter/agent';
 
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'Complete this task',
   tools: [taskTool],
@@ -724,7 +932,7 @@ result = call_model(
     client,
     {
         "model": "openai/gpt-5.2",
-        "input": "Research this topic",
+        "input": "Research the history of the Python programming language",
         "tools": [search_tool],
         "stop_when": step_count_is(5),
         # default (omitted or `True`): final turn + built-in directive
@@ -742,7 +950,7 @@ result = call_model(
 
 ```go title="Go" lines
 tools := []any{searchTool}
-messages := []any{map[string]string{"role": "user", "content": "Research this topic"}}
+messages := []any{map[string]string{"role": "user", "content": "Research the history of the Python programming language"}}
 
 // default: final turn + directive. Override the wording below,
 // use "" to make the final turn without appending any message,
@@ -769,6 +977,7 @@ if pending && allowFinalResponse {
 	msg, _ := send("openai/gpt-5.2", messages, tools, "none") // tools stay, calling forbidden
 	text = msg.Content
 }
+
 ```
 
 </CodeGroup>
@@ -1291,6 +1500,30 @@ result = call_model(
 
 ```
 
+```go title="Go" lines
+tools := []any{myTool}
+messages := []any{map[string]string{"role": "user", "content": "Hello"}}
+
+// Before: maxToolRounds
+// for round := 0; round < 5; round++ { ... }
+
+// After: stopWhen
+stopWhen := stepCountIs(5)
+
+var steps []Message
+var text string
+for {
+	msg, raw := send("openai/gpt-5-nano", messages, tools)
+	steps = append(steps, msg)
+	if len(msg.ToolCalls) == 0 || stopWhen(steps) {
+		text = finish("openai/gpt-5-nano", messages, tools, msg, raw)
+		break
+	}
+	messages = append(messages, raw)
+	messages = append(messages, runTools(msg.ToolCalls)...)
+}
+```
+
 </CodeGroup>
 
 ### Default Behavior
@@ -1443,7 +1676,7 @@ Verify conditions work as expected:
 
 ```typescript lines
 // Test with low limits first
-const testResult = openrouter.callModel({
+const testResult = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'Test task',
   tools: [testTool],

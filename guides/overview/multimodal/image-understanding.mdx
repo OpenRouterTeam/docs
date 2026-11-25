@@ -109,7 +109,7 @@ print(json.dumps(response.json(), indent=2))
 const response = await fetch('https://openrouter.ai/api/v1/responses', {
   method: 'POST',
   headers: {
-    Authorization: `Bearer ${API_KEY_REF}`,
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
@@ -124,7 +124,7 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
           },
           {
             type: 'input_image',
-            image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg',
+            image_url: 'https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg',
             detail: 'auto',
           },
         ],
@@ -134,7 +134,7 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
 });
 
 const data = await response.json();
-console.log(data);
+console.log(JSON.stringify(data, null, 2));
 ```
 
 ```go title="Go" lines

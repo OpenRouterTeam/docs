@@ -193,28 +193,30 @@ console.log('CONTENT:', message?.content.find((part) => part.type === 'output_te
 ```
 
 ```python title="Python (OpenAI SDK)" expandable lines
-from openai import OpenAI
+from openrouter import OpenRouter
 
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
+client = OpenRouter(
     api_key="<OPENROUTER_API_KEY>",
 )
 
-response = client.responses.create(
+response = client.responses.send(
     model="openai/o3",
     input="How would you build the world's tallest skyscraper?",
     reasoning={
         "effort": "high",
         "summary": "detailed",
     },
+    stream=False,
 )
 
 for item in response.output:
     if item.type == "reasoning":
         # Raw reasoning arrives in `content`; OpenAI models return a summary in `summary` instead.
-        parts = [*(item.content or []), *item.summary]
-        print("REASONING:", "".join(part.text for part in parts))
-print("CONTENT:", response.output_text)
+        parts = [*(getattr(item, "content", None) or []), *(getattr(item, "summary", None) or [])]
+        print("REASONING:", "".join(getattr(part, "text", "") or "" for part in parts))
+    elif item.type == "message":
+        print("CONTENT:", "".join(getattr(part, "text", "") or "" for part in item.content))
+
 ```
 
 ```typescript title="TypeScript (OpenAI SDK)" expandable lines

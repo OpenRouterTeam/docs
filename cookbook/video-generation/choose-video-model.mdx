@@ -119,7 +119,17 @@ print(json.dumps([model["id"] for model in models], indent=2))
 ```
 
 ```go title="Go" lines
-// The fields the later steps filter and score on. Declare this at package level.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+)
+
+// The fields the later steps filter and score on.
 type VideoModel struct {
 	ID                    string         `json:"id"`
 	SupportedResolutions  []string       `json:"supported_resolutions"`
@@ -129,35 +139,38 @@ type VideoModel struct {
 	PricingSkus           map[string]any `json:"pricing_skus"`
 }
 
-resp, err := http.Get("https://openrouter.ai/api/v1/videos/models")
-if err != nil {
-	log.Fatal(err)
-}
-defer resp.Body.Close()
+func main() {
+	resp, err := http.Get("https://openrouter.ai/api/v1/videos/models")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
 
-if resp.StatusCode != http.StatusOK {
-	body, _ := io.ReadAll(resp.Body)
-	log.Fatal(string(body))
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		log.Fatal(string(body))
+	}
+
+	// Keep the full model objects: later steps read their capabilities and pricing
+	var result struct {
+		Data []VideoModel `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+	models := result.Data
+
+	ids := make([]string, len(models))
+	for i, model := range models {
+		ids[i] = model.ID
+	}
+	out, err := json.MarshalIndent(ids, "", "  ")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(string(out))
 }
 
-// Keep the full model objects: later steps read their capabilities and pricing
-var result struct {
-	Data []VideoModel `json:"data"`
-}
-if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-	log.Fatal(err)
-}
-models := result.Data
-
-ids := make([]string, len(models))
-for i, model := range models {
-	ids[i] = model.ID
-}
-out, err := json.MarshalIndent(ids, "", "  ")
-if err != nil {
-	log.Fatal(err)
-}
-fmt.Println(string(out))
 ```
 
 ```bash title="cURL" lines
@@ -1035,9 +1048,18 @@ echo "$request_body"
 
 Before submitting, check that your image URL returns `200` with an image content type:
 
+<CodeGroup>
+
 ```bash lines
 curl -I "$FIRST_FRAME_URL"
 ```
+
+```python title="Python" lines
+head = requests.head(first_frame_url, allow_redirects=True)
+print(head.status_code, head.headers.get("content-type"))
+```
+
+</CodeGroup>
 
 Example output:
 

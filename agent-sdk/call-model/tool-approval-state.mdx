@@ -978,7 +978,7 @@ const loaded = await state.load();
 
 if (loaded?.status === 'interrupted') {
   // Resume — the SDK picks up from the interruption point
-  const result = openrouter.callModel({
+  const result = callModel(openrouter, {
     model: 'openai/gpt-4o',
     input: 'Continue where you left off',
     tools: myTools,
@@ -986,6 +986,7 @@ if (loaded?.status === 'interrupted') {
   });
 
   const text = await result.getText();
+  console.log(text);
 }
 ```
 
@@ -1130,7 +1131,7 @@ async def multi_run_conversation(client):
 // example's tools; swap in your weather tool and run its calls the same way.
 
 // runTurn loads the history, appends the input and the reply, and saves it.
-func runTurn(state StateAccessor, input string) any {
+runTurn := func(state StateAccessor, input string) any {
 	s, _ := state.Load()
 	if s == nil {
 		s = &ConversationState{}

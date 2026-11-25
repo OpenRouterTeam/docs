@@ -449,6 +449,10 @@ toolChoice: { type: 'function', name: 'approve_payment' },
 "tool_choice": map[string]any{"type": "function", "function": map[string]any{"name": "approve_payment"}},
 ```
 
+```bash title="cURL" lines
+"tool_choice": {"type": "function", "function": {"name": "approve_payment"}},
+```
+
 </CodeGroup>
 
 In production, your agent instructions or user request can let the model decide when to call the tool.

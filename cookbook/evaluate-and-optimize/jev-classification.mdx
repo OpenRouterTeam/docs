@@ -43,6 +43,8 @@ The first thing to do after defining the label set is turn those labels into que
 
 The rest are tags that may be present or absent. Each of those gets its own `noul` question that is answered with a probability between 0 and 1. The odds that one tag applies are judged independently of the others. Writing your labels this way lets one request return the category and full tag probabilities at once.
 
+<CodeGroup>
+
 ```typescript lines
 const JEV_MODEL = 'typesafe/jev-1.13';
 
@@ -77,6 +79,104 @@ const questions = {
   ...Object.fromEntries(TAGS.map((tag) => [tag, { type: 'noul', instructions: TAG_INSTRUCTIONS[tag] }])),
 };
 ```
+
+```python title="Python" lines
+JEV_MODEL = "typesafe/jev-1.13"
+
+CATEGORIES = ["arts_and_culture", "business", "pop_culture", "daily_life", "sports_and_gaming", "science_and_technology"]
+
+TAGS = ["sports", "news", "film_tv", "music", "celebrity", "gaming"]
+
+TAG_INSTRUCTIONS = {
+    "sports": "Is the post about sports, athletes, teams, matches, or sports leagues?",
+    "news": "Is the post about news, politics, or a social concern?",
+    "film_tv": "Is the post about a film, TV show, or video?",
+    "music": "Is the post about music, musicians, songs, or albums?",
+    "celebrity": "Is the post about a celebrity or pop culture?",
+    "gaming": "Is the post about video games or esports?",
+}
+
+questions = {
+    "category": {
+        "type": "choice",
+        "instructions": "Which single category best describes the post?",
+        "criteria": {
+            "arts_and_culture": "Visual arts, literature, theatre, museums, or cultural events.",
+            "business": "Business, entrepreneurship, finance, or careers.",
+            "pop_culture": "Celebrities, film, TV, music, or entertainment news.",
+            "daily_life": "Personal daily life, relationships, family, food, or everyday observations.",
+            "sports_and_gaming": "Sports, athletes, teams, matches, video games, or esports.",
+            "science_and_technology": "Science, technology, software, or research.",
+        },
+    },
+    **{tag: {"type": "noul", "instructions": TAG_INSTRUCTIONS[tag]} for tag in TAGS},
+}
+```
+
+```go title="Go" lines
+const jevModel = "typesafe/jev-1.13"
+
+categories := []string{"arts_and_culture", "business", "pop_culture", "daily_life", "sports_and_gaming", "science_and_technology"}
+
+tags := []string{"sports", "news", "film_tv", "music", "celebrity", "gaming"}
+
+tagInstructions := map[string]string{
+	"sports":    "Is the post about sports, athletes, teams, matches, or sports leagues?",
+	"news":      "Is the post about news, politics, or a social concern?",
+	"film_tv":   "Is the post about a film, TV show, or video?",
+	"music":     "Is the post about music, musicians, songs, or albums?",
+	"celebrity": "Is the post about a celebrity or pop culture?",
+	"gaming":    "Is the post about video games or esports?",
+}
+
+questions := map[string]any{
+	"category": map[string]any{
+		"type":         "choice",
+		"instructions": "Which single category best describes the post?",
+		"criteria": map[string]string{
+			"arts_and_culture":       "Visual arts, literature, theatre, museums, or cultural events.",
+			"business":               "Business, entrepreneurship, finance, or careers.",
+			"pop_culture":            "Celebrities, film, TV, music, or entertainment news.",
+			"daily_life":             "Personal daily life, relationships, family, food, or everyday observations.",
+			"sports_and_gaming":      "Sports, athletes, teams, matches, video games, or esports.",
+			"science_and_technology": "Science, technology, software, or research.",
+		},
+	},
+}
+for _, tag := range tags {
+	questions[tag] = map[string]any{"type": "noul", "instructions": tagInstructions[tag]}
+}
+```
+
+```bash title="cURL" lines
+JEV_MODEL='typesafe/jev-1.13'
+
+QUESTIONS=$(cat <<'EOF'
+{
+  "category": {
+    "type": "choice",
+    "instructions": "Which single category best describes the post?",
+    "criteria": {
+      "arts_and_culture": "Visual arts, literature, theatre, museums, or cultural events.",
+      "business": "Business, entrepreneurship, finance, or careers.",
+      "pop_culture": "Celebrities, film, TV, music, or entertainment news.",
+      "daily_life": "Personal daily life, relationships, family, food, or everyday observations.",
+      "sports_and_gaming": "Sports, athletes, teams, matches, video games, or esports.",
+      "science_and_technology": "Science, technology, software, or research."
+    }
+  },
+  "sports": { "type": "noul", "instructions": "Is the post about sports, athletes, teams, matches, or sports leagues?" },
+  "news": { "type": "noul", "instructions": "Is the post about news, politics, or a social concern?" },
+  "film_tv": { "type": "noul", "instructions": "Is the post about a film, TV show, or video?" },
+  "music": { "type": "noul", "instructions": "Is the post about music, musicians, songs, or albums?" },
+  "celebrity": { "type": "noul", "instructions": "Is the post about a celebrity or pop culture?" },
+  "gaming": { "type": "noul", "instructions": "Is the post about video games or esports?" }
+}
+EOF
+)
+```
+
+</CodeGroup>
 
 <Info>
 Write each `noul` instruction as a yes-or-no question about the item and put the category definitions in the `choice` question's `criteria` rather than in its instruction text. Jev reads the item from `state`, so the question refers to `the post` and never repeats the text. If your categories might not cover every item, add an `other` entry to both `CATEGORIES` and `criteria`, since a `choice` always picks one of the options you list and the step 2 schema accepts only values from `CATEGORIES`. The six TweetTopic categories above cover every item in that dataset, so the captured run omits it.
@@ -276,6 +376,141 @@ func classifyPost(post string) (*Classified, error) {
 		Tags:       tags,
 		Usage:      Usage{InputTokens: *u.InputTokens, OutputTokens: *u.OutputTokens, Cost: *u.Cost},
 	}, nil
+}
+```
+
+```python title="Python" lines
+import json
+import math
+import os
+from typing import Literal
+
+import requests
+from pydantic import BaseModel, Field
+
+
+class NoulAnswer(BaseModel):
+    type: Literal["noul"]
+    noul: float = Field(ge=0, le=1)
+
+
+class CategoryAnswer(BaseModel):
+    type: Literal["choice"]
+    choice: Literal[tuple(CATEGORIES)]
+    confidence: float | None = Field(default=None, ge=0, le=1)
+
+
+class Answers(BaseModel):
+    category: CategoryAnswer
+    sports: NoulAnswer
+    news: NoulAnswer
+    film_tv: NoulAnswer
+    music: NoulAnswer
+    celebrity: NoulAnswer
+    gaming: NoulAnswer
+
+
+class Usage(BaseModel):
+    input_tokens: int
+    output_tokens: int
+    cost: float
+
+
+class DecisionsResponse(BaseModel):
+    model: str
+    answers: Answers
+    usage: Usage
+
+
+def is_in_flight_budget_error(body: str) -> bool:
+    try:
+        return json.loads(body)["error"]["metadata"]["limit_source"] == "openrouter_in_flight_budget"
+    except (ValueError, KeyError, TypeError):
+        return False
+
+
+class RetryableError(Exception):
+    def __init__(self, message: str, retry_after_ms: float | None = None):
+        super().__init__(message)
+        self.retry_after_ms = retry_after_ms
+
+
+def classify_post(post: str) -> dict:
+    try:
+        res = requests.post(
+            "https://openrouter.ai/api/alpha/decisions",
+            headers={
+                "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+                "Content-Type": "application/json",
+            },
+            json={"model": JEV_MODEL, "state": {"post": post}, "questions": questions},
+            timeout=60,
+        )
+        body = res.text
+    except requests.RequestException as e:
+        raise RetryableError(f"Decisions request failed: {e}") from e
+    if not res.ok:
+        transient = res.status_code == 429 or res.status_code >= 500 or (
+            res.status_code == 402 and is_in_flight_budget_error(body)
+        )
+        if not transient:
+            raise RuntimeError(f"Decisions {res.status_code}: {body}")
+        try:
+            retry_after_ms = float(res.headers.get("Retry-After", "")) * 1_000
+        except ValueError:
+            retry_after_ms = 0
+        raise RetryableError(
+            f"Decisions {res.status_code}: {body}",
+            retry_after_ms if retry_after_ms > 0 and math.isfinite(retry_after_ms) else None,
+        )
+    parsed = DecisionsResponse.model_validate_json(body)
+    answers = parsed.answers
+    return {
+        "category": answers.category.choice,
+        "confidence": answers.category.confidence,
+        "tags": {tag: getattr(answers, tag).noul for tag in TAGS},
+        "usage": parsed.usage.model_dump(),
+    }
+```
+
+```bash title="cURL" lines
+# Prints the classification as JSON. Returns 75 for a retryable failure (rate limit, server error,
+# in-flight budget, dropped connection) with any Retry-After seconds in RETRY_AFTER; returns 1 otherwise.
+classify_post() {
+  local hdrs resp status body
+  hdrs=$(mktemp)
+  resp=$(curl -sS --max-time 60 -D "$hdrs" -w '\n%{http_code}' https://openrouter.ai/api/alpha/decisions \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -H 'Content-Type: application/json' \
+    -d "$(jq -n --arg model "$JEV_MODEL" --arg post "$1" --argjson questions "$QUESTIONS" \
+      '{model: $model, state: {post: $post}, questions: $questions}')") || { rm -f "$hdrs"; return 75; }
+  status=${resp##*$'\n'}
+  body=${resp%$'\n'*}
+  RETRY_AFTER=$(awk -F': *' 'tolower($1) == "retry-after" && $2 + 0 > 0 { print $2 + 0 }' "$hdrs")
+  rm -f "$hdrs"
+  if [ "$status" -ge 400 ]; then
+    echo "Decisions $status: $body" >&2
+    if [ "$status" -eq 429 ] || [ "$status" -ge 500 ] || { [ "$status" -eq 402 ] &&
+      jq -e '.error.metadata.limit_source == "openrouter_in_flight_budget"' <<<"$body" >/dev/null 2>&1; }; then
+      return 75
+    fi
+    return 1
+  fi
+  if ! jq -e --argjson q "$QUESTIONS" '. as $r
+    | (.model | type == "string")
+    and (.answers.category | .type == "choice" and (.choice | IN($q.category.criteria | keys[]))
+      and (.confidence == null or (.confidence | type == "number" and . >= 0 and . <= 1)))
+    and all($q | del(.category) | keys[]; $r.answers[.] | .type == "noul" and (.noul | type == "number" and . >= 0 and . <= 1))
+    and all(.usage.input_tokens, .usage.output_tokens, .usage.cost; type == "number")' <<<"$body" >/dev/null 2>&1; then
+    echo "Unexpected Decisions response: $body" >&2
+    return 1
+  fi
+  jq --argjson q "$QUESTIONS" '. as $r | {
+    category: .answers.category.choice,
+    confidence: .answers.category.confidence,
+    tags: (reduce ($q | del(.category) | keys_unsorted[]) as $t ({}; .[$t] = $r.answers[$t].noul)),
+    usage: (.usage | {input_tokens, output_tokens, cost})
+  }' <<<"$body"
 }
 ```
 
@@ -632,6 +867,17 @@ bands=$(jq -n --slurpfile s sample.json --slurpfile r sample_results.json '
       band($pairs; "unknown"; .[1].confidence == null) ]')
 ```
 
+```bash title="cURL" lines
+BANDS='[{"label":"<0.5","min":0,"max":0.5},{"label":"0.5-0.8","min":0.5,"max":0.8},{"label":">=0.8","min":0.8,"max":1e9}]'
+
+bands=$(jq -n --argjson s "$sample" --argjson r "$sample_results" --argjson bands "$BANDS" '
+  def in_band($idx; $name):
+    {band: $name, n: ($idx | length), correct: ([$idx[] | select($r[.].category == $s[.].category)] | length)};
+  [range($s | length)] as $all
+  | [$bands[] as $b | in_band([$all[] | select($r[.].confidence as $c | $c != null and $c >= $b.min and $c < $b.max)]; $b["label"])]
+    + [in_band([$all[] | select($r[.].confidence == null)]; "unknown")]')
+```
+
 </CodeGroup>
 
 <Info>
@@ -707,6 +953,13 @@ EOF
 cost_report=$(jq '
   {items: length, inputTokens: (map(.usage.input_tokens) | add), cost: (map(.usage.cost) | add)}
   | . + {perThousand: (.cost / .items * 1000), tokensPerItem: (.inputTokens / .items)}' sample_results.json)
+```
+
+```bash title="cURL" lines
+cost_per_thousand() {
+  jq '{items: length, inputTokens: (map(.usage.input_tokens) | add), cost: (map(.usage.cost) | add)}
+    | . + {perThousand: (.cost / .items * 1000), tokensPerItem: (.inputTokens / .items)}' <<< "$1"
+}
 ```
 
 </CodeGroup>

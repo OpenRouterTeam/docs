@@ -796,38 +796,146 @@ Two helpers let you interact with the brand directly:
 <CodeGroup>
 
 ```typescript lines
-import { isMcpTool } from '@openrouter/agent';
+import { tool, isMcpTool, markMcp } from '@openrouter/agent';
+import { z } from 'zod';
 
+// A regular client tool.
+const weatherTool = tool({
+  name: 'get_weather',
+  description: 'Get the current weather for a location',
+  inputSchema: z.object({ location: z.string() }),
+  execute: async ({ location }) => ({ temperature: 64, conditions: `Foggy in ${location}` }),
+});
+
+// A tool branded as MCP (what @openrouter/mcp does for every wrapped tool).
+const rawListIssues = tool({
+  name: 'list_issues',
+  description: 'List open Linear issues',
+  inputSchema: z.object({}),
+  execute: async () => ({ issues: [] }),
+});
+console.log('list_issues before markMcp, isMcpTool =', isMcpTool(rawListIssues));
+const listIssues = markMcp(rawListIssues);
+console.log('list_issues after markMcp, isMcpTool =', isMcpTool(listIssues));
+
+const mcp = { tools: [listIssues] };
+
+// Treat MCP tools differently, e.g. in a hook or custom stop condition.
 for (const t of [weatherTool, ...mcp.tools]) {
-  console.log(t.function.name, isMcpTool(t) ? '(mcp)' : '(client)');
+  console.log(`${t.function.name}: isMcpTool=${isMcpTool(t)} -> ${isMcpTool(t) ? 'MCP tool' : 'client tool'}`);
 }
+
 ```
 
 ```python title="Python" lines
+# Your own tool, in the Chat Completions `tools` wire format.
+weather_tool = {
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get the current weather for a location",
+        "parameters": {
+            "type": "object",
+            "properties": {"location": {"type": "string"}},
+            "required": ["location"],
+        },
+    },
+}
+
+# Tools converted from an MCP server's tools/list response.
+mcp_tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "list_issues",
+            "description": "List open Linear issues",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+]
+
+# Record which tool names came from MCP (the wire format has no MCP brand).
+mcp_tool_names = {t["function"]["name"] for t in mcp_tools}
+
+
+def is_mcp_tool(t: dict) -> bool:
+    return t["function"]["name"] in mcp_tool_names
+
+
+print("MCP tool names:", sorted(mcp_tool_names))
+
+# Treat MCP tools differently, e.g. when dispatching tool calls.
 for t in [weather_tool, *mcp_tools]:
-    print(t["function"]["name"], "(mcp)" if t in mcp_tools else "(client)")
+    name = t["function"]["name"]
+    kind = "MCP tool" if is_mcp_tool(t) else "client tool"
+    print(f"{name}: is_mcp_tool={is_mcp_tool(t)} -> {kind}")
 
 ```
 
 ```go title="Go" lines
-// Go has no brand, so record which names came from the MCP server. weatherTool is
-// your own definition and mcpTools the ones built from tools/list, all map[string]any.
-name := func(t map[string]any) string { return fmt.Sprint(t["function"].(map[string]any)["name"]) }
-mcpNames := map[string]bool{}
-for _, t := range mcpTools {
-	mcpNames[name(t)] = true
+package main
+
+import (
+	"fmt"
+	"sort"
+)
+
+func main() {
+	// Your own tool, in the Chat Completions `tools` wire format.
+	weatherTool := map[string]any{"type": "function", "function": map[string]any{
+		"name":        "get_weather",
+		"description": "Get the current weather for a location",
+		"parameters": map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"location": map[string]any{"type": "string"}},
+			"required":   []string{"location"},
+		},
+	}}
+
+	// Tools converted from an MCP server's tools/list response.
+	mcpTools := []map[string]any{
+		{"type": "function", "function": map[string]any{
+			"name":        "list_issues",
+			"description": "List open Linear issues",
+			"parameters":  map[string]any{"type": "object", "properties": map[string]any{}},
+		}},
+	}
+
+	// Go has no brand, so record which names came from the MCP server.
+	name := func(t map[string]any) string { return fmt.Sprint(t["function"].(map[string]any)["name"]) }
+	mcpNames := map[string]bool{}
+	for _, t := range mcpTools {
+		mcpNames[name(t)] = true
+	}
+	isMcpTool := func(t map[string]any) bool { return mcpNames[name(t)] }
+
+	names := make([]string, 0, len(mcpNames))
+	for n := range mcpNames {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	fmt.Println("MCP tool names:", names)
+
+	// Treat MCP tools differently, e.g. when dispatching tool calls.
+	for _, t := range append([]map[string]any{weatherTool}, mcpTools...) {
+		kind := "client tool"
+		if isMcpTool(t) {
+			kind = "MCP tool"
+		}
+		fmt.Printf("%s: isMcpTool=%v -> %s\n", name(t), isMcpTool(t), kind)
+	}
 }
 
-for _, t := range append([]map[string]any{weatherTool}, mcpTools...) {
-	kind := "(client)"
-	if mcpNames[name(t)] {
-		kind = "(mcp)"
-	}
-	fmt.Println(name(t), kind)
-}
 ```
 
 </CodeGroup>
+
+```text title="Output"
+list_issues before markMcp, isMcpTool = false
+list_issues after markMcp, isMcpTool = true
+get_weather: isMcpTool=false -> client tool
+list_issues: isMcpTool=true -> MCP tool
+```
 
 ## Caching and rehydration
 
@@ -1040,6 +1148,35 @@ func main() {
 		fmt.Println("Rehydrated tool:", t.Function.Name)
 	}
 }
+
+```
+
+```bash title="cURL" lines
+MCP_URL="https://mcp.example.com/mcp"
+HDRS=(-H "Authorization: Bearer $MCP_TOKEN" -H "Accept: application/json, text/event-stream" -H "Content-Type: application/json")
+
+# Initialize a session (the server returns its id in the Mcp-Session-Id header).
+SESSION=$(curl -s -D - -o /dev/null "$MCP_URL" "${HDRS[@]}" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}' \
+  | tr -d '\r' | awk 'tolower($1)=="mcp-session-id:"{print $2}')
+[ -n "$SESSION" ] && HDRS+=(-H "Mcp-Session-Id: $SESSION")
+curl -s -o /dev/null "$MCP_URL" "${HDRS[@]}" -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+
+# List tools and store the snapshot as plain JSON.
+TOOLS_RESPONSE=$(curl -fsS "$MCP_URL" "${HDRS[@]}" -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
+fetch_status=$?
+curl -s -o /dev/null -X DELETE "$MCP_URL" "${HDRS[@]}" || true
+[ "$fetch_status" -eq 0 ] || exit "$fetch_status"
+TOOLS=$(jq -eRs --arg url "$MCP_URL" '
+  . as $body
+  | try [fromjson] catch ($body | split("\n") | map(select(startswith("data:")) | ltrimstr("data:") | fromjson?))
+  | map(select(.id == 2 and (.result.tools | type) == "array"))
+  | if length == 1 then {url: $url, tools: .[0].result.tools} else error("invalid tools/list response") end
+' <<< "$TOOLS_RESPONSE") || exit 1
+printf '%s\n' "$TOOLS" > snapshot.json
+
+# Later, in another process: rehydrate from the stored snapshot.
+jq -r '.tools[].name | "Rehydrated tool: \(.)"' snapshot.json
 
 ```
 
@@ -1282,6 +1419,43 @@ func main() {
 		fmt.Println("MCP tool:", t["function"].(map[string]any)["name"])
 	}
 }
+
+```
+
+```bash title="cURL" lines
+MCP_URL="https://mcp.example.com/mcp"
+USER_ID="user-123" # identifies whose cached tool list to use
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/openrouter-mcp"
+mkdir -p -m 700 "$CACHE_DIR" || exit 1
+CACHE="$CACHE_DIR/$USER_ID.json"
+
+# Miss or stale (older than 1 hour): connect, list tools, write the cache.
+if [ -z "$(find "$CACHE" -mmin -60 2>/dev/null)" ]; then
+  HDRS=(-H "Authorization: Bearer $MCP_TOKEN" -H "Accept: application/json, text/event-stream" -H "Content-Type: application/json")
+  SESSION=$(curl -s -D - -o /dev/null "$MCP_URL" "${HDRS[@]}" \
+    -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}' \
+    | tr -d '\r' | awk 'tolower($1)=="mcp-session-id:"{print $2}')
+  [ -n "$SESSION" ] && HDRS+=(-H "Mcp-Session-Id: $SESSION")
+  curl -s -o /dev/null "$MCP_URL" "${HDRS[@]}" -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+  TOOLS_RESPONSE=$(curl -fsS "$MCP_URL" "${HDRS[@]}" -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
+  fetch_status=$?
+  curl -s -o /dev/null -X DELETE "$MCP_URL" "${HDRS[@]}" || true
+  [ "$fetch_status" -eq 0 ] || exit "$fetch_status"
+  TOOLS=$(jq -eRs --arg url "$MCP_URL" '
+    . as $body
+    | try [fromjson] catch ($body | split("\n") | map(select(startswith("data:")) | ltrimstr("data:") | fromjson?))
+    | map(select(.id == 2 and (.result.tools | type) == "array"))
+    | if length == 1 then {url: $url, tools: .[0].result.tools} else error("invalid tools/list response") end
+  ' <<< "$TOOLS_RESPONSE") || exit 1
+  (
+    tmp=$(mktemp "$CACHE_DIR/tools.XXXXXX") || exit 1
+    trap 'rm -f "$tmp"' EXIT
+    printf '%s\n' "$TOOLS" > "$tmp" && mv -f "$tmp" "$CACHE"
+  ) || exit 1
+fi
+
+# Hit (or freshly written): rehydrate from the cache.
+jq -r '.tools[] | "MCP tool: \(.name)"' "$CACHE"
 
 ```
 

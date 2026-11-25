@@ -351,12 +351,13 @@ roughly every 25 hours.`
 
 ```bash title="cURL" lines
 #!/usr/bin/env bash
+set -o pipefail
 : "${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY first.}"
 
 source=$(cat <<'EOF'
 Tides are caused mostly by the Moon. Its gravity pulls hardest on the side
 of the Earth facing it, so the ocean bulges toward the Moon. On the far side the
-pull is weaker than at the Earth's center, and that difference stretches the
+pull is weaker than at the center of Earth, and that difference stretches the
 ocean outward into a second bulge. As the Earth turns, most coastlines pass
 through both bulges, which is why they see two high tides and two low tides
 roughly every 25 hours.
@@ -367,7 +368,7 @@ body=$(jq -n --arg input "$source" '{
   model: "google/gemini-3.8-flash",
   instructions: ("Write a short podcast dialogue between a host and a guest about the text the user sends. " +
     "Use 6 to 8 turns, alternate speakers, and keep each turn under 40 words. " +
-    "Give each turn a few words of delivery direction, such as '\''curious'\'' or '\''laughing'\''."),
+    "Give each turn a few words of delivery direction, such as curious or laughing."),
   input: $input,
   text: {
     format: {
@@ -402,8 +403,8 @@ turns=$(curl -sS --fail-with-body https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d "$body" |
-  jq -c '[.output[] | select(.type == "message")] | last
-    | .content[] | select(.type == "output_text") | .text | fromjson | .turns')
+  jq -ce 'select(.status == "completed") | [.output[] | select(.type == "message")] | last
+    | .content[] | select(.type == "output_text") | .text | fromjson | .turns | select(type == "array" and length > 0)') || exit 1
 
 jq -r '.[] | "\((.speaker + "     ")[0:5]) (\(.direction)): \(.text)"' <<<"$turns"
 
@@ -678,6 +679,25 @@ size=$(wc -c < podcast.pcm | tr -d ' ')
 } > podcast.wav
 
 echo "Saved podcast.wav ($(awk -v n="$size" 'BEGIN { printf "%.1f", n / 48000 }') seconds)"
+```
+
+```bash title="cURL" lines
+le16() { printf "$(printf '\\x%02x\\x%02x' $(($1 & 255)) $(($1 >> 8 & 255)))"; }
+le32() { le16 $(($1 & 65535)); le16 $(($1 >> 16 & 65535)); }
+
+sample_rate=24000 channels=1 bits_per_sample=16
+size=$(($(wc -c < podcast.pcm)))
+
+{
+  printf 'RIFF'; le32 $((36 + size)); printf 'WAVEfmt '
+  le32 16; le16 1; le16 $channels; le32 $sample_rate
+  le32 $((sample_rate * channels * bits_per_sample / 8))
+  le16 $((channels * bits_per_sample / 8)); le16 $bits_per_sample
+  printf 'data'; le32 $size
+  cat podcast.pcm
+} > podcast.wav
+
+awk -v n="$size" 'BEGIN { printf "Saved podcast.wav (%.1f seconds)\n", n / (24000 * 2) }'
 ```
 
 </CodeGroup>
