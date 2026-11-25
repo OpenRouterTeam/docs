@@ -20,6 +20,16 @@ models: []
 
 The OpenRouter Models API provides programmatic access to metadata, capabilities, context limits, pricing, and provider endpoints for every model available on OpenRouter. The catalog updates continuously as providers deploy new models, adjust pricing, and add hardware endpoints.
 
+<Tip>
+**Avoid downloading the full catalog when you only need a few models**
+
+An unfiltered `GET /api/v1/models` returns 500+ models (~200 KB+ JSON). For small, fast responses:
+
+- Look up one model directly: `GET /api/v1/model/{author}/{slug}`
+- Inspect per-provider endpoints and quantizations for one model: `GET /api/v1/models/{author}/{slug}/endpoints`
+- Search and cap results server-side: `GET /api/v1/models?q=claude&supported_parameters=tools&limit=10`
+</Tip>
+
 ## Catalog endpoints
 
 OpenRouter provides several endpoints for discovering and inspecting models:
