@@ -43,7 +43,7 @@ function initAnchorScrollFix() {
     window.addEventListener(event, markUserScrollAway, { passive: true, once: true });
   }
   if (document.readyState === 'complete') {
-    settleAnchorScroll();
+    void settleAnchorScroll();
   } else {
     window.addEventListener('load', settleAnchorScroll, { once: true });
   }
