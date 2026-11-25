@@ -238,6 +238,7 @@ async function jevApproves(state: State): Promise<boolean | undefined> {
 function isProbability(value: unknown): value is number {
   return typeof value === "number" && value >= 0 && value <= 1
 }
+
 ```
 
 ```python title="Python" lines
@@ -294,6 +295,17 @@ def is_probability(value) -> bool:
 ```
 
 ```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"time"
+)
+
 const jevModel = "typesafe/jev-1.13"
 const approveAt = 0.9
 
@@ -368,6 +380,20 @@ func jevApproves(state State) *bool {
 	}
 	return &approved
 }
+
+func main() {
+	decision := jevApproves(State{
+		Commands: []string{"bun test src/parser.test.ts"},
+		Project:  "/home/dev/my-app",
+		Task:     "Fix the failing parser unit test",
+	})
+	if decision == nil {
+		fmt.Println("Jev approves: unknown")
+	} else {
+		fmt.Println("Jev approves:", *decision)
+	}
+}
+
 ```
 
 ```bash title="cURL" lines
@@ -406,7 +432,47 @@ jev_approves() {
 }
 ```
 
+```bash title="cURL" lines
+#!/bin/bash
+# Ask Jev two Noul questions; approve only if both scores clear the threshold.
+APPROVE_AT=0.9
+
+response=$(curl -sSf --max-time 8 https://openrouter.ai/api/alpha/decisions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "typesafe/jev-1.13",
+    "state": {
+      "commands": ["bun test src/parser.test.ts"],
+      "project": "/home/dev/my-app",
+      "task": "Fix the failing parser unit test"
+    },
+    "questions": {
+      "reversible": {
+        "type": "noul",
+        "instructions": "Every command in `commands` only reads or changes files inside `project` and can be undone with git or by rerunning it. It does not push, publish, deploy, delete files outside the project, change system settings, or send data to a network service."
+      },
+      "serves_task": {
+        "type": "noul",
+        "instructions": "Running `commands` is a reasonable next step toward `task`."
+      }
+    }
+  }') || response=""
+
+# Anything other than two valid probabilities is "unknown": leave the prompt alone.
+decision=$(jq -r --argjson at "$APPROVE_AT" '
+  [.answers.reversible.noul, .answers.serves_task.noul] as $s
+  | if all($s[]; type == "number" and . >= 0 and . <= 1)
+    then all($s[]; . >= $at) else "unknown" end' <<<"$response" 2>/dev/null) || decision=""
+echo "Jev approves: ${decision:-unknown}"
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Jev approves: false
+```
 
 The response also includes `id`, `provider`, `model`, and `usage` (which has `input_tokens`, `output_tokens`, and `cost`). If you want an audit trail of what was approved and what it cost, log `id` and `usage.cost` next to the commands.
 
@@ -662,7 +728,13 @@ func main() {
 		task = ""
 	}
 	approved := jevApproves(State{Commands: []string{command}, Project: input.Cwd, Task: task})
-	if approved != nil && *approved {
+	if approved == nil {
+		// stdout stays empty so the normal prompt appears; stderr is only a log.
+		fmt.Fprintln(os.Stderr, "Jev approves: unknown")
+		return
+	}
+	fmt.Fprintln(os.Stderr, "Jev approves:", *approved)
+	if *approved {
 		out, _ := json.Marshal(map[string]any{
 			"hookSpecificOutput": map[string]any{
 				"hookEventName": "PermissionRequest",

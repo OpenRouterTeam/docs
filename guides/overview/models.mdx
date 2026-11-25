@@ -77,6 +77,12 @@ const decisionModels = await fetch('https://openrouter.ai/api/v1/models?output_m
 
 // All models regardless of modality
 const allModels = await fetch('https://openrouter.ai/api/v1/models?output_modalities=all').then((r) => r.json());
+
+console.log('Text models:', textModels.data.length);
+console.log('Image models:', imageModels.data.length);
+console.log('Text and image models:', textAndImageModels.data.length);
+console.log('Decision models:', decisionModels.data.length);
+console.log('All models:', allModels.data.length);
 ```
 
 ```python title="Python" lines
@@ -97,29 +103,64 @@ decision_models = requests.get("https://openrouter.ai/api/v1/models", params={"o
 # All models regardless of modality
 all_models = requests.get("https://openrouter.ai/api/v1/models", params={"output_modalities": "all"})
 
+print("Text models:", len(text_models.json()["data"]))
+print("Image models:", len(image_models.json()["data"]))
+print("Text and image models:", len(text_image_models.json()["data"]))
+print("Decision models:", len(decision_models.json()["data"]))
+print("All models:", len(all_models.json()["data"]))
+
 ```
 
 ```go title="Go" lines
-queries := []string{
-	"",                                  // Default (text models only)
-	"?output_modalities=image",          // Image generation models only
-	"?output_modalities=text,image",     // Text and image models
-	"?output_modalities=decisions",      // Decision models only (e.g. Jev)
-	"?output_modalities=all",            // All models regardless of modality
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+)
+
+func main() {
+	queries := []struct {
+		label string
+		query string
+	}{
+		{"Text models", ""},                                         // Default (text models only)
+		{"Image models", "?output_modalities=image"},                 // Image generation models only
+		{"Text and image models", "?output_modalities=text,image"},   // Text and image models
+		{"Decision models", "?output_modalities=decisions"},          // Decision models only (e.g. Jev)
+		{"All models", "?output_modalities=all"},                     // All models regardless of modality
+	}
+
+	for _, q := range queries {
+		resp, err := http.Get("https://openrouter.ai/api/v1/models" + q.query)
+		if err != nil {
+			log.Fatal(err)
+		}
+		var result struct {
+			Data []json.RawMessage `json:"data"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&result)
+		resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s: %d\n", q.label, len(result.Data))
+	}
 }
 
-for _, q := range queries {
-	resp, err := http.Get("https://openrouter.ai/api/v1/models" + q)
-	if err != nil {
-		log.Fatal(err)
-	}
-	body, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	fmt.Println(string(body))
-}
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Text models: 477
+Image models: 74
+Text and image models: 538
+Decision models: 45
+All models: 743
+```
 
 The same parameter is available on the [`/v1/models/count`](/api/api-reference/models/get-total-count-of-available-models) endpoint so that counts stay consistent with list results.
 
@@ -145,6 +186,10 @@ const extractionModels = await fetch('https://openrouter.ai/api/v1/models?endpoi
 
 // Decisions models that also serve Extractions
 const decisionExtractionModels = await fetch('https://openrouter.ai/api/v1/models?endpoints=/api/alpha/decisions,/api/alpha/extractions').then((r) => r.json());
+
+console.log('Extraction models:', extractionModels.data.length);
+console.log('Decision + extraction models:', decisionExtractionModels.data.length);
+
 ```
 
 ```python title="Python" lines
@@ -155,6 +200,10 @@ extraction_models = requests.get("https://openrouter.ai/api/v1/models", params={
 
 # Decisions models that also serve Extractions
 decision_extraction_models = requests.get("https://openrouter.ai/api/v1/models", params={"endpoints": "/api/alpha/decisions,/api/alpha/extractions"})
+
+print("Extraction models:", len(extraction_models.json()["data"]))
+print("Decision + extraction models:", len(decision_extraction_models.json()["data"]))
+
 ```
 
 ```go title="Go" lines
@@ -176,6 +225,11 @@ for _, q := range queries {
 
 </CodeGroup>
 
+```text title="Output"
+Extraction models: 10
+Decision + extraction models: 6
+```
+
 ### `supported_parameters`
 
 Filter models by the API parameters they support. For example, to find models that support tool calling:
@@ -189,12 +243,19 @@ curl "https://openrouter.ai/api/v1/models?supported_parameters=tools"
 ```typescript title="TypeScript" lines
 // Models that support tool calling
 const toolModels = await fetch('https://openrouter.ai/api/v1/models?supported_parameters=tools').then((r) => r.json());
+
+console.log('Tool-calling models:', toolModels.data.length);
+
 ```
 
 ```python title="Python" lines
 import requests
 
+# Models that support tool calling
 tool_models = requests.get("https://openrouter.ai/api/v1/models", params={"supported_parameters": "tools"})
+
+print("Tool-calling models:", len(tool_models.json()["data"]))
+
 ```
 
 ```go title="Go" lines
@@ -208,6 +269,10 @@ fmt.Println(string(body))
 ```
 
 </CodeGroup>
+
+```text title="Output"
+Tool-calling models: 390
+```
 
 ### `sort`
 
@@ -341,17 +406,21 @@ curl "https://openrouter.ai/api/v1/model/openai/gpt-4o:nitro"
 ```typescript title="TypeScript" lines
 // Look up a specific model
 const gpt4o = await fetch('https://openrouter.ai/api/v1/model/openai/gpt-4o').then((r) => r.json());
+console.log(JSON.stringify(gpt4o));
 
 // Aliases resolve automatically (returns id: "anthropic/claude-sonnet-4.5")
 const sonnet = await fetch('https://openrouter.ai/api/v1/model/anthropic/claude-sonnet-4-5').then((r) => r.json());
+console.log(JSON.stringify(sonnet));
 
 // Catalog variants return their own entry (the returned id keeps the ":free" suffix)
 const { data: models } = await fetch('https://openrouter.ai/api/v1/models').then((r) => r.json());
 const freeModelId = models.map((m: { id: string }) => m.id).find((id: string) => id.endsWith(':free'));
 const freeModel = await fetch(`https://openrouter.ai/api/v1/model/${freeModelId}`).then((r) => r.json());
+console.log(JSON.stringify(freeModel));
 
 // Routing variants return the base entry (id: "openai/gpt-4o")
 const nitro = await fetch('https://openrouter.ai/api/v1/model/openai/gpt-4o:nitro').then((r) => r.json());
+console.log(JSON.stringify(nitro));
 ```
 
 ```python title="Python" lines
@@ -359,17 +428,22 @@ import requests
 
 # Look up a specific model
 gpt_4o = requests.get("https://openrouter.ai/api/v1/model/openai/gpt-4o")
+print(gpt_4o.text)
 
 # Aliases resolve automatically (returns id: "anthropic/claude-sonnet-4.5")
 sonnet = requests.get("https://openrouter.ai/api/v1/model/anthropic/claude-sonnet-4-5")
+print(sonnet.text)
 
 # Catalog variants return their own entry (the returned id keeps the ":free" suffix)
 models = requests.get("https://openrouter.ai/api/v1/models").json()["data"]
 free_model_id = next(m["id"] for m in models if m["id"].endswith(":free"))
 free_model = requests.get(f"https://openrouter.ai/api/v1/model/{free_model_id}")
+print(free_model.text)
 
 # Routing variants return the base entry (id: "openai/gpt-4o")
 nitro = requests.get("https://openrouter.ai/api/v1/model/openai/gpt-4o:nitro")
+print(nitro.text)
+
 ```
 
 ```go title="Go" lines
@@ -412,6 +486,13 @@ for _, slug := range slugs {
 ```
 
 </CodeGroup>
+
+```text title="Output"
+{"data":{"id":"openai/gpt-4o","canonical_slug":"openai/gpt-4o","hugging_face_id":null,"name":"OpenAI: GPT-4o","created":1715558400,"description":"GPT-4o (\"o\" for \"omni\") is OpenAI's latest AI model, supporting both text and image inputs with text outputs. It maintains the intelligence level of [GPT-4 Turbo](/models/openai/gpt-4-turbo) while being twice as...","context_length":128000,"architecture":{"modality":"text+image+file->text","input_modalities":["text","image","file"],"output_modalities":["text"],"tokenizer":"GPT","instruct_type":null},"pricing":{"prompt":"0.0000025","completion":"0.00001","input_cache_read":"0.00000125"},"top_provider":{"context_length":128000,"max_completion_tokens":16384,"is_moderated":true},"per_request_limits":null,"supported_parameters":["frequency_penalty","logit_bias","logprobs","max_completion_tokens","max_tokens","prediction","presence_penalty","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_logprobs","top_p","web_search_options"],"default_parameters":{},"supported_voices":null,"knowledge_cutoff":"2023-10-31","expiration_date":null,"links":{"details":"/api/v1/models/openai/gpt-4o/endpoints"},"endpoints":["/api/v1/chat/completions","/api/v1/completions","/api/v1/messages","/api/v1/responses"],"benchmarks":{"design_arena":[{"arena":"models","category":"3d","elo":836,"win_rate":39.2,"rank":135},{"arena":"models","category":"codecategories","elo":842,"win_rate":34.8,"rank":148},{"arena":"models","category":"dataviz","elo":858,"win_rate":36,"rank":138},{"arena":"models","category":"gamedev","elo":878,"win_rate":42.3,"rank":143},{"arena":"models","category":"uicomponent","elo":869,"win_rate":38.1,"rank":143},{"arena":"models","category":"website","elo":819,"win_rate":31.5,"rank":152}]}}}
+{"data":{"id":"anthropic/claude-sonnet-4.5","canonical_slug":"anthropic/claude-4.5-sonnet-20250929","hugging_face_id":"","name":"Anthropic: Claude Sonnet 4.5","created":1759161676,"description":"Claude Sonnet 4.5 is Anthropic’s most advanced Sonnet model to date, optimized for real-world agents and coding workflows. It delivers state-of-the-art performance on coding benchmarks such as SWE-bench Verified, with...","context_length":1000000,"architecture":{"modality":"text+image+file->text","input_modalities":["text","image","file"],"output_modalities":["text"],"tokenizer":"Claude","instruct_type":null},"pricing":{"prompt":"0.000003","completion":"0.000015","web_search":"0.01","input_cache_read":"0.0000003","input_cache_write":"0.00000375","input_cache_write_1h":"0.000006","overrides":[{"min_prompt_tokens":200000,"prompt":"0.000006","completion":"0.0000225","input_cache_read":"0.0000006","input_cache_write":"0.0000075","input_cache_write_1h":"0.000012"}]},"top_provider":{"context_length":1000000,"max_completion_tokens":64000,"is_moderated":true},"per_request_limits":null,"supported_parameters":["include_reasoning","max_completion_tokens","max_tokens","reasoning","response_format","stop","structured_outputs","temperature","tool_choice","tools","top_k","top_p"],"default_parameters":{"temperature":1,"top_p":1,"top_k":null,"frequency_penalty":null,"presence_penalty":null,"repetition_penalty":null},"supported_voices":null,"knowledge_cutoff":"2025-01-31","expiration_date":null,"links":{"details":"/api/v1/models/anthropic/claude-4.5-sonnet-20250929/endpoints"},"endpoints":["/api/v1/chat/completions","/api/v1/completions","/api/v1/messages","/api/v1/responses"],"benchmarks":{"design_arena":[{"arena":"models","category":"3d","elo":1124,"win_rate":51,"rank":81},{"arena":"models","category":"asciiart","elo":1190,"win_rate":56.1,"rank":28},{"arena":"models","category":"codecategories","elo":1165,"win_rate":51.5,"rank":74},{"arena":"models","category":"dataviz","elo":1161,"win_rate":47.4,"rank":77},{"arena":"models","category":"gamedev","elo":1138,"win_rate":51.1,"rank":78},{"arena":"models","category":"svg","elo":1099,"win_rate":52.2,"rank":67},{"arena":"models","category":"uicomponent","elo":1156,"win_rate":49.4,"rank":79},{"arena":"models","category":"website","elo":1177,"win_rate":51.8,"rank":78},{"arena":"agents","category":"fullstack","elo":1026,"win_rate":43.7,"rank":40},{"arena":"agents","category":"mobileapps","elo":1130,"win_rate":53,"rank":40},{"arena":"agents","category":"webapps","elo":1027,"win_rate":43.2,"rank":43}],"artificial_analysis":{"intelligence_index":null,"coding_index":null,"agentic_index":null,"finance_and_accounting_index":null,"strategy_and_ops_index":null,"legal_index":null,"healthcare_and_medical_index":null,"engineering_index":null,"economics_index":null,"cyber_index":null,"openness_index":11.1,"multilingual_index":0.893,"decision_index":null}},"reasoning":{"mandatory":false}}}
+{"data":{"id":"inclusionai/ling-3.2-flash:free","canonical_slug":"inclusionai/ling-3.2-flash-20261113","hugging_face_id":"inclusionAI/Ling-3.2-flash","name":"inclusionAI: Ling 3.2 Flash (free)","created":1794591958,"description":"Ling 3.2 Flash is a hybrid reasoning model from inclusionAI that accepts text and image input, with a 1M-token context window and up to 200 images per request. Thinking can...","context_length":1048576,"architecture":{"modality":"text+image->text","input_modalities":["text","image"],"output_modalities":["text"],"tokenizer":"Other","instruct_type":null},"pricing":{"prompt":"0","completion":"0"},"top_provider":{"context_length":1048576,"max_completion_tokens":262144,"is_moderated":false},"per_request_limits":null,"supported_parameters":["frequency_penalty","include_reasoning","max_tokens","presence_penalty","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_k","top_p"],"default_parameters":{},"supported_voices":null,"knowledge_cutoff":null,"expiration_date":null,"links":{"details":"/api/v1/models/inclusionai/ling-3.2-flash-20261113/endpoints"},"endpoints":["/api/v1/chat/completions","/api/v1/completions","/api/v1/messages","/api/v1/responses"],"reasoning":{"mandatory":false,"default_enabled":true}}}
+{"data":{"id":"openai/gpt-4o","canonical_slug":"openai/gpt-4o","hugging_face_id":null,"name":"OpenAI: GPT-4o","created":1715558400,"description":"GPT-4o (\"o\" for \"omni\") is OpenAI's latest AI model, supporting both text and image inputs with text outputs. It maintains the intelligence level of [GPT-4 Turbo](/models/openai/gpt-4-turbo) while being twice as...","context_length":128000,"architecture":{"modality":"text+image+file->text","input_modalities":["text","image","file"],"output_modalities":["text"],"tokenizer":"GPT","instruct_type":null},"pricing":{"prompt":"0.0000025","completion":"0.00001","input_cache_read":"0.00000125"},"top_provider":{"context_length":128000,"max_completion_tokens":16384,"is_moderated":true},"per_request_limits":null,"supported_parameters":["frequency_penalty","logit_bias","logprobs","max_completion_tokens","max_tokens","prediction","presence_penalty","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_logprobs","top_p","web_search_options"],"default_parameters":{},"supported_voices":null,"knowledge_cutoff":"2023-10-31","expiration_date":null,"links":{"details":"/api/v1/models/openai/gpt-4o/endpoints"},"endpoints":["/api/v1/chat/completions","/api/v1/completions","/api/v1/messages","/api/v1/responses"],"benchmarks":{"design_arena":[{"arena":"models","category":"3d","elo":836,"win_rate":39.2,"rank":135},{"arena":"models","category":"codecategories","elo":842,"win_rate":34.8,"rank":148},{"arena":"models","category":"dataviz","elo":858,"win_rate":36,"rank":138},{"arena":"models","category":"gamedev","elo":878,"win_rate":42.3,"rank":143},{"arena":"models","category":"uicomponent","elo":869,"win_rate":38.1,"rank":143},{"arena":"models","category":"website","elo":819,"win_rate":31.5,"rank":152}]}}}
+```
 
 Returns `404` if the model doesn't exist and isn't an alias for another model, including a catalog variant suffix on a model that has no such entry. The response shape wraps the same Model object used in the list endpoint:
 
@@ -737,43 +818,43 @@ func main() {
 
 ```text title="Output"
 {
-  "id": "tencent/hy4-flash",
+  "id": "thinkingmachines/inkling-2-mini",
   "benchmarks": {
-    "design_arena": [
-      {
-        "arena": "models",
-        "category": "3d",
-        "elo": 1215,
-        "win_rate": 45.5,
-        "rank": 46
-      },
-      {
-        "arena": "models",
-        "category": "gamedev",
-        "elo": 1225,
-        "win_rate": 45,
-        "rank": 46
-      },
-      {
-        "arena": "models",
-        "category": "website",
-        "elo": 1234,
-        "win_rate": 45.9,
-        "rank": 54
-      }
-    ]
+    "design_arena": [],
+    "artificial_analysis": {
+      "intelligence_index": 20.1,
+      "coding_index": null,
+      "agentic_index": null,
+      "finance_and_accounting_index": 35.3,
+      "strategy_and_ops_index": 35.2,
+      "legal_index": 31,
+      "healthcare_and_medical_index": null,
+      "engineering_index": 27.6,
+      "economics_index": 33,
+      "cyber_index": null,
+      "openness_index": null,
+      "multilingual_index": null,
+      "decision_index": null
+    }
   }
 }
 {
-  "id": "google/gemini-4-hydrogen",
+  "id": "google/gemini-4-neon",
   "benchmarks": {
     "design_arena": [
       {
         "arena": "agents",
         "category": "pdf",
-        "elo": 1220,
-        "win_rate": 57.1,
-        "rank": 16
+        "elo": 1111,
+        "win_rate": 41.7,
+        "rank": 43
+      },
+      {
+        "arena": "models",
+        "category": "3d",
+        "elo": 1492,
+        "win_rate": 76.2,
+        "rank": 2
       },
       {
 ```

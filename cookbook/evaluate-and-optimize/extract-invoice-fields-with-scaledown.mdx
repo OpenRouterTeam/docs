@@ -195,25 +195,34 @@ def extract_invoice(text: str) -> dict:
     extraction = Extraction.model_validate_json(output_text)
     return {"entities": extraction.entities, "usage": body.usage}
 
+
+if __name__ == "__main__":
+    sample_invoice = (
+        "ACME Supplies Ltd\n"
+        "Invoice No: INV-2024-0042\n"
+        "Subtotal: EUR 1,200.00\n"
+        "VAT (20%): EUR 240.00\n"
+        "Total due: EUR 1,440.00\n"
+        "Payment due by 15 March 2025\n"
+    )
+    result = extract_invoice(sample_invoice)
+    for entity in result["entities"]:
+        print(f"{entity.type}: {entity.text!r} [{entity.start}:{entity.end}] confidence={entity.confidence}")
+    print(f"input_tokens={result['usage'].input_tokens} cost={result['usage'].cost}")
+
 ```
 
 ```go title="Go" lines
 package main
 
-// Imports for every Go tab in this recipe
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"net/http"
 	"os"
-	"regexp"
-	"slices"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -341,6 +350,19 @@ func extractInvoice(text string) ([]Entity, Usage, error) {
 	}
 	return entities, body.Usage, nil
 }
+
+func main() {
+	entities, usage, err := extractInvoice(invoice)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, e := range entities {
+		fmt.Printf("%s: %q [%d:%d] confidence=%v\n", e.Type, e.Text, e.Start, e.End, e.Confidence)
+	}
+	fmt.Printf("input_tokens=%d cost=%v\n", usage.InputTokens, usage.Cost)
+	_ = invoiceFields
+}
+
 ```
 
 ```bash title="cURL" lines
@@ -372,9 +394,39 @@ extract_invoice() {
         usage: {input_tokens: .usage.input_tokens, cost: .usage.cost}
       } end' <<<"$response"
 }
+
+INVOICE=$(cat <<'EOF'
+INVOICE
+Northwind Traders GmbH
+Invoice No: NW-2026-0417
+Date: 2026-09-30
+Due: 2026-10-30
+
+Consulting (10h)         EUR 1,500.00
+Cloud hosting (Sept)     EUR 320.00
+
+Subtotal                 EUR 1,820.00
+VAT 19%                  EUR 345.80
+Total due                EUR 2,165.80
+EOF
+)
+
+# Prints the extracted entities and usage as JSON
+extract_invoice "$INVOICE"
+
 ```
 
 </CodeGroup>
+
+```text title="Output"
+vendor: 'ACME Supplies Ltd' [0:17] confidence=1.0
+invoice_number: 'INV-2024-0042' [30:43] confidence=1.0
+subtotal: 'EUR 1,200.00' [54:66] confidence=0.999
+vat: 'EUR 240.00' [78:88] confidence=0.999
+total: 'EUR 1,440.00' [100:112] confidence=1.0
+due_date: '15 March 2025' [128:141] confidence=0.776
+input_tokens=331 cost=1.324e-05
+```
 
 The invoice below produces the captured output in this step. Use it as your first test input, then replace it with invoices from your own queue.
 
@@ -433,6 +485,52 @@ Total due                EUR 2,165.80'
 extract_invoice "$INVOICE" | jq '.entities'
 ```
 
+```go title="Go" lines
+const invoice = `INVOICE
+Northwind Traders GmbH
+Invoice No: NW-2026-0417
+Date: 2026-09-30
+Due: 2026-10-30
+
+Consulting (10h)         EUR 1,500.00
+Cloud hosting (Sept)     EUR 320.00
+
+Subtotal                 EUR 1,820.00
+VAT 19%                  EUR 345.80
+Total due                EUR 2,165.80`
+
+func main() {
+	entities, _, err := extractInvoice(invoice)
+	if err != nil {
+		log.Fatal(err)
+	}
+	out, _ := json.MarshalIndent(entities, "", "  ")
+	fmt.Println(string(out))
+}
+
+```
+
+```bash title="cURL" lines
+INVOICE=$(cat <<'EOF'
+INVOICE
+Northwind Traders GmbH
+Invoice No: NW-2026-0417
+Date: 2026-09-30
+Due: 2026-10-30
+
+Consulting (10h)         EUR 1,500.00
+Cloud hosting (Sept)     EUR 320.00
+
+Subtotal                 EUR 1,820.00
+VAT 19%                  EUR 345.80
+Total due                EUR 2,165.80
+EOF
+)
+
+extract_invoice "$INVOICE" | jq '.entities'
+
+```
+
 </CodeGroup>
 
 **Captured output.** The `entities` array Extract returned for this invoice, reordered to match `INVOICE_ENTITIES`. `start` and `end` index into `INVOICE`, so `INVOICE.slice(8, 30)` is the vendor. The response also carries fields this recipe doesn't use, such as `ocr_text` and a `context` snippet for each entity.
@@ -457,6 +555,8 @@ Each `extractInvoice` call is one paid request billed to your OpenRouter account
 ## 3. Check the invoice before you post it
 
 `triage` takes the first value Extract found for each field, checks that none are missing, and checks that subtotal plus tax equals the total in one currency. `parseMoney` reads each amount as whole cents (or fils, for three-decimal currencies like the Kuwaiti dinar) and refuses anything it can't read unambiguously, such as a negative amount. Those invoices go to review. Two readings are built in: for a two-decimal currency, a single separator followed by exactly three digits is a thousands separator, so `USD 1.234` is 1,234 dollars, and an amount with more decimal places than its currency has is rounded to the nearest minor unit. If your invoices can carry either form with another meaning, reject them in `parseMoney` instead.
+
+For Go, add `math`, `regexp`, `slices`, `strconv`, and `strings` to the imports in step 2 when you add the triage code.
 
 <CodeGroup>
 
@@ -705,13 +805,52 @@ triage() {
 }
 ```
 
+```bash title="cURL" lines
+triage() {
+  # Reads the entities array on stdin and prints {post, problems?, fields}
+  jq --argjson invoice_fields "$INVOICE_FIELDS" '
+    # Whole minor units (cents, or fils for a three-decimal currency) plus the currency; signs and accounting negatives are refused
+    def parse_money:
+      if test("[-()]") then null else
+        ([match("\\b[A-Z]{3}\\b|[$€£¥]").string] | first) as $currency
+        | (if $currency != null and (["BHD","IQD","JOD","KWD","LYD","OMR","TND"] | index($currency)) != null then 3 else 2 end) as $decimals
+        | gsub("[^0-9.,]"; "") as $digits
+        | if $decimals == 3 and ($digits | contains(",")) then null else
+            ($decimals == 2 and ([$digits | scan("[.,]")] | length) == 1 and ($digits | test("[.,][0-9]{3}$"))) as $lone
+            | (($digits | rindex(",")) > ($digits | rindex("."))) as $comma
+            | (if $lone then $digits | gsub("[.,]"; "")
+               elif $comma then $digits | gsub("\\."; "") | sub(","; ".")
+               else $digits | gsub(","; "") end) as $normalized
+            | (try ($normalized | tonumber) catch null) as $n
+            | if $normalized == "" or $n == null then null
+              else {cents: ($n * pow(10; $decimals) | round), currency: $currency} end
+          end
+      end;
+
+    (reduce .[] as $e ({};
+      if ($invoice_fields | index($e.type)) != null and .[$e.type] == null then .[$e.type] = $e.text else . end)) as $fields
+    | [$invoice_fields[] | select($fields[.] == null) | "missing_\(.)"] as $missing
+    | ($missing + (
+        if $fields.subtotal != null and $fields.vat != null and $fields.total != null then
+          [$fields.subtotal, $fields.vat, $fields.total] | map(parse_money) as [$s, $v, $t]
+          | if $s == null or $v == null or $t == null then ["unparsed_amount"]
+            elif ([$s, $v, $t] | map(.currency // empty) | unique | length) > 1 then ["currency_mismatch"]
+            elif $s.cents + $v.cents != $t.cents then ["totals_mismatch"]
+            else [] end
+        else [] end)) as $problems
+    | if ($problems | length) > 0 then {post: false, problems: $problems, fields: $fields}
+      else {post: true, fields: $fields} end
+  '
+}
+```
+
 </CodeGroup>
 
 An invoice with an empty `problems` list can post. Anything else goes to review, with `problems` naming what failed. Dates come back exactly as printed (`2026-10-30`, `October 15, 2026`, `31.10.2026`, and `20 Oct 2026` in our runs), so convert `due_date` with your date library before it reaches the ledger.
 
 ## Worked example
 
-The six made-up invoices below cover the layouts an accounts-payable queue sees: the table from step 2, a prose paragraph, a German-English mix with `12.400,00 EUR` amounts, a one-line statement with fields separated by pipes, an invoice whose printed total is \$10 too high, and a freight invoice with no tax line. Save steps 1 to 3 and this block as one file and run it with `bun run invoices.ts`. In Go, the step 2 tab opens the file with `package main`, the imports, and the `invoice` input, and the block below is the body of `func main()`. Step 2's own call runs first and prints the Northwind `entities` array; the loop then prints one line per invoice.
+The six made-up invoices below cover the layouts an accounts-payable queue sees: the table from step 2, a prose paragraph, a German-English mix with `12.400,00 EUR` amounts, a one-line statement with fields separated by pipes, an invoice whose printed total is \$10 too high, and a freight invoice with no tax line. Save steps 1 to 3 and this block as one file and run it with `bun run invoices.ts`. For Go, add the step 3 imports and triage functions to the file from step 2, then paste the worked example at the end of its existing `func main()`. Step 2's own call runs first and prints the Northwind `entities` array; the loop then prints one line per invoice.
 
 <CodeGroup>
 

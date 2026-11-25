@@ -517,6 +517,26 @@ decide() {
 }
 ```
 
+```bash title="cURL" lines
+RELEVANT_AT=0.8
+IRRELEVANT_AT=0.2
+SENTIMENT_CONFIDENCE_AT=0.7
+
+# decide COMMENT_JSON JUDGMENT_JSON: prints {action, reason, comment, judgment}
+decide() {
+  jq -n --argjson comment "$1" --argjson judgment "$2" \
+    --argjson relevant_at "$RELEVANT_AT" --argjson irrelevant_at "$IRRELEVANT_AT" \
+    --argjson confidence_at "$SENTIMENT_CONFIDENCE_AT" '
+    def f2: (. * 100 | round) as $n | "\($n / 100 | floor).\($n % 100 | tostring | if length < 2 then "0" + . else . end)";
+    $judgment as $j
+    | (if $j.relevant <= $irrelevant_at then {action: "ignore", reason: "relevant=\($j.relevant | f2)"}
+       elif $j.relevant < $relevant_at then {action: "review", reason: "relevance unclear at \($j.relevant | f2)"}
+       elif $j.sentiment_confidence < $confidence_at then {action: "review", reason: "sentiment \($j.sentiment) at confidence \($j.sentiment_confidence | f2)"}
+       else {action: "record", reason: "\($j.sentiment) at confidence \($j.sentiment_confidence | f2)"} end)
+    + {comment: $comment, judgment: $j}'
+}
+```
+
 </CodeGroup>
 
 To tune the thresholds, start from the review queue. If reviewers agree with Jev's sentiment on nearly every item that landed in review for low confidence, lower `SENTIMENT_CONFIDENCE_AT` to `0.5`. If recorded comments turn out to be off topic, raise `RELEVANT_AT` to `0.9`. The `judgment` stays on every decision, so you can re-run `decide` with new thresholds against the stored judgments without paying for Jev again.

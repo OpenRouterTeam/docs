@@ -339,6 +339,13 @@ console.log(JSON.stringify(points, null, 2));
 
 ```
 
+```python title="Python" lines
+points = locate(image, "point", "hammer")
+print(f"point hammer: {len(points)} points")
+print(json.dumps(points, indent=2))
+
+```
+
 </CodeGroup>
 
 ```text lines
@@ -418,6 +425,37 @@ console.log(`Saved annotated.png (${width}x${height})`);
 	}
 
 	fmt.Printf("Saved annotated.svg (%dx%d)\n", img.Width, img.Height)
+```
+
+```python title="Python" lines
+width, height = image.width, image.height
+
+rects = []
+for b in objects:
+    x = b["x_min"] * width
+    y = b["y_min"] * height
+    w = (b["x_max"] - b["x_min"]) * width
+    h = (b["y_max"] - b["y_min"]) * height
+    rects.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="none" stroke="#6467f2" stroke-width="5"/>')
+
+dots = [
+    f'<circle cx="{p["x"] * width}" cy="{p["y"] * height}" r="14" fill="#6467f2" stroke="white" stroke-width="4"/>'
+    for p in points
+]
+
+# Embed the photo in the SVG so the overlay sits on top of it.
+photo = f"data:{image.mime};base64,{base64.b64encode(image.data).decode()}"
+svg = (
+    f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">'
+    f'<image href="{photo}" width="{width}" height="{height}"/>'
+    f'{"".join(rects)}{"".join(dots)}</svg>'
+)
+
+with open("annotated.svg", "w") as f:
+    f.write(svg)
+
+print(f"Saved annotated.svg ({width}x{height})")
+
 ```
 
 </CodeGroup>

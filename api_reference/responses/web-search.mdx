@@ -1078,13 +1078,15 @@ const response = await fetch('https://openrouter.ai/api/v1/responses', {
 
 const reader = response.body!.getReader();
 const decoder = new TextDecoder();
+let buffer = '';
 
 stream: while (true) {
   const { done, value } = await reader.read();
   if (done) break;
 
-  const chunk = decoder.decode(value);
-  const lines = chunk.split('\n');
+  buffer += decoder.decode(value, { stream: true });
+  const lines = buffer.split('\n');
+  buffer = lines.pop() ?? '';
 
   for (const line of lines) {
     if (line.startsWith('data: ')) {
@@ -1099,8 +1101,8 @@ stream: while (true) {
         }
         if (parsed.type === 'response.completed') {
           const annotations = parsed.response?.output
-            ?.find(o => o.type === 'message')
-            ?.content?.find(c => c.type === 'output_text')
+            ?.find((o: any) => o.type === 'message')
+            ?.content?.find((c: any) => c.type === 'output_text')
             ?.annotations || [];
           console.log('Citations:', annotations.length);
         }
@@ -1304,6 +1306,28 @@ Extract and process citation information:
 <CodeGroup>
 
 ```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/responses', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'openai/o3',
+    input: [
+      {
+        type: 'message',
+        role: 'user',
+        content: [
+          { type: 'input_text', text: 'What is the latest news about AI?' },
+        ],
+      },
+    ],
+    plugins: [{ id: 'web', max_results: 2 }],
+    max_output_tokens: 9000,
+  }),
+});
+
 function extractCitations(response: any) {
   const messageOutput = response.output?.find((o: any) => o.type === 'message');
   const textContent = messageOutput?.content?.find((c: any) => c.type === 'output_text');
@@ -1321,10 +1345,37 @@ function extractCitations(response: any) {
 
 const result = await response.json();
 const citations = extractCitations(result);
-console.log('Found citations:', citations);
+console.log('Found citations:', JSON.stringify(citations, null, 2));
+
 ```
 
 ```python title="Python" expandable lines
+import os
+import json
+import requests
+
+response = requests.post(
+    'https://openrouter.ai/api/v1/responses',
+    headers={
+        'Authorization': f'Bearer {os.environ["OPENROUTER_API_KEY"]}',
+        'Content-Type': 'application/json',
+    },
+    json={
+        'model': 'openai/o3',
+        'input': [
+            {
+                'type': 'message',
+                'role': 'user',
+                'content': [
+                    {'type': 'input_text', 'text': 'What is the latest news about AI?'},
+                ],
+            },
+        ],
+        'plugins': [{'id': 'web', 'max_results': 2}],
+        'max_output_tokens': 9000,
+    },
+)
+
 def extract_citations(response_data):
     output = response_data.get('output', [])
     message_output = next((o for o in output if o.get('type') == 'message'), {})
@@ -1347,69 +1398,108 @@ def extract_citations(response_data):
 
 result = response.json()
 citations = extract_citations(result)
-print(f'Found citations: {citations}')
+print(f'Found citations: {json.dumps(citations, indent=2)}')
+
 ```
 
 ```go title="Go" lines
-type Annotation struct {
-	Type       string
-	URL        string
-	StartIndex int `json:"start_index"`
-	EndIndex   int `json:"end_index"`
-}
-type Response struct {
-	Output []struct {
-		Type    string
-		Content []struct {
-			Type        string
-			Text        string
-			Annotations []Annotation
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/o3",
+		"input": []map[string]any{
+			{
+				"type": "message",
+				"role": "user",
+				"content": []map[string]any{
+					{"type": "input_text", "text": "What is the latest news about AI?"},
+				},
+			},
+		},
+		"plugins":           []map[string]any{{"id": "web", "max_results": 2}},
+		"max_output_tokens": 9000,
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	type Annotation struct {
+		Type       string
+		URL        string
+		StartIndex int `json:"start_index"`
+		EndIndex   int `json:"end_index"`
+	}
+	type Response struct {
+		Output []struct {
+			Type    string
+			Content []struct {
+				Type        string
+				Text        string
+				Annotations []Annotation
+			}
 		}
 	}
-}
-type Citation struct {
-	URL        string `json:"url"`
-	Text       string `json:"text"`
-	StartIndex int    `json:"startIndex"`
-	EndIndex   int    `json:"endIndex"`
-}
+	type Citation struct {
+		URL        string `json:"url"`
+		Text       string `json:"text"`
+		StartIndex int    `json:"startIndex"`
+		EndIndex   int    `json:"endIndex"`
+	}
 
-extractCitations := func(response Response) []Citation {
-	citations := []Citation{}
-	for _, o := range response.Output {
-		if o.Type != "message" {
-			continue
-		}
-		for _, c := range o.Content {
-			if c.Type != "output_text" {
+	extractCitations := func(response Response) []Citation {
+		citations := []Citation{}
+		for _, o := range response.Output {
+			if o.Type != "message" {
 				continue
 			}
-			text := []rune(c.Text)
-			for _, a := range c.Annotations {
-				if a.Type != "url_citation" || a.StartIndex < 0 || a.EndIndex > len(text) || a.StartIndex > a.EndIndex {
+			for _, c := range o.Content {
+				if c.Type != "output_text" {
 					continue
 				}
-				citations = append(citations, Citation{
-					URL:        a.URL,
-					Text:       string(text[a.StartIndex:a.EndIndex]),
-					StartIndex: a.StartIndex,
-					EndIndex:   a.EndIndex,
-				})
+				text := []rune(c.Text)
+				for _, a := range c.Annotations {
+					if a.Type != "url_citation" || a.StartIndex < 0 || a.EndIndex > len(text) || a.StartIndex > a.EndIndex {
+						continue
+					}
+					citations = append(citations, Citation{
+						URL:        a.URL,
+						Text:       string(text[a.StartIndex:a.EndIndex]),
+						StartIndex: a.StartIndex,
+						EndIndex:   a.EndIndex,
+					})
+				}
+				return citations
 			}
 			return citations
 		}
 		return citations
 	}
-	return citations
+
+	var result Response
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		panic(err)
+	}
+	citations := extractCitations(result)
+	out, _ := json.MarshalIndent(citations, "", "  ")
+	fmt.Println("Found citations:", string(out))
 }
 
-var result Response
-if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-	panic(err)
-}
-citations := extractCitations(result)
-out, _ := json.MarshalIndent(citations, "", "  ")
-fmt.Println("Found citations:", string(out))
 ```
 
 ```bash title="cURL" lines
@@ -1434,7 +1524,82 @@ echo "$RESPONSE" | jq -r '
     }]'
 ```
 
+```bash title="cURL" lines
+printf 'Found citations: '
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/o3",
+    "input": [
+      {
+        "type": "message",
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "What is the latest news about AI?"
+          }
+        ]
+      }
+    ],
+    "plugins": [{"id": "web", "max_results": 2}],
+    "max_output_tokens": 9000
+  }' | jq '
+  ([.output[]? | select(.type == "message") | .content[]? | select(.type == "output_text")][0]) as $t
+  | [($t.annotations // [])[] | select(.type == "url_citation") | {
+      url,
+      text: $t.text[.start_index:.end_index],
+      startIndex: .start_index,
+      endIndex: .end_index
+    }]'
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Found citations: [
+  {
+    "url": "https://www.techradar.com/tech/openai-just-launched-gpt-6-2-and-its-powerful-enough-to-recreate-the-whole-of-paris-as-a-virtual-world-you-can-explore-in-your-browser",
+    "text": "([techradar.com](https://www.techradar.com/tech/openai-just-launched-gpt-6-2-and-its-powerful-enough-to-recreate-the-whole-of-paris-as-a-virtual-world-you-can-explore-in-your-browser))",
+    "startIndex": 373,
+    "endIndex": 557
+  },
+  {
+    "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-neon/?utm_campaign=gdm&utm_content=&utm_medium=referral&utm_source=deepmind.google",
+    "text": "([blog.google](https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-neon/?utm_campaign=gdm&utm_content=&utm_medium=referral&utm_source=deepmind.google))",
+    "startIndex": 816,
+    "endIndex": 1008
+  },
+  {
+    "url": "https://apnews.com/article/artificial-intelligence-congress-schumer-senate-047d0ab21237984701decd9ed5ced403",
+    "text": "([apnews.com](https://apnews.com/article/artificial-intelligence-congress-schumer-senate-047d0ab21237984701decd9ed5ced403))",
+    "startIndex": 1256,
+    "endIndex": 1379
+  },
+  {
+    "url": "https://www.axios.com/2026/11/19/jpmorgan-gm-pfizer-ai-regulation-frontier",
+    "text": "([axios.com](https://www.axios.com/2026/11/19/jpmorgan-gm-pfizer-ai-regulation-frontier))",
+    "startIndex": 1662,
+    "endIndex": 1751
+  },
+  {
+    "url": "https://www.govinfo.gov/content/pkg/FR-2026-11-19/pdf/2026-23529.pdf",
+    "text": "([govinfo.gov](https://www.govinfo.gov/content/pkg/FR-2026-11-19/pdf/2026-23529.pdf))",
+    "startIndex": 2016,
+    "endIndex": 2101
+  },
+  {
+    "url": "https://apnews.com/article/stocks-markets-rates-technology-ai-anthropic-49ba1beba78fa4ed2bd5898029f79c91",
+    "text": "([apnews.com](https://apnews.com/article/stocks-markets-rates-technology-ai-anthropic-49ba1beba78fa4ed2bd5898029f79c91))",
+    "startIndex": 2336,
+    "endIndex": 2456
+  },
+  {
+    "url": "https://www.axios.com/2026/11/22/behind-the-curtain-ai-2027-the-reckoning",
+    "text": "([axios.com](https://www.axios.com/2026/11/22/behind-the-curtain-ai-2027-the-reckoning))",
+```
 
 ## Best Practices
 

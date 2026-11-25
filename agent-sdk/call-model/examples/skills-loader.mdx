@@ -667,6 +667,46 @@ func main() {
 
 ```
 
+```bash title="cURL" lines
+#!/bin/bash
+# List available skills
+skills_dir="$HOME/.claude/skills"
+available=$(for d in "$skills_dir"/*/; do if [ -f "${d}SKILL.md" ]; then basename "$d"; fi; done | paste -sd, - | sed 's/,/, /g')
+
+tools=$(jq -n --arg avail "${available:-none configured}" '[{type: "function", function: {
+  name: "Skill",
+  description: ("Load a specialized skill to enhance the assistant\u0027s capabilities.\nAvailable skills: " + $avail + "\nEach skill provides domain-specific instructions and capabilities."),
+  parameters: {type: "object", properties: {type: {type: "string", description: "The skill type to load (e.g., \u0027pdf-processing\u0027)"}}, required: ["type"]}
+}}]')
+
+messages='[{"role":"user","content":"I need to process a PDF and extract tables from it"}]'
+
+for i in 1 2 3 4 5; do
+  resp=$(curl -sS --fail-with-body https://openrouter.ai/api/v1/chat/completions \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n --argjson m "$messages" --argjson t "$tools" '{model: "anthropic/claude-sonnet-4.5", messages: $m, tools: $t}')")
+  msg=$(jq '.choices[0].message' <<<"$resp")
+  messages=$(jq --argjson msg "$msg" '. + [$msg]' <<<"$messages")
+  if [ "$(jq '.tool_calls // [] | length' <<<"$msg")" -eq 0 ]; then
+    jq -r '.content' <<<"$msg"
+    exit 0
+  fi
+  while read -r tc; do
+    id=$(jq -r '.id' <<<"$tc")
+    type=$(jq -r '.function.arguments | fromjson | .type // ""' <<<"$tc")
+    # The skill name comes from the model, so only load skills that exist under skills_dir
+    if [[ "$type" =~ ^[A-Za-z0-9_-]+$ && -f "$skills_dir/$type/SKILL.md" ]]; then
+      result=$(jq -n --arg s "$type" --arg d "$skills_dir/$type" --rawfile ins "$skills_dir/$type/SKILL.md" '{skill: $s, baseDirectory: $d, instructions: $ins}')
+    else
+      result=$(jq -n --arg e "Skill \"$type\" not found. Available skills: ${available:-none}" '{error: $e}')
+    fi
+    messages=$(jq --arg id "$id" --arg c "$result" '. + [{role: "tool", tool_call_id: $id, content: $c}]' <<<"$messages")
+  done < <(jq -c '.tool_calls[]' <<<"$msg")
+done
+
+```
+
 </CodeGroup>
 
 ```text title="Output"
@@ -723,6 +763,8 @@ When processing PDFs, you have access to:
 ## Extended: Multi-Skill Loader
 
 Load multiple skills in a single call:
+
+<CodeGroup>
 
 ```typescript expandable lines
 const multiSkillLoader = tool({
@@ -804,6 +846,100 @@ const result = openrouter.callModel({
 });
 // Model might call: load_skills({ skills: ['pdf-processing', 'data-analysis'] })
 ```
+
+```go title="Go" lines
+multiSkillTool := map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "load_skill_set",
+		"description": "Load multiple skills at once for complex tasks",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"skill_names": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Array of skill names to load"},
+			},
+			"required": []string{"skill_names"},
+		},
+	},
+}
+
+validName := regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+injected := map[string]bool{}
+
+// Returns the tool result plus a user message with the instructions of each newly loaded skill
+loadSkills := func(names []string) (string, []message) {
+	type failure struct {
+		Name   string `json:"name"`
+		Reason string `json:"reason"`
+	}
+	loaded, failed, extra := []string{}, []failure{}, []message{}
+	for _, name := range names {
+		skillDir := filepath.Join(skillsDir, name)
+		content, err := os.ReadFile(filepath.Join(skillDir, "SKILL.md"))
+		if !validName.MatchString(name) || err != nil {
+			failed = append(failed, failure{name, "Skill not found"})
+			continue
+		}
+		loaded = append(loaded, name)
+		if !injected[name] { // Skip if already loaded
+			injected[name] = true
+			extra = append(extra, message{Role: "user", Content: fmt.Sprintf("[Skill: %s]\nBase directory: %s\n\n%s", name, skillDir, content)})
+		}
+	}
+	out, _ := json.Marshal(map[string]any{"loaded": loaded, "failed": failed})
+	return string(out), extra
+}
+
+// Usage
+messages := []message{{Role: "user", Content: "I need to analyze a PDF report and create visualizations"}}
+
+for i := 0; i < 5; i++ {
+	body, _ := json.Marshal(map[string]any{"model": "anthropic/claude-sonnet-4.5", "messages": messages, "tools": []any{multiSkillTool}})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		panic(fmt.Sprintf("HTTP %d: %s", resp.StatusCode, b))
+	}
+	var out struct {
+		Choices []struct {
+			Message message `json:"message"`
+		} `json:"choices"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&out)
+	resp.Body.Close()
+	if err != nil || len(out.Choices) == 0 {
+		panic(fmt.Sprintf("bad response: %v", err))
+	}
+
+	msg := out.Choices[0].Message
+	messages = append(messages, msg)
+	if len(msg.ToolCalls) == 0 {
+		fmt.Println(msg.Content)
+		return
+	}
+
+	// Model might call: load_skill_set({"skill_names": ["pdf-processing", "data-analysis"]})
+	var skillMessages []message
+	for _, tc := range msg.ToolCalls {
+		var args struct {
+			SkillNames []string `json:"skill_names"`
+		}
+		json.Unmarshal([]byte(tc.Function.Arguments), &args)
+		result, extra := loadSkills(args.SkillNames)
+		messages = append(messages, message{Role: "tool", ToolCallID: tc.ID, Content: result})
+		skillMessages = append(skillMessages, extra...)
+	}
+	messages = append(messages, skillMessages...)
+}
+```
+
+</CodeGroup>
 
 ## Extended: Skill with Options
 

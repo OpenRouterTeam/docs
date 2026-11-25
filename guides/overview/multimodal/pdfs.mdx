@@ -560,6 +560,31 @@ func main() {
 
 ```
 
+```bash title="cURL" lines
+PDF_PATH="path/to/your/document.pdf"
+set -o pipefail
+
+base64 < "$PDF_PATH" | tr -d '\n' | jq -eRs 'select(length > 0) | {
+  model: "google/gemma-3-27b-it",
+  input: [
+    {
+      role: "user",
+      content: [
+        {type: "input_text", text: "What are the main points in this document?"},
+        {type: "input_file", filename: "document.pdf", file_data: ("data:application/pdf;base64," + .)}
+      ]
+    }
+  ],
+  plugins: [
+    {id: "file-parser", pdf: {engine: "cloudflare-ai"}}
+  ]
+}' | curl -fsS https://openrouter.ai/api/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d @-
+
+```
+
 </CodeGroup>
 
 ```text title="Output"
@@ -662,18 +687,18 @@ payload = {
 }
 
 response = requests.post(url, headers=headers, json=payload)
+response.raise_for_status()
 response_data = response.json()
-print(json.dumps(response_data, indent=2))
 
 # Store the assistant reply and its file annotations from the response
-assistant_message = None
-file_annotations = None
-if response_data.get("choices") and len(response_data["choices"]) > 0:
-    assistant_message = response_data["choices"][0]["message"]
-    file_annotations = assistant_message.get("annotations")
+assistant_message = response_data["choices"][0]["message"]
+file_annotations = assistant_message.get("annotations")
 
-# Follow-up request: include the same file plus the annotations from the
-# previous assistant message so OpenRouter can skip re-parsing the PDF
+print("Initial answer:\n", assistant_message.get("content"))
+print("File annotations:\n", json.dumps(file_annotations, indent=2))
+
+# Follow-up request: send the annotations back on the assistant message
+# so OpenRouter reuses the parsed content instead of parsing the PDF again
 if file_annotations:
     follow_up_messages = [
         {
@@ -709,7 +734,8 @@ if file_annotations:
     }
 
     follow_up_response = requests.post(url, headers=headers, json=follow_up_payload)
-    print(json.dumps(follow_up_response.json(), indent=2))
+    follow_up_response.raise_for_status()
+    print("Follow-up answer:\n", follow_up_response.json()["choices"][0]["message"]["content"])
 else:
     print("No file annotations returned; nothing to reuse.")
 
@@ -735,7 +761,7 @@ async function processDocument() {
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${API_KEY_REF}`,
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -763,64 +789,74 @@ async function processDocument() {
   );
 
   const initialData = await initialResponse.json();
+  if (!initialResponse.ok) {
+    throw new Error(`Initial request failed: ${JSON.stringify(initialData)}`);
+  }
 
   // Store the assistant reply and its file annotations from the response
-  let assistantMessage = null;
-  let fileAnnotations = null;
-  if (initialData.choices && initialData.choices.length > 0) {
-    assistantMessage = initialData.choices[0].message;
-    fileAnnotations = assistantMessage.annotations ?? null;
+  const assistantMessage = initialData.choices[0].message;
+  const fileAnnotations = assistantMessage.annotations ?? null;
+
+  console.log('Initial answer:\n', assistantMessage.content);
+  console.log('File annotations:\n', JSON.stringify(fileAnnotations, null, 2));
+
+  if (!fileAnnotations) {
+    console.log('No file annotations returned; nothing to reuse.');
+    return;
   }
 
-  // Follow-up request using the annotations (without sending the PDF again)
-  if (fileAnnotations) {
-    const followUpResponse = await fetch(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${API_KEY_REF}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemma-3-27b-it',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: 'What are the main points in this document?',
-                },
-                {
-                  type: 'file',
-                  file: {
-                    filename: 'document.pdf',
-                    file_data: base64PDF,
-                  },
-                },
-              ],
-            },
-            {
-              role: 'assistant',
-              content: assistantMessage.content ?? '',
-              annotations: fileAnnotations,
-            },
-            {
-              role: 'user',
-              content: 'Can you elaborate on the second point?',
-            },
-          ],
-        }),
+  // Follow-up request: send the annotations back on the assistant message
+  // so OpenRouter reuses the parsed content instead of parsing the PDF again
+  const followUpResponse = await fetch(
+    'https://openrouter.ai/api/v1/chat/completions',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({
+        model: 'google/gemma-3-27b-it',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'What are the main points in this document?',
+              },
+              {
+                type: 'file',
+                file: {
+                  filename: 'document.pdf',
+                  file_data: base64PDF,
+                },
+              },
+            ],
+          },
+          {
+            role: 'assistant',
+            content: assistantMessage.content ?? '',
+            annotations: fileAnnotations,
+          },
+          {
+            role: 'user',
+            content: 'Can you elaborate on the second point?',
+          },
+        ],
+      }),
+    },
+  );
 
-    const followUpData = await followUpResponse.json();
-    console.log(followUpData);
+  const followUpData = await followUpResponse.json();
+  if (!followUpResponse.ok) {
+    throw new Error(`Follow-up request failed: ${JSON.stringify(followUpData)}`);
   }
+  console.log('Follow-up answer:\n', followUpData.choices[0].message.content);
 }
 
-processDocument();
+await processDocument();
+
 ```
 
 ```go title="Go" lines
@@ -969,48 +1005,48 @@ fi
 
 </CodeGroup>
 
-```text title="Output"
-{
-  "id": "gen-1794950766-y31tUKFb95aCQUFngXk0",
-  "object": "chat.completion",
-  "created": 1794950766,
-  "model": "google/gemma-3-27b-it",
-  "provider": "NextBit",
-  "system_fingerprint": "vllm-0.32.0-8349ae92",
-  "service_tier": null,
-  "choices": [
-    {
-      "index": 0,
-      "logprobs": null,
-      "finish_reason": "stop",
-      "native_finish_reason": "stop",
-      "message": {
-        "role": "assistant",
-        "content": "\nOkay, I've analyzed the provided information. It's not a detailed document summary, but here are the main points:\n\n* **It's a sample PDF document.** The document is specifically described as a sample used for OpenRouter documentation.\n* **It's a one-page document.** The description indicates the PDF is only one page long.\n* **It's part of a Python-based OpenRouter sample.** It's located within a directory structure related to Python samples for OpenRouter.\n* **The filename indicates a specific run/version:** The filename (`s_e7f454f8f40bcd83_2701`) suggests it's tied to a particular session or version of sample generation.\n\n**In essence, this is a test or demonstration file meant to accompany code examples for using the OpenRouter API, rather than a document containing substantive information itself.**  Without being able to *see* the contents of the PDF, that's all I can determine.\n",
-        "refusal": null,
-        "reasoning": null,
-        "annotations": [
-          {
-            "type": "file",
-            "file": {
-              "hash": "16e2b8f9fda18d247dea9cafc4855187752b813d75e82b360d2c0b9d166cd6f6",
-              "name": "/home/ubuntu/.cache/openrouter-docs-samples/python/samples/s_e7f454f8f40bcd83_2701/fixtures/sample.pdf",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "<file name=\"/home/ubuntu/.cache/openrouter-docs-samples/python/samples/s_e7f454f8f40bcd83_2701/fixtures/sample.pdf\">"
-                },
-                {
-                  "type": "text",
-                  "text": "OpenRouter docs sample fixture: a one-page PDF."
-                },
-                {
-                  "type": "text",
-                  "text": "</file>"
-                }
-              ]
-            }
-```
+````text title="Output"
+Initial answer:
+ Okay, I've analyzed the PDF document you provided ("OpenRouter docs sample fixture: a one-page PDF"). Here's a breakdown of the main points.  It's a very simple document designed as a test/sample fixture for OpenRouter documentation, so it is relatively straightforward.
+
+**Main Points:**
+
+*   **Purpose:** The document explicitly states it's a "sample fixture" meant for use with OpenRouter documentation relating to TypeScript. This means it is *not* a document with substantial content of its own, but a placeholder for testing how OpenRouter handles PDF processing.
+*   **Content:** The main visual content is the phrase "OpenRouter docs sample fixture: a one-page PDF" presented in a large, bold font.
+*   **Python Code Example:** The document includes a small snippet of Python code:
+
+    ```python
+    print("Hello, OpenRouter!")
+    ```
+
+    This appears to be included to test how the system handles code within the PDF.
+*   **Text Blocks:** There are several blocks of repeated boilerplate text describing it's function as a documentation sample.
+*   **Color Scheme:** The PDF uses a light blue background with dark text and the code example uses a different darker blue for highlighting.
+*   **Overall:**  The document demonstrates a minimal PDF structure that includes text, code, and color, used for testing OpenRouter's functionality with PDF input.
+
+**In essence, it's a "Hello World" type of document designed to verify that the OpenRouter system can correctly ingest and potentially extract content from a basic PDF file.**
+
+If you'd like me to look for specifics *within* the PDF (e.g., try to find exact text matches or analyze the layout in more detail), let me know. But this summarizes the main intention and content of the document as a whole.
+File annotations:
+ [
+  {
+    "type": "file",
+    "file": {
+      "hash": "16e2b8f9fda18d247dea9cafc4855187752b813d75e82b360d2c0b9d166cd6f6",
+      "name": "/home/ubuntu/.cache/openrouter-docs-samples/typescript/samples/s_ac08613f75b43f3d_2473/fixtures/sample.pdf",
+      "content": [
+        {
+          "type": "text",
+          "text": "<file name=\"/home/ubuntu/.cache/openrouter-docs-samples/typescript/samples/s_ac08613f75b43f3d_2473/fixtures/sample.pdf\">"
+        },
+        {
+          "type": "text",
+          "text": "OpenRouter docs sample fixture: a one-page PDF."
+        },
+        {
+          "type": "text",
+          "text": "</file>"
+````
 
 <Info>
   When you include the file annotations from a previous response in your subsequent requests, OpenRouter will use this pre-parsed information instead of re-parsing the PDF, which saves processing time and costs. This is especially beneficial for large documents or when using the `mistral-ocr` engine which incurs additional costs.

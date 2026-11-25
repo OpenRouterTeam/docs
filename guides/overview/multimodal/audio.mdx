@@ -89,6 +89,7 @@ console.log(result);
 import requests
 import json
 import base64
+import os
 
 def encode_audio_to_base64(audio_path):
     with open(audio_path, "rb") as audio_file:
@@ -96,7 +97,7 @@ def encode_audio_to_base64(audio_path):
 
 url = "https://openrouter.ai/api/v1/responses"
 headers = {
-    "Authorization": f"Bearer {API_KEY_REF}",
+    "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
     "Content-Type": "application/json"
 }
 
@@ -129,7 +130,8 @@ payload = {
 }
 
 response = requests.post(url, headers=headers, json=payload)
-print(response.json())
+print(json.dumps(response.json(), indent=2))
+
 ```
 
 ```typescript title="TypeScript (fetch)" expandable lines
@@ -580,6 +582,30 @@ echo "Transcript: $TRANSCRIPT"
 # The joined data chunks are the full base64-encoded audio (raw PCM16)
 AUDIO_B64=$(printf '%s\n' "$CHUNKS" | jq -rj '.choices[0]?.delta?.audio?.data // empty')
 echo "Received ${#AUDIO_B64} base64 characters of audio"
+
+```
+
+```bash title="cURL" lines
+STREAM=$(curl -sSf -N https://openrouter.ai/api/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+  "model": "openai/gpt-audio",
+  "messages": [
+    {"role": "user", "content": "Say hello in a friendly tone."}
+  ],
+  "modalities": ["text", "audio"],
+  "audio": {"voice": "alloy", "format": "pcm16"},
+  "stream": true
+}' | sed -n 's/^data: //p' | sed '/^\[DONE\]/d')
+
+# Audio output requires streaming: collect transcript and audio deltas from the SSE chunks
+TRANSCRIPT=$(printf '%s\n' "$STREAM" | jq -j '.choices[0].delta.audio.transcript // empty')
+echo "Transcript: $TRANSCRIPT"
+
+# The joined audio data is the full base64-encoded audio (raw PCM16)
+AUDIO_LEN=$(printf '%s\n' "$STREAM" | jq -j '.choices[0].delta.audio.data // empty' | wc -c | tr -d ' ')
+echo "Received $AUDIO_LEN base64 characters of audio"
 
 ```
 

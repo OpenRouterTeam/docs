@@ -25,6 +25,26 @@ Doom-loop detection watches for this inside the `callModel` tool loop. It's **of
 <CodeGroup>
 
 ```typescript
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel, tool } from '@openrouter/agent';
+import { z } from 'zod';
+
+const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const searchTool = tool({
+  name: 'search',
+  description: 'Search the web',
+  inputSchema: z.object({ query: z.string() }),
+  execute: async ({ query }) => ({ results: [`Result for ${query}`] }),
+});
+
+const bashTool = tool({
+  name: 'bash',
+  description: 'Run a shell command',
+  inputSchema: z.object({ command: z.string() }),
+  execute: async ({ command }) => ({ stdout: `ran: ${command}` }),
+});
+
 const result = callModel(client, {
   model: 'openai/gpt-4o',
   input: 'Research this topic',
@@ -37,9 +57,12 @@ const result = callModel(client, {
   // },
 });
 
+console.log('Final text:', await result.getText());
+
 // Was the run stopped by detection?
 const verdict = await result.getDoomLoopVerdict();
-if (verdict) console.warn(verdict.message);
+console.log('Doom-loop verdict:', verdict ? verdict.message : 'None');
+
 ```
 
 ```python title="Python" lines
@@ -125,70 +148,176 @@ asyncio.run(main())
 ```
 
 ```go title="Go" lines
-// Doom-loop detection around the tool loop (observe@2, block@3, stop@6)
-messages := []Message{{Role: "user", Content: "Research this topic"}}
-// canonical normalizes arguments, so reordered fields or extra whitespace still match.
-canonical := func(args string) string {
-	var v any
-	dec := json.NewDecoder(strings.NewReader(args))
-	dec.UseNumber() // keep large integer IDs exact; float64 would merge distinct ones
-	if err := dec.Decode(&v); err != nil {
-		return args // invalid JSON still counts: compare the raw text
-	}
-	b, err := json.Marshal(v) // object keys come out sorted
-	if err != nil {
-		return args
-	}
-	return string(b)
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+type FunctionCall struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
 }
-streak := map[string]int{} // "tool\x00input" -> turns in a row with that call
-verdict := ""
-for i := 0; verdict == "" && i < 20; i++ {
-	msg := chat("openai/gpt-4o", messages, []any{searchTool, bashTool})
-	messages = append(messages, msg)
-	if len(msg.ToolCalls) == 0 {
-		break
+
+type ToolCall struct {
+	ID       string       `json:"id"`
+	Type     string       `json:"type"`
+	Function FunctionCall `json:"function"`
+}
+
+type Message struct {
+	Role       string     `json:"role"`
+	Content    string     `json:"content"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+var searchTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "search",
+		"description": "Search the web",
+		"parameters": map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"query": map[string]any{"type": "string"}},
+			"required":   []string{"query"},
+		},
+	},
+}
+
+var bashTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "bash",
+		"description": "Run a shell command",
+		"parameters": map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"command": map[string]any{"type": "string"}},
+			"required":   []string{"command"},
+		},
+	},
+}
+
+// runTool is a stub that pretends to execute the requested tool.
+func runTool(name, args string) string {
+	switch name {
+	case "search":
+		return `{"results":["Result for ` + args + `"]}`
+	case "bash":
+		return `{"stdout":"ran: ` + args + `"}`
 	}
-	turn := map[string]bool{}   // calls already counted in this turn
-	called := map[string]bool{} // tools the model used in this turn
-	for _, tc := range msg.ToolCalls {
-		name := tc.Function.Name
-		key := name + "\x00" + canonical(tc.Function.Arguments)
-		called[name] = true
-		if !turn[key] { // identical calls in one turn count once
-			turn[key] = true
-			streak[key]++
+	return "unknown tool"
+}
+
+// chat sends one chat completion request and returns the assistant message.
+func chat(model string, messages []Message, tools []any) Message {
+	body, _ := json.Marshal(map[string]any{"model": model, "messages": messages, "tools": tools})
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("HTTP %d: %s", resp.StatusCode, raw)
+	}
+	var out struct {
+		Choices []struct {
+			Message Message `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil || len(out.Choices) == 0 {
+		log.Fatalf("bad response: %s", raw)
+	}
+	return out.Choices[0].Message
+}
+
+func main() {
+	// Doom-loop detection around the tool loop (observe@2, block@3, stop@6)
+	messages := []Message{{Role: "user", Content: "Research this topic"}}
+	// canonical normalizes arguments, so reordered fields or extra whitespace still match.
+	canonical := func(args string) string {
+		var v any
+		dec := json.NewDecoder(strings.NewReader(args))
+		dec.UseNumber() // keep large integer IDs exact; float64 would merge distinct ones
+		if err := dec.Decode(&v); err != nil {
+			return args // invalid JSON still counts: compare the raw text
 		}
-		// Decide before dispatch, so a blocked or stopped call never runs.
-		var result string
-		switch n := streak[key]; {
-		case verdict != "":
-			result = "Not run: the run was stopped."
-		case n >= 6:
-			verdict = fmt.Sprintf("Doom loop: %s repeated %d times, run stopped", name, n)
-			result = "Stopped: doom loop detected."
-		case n >= 3:
-			result = "Blocked: identical call repeated. Try a different approach."
-		default:
-			if n >= 2 {
-				log.Printf("observe: %s repeated %d times", name, n)
+		b, err := json.Marshal(v) // object keys come out sorted
+		if err != nil {
+			return args
+		}
+		return string(b)
+	}
+	streak := map[string]int{} // "tool\x00input" -> turns in a row with that call
+	verdict := ""
+	finalText := ""
+	for i := 0; verdict == "" && i < 20; i++ {
+		msg := chat("openai/gpt-4o", messages, []any{searchTool, bashTool})
+		messages = append(messages, msg)
+		if len(msg.ToolCalls) == 0 {
+			finalText = msg.Content
+			break
+		}
+		turn := map[string]bool{}   // calls already counted in this turn
+		called := map[string]bool{} // tools the model used in this turn
+		for _, tc := range msg.ToolCalls {
+			name := tc.Function.Name
+			key := name + "\x00" + canonical(tc.Function.Arguments)
+			called[name] = true
+			if !turn[key] { // identical calls in one turn count once
+				turn[key] = true
+				streak[key]++
 			}
-			result = runTool(name, tc.Function.Arguments)
+			// Decide before dispatch, so a blocked or stopped call never runs.
+			var result string
+			switch n := streak[key]; {
+			case verdict != "":
+				result = "Not run: the run was stopped."
+			case n >= 6:
+				verdict = fmt.Sprintf("Doom loop: %s repeated %d times, run stopped", name, n)
+				result = "Stopped: doom loop detected."
+			case n >= 3:
+				result = "Blocked: identical call repeated. Try a different approach."
+			default:
+				if n >= 2 {
+					log.Printf("observe: %s repeated %d times", name, n)
+				}
+				result = runTool(name, tc.Function.Arguments)
+			}
+			messages = append(messages, Message{Role: "tool", ToolCallID: tc.ID, Content: result})
 		}
-		messages = append(messages, Message{Role: "tool", ToolCallID: tc.ID, Content: result})
+		// Changing a tool's input resets its streak. Other tools in between do not.
+		for key := range streak {
+			if name, _, _ := strings.Cut(key, "\x00"); called[name] && !turn[key] {
+				delete(streak, key)
+			}
+		}
 	}
-	// Changing a tool's input resets its streak. Other tools in between do not.
-	for key := range streak {
-		if name, _, _ := strings.Cut(key, "\x00"); called[name] && !turn[key] {
-			delete(streak, key)
-		}
+
+	fmt.Println("Final text:", finalText)
+
+	// Was the run stopped by detection?
+	if verdict != "" {
+		fmt.Println("Doom-loop verdict:", verdict)
+	} else {
+		fmt.Println("Doom-loop verdict: None")
 	}
 }
 
-// Was the run stopped by detection?
-if verdict != "" {
-	log.Println(verdict)
-}
 ```
 
 </CodeGroup>

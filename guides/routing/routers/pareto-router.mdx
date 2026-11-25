@@ -81,7 +81,78 @@ curl https://openrouter.ai/api/v1/responses \
   }'
 ```
 
+```python title="Python" lines
+import json
+import os
+import requests
+
+response = requests.post(
+    "https://openrouter.ai/api/v1/responses",
+    headers={
+        "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "model": "openrouter/pareto-code",
+        "plugins": [
+            {
+                "id": "pareto-router",
+                "min_coding_score": 0.4,
+            }
+        ],
+        "input": "Write a Python function that merges two sorted lists.",
+    },
+)
+response.raise_for_status()
+
+print(json.dumps(response.json(), indent=2))
+
+```
+
 </CodeGroup>
+
+````text title="Output"
+{
+  "id": "gen-1795433129-mweqi3IB1wQ5VUJaJcjE",
+  "object": "response",
+  "created_at": 1795433129,
+  "model": "openai/gpt-6.1-terra",
+  "status": "completed",
+  "completed_at": 1795433133,
+  "output": [
+    {
+      "id": "rs_0157702b7892b3a3016b0422aac8d087d1adaa48606ec35bd8",
+      "type": "reasoning",
+      "status": "completed",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "**Considering function implementation**\n\nI need to design a function that clears and sorts a collection in ascending order while preserving duplicates. Type annotations are optional, yet I wonder if I'll face issues with generic comparability. To avoid complications, I might consider using lists. The implementation should be non-mutative with a complexity of O(n+m). I should also include some brief examples, especially if they illustrate the expected complexity."
+        }
+      ],
+      "encrypted_content": "gAAAAABrBCKt7g9pCDyj5iqD1qqIhLIC7I5uLMSMiNL3UCD-B5ET55g2_5W8zxug12jkPMV1DLNoombKue47GwMBEENsS0IFxqYr6Xwg7V01W8pPAcuy2M1a4IX4qVeuLQ4-KUt6Kj8LYzRzHpnps_nbX0RaNHCji0xsjCl79ZKZJ8SEgdp158YklNMSt-c9JyKwSCgJ3hXOfg4oepc6RsbOLmle7IN2_lQ1A96FtRIyxUFi9GMJRZybGOZKplGknIeFvceAdcil-FD8tb6DqC2KD3niB1UJKC10j4RkgavbyPACvaWjC0MvqHAOLmnju5LnV8XvEWjIMv_rSX3rt6s_Y5vurfBfcL3Nc7JI-60g8nmYGo0iTfAnsDy-GKyMHIOKgMJ1_uGPEnhB9JMcU0mJfNe5Gnj2Z3Zz1f4Mc0N-r8fFu-vdTZtFSg-1xLNXdB9L72hhTYfI6bLVnESajrC43VZ3ct8KW50bdXsi9CpzKV8eMOgUE33eC_LdGYn2h9cWTrMjvXK4KkZbHsFneGusukl4pmr9kTyc4BoG-edoQ79EyJ3bLvR3ZIXEDq4Mkgy87fcUGuS8yh8V3HAG8uCvzkrOqv1CkRxxq-cCmnPfz1WAdjmg6Uk-szdYjhPXchh4qNROBaidCfPBEbaczfLBG7Fa7ySjXVxC-leTInuvAAeOx-EdMeFViT0JlT7FImPJqZgqeZiTOHqvuAGYLZd62aCHjtXbosgSmsXaC6KqlDtGdFQ6j6iJ2i6SqaSjRuS_S1Nmgg4P_7mKLpp8Z__Du-Lptgo75eGAQgky12XaOASzj9JXD6RIY96jT66X4_KOwhO7dAfoFnLurUXZpkflRaLmg_Bw2WesfpmytoClo2Q6_dQPAdZpr2TtZHRMGPKZXI1iBzosnTlfxp1zmfSRumWvC7Pt7Pc103F8sgmh777aP82QQFSClu20v0jiVghmYw8y5JiTqpbSmE5IISgKH9PRpxmIRQ6jVyJCvbMxmV76Ud0H3ZpMO2B79SzYktExcQq_TR3OjbrSTeKY9VzkUMCcYLeRe4HPAY8xW2T4WqweQWo1bkDFg6m7TjHKZysG_sGvMKtr8TtSJM9rVWFgk-J4F0KfpU3kZHwX6TIfIK_Tr3lvnETtsah64xAtbWIBgSDELKHNBS7go6zQzUSjWbCNZStH4qj85Yq2si042oEWxY1lMOQeekcTFceUuVikGIGJwTWQ0eByU4GalN81ZMONd3cJpvwgeVVauXMzH0ePIuVVRuml1OKPAoHyeSTBIzc9VWS6CFpQS5OCUxn8MSD9KibkvShi4RHOa2mpimDUiXcF7-co3cjgOCKxVo5hsLgr4fDjQ4rkRkcr6e-GocmuDBYbYAbeiju523y3AmUkV63yOFSNvkLo_OeGqP5ffu5XQwiXCioasRCXjpNwiLSL9cApb3hUAroI18nxG7ffWkWsnX_MAIu6Wo2fJJ93uE9BIGiyt5Bp6Z1aAZ7mgm-C9FI3RsFYDmuw6P43q_3o_Gy3Lkv2xfyOx1pwSJb3H4us-C7MIRmnCUFfeX1gMrrLgv2t5FwneR__Ric77PUQyh20Q_-lpQjFszMfofe0feqkONem5mSGs_KT-ZU2S5KKaX4Kj9y8P0Bua8qcbjuIxDJHNmjk_8qy0xIx4juVsuCAhzQSliNTEhmCA6z6VwjSQbIEiIYn_i6Xp3y3QnvtiBK-YsMG70vE65EukFjR-PieWsmfKSAkp1xEiqkFlg1z1GH1HnEzXechUjblpBYS82g5ceBtvwvQGsESS2loJRSmsIVHKHc35PuuHLKNbcN7lc60MXQXTR8kIowtBoHaZ9NeE2KLNjL7A-GAReAAeq0U0qU_lSGiuZIuxECn8Sxpx0vQC4IRJ-ozDYEEPFn_Fk9miiFuncDUds6CPXeNsNcvHDkKV8pC1-7LPoieXFaPZf8xRImJ1qrrUo8ykBAmU96XcovQnJonOT_S4dxeUkNYAzewcvE4z70m6QqILIuyIhYq2hpSDz1_Tgqgi0c8y1jAopDJoj_aG-9SGu7UxP27ZQOk42MaYa3bFd-XIRZnbq9xCjmfP2WQCLPerUia5TXttrffrbu3B0bVhsYCkgNuUEn_Go91Md4-z1-K_5KL9foQYIwEcRLs26S7O1Mxo8PF2cCPX3HhWJmVziAsw-LHGTo5SCESuKbHz4W6ZSXzy4Tdgp12hwXuwMxMdG5mRomY-txf4dTD3AStkUUFXgBM3B0hJ04hCC40jUKnLj_TFbvUdnckmlJIuwm7CmyKLARsJRc05WqbLrVJ5PRn3QTps8KF81mCxXhm0o9FhnGjRel0RtTWRQ-jRCTK5nCLDeKMOwObmChpN00XB2ftfjIs_-0HSaadyXrKzw824I1_yAioJSUlsWh1BDVaujK76AU4Ltof7ITBG1y6K3P72d7m7QuzD26bCoa7G8rtBRmMzsyIeMXnKhWZ4MP2C8XCeAkEmqLORB8cMyMxZhzRfV-UYl2iWYZZjNmc9FYLXcFgSokluKgIQw9vbtSvTM1K2HJeeO4YvSBHhzJV8xwn3oyd2Z5J.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+      "format": "openai-responses-v1"
+    },
+    {
+      "id": "msg_tmp_pomymduzvd8",
+      "type": "message",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "```python\ndef merge_sorted(left, right):\n    \"\"\"Merge two ascending sorted lists into a new sorted list.\"\"\"\n    merged = []\n    i = j = 0\n\n    while i < len(left) and j < len(right):\n        if left[i] <= right[j]:\n            merged.append(left[i])\n            i += 1\n        else:\n            merged.append(right[j])\n            j += 1\n\n    merged.extend(left[i:])\n    merged.extend(right[j:])\n    return merged\n```\n\nThis preserves duplicates and runs in O(n + m) time.",
+          "annotations": [],
+          "logprobs": []
+        }
+      ],
+      "phase": "final_answer"
+    }
+  ],
+  "error": null,
+  "incomplete_details": null,
+  "access_programs": {
+````
 
 ## Default Settings
 
@@ -418,6 +489,44 @@ func main() {
 	out, _ := json.MarshalIndent(followUp.Output, "", "  ")
 	fmt.Println(string(out))
 }
+
+```
+
+```bash title="cURL" lines
+#!/bin/bash
+# First request with a session_id
+first=$(curl -sS --fail-with-body https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openrouter/pareto-code",
+    "session_id": "my-coding-session-123",
+    "plugins": [{ "id": "pareto-router", "min_coding_score": 0.4 }],
+    "input": "Write a Python function that merges two sorted lists."
+  }')
+
+echo "$first" | jq -e '.status == "completed"' > /dev/null || { echo "$first" | jq '.error'; exit 1; }
+echo "First response model: $(echo "$first" | jq -r '.model')"
+
+# Subsequent requests with the same session_id may reuse the same model and provider
+followup=$(echo "$first" | jq '{
+    model: "openrouter/pareto-code",
+    session_id: "my-coding-session-123",
+    plugins: [{ id: "pareto-router", min_coding_score: 0.4 }],
+    input: (
+      [{ role: "user", content: "Write a Python function that merges two sorted lists." }]
+      + [.output[]
+          | select(.type == "reasoning" or .type == "message")
+          | if .type == "message" then .content |= map(select(.type == "output_text" or .type == "refusal")) else . end]
+      + [{ role: "user", content: "Now add type hints and docstrings." }]
+    )
+  }' | curl -sS --fail-with-body https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @-)
+
+echo "Follow-up response model: $(echo "$followup" | jq -r '.model')"
+echo "$followup" | jq '.output'
 
 ```
 

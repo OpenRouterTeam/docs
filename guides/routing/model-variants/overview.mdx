@@ -163,51 +163,68 @@ print(requests.get(f"{BASE}/models/openai/gpt-5.2:nitro/endpoints").text)
 ```
 
 ```go title="Go" lines
-get := func(path string) []byte {
-	resp, err := http.Get("https://openrouter.ai/api/v1" + path)
-	if err != nil {
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"strings"
+)
+
+func main() {
+	get := func(path string) []byte {
+		resp, err := http.Get("https://openrouter.ai/api/v1" + path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return body
+	}
+
+	// Routing variants resolve to the base entry
+	fmt.Println(string(get("/model/openai/gpt-5.2:nitro")))
+	// -> { "data": { "id": "openai/gpt-5.2", ... } }
+
+	// Pick a catalog variant (a :free entry) from the live model list
+	var list struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(get("/models"), &list); err != nil {
 		log.Fatal(err)
 	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal(err)
+	freeID := ""
+	for _, m := range list.Data {
+		if strings.HasSuffix(m.ID, ":free") {
+			freeID = m.ID
+			break
+		}
 	}
-	return body
-}
-
-// Routing variants resolve to the base entry
-fmt.Print(string(get("/model/openai/gpt-5.2:nitro")))
-// -> { "data": { "id": "openai/gpt-5.2", ... } }
-
-// Pick a catalog variant (a :free entry) from the live model list
-var list struct {
-	Data []struct {
-		ID string `json:"id"`
-	} `json:"data"`
-}
-if err := json.Unmarshal(get("/models"), &list); err != nil {
-	log.Fatal(err)
-}
-freeID := ""
-for _, m := range list.Data {
-	if strings.HasSuffix(m.ID, ":free") {
-		freeID = m.ID
-		break
+	if freeID == "" {
+		log.Fatal("no :free model found in the catalog")
 	}
+
+	// Catalog variants resolve to their own entry
+	fmt.Println(string(get("/model/" + freeID)))
+	// -> { "data": { "id": "<vendor>/<model>:free", ... } }
+
+	// Mixed IDs keep the catalog variant and drop the routing variants
+	fmt.Println(string(get("/model/" + freeID + ":nitro")))
+	// -> { "data": { "id": "<vendor>/<model>:free", ... } }
+
+	// Endpoint listings behave the same way
+	fmt.Println(string(get("/models/openai/gpt-5.2:nitro/endpoints")))
+	// -> { "data": { "id": "openai/gpt-5.2", "endpoints": [ ... ] } }
 }
 
-// Catalog variants resolve to their own entry
-fmt.Print(string(get("/model/" + freeID)))
-// -> { "data": { "id": "<vendor>/<model>:free", ... } }
-
-// Mixed IDs keep the catalog variant and drop the routing variants
-fmt.Print(string(get("/model/" + freeID + ":nitro")))
-// -> { "data": { "id": "<vendor>/<model>:free", ... } }
-
-// Endpoint listings behave the same way
-fmt.Print(string(get("/models/openai/gpt-5.2:nitro/endpoints")))
-// -> { "data": { "id": "openai/gpt-5.2", "endpoints": [ ... ] } }
 ```
 
 </CodeGroup>

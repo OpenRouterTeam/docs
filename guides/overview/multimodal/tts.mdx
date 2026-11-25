@@ -30,15 +30,71 @@ You can find TTS models in several ways:
 
 The dedicated speech models endpoint lists the public speech catalog with the parameters each model accepts. It leaves out private models and BYOK-only endpoints, so a model missing here can still be available to your account:
 
+<CodeGroup>
+
 ```bash lines
 curl "https://openrouter.ai/api/v1/audio/speech/models"
 ```
 
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/audio/speech/models');
+const models = await response.json();
+```
+
+```python title="Python" lines
+response = requests.get("https://openrouter.ai/api/v1/audio/speech/models")
+models = response.json()
+```
+
+```go title="Go" lines
+resp, err := http.Get("https://openrouter.ai/api/v1/audio/speech/models")
+if err != nil {
+	log.Fatal(err)
+}
+defer resp.Body.Close()
+
+body, err := io.ReadAll(resp.Body)
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(body))
+```
+
+</CodeGroup>
+
 To read a single model, request it by author and slug:
+
+<CodeGroup>
 
 ```bash lines
 curl "https://openrouter.ai/api/v1/audio/speech/models/elevenlabs/eleven-v3"
 ```
+
+```typescript title="TypeScript" lines
+const response = await fetch('https://openrouter.ai/api/v1/audio/speech/models/elevenlabs/eleven-v3');
+const model = await response.json();
+```
+
+```python title="Python" lines
+response = requests.get("https://openrouter.ai/api/v1/audio/speech/models/elevenlabs/eleven-v3")
+speech_model = response.json()
+```
+
+```go title="Go" lines
+resp, err := http.Get("https://openrouter.ai/api/v1/audio/speech/models/elevenlabs/eleven-v3")
+if err != nil {
+	log.Fatal(err)
+}
+defer resp.Body.Close()
+
+body, err := io.ReadAll(resp.Body)
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(body))
+```
+
+</CodeGroup>
 
 Each model carries its inputs and its speech output parameters, merged across every endpoint that serves it, plus an `endpoints` array with each endpoint's own values. This example leaves out `voice`; the table below shows its shape:
 
@@ -212,7 +268,7 @@ print(f"Audio saved. Generation ID: {generation_id}")
 const response = await fetch('https://openrouter.ai/api/v1/audio/speech', {
   method: 'POST',
   headers: {
-    Authorization: `Bearer ${API_KEY_REF}`,
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
@@ -240,6 +296,7 @@ curl https://openrouter.ai/api/v1/audio/speech \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   --output output.mp3 \
+  -w "HTTP %{http_code}: saved %{size_download} bytes to output.mp3\n" \
   -d '{
     "model": "mistralai/voxtral-mini-tts-2603",
     "input": "Hello! This is a text-to-speech test.",
@@ -248,7 +305,58 @@ curl https://openrouter.ai/api/v1/audio/speech \
   }'
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	payload, _ := json.Marshal(map[string]string{
+		"model":           "mistralai/voxtral-mini-tts-2603",
+		"input":           "Hello! This is a text-to-speech test.",
+		"voice":           "en_paul_neutral",
+		"response_format": "mp3",
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/audio/speech", bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("TTS error %d: %s", resp.StatusCode, body)
+	}
+
+	audio := body
+	generationID := resp.Header.Get("X-Generation-Id")
+	fmt.Printf("Generation ID: %s\n", generationID)
+	_ = audio // Save audio to a file or play it directly
+}
+
+```
+
 </CodeGroup>
+
+```text title="Output"
+Generation ID: gen-tts-1795432965-I0l4lmqIVyoTcf5pkYi0
+```
 
 ### Request Parameters
 
@@ -652,7 +760,26 @@ await fs.promises.writeFile('output.mp3', buffer);
 console.log('Audio saved to output.mp3');
 ```
 
+```bash title="cURL" lines
+curl https://openrouter.ai/api/v1/audio/speech \
+  --fail \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  --output output.mp3 \
+  -w "HTTP %{http_code}: saved %{size_download} bytes to output.mp3\n" \
+  -d '{
+    "model": "mistralai/voxtral-mini-tts-2603",
+    "input": "The quick brown fox jumps over the lazy dog.",
+    "voice": "en_paul_neutral",
+    "response_format": "mp3"
+  }'
+```
+
 </CodeGroup>
+
+```text title="Output"
+HTTP 200: saved 22866 bytes to output.mp3
+```
 
 ## Best Practices
 

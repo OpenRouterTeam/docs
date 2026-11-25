@@ -153,7 +153,7 @@ The simplest format - a single string becomes a user message:
 <CodeGroup>
 
 ```typescript lines
-const result = openrouter.callModel({
+const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'What is the speed of light?',
 });
@@ -181,6 +181,16 @@ req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
 req.Header.Set("Content-Type", "application/json")
 
 resp, err := http.DefaultClient.Do(req)
+```
+
+```bash title="cURL" lines
+result=$(curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-nano",
+    "input": "What is the speed of light?"
+  }')
 ```
 
 ```bash title="cURL" lines
@@ -734,6 +744,16 @@ result=$(curl -s https://openrouter.ai/api/v1/responses \
   }')
 ```
 
+```bash title="cURL" lines
+result=$(curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "anthropic/claude-sonnet-4.5",
+    "input": "Hello!"
+  }')
+```
+
 </CodeGroup>
 
 ### Model Fallback
@@ -782,6 +802,16 @@ result=$(curl -s https://openrouter.ai/api/v1/responses \
   }')
 ```
 
+```bash title="cURL" lines
+result=$(curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "models": ["anthropic/claude-sonnet-4.5", "openai/gpt-5.2"],
+    "input": "Hello!"
+  }')
+```
+
 </CodeGroup>
 
 The SDK will try each model in order until one succeeds.
@@ -795,8 +825,19 @@ Returns just the text content after tool execution completes:
 <CodeGroup>
 
 ```typescript lines
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel } from '@openrouter/agent';
+
+const openrouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const result = callModel(openrouter, {
+  model: 'openai/gpt-5-nano',
+  input: 'What is the speed of light?',
+});
+
 const text = await result.getText();
 console.log(text); // "The speed of light is approximately 299,792 km/s."
+
 ```
 
 ```python title="Python" lines
@@ -826,35 +867,74 @@ asyncio.run(main())
 ```
 
 ```go title="Go" lines
-if resp.StatusCode != http.StatusOK {
-	log.Fatalf("unexpected status: %s", resp.Status)
-}
+package main
 
-var result struct {
-	Output []struct {
-		Type    string `json:"type"`
-		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
-		} `json:"content"`
-	} `json:"output"`
-}
-if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-	log.Fatal(err)
-}
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
 
-text := ""
-for _, item := range result.Output {
-	if item.Type != "message" {
-		continue
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5-nano",
+		"input": "What is the speed of light?",
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
 	}
-	for _, c := range item.Content {
-		if c.Type == "output_text" {
-			text += c.Text
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("unexpected status: %s", resp.Status)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	text := ""
+	for _, item := range result.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				text += c.Text
+			}
 		}
 	}
+	fmt.Println(text) // "The speed of light is approximately 299,792 km/s."
 }
-fmt.Println(text) // "The speed of light is approximately 299,792 km/s."
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-nano",
+    "input": "What is the speed of light?"
+  }' | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text'
+
 ```
 
 </CodeGroup>
@@ -941,6 +1021,16 @@ fmt.Println(string(response.Usage))  // Token usage information
 ```bash title="cURL" lines
 echo "$result" | jq '.output'   # Full output array
 echo "$result" | jq '.usage'    # Token usage information
+
+# Usage includes:
+# - input_tokens: tokens in the prompt
+# - output_tokens: tokens generated
+# - input_tokens_details.cached_tokens: tokens served from cache (cost savings)
+```
+
+```bash title="cURL" lines
+echo "$result" | jq '.output'  # Full output array
+echo "$result" | jq '.usage'   # Token usage information
 
 # Usage includes:
 # - input_tokens: tokens in the prompt
@@ -1109,44 +1199,58 @@ echo "$result" | jq -r '.output[] | select(.type == "message") | .content[] | se
 
 ```
 
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o-mini",
+    "input": "Write a creative story.",
+    "temperature": 0.7,
+    "max_output_tokens": 1000,
+    "top_p": 0.9
+  }' | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text'
+
+```
+
 </CodeGroup>
 
 ```text title="Output"
-**The Clockmaker’s Secret**
+**The Whispering Grove**
 
-In the quaint village of Eldergrove, nestled between rolling hills and whispering forests, there stood a peculiar little shop that many passed by without a second glance. It was the shop of Alaric, the clockmaker. Alaric was a wiry man with silver hair that stood on end like a hedgehog, and eyes that twinkled with the wisdom of ages. His shop was filled with clocks of every shape and size, each ticking in harmonious disarray, creating a symphony of time.
+In a small village nestled between rolling hills and a shimmering lake, there stood a grove of ancient trees known as the Whispering Grove. The villagers believed that the trees could communicate with one another and with those who ventured into their embrace. The leaves rustled with secrets, and the wind carried stories from the past, making the grove a place of wonder and mystery.
 
-The villagers knew Alaric as a skilled craftsman, but few knew of his secret: he had the ability to manipulate time itself. With a twist of a gear and a flick of a lever, he could slow moments down, speed them up, or even rewind them for a brief while. However, this gift was not one he shared lightly, for he understood that time was a delicate fabric, and tampering with it could unravel the very essence of life.
+Among the villagers was a young girl named Elara. With wild curls that danced in the breeze and eyes that sparkled like the stars above, she was known for her insatiable curiosity. Every day after finishing her chores, Elara would sneak away to the Whispering Grove, eager to uncover its secrets. She would sit beneath the tallest tree, a magnificent oak known as Elden, and listen intently to the whispers that floated through the air.
 
-One misty morning, as the sun struggled to break through the clouds, a young girl named Clara entered the shop, her auburn curls bouncing with every step. She was a dreamer, with a heart full of wonder and a mind bursting with questions. Clara had always been fascinated by the clocks, particularly an ancient, ornate timepiece that stood at the back of the shop. It was unlike any other, with intricate carvings of stars and moons adorning its surface, and it seemed to hum softly, as if alive.
+One sunny afternoon, as Elara nestled against Elden’s gnarled roots, she heard a faint voice among the rustling leaves. “Help us,” it seemed to say, a melody of sorrow woven into the wind. Elara’s heart raced. She had never heard a voice so clear before. “Who’s there?” she called out, her voice trembling with a mix of excitement and trepidation.
 
-“Why does that clock feel different?” Clara asked, her eyes wide with curiosity.
+“Come closer, dear child,” the voice beckoned, gentle yet urgent. “We are the guardians of this grove, and we need your help.”
 
-Alaric smiled gently, kneeling down to her level. “Ah, that clock is special, my dear. It holds within it the echoes of time itself. Many have tried to understand it, but only a few can truly hear its whispers.”
+Elara’s curiosity overcame her fear, and she moved closer to the trunk of Elden. “What do you need?” she asked, her eyes wide with anticipation.
 
-Clara’s fascination deepened. “Can it make time go slower? Or faster?”
+“The balance of our grove is in peril,” the voice replied, resonating through the leaves like a soft chime. “A darkness has crept into the heart of the forest, and it threatens to consume us. Only a pure heart can mend the rift.”
 
-“Indeed,” Alaric replied, his voice thoughtful. “But time is a precious gift. We must be careful how we use it.”
+Elara felt a surge of determination. “What must I do?”
 
-Days turned into weeks, and Clara visited the shop often, helping Alaric with small tasks and learning about the art of clockmaking. Each time she visited, she was drawn to the ornate clock, its whispers growing louder in her ears. One fateful afternoon, as rain pattered softly against the windows, Clara mustered the courage to ask Alaric if she could try to use the clock.
+“Follow the path of the silver moonlight,” the voice instructed. “Deep within the grove lies a hidden glade. There, you will find a stone, the Heart of the Grove. It pulses with our life force. You must cleanse it of the darkness that has settled upon it.”
 
-“Just once,” she pleaded. “I want to slow down a moment. Just one moment of pure joy.”
+With a nod, Elara set off, her heart pounding with excitement and purpose. She followed the dappled light filtering through the leaves, guided by the whispers of the grove. The deeper she ventured, the more vibrant the colors around her became, as if the trees were encouraging her onward.
 
-Alaric hesitated, weighing the risks, but the gleam in Clara’s eyes reminded him of his own youthful dreams. With a nod, he led her to the clock, explaining its mechanisms. With trembling hands, Clara turned the delicate key, and the clock began to whir and tick in a mesmerizing rhythm.
+After what felt like hours, she stumbled upon the glade. It was a breathtaking sight: flowers of every hue blossomed in harmony, and a gentle stream wound its way through the center. In the middle of it all stood a stone, large and imposing, pulsing with a faint, sickly glow.
 
-Suddenly, the world around them shimmered and slowed. Clara felt the weight of joy settle in her heart as she turned to see a butterfly dance in the air, its wings painting the room with colors. She laughed, a sound that echoed softly, as if wrapped in a cocoon of time. For what felt like an eternity, she savored the sweetness of that moment, her heart full of wonder.
+Elara approached the stone, feeling the weight of its sorrow. She placed her hands on its surface, and the darkness swirled around her, cold and heavy. With a deep breath, she closed her eyes and thought of all the beauty the grove had shared with her—the laughter of the village children, the warmth of the sun filtering through the leaves, and the stories whispered by Elden.
 
-But as the clock’s hands moved, Clara realized she had lost track of time itself. The rain outside had stopped, and dusk began to creep in. Panic surged through her. “Alaric! I can’t stop it!”
+“Light, love, and hope,” she murmured, channeling her feelings into the stone. “You do not belong here. You are not welcome!”
 
-With a knowing look, Alaric rushed to her side. “You must focus, Clara! Time must be respected. Turn the key back, but with intention.”
+Suddenly, a bright light erupted from her hands, enveloping the stone in a warm glow. The darkness writhed and twisted, but Elara held her ground, pouring every ounce of her spirit into the cleansing. The light grew brighter, and with a final surge, the darkness was banished, dissipating into the air like smoke.
 
-Heart racing, Clara closed her eyes, remembering the joy she had felt. She turned the key again, this time with a purpose, and the world around her began to shift back to its normal pace. The butterfly fluttered away, and Clara felt a bittersweet tug in her chest as the moment slipped away.
+The stone pulsed with renewed vigor, its glow now a radiant white. The grove responded, the trees swaying gently as if in gratitude. Elara opened her eyes, breathless and triumphant.
 
-As the last echoes of that enchanted moment faded, Clara opened her eyes to find herself in the shop, the sun setting outside, casting golden rays through the window. Alaric smiled at her, pride shining in his gaze. “You have learned a valuable lesson today, Clara. Time is not just something we measure; it is something we experience. Cherish each moment, for they are fleeting.”
+“You have done it, dear child,” the voice of Elden whispered, echoing with joy. “You have restored the balance. The grove will thrive once more, and we will forever remember your bravery.”
 
-From that day on, Clara continued to visit Alaric, but now she understood the beauty of time. She no longer wished to manipulate it, but rather to embrace it fully. The clock remained a constant in her life, a reminder of that magical day when she learned that while time could be slowed or sped up, the true magic lay in the moments we hold dear.
+Elara smiled, her heart swelling with pride. She knew she would return to the grove, not just as a curious girl, but as its protector—a guardian of its whispers and wonders.
 
-Years later, as Alaric grew older, he passed the shop—and its secrets—
+From that day on, the villagers spoke of the brave girl who saved the Whispering Grove. And as for Elara, she continued to visit Elden, sharing her own stories with the trees, knowing that they would always listen and that their whispers would guide her, no matter where life led her next.
 ```
 
 ## Response Format
@@ -1156,6 +1260,11 @@ Request structured output:
 <CodeGroup>
 
 ```typescript lines
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel } from '@openrouter/agent';
+
+const openrouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
 const result = callModel(openrouter, {
   model: 'openai/gpt-5-nano',
   input: 'List three programming languages as a JSON object.',
@@ -1168,6 +1277,7 @@ const result = callModel(openrouter, {
 
 const text = await result.getText();
 const data = JSON.parse(text);
+console.log(JSON.stringify(data, null, 2));
 
 ```
 
@@ -1205,58 +1315,75 @@ asyncio.run(main())
 ```
 
 ```go title="Go" lines
-body, _ := json.Marshal(map[string]any{
-	"model": "openai/gpt-5-nano",
-	"input": "List three programming languages as a JSON object.",
-	"text": map[string]any{
-		"format": map[string]any{
-			"type": "json_object",
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5-nano",
+		"input": "List three programming languages as a JSON object.",
+		"text": map[string]any{
+			"format": map[string]any{
+				"type": "json_object",
+			},
 		},
-	},
-})
+	})
 
-req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
-req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
-req.Header.Set("Content-Type", "application/json")
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
 
-resp, err := http.DefaultClient.Do(req)
-if err != nil {
-	log.Fatal(err)
-}
-defer resp.Body.Close()
-if resp.StatusCode != http.StatusOK {
-	log.Fatalf("unexpected status: %s", resp.Status)
-}
-
-var result struct {
-	Output []struct {
-		Type    string `json:"type"`
-		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
-		} `json:"content"`
-	} `json:"output"`
-}
-if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-	log.Fatal(err)
-}
-
-text := ""
-for _, item := range result.Output {
-	if item.Type != "message" {
-		continue
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
 	}
-	for _, c := range item.Content {
-		if c.Type == "output_text" {
-			text += c.Text
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("unexpected status: %s", resp.Status)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	text := ""
+	for _, item := range result.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				text += c.Text
+			}
 		}
 	}
+
+	var data map[string]any
+	if err := json.Unmarshal([]byte(text), &data); err != nil {
+		log.Fatal(err)
+	}
+
+	pretty, _ := json.MarshalIndent(data, "", "  ")
+	fmt.Println(string(pretty))
 }
 
-var data map[string]any
-if err := json.Unmarshal([]byte(text), &data); err != nil {
-	log.Fatal(err)
-}
 ```
 
 ```bash title="cURL" lines
@@ -1275,6 +1402,22 @@ result=$(curl -s https://openrouter.ai/api/v1/responses \
 
 text=$(echo "$result" | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text')
 data=$(echo "$text" | jq '.')
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-nano",
+    "input": "List three programming languages as a JSON object.",
+    "text": {
+      "format": {
+        "type": "json_object"
+      }
+    }
+  }' | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text' | jq .
 
 ```
 
@@ -1297,6 +1440,11 @@ Handle common error cases:
 <CodeGroup>
 
 ```typescript lines
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel } from '@openrouter/agent';
+
+const openrouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
 try {
   const result = callModel(openrouter, {
     model: 'openai/gpt-5-nano',
@@ -1320,6 +1468,7 @@ try {
     console.error('Unexpected error:', error);
   }
 }
+
 ```
 
 ```python title="Python" lines
@@ -1364,58 +1513,72 @@ asyncio.run(main())
 ```
 
 ```go title="Go" lines
-body, _ := json.Marshal(map[string]any{
-	"model": "openai/gpt-5-nano",
-	"input": "Hello!",
-})
+package main
 
-req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
-req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
-req.Header.Set("Content-Type", "application/json")
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
 
-resp, err := http.DefaultClient.Do(req)
-if err != nil {
-	log.Fatal("Unexpected error: ", err)
-}
-defer resp.Body.Close()
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5-nano",
+		"input": "Hello!",
+	})
 
-switch resp.StatusCode {
-case http.StatusOK:
-case http.StatusUnauthorized:
-	log.Fatal("Invalid API key")
-case http.StatusTooManyRequests:
-	log.Fatal("Rate limited - try again later")
-case http.StatusServiceUnavailable:
-	log.Fatal("Model unavailable")
-default:
-	log.Fatal("Unexpected error: ", resp.Status)
-}
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
 
-var result struct {
-	Output []struct {
-		Type    string `json:"type"`
-		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
-		} `json:"content"`
-	} `json:"output"`
-}
-if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-	log.Fatal("Unexpected error: ", err)
-}
-
-text := ""
-for _, item := range result.Output {
-	if item.Type != "message" {
-		continue
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal("Unexpected error: ", err)
 	}
-	for _, c := range item.Content {
-		if c.Type == "output_text" {
-			text += c.Text
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+	case http.StatusUnauthorized:
+		log.Fatal("Invalid API key")
+	case http.StatusTooManyRequests:
+		log.Fatal("Rate limited - try again later")
+	case http.StatusServiceUnavailable:
+		log.Fatal("Model unavailable")
+	default:
+		log.Fatal("Request failed with status ", resp.Status)
+	}
+
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal("Unexpected error: ", err)
+	}
+
+	text := ""
+	for _, item := range result.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				text += c.Text
+			}
 		}
 	}
+	fmt.Println(text)
 }
-fmt.Println(text)
+
 ```
 
 ```bash title="cURL" lines
@@ -1437,6 +1600,28 @@ case "$status" in
   503) echo "Model unavailable" >&2 ;;
   *)   echo "Unexpected error: $body" >&2 ;;
 esac
+```
+
+```bash title="cURL" lines
+response=$(curl -s -w '\n%{http_code}' https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-nano",
+    "input": "Hello!"
+  }') || { echo "Unexpected error: curl failed" >&2; exit 1; }
+
+status=$(tail -n1 <<< "$response")
+body=$(sed '$d' <<< "$response")
+
+case "$status" in
+  200) jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text' <<< "$body" ;;
+  401) echo "Invalid API key" >&2 ;;
+  429) echo "Rate limited - try again later" >&2 ;;
+  503) echo "Model unavailable" >&2 ;;
+  *) echo "Request failed with status $status" >&2 ;;
+esac
+
 ```
 
 </CodeGroup>

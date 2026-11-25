@@ -954,6 +954,97 @@ multi_skill_loader = tool(
 )
 ```
 
+```go title="Go" lines
+type skillsInput struct {
+	Skills []string `json:"skills"` // Array of skill names to load
+}
+
+type failedSkill struct {
+	Name   string `json:"name"`
+	Reason string `json:"reason"`
+}
+
+type skillsOutput struct {
+	Loaded []string      `json:"loaded"`
+	Failed []failedSkill `json:"failed"`
+}
+
+var multiSkillLoader = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name":        "load_skills",
+		"description": "Load multiple skills at once",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{"skills": map[string]any{
+				"type":        "array",
+				"items":       map[string]any{"type": "string"},
+				"description": "Array of skill names to load",
+			}},
+			"required": []string{"skills"},
+		},
+	},
+}
+
+// Skill names come from the model, so accept plain directory names only
+var skillName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
+
+func skillPath(name string) (string, bool) {
+	if !skillName.MatchString(name) {
+		return "", false
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", false
+	}
+	return filepath.Join(home, ".skills", name, "SKILL.md"), true
+}
+
+// nextTurnParams.input: append each new skill's content to the conversation
+func loadSkillsInput(params skillsInput, input []map[string]any) []map[string]any {
+	newInput := append([]map[string]any{}, input...)
+
+	for _, name := range params.Skills {
+		path, ok := skillPath(name)
+		if !ok {
+			continue
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+
+		marker := fmt.Sprintf("[Skill: %s]", name)
+		existing, _ := json.Marshal(newInput)
+		if strings.Contains(string(existing), marker) {
+			continue
+		}
+
+		newInput = append(newInput, map[string]any{
+			"role":    "user",
+			"content": marker + "\n" + string(content),
+		})
+	}
+
+	return newInput
+}
+
+func executeLoadSkills(params skillsInput) skillsOutput {
+	out := skillsOutput{Loaded: []string{}, Failed: []failedSkill{}}
+
+	for _, skill := range params.Skills {
+		path, ok := skillPath(skill)
+		if _, err := os.Stat(path); ok && err == nil {
+			out.Loaded = append(out.Loaded, skill)
+		} else {
+			out.Failed = append(out.Failed, failedSkill{Name: skill, Reason: "Not found"})
+		}
+	}
+
+	return out
+}
+```
+
 </CodeGroup>
 
 ### Language/Locale Switching

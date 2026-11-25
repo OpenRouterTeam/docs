@@ -48,6 +48,82 @@ result = await agent.run("What is the meaning of life?")
 print(result)
 ```
 
+```typescript title="TypeScript" lines
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel } from '@openrouter/agent';
+
+const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const result = callModel(client, {
+  model: 'anthropic/claude-sonnet-4.6', // or any other OpenRouter model
+  input: 'What is the meaning of life?',
+});
+
+console.log(await result.getText());
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "anthropic/claude-sonnet-4.6", // or any other OpenRouter model
+		"messages": []map[string]string{
+			{"role": "user", "content": "What is the meaning of life?"},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+	if len(result.Choices) == 0 {
+		log.Fatalf("no choices returned (status %s)", resp.Status)
+	}
+	fmt.Println(result.Choices[0].Message.Content)
+}
+
+```
+
+```bash title="cURL" lines
+curl https://openrouter.ai/api/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+    "model": "anthropic/claude-sonnet-4.6",
+    "messages": [
+      {"role": "user", "content": "What is the meaning of life?"}
+    ]
+  }' | jq -r '.choices[0].message.content'
+
+```
+
 </CodeGroup>
 
 ```text title="Output"

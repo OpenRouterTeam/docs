@@ -154,6 +154,118 @@ asyncio.run(main())
 
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+)
+
+func searchGutenbergBooks(searchTerms []string) any {
+	resp, err := http.Get("https://gutendex.com/books?search=" + url.QueryEscape(strings.Join(searchTerms, " ")))
+	if err != nil {
+		return map[string]string{"error": err.Error()}
+	}
+	defer resp.Body.Close()
+	var data struct {
+		Results []struct {
+			ID      int    `json:"id"`
+			Title   string `json:"title"`
+			Authors []struct {
+				Name string `json:"name"`
+			} `json:"authors"`
+		} `json:"results"`
+	}
+	json.NewDecoder(resp.Body).Decode(&data)
+	return data.Results
+}
+
+func main() {
+	tools := []any{map[string]any{
+		"type": "function",
+		"function": map[string]any{
+			"name":        "searchGutenbergBooks",
+			"description": "Search for books in the Project Gutenberg library based on specified search terms",
+			"parameters": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"search_terms": map[string]any{
+						"type":        "array",
+						"items":       map[string]any{"type": "string"},
+						"description": "List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)",
+					},
+				},
+				"required": []string{"search_terms"},
+			},
+		},
+	}}
+
+	messages := []any{
+		map[string]any{"role": "system", "content": "You are a helpful assistant."},
+		map[string]any{"role": "user", "content": "What are the titles of some James Joyce books?"},
+	}
+
+	// Agentic loop: send tools, run requested tool calls, send results back
+	for {
+		body, _ := json.Marshal(map[string]any{
+			"model":    "google/gemini-3-flash-preview",
+			"messages": messages,
+			"tools":    tools,
+		})
+		req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		raw, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		var out struct {
+			Choices []struct {
+				Message map[string]any `json:"message"`
+			} `json:"choices"`
+		}
+		if err := json.Unmarshal(raw, &out); err != nil || len(out.Choices) == 0 {
+			log.Fatalf("unexpected response (%d): %s", resp.StatusCode, raw)
+		}
+		msg := out.Choices[0].Message
+		messages = append(messages, msg)
+
+		calls, _ := msg["tool_calls"].([]any)
+		if len(calls) == 0 {
+			fmt.Println(msg["content"])
+			return
+		}
+		for _, c := range calls {
+			call := c.(map[string]any)
+			fn := call["function"].(map[string]any)
+			var args struct {
+				SearchTerms []string `json:"search_terms"`
+			}
+			argStr, _ := fn["arguments"].(string)
+			json.Unmarshal([]byte(argStr), &args)
+			result, _ := json.Marshal(searchGutenbergBooks(args.SearchTerms))
+			messages = append(messages, map[string]any{
+				"role":         "tool",
+				"tool_call_id": call["id"],
+				"content":      string(result),
+			})
+		}
+	}
+}
+
+```
+
 </CodeGroup>
 
 ```text title="Output"
@@ -800,6 +912,37 @@ EOF
 )
 ```
 
+```bash title="cURL" lines
+search_gutenberg_books() {
+  local query
+  query=$(jq -rn --arg q "$*" '$q | @uri')
+  curl -s "https://gutendex.com/books?search=$query" \
+    | jq '[.results[] | {id, title, authors}]'
+}
+
+TOOLS=$(cat <<'EOF'
+[
+  {
+    "type": "function",
+    "name": "search_gutenberg_books",
+    "description": "Search for books in the Project Gutenberg library based on specified search terms",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "search_terms": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)"
+        }
+      },
+      "required": ["search_terms"]
+    }
+  }
+]
+EOF
+)
+```
+
 </CodeGroup>
 
 Note that the "tool" is just a normal function. We then write a JSON "spec" compatible with the OpenAI function calling parameter. We'll pass that spec to the LLM so that it knows this tool is available and how to use it. It will request the tool when needed, along with any arguments. We'll then marshal the tool call locally, make the function call, and return the results to the LLM.
@@ -892,6 +1035,18 @@ RESPONSE_1=$(curl -s https://openrouter.ai/api/v1/responses \
 
 echo "$RESPONSE_1" | jq -e 'has("output")' > /dev/null \
   || { echo "Expected a non-streaming response" >&2; exit 1; }
+```
+
+```bash title="cURL" lines
+RESPONSE_1=$(curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -n --arg model "$MODEL" --arg instructions "$INSTRUCTIONS" \
+    --argjson input "$INPUT" --argjson tools "$TOOLS" \
+    '{model: $model, instructions: $instructions, input: $input, tools: $tools}')")
+
+TOOL_CALLS=$(echo "$RESPONSE_1" | jq '[.output[] | select(.type == "function_call")
+  | {id: .call_id, name, arguments: (.arguments | fromjson)}]')
 ```
 
 </CodeGroup>
@@ -1062,6 +1217,7 @@ request_2 = {
 response_2 = openai_client.responses.create(**request_2)
 
 print(response_2.output_text)
+
 ```
 
 ```typescript title="TypeScript (fetch)" lines
@@ -1326,53 +1482,38 @@ console.log(finalText);
 ```
 
 ```python Python expandable lines
-def call_llm(items):
-    resp = openai_client.responses.create(
-        model=MODEL,
-        instructions=instructions,
-        tools=tools,
-        input=items
+class SearchGutenbergBooksInput(BaseModel):
+    search_terms: list[str] = Field(
+        description="List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)"
     )
-    if resp.status != "completed":
-        message = resp.error.message if resp.error else f"Response ended as {resp.status}"
-        raise RuntimeError(message)
-    items += resp.output
-    return resp
 
-def get_tool_response(tool_call):
-    tool_name = tool_call.name
-    tool_args = json.loads(tool_call.arguments)
+# Other tools can be added to this list without changing the agentic loop
+agent_tools = [
+    tool(
+        name="search_gutenberg_books",
+        description="Search for books in the Project Gutenberg library based on specified search terms",
+        input_schema=SearchGutenbergBooksInput,
+        execute=lambda params, ctx: search_gutenberg_books(params.search_terms),
+    )
+]
 
-    # Look up the correct tool locally, and call it with the provided arguments
-    # Other tools can be added without changing the agentic loop
-    tool_result = TOOL_MAPPING[tool_name](**tool_args)
+async def main():
+    # call_model runs the agentic loop: it sends the request, executes any
+    # requested tool calls, appends the function_call_output items, and calls
+    # the model again until it answers (or the stop condition is reached).
+    result = call_model(
+        client,
+        {
+            "model": MODEL,
+            "instructions": instructions,
+            "input": input_items,
+            "tools": agent_tools,
+            "stop_when": step_count_is(10),
+        },
+    )
+    print(await result.get_text())
 
-    return {
-        "type": "function_call_output",
-        "call_id": tool_call.call_id,
-        "output": json.dumps(tool_result),
-    }
-
-max_iterations = 10
-iteration_count = 0
-final_text = None
-
-while iteration_count < max_iterations:
-    iteration_count += 1
-    resp = call_llm(input_items)
-
-    tool_calls = [item for item in resp.output if item.type == "function_call"]
-    if not tool_calls:
-        final_text = resp.output_text
-        break
-
-    for tool_call in tool_calls:
-        input_items.append(get_tool_response(tool_call))
-
-if final_text is None:
-    print("Warning: Maximum iterations reached")
-
-print(final_text)
+asyncio.run(main())
 ```
 
 ```go title="Go" lines

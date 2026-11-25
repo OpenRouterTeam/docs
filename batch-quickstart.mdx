@@ -261,7 +261,19 @@ batch = response.json()
 ```
 
 ```go title="Go" lines
-body := `{
+package main
+
+import (
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+)
+
+func main() {
+	body := `{
   "endpoint": "/v1/responses",
   "model": "anthropic/claude-haiku-5.5",
   "requests": [
@@ -282,23 +294,28 @@ body := `{
   ]
 }`
 
-req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/batches", strings.NewReader(body))
-req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
-req.Header.Set("Content-Type", "application/json")
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/batches", strings.NewReader(body))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
 
-resp, err := http.DefaultClient.Do(req)
-if err != nil {
-	log.Fatal(err)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err) // a partial body is not a usable response
+	}
+	if resp.StatusCode >= 400 {
+		log.Fatalf("%s: %s", resp.Status, out)
+	}
+	fmt.Println(string(out))
 }
-defer resp.Body.Close()
-out, err := io.ReadAll(resp.Body)
-if err != nil {
-	log.Fatal(err) // a partial body is not a usable response
-}
-if resp.StatusCode >= 400 {
-	log.Fatalf("%s: %s", resp.Status, out)
-}
-fmt.Println(string(out))
+
 ```
 
 </CodeGroup>
@@ -481,6 +498,11 @@ console.log(JSON.stringify(await res.json()));
 ```
 
 ```python title="Python" lines
+import json
+import os
+
+import requests
+
 resp = requests.get(
     "https://openrouter.ai/api/v1/batches",
     headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
@@ -488,28 +510,50 @@ resp = requests.get(
 )
 resp.raise_for_status()
 batches = resp.json()
+print(json.dumps(batches, indent=2))
+
 ```
 
 ```go title="Go" lines
-req, _ := http.NewRequest("GET", "https://openrouter.ai/api/v1/batches?status=validating&status=in_progress&limit=100", nil)
-req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+package main
 
-resp, err := http.DefaultClient.Do(req)
-if err != nil {
-	log.Fatal(err)
+import (
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	req, err := http.NewRequest("GET", "https://openrouter.ai/api/v1/batches?status=validating&status=in_progress&limit=100", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err) // a partial body is not a usable response
+	}
+	if resp.StatusCode >= 400 {
+		log.Fatalf("%s: %s", resp.Status, out)
+	}
+	fmt.Println(string(out))
 }
-defer resp.Body.Close()
-out, err := io.ReadAll(resp.Body)
-if err != nil {
-	log.Fatal(err) // a partial body is not a usable response
-}
-if resp.StatusCode >= 400 {
-	log.Fatalf("%s: %s", resp.Status, out)
-}
-fmt.Println(string(out))
+
 ```
 
 </CodeGroup>
+
+```json title="Output"
+{"object":"list","data":[{"id":"batch-1795431079-JjWdxihZPp2QBJym7r32","object":"batch","endpoint":"/v1/responses","model":"anthropic/claude-haiku-5.5-20261007","completion_window":"24h","status":"in_progress","created_at":1795431079,"finalized_at":null,"provider":"Anthropic","expires_at":1795517479,"request_counts":{"total":2,"completed":0,"failed":0},"usage":null,"error":null,"results":null},{"id":"batch-1795431072-FA7ju68myuIZIMOvihHo","object":"batch","endpoint":"/v1/responses","model":"anthropic/claude-haiku-5.5-20261007","completion_window":"24h","status":"in_progress","created_at":1795431072,"finalized_at":null,"provider":"Anthropic","expires_at":1795517472,"request_counts":{"total":2,"completed":0,"failed":0},"usage":null,"error":null,"results":null},{"id":"batch-1795430959-yj27PpEuiyay1kxESTYr","object":"batch","endpoint":"/v1/responses","model":"anthropic/claude-haiku-5.5-20261007","completion_window":"24h","status":"in_progress","created_at":1795430959,"finalized_at":null,"provider":"Anthropic","expires_at":1795517359,"request_counts":{"total":2,"completed":0,"failed":0},"usage":null,"error":null,"results":null},{"id":"batch-1795430944-FHYopvq5NaIC14RuaXlr","object":"batch","endpoint":"/v1/responses","model":"anthropic/claude-haiku-5.5-20261007","completion_window":"24h","status":"in_progress","created_at":1795430944,"finalized_at":null,"provider":"Anthropic","expires_at":1795517344,"request_counts":{"total":2,"completed":0,"failed":0},"usage":null,"error":null,"results":null},{"id":"batch-1795430932-YxRvZ8Xwd87ZrBzZdBfn","object":"batch","endpoint":"/v1/responses","model":"anthropic/claude-haiku-5.5-20261007","completion_window":"24h","status":"in_progress","created_at":1795430932,"finalized_at":null,"provider":"Anthropic","expires_at":1795517332,"request_counts":{"total":2,"completed":0,"failed":0},"usage":null,"error":null,"results":null},{"id":"batch-1795430923-t4zllWJsPqxQAeY0wVcR","object":"batch","endpoint":"/v1/responses","model":"anthropic/claude-haiku-5.5-20261007","completion_window":"24h","status":"in_progress","created_at":1795430923,"finalized_at":null,"provider":"Anthropic","expires_at":1795517323,"request_counts":{"total":2,"completed":0,"failed":0},"usage":null,"error":null,"results":null},{"id":"batch-1795430830-A5gBadWsirOBIvVXx0uR","object":"batch","endpoint":"/v1/responses","model":"anthropic/claude-haiku-5.5-20261007","completion_window":"24h","status":"in_progress","created_at":1795430830,"finalized_at":null,"provider":"Anthropic","expires_at":1795517230,"request_counts":{"total":2,"completed":0,"failed":0},"usage":null,"error":null,"results":null}],"first_id":"batch-1795431079-JjWdxihZPp2QBJym7r32","last_id":"batch-1795430830-A5gBadWsirOBIvVXx0uR","has_more":false}
+```
 
 | Parameter | Description |
 |-----------|-------------|

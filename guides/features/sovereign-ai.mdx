@@ -53,7 +53,7 @@ In-region routing fails closed: if no endpoint eligible for the region (shared, 
 
 Choosing a regional base URL per request is the first step. To guarantee that every request in a workspace stays in-region regardless of how a client is configured, restrict the allowed data regions in a [guardrail](/guides/features/guardrails). The guardrail's `allowed_data_regions` setting (`global`, `europe`, `us`) lists the OpenRouter domains that governed requests must arrive through; requests through any other domain are rejected with a 403 before processing. Setting it on the workspace default guardrail enforces the policy for all keys and members in that workspace, and per-member or per-key guardrails can narrow it further. See [Enforcing In-Region Routing with Guardrails](/guides/features/in-region-routing#enforcing-in-region-routing-with-guardrails).
 
-To use in-region routing, send API requests through the region-specific base URL:
+To use in-region routing, send API requests through the region-specific base URL. In the fallback examples below, each model is subject to the same regional routing policy: shared endpoints must be in Europe, and a BYOK endpoint runs in its configured deployment region. For EU-only processing with BYOK, configure the deployment in the EU.
 
 ```lines
 https://eu.openrouter.ai
@@ -72,7 +72,11 @@ const openRouter = new OpenRouter({
 
 const response = await openRouter.responses.send({
   responsesRequest: {
-    model: 'mistralai/mistral-small-3.2-24b-instruct',
+    models: [
+      'mistralai/mistral-medium-3.1',
+      'mistralai/mistral-large-2512',
+      'openai/gpt-4.1-mini',
+    ],
     input: 'Hello',
     stream: false,
   },
@@ -90,7 +94,11 @@ const response = await fetch('https://eu.openrouter.ai/api/v1/responses', {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'mistralai/mistral-small-3.2-24b-instruct',
+    models: [
+      'mistralai/mistral-medium-3.1',
+      'mistralai/mistral-large-2512',
+      'openai/gpt-4.1-mini',
+    ],
     input: 'Hello',
   }),
 });
@@ -109,7 +117,11 @@ headers = {
 }
 
 response = requests.post('https://eu.openrouter.ai/api/v1/responses', headers=headers, json={
-  'model': 'mistralai/mistral-small-3.2-24b-instruct',
+  'models': [
+    'mistralai/mistral-medium-3.1',
+    'mistralai/mistral-large-2512',
+    'openai/gpt-4.1-mini',
+  ],
   'input': 'Hello',
 })
 
@@ -122,7 +134,11 @@ curl https://eu.openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer <OPENROUTER_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "mistralai/mistral-small-3.2-24b-instruct",
+    "models": [
+      "mistralai/mistral-medium-3.1",
+      "mistralai/mistral-large-2512",
+      "openai/gpt-4.1-mini"
+    ],
     "input": "Hello"
   }'
 ```
@@ -142,7 +158,11 @@ import (
 
 func main() {
 	body, _ := json.Marshal(map[string]any{
-		"model":  "mistralai/mistral-small-3.2-24b-instruct",
+		"models": []string{
+			"mistralai/mistral-medium-3.1",
+			"mistralai/mistral-large-2512",
+			"openai/gpt-4.1-mini",
+		},
 		"input":  "Hello",
 		"stream": false,
 	})

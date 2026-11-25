@@ -61,11 +61,16 @@ os.environ["OPENAI_API_KEY"] = "<OPENROUTER_API_KEY>"
 export OPENAI_API_KEY="$OPENROUTER_API_KEY"
 ```
 
+```bash title="cURL" lines
+# Set your OpenRouter API key
+export OPENAI_API_KEY="$OPENROUTER_API_KEY"
+```
+
 </CodeGroup>
 
 ### Simple LLM Call
 
-Initialize Arize AX and instrument your OpenAI client to automatically trace OpenRouter calls:
+The Python example configures Arize AX and instruments the OpenAI SDK to trace OpenRouter calls. The other tabs make equivalent API requests without sending traces to Arize.
 
 <CodeGroup>
 
@@ -102,6 +107,105 @@ response = client.responses.create(
 
 # Print the assistant's reply
 print(response.output_text)
+```
+
+```typescript title="TypeScript" lines
+import OpenAI from 'openai';
+
+// Configure OpenAI client for OpenRouter
+const client = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
+  defaultHeaders: {
+    'HTTP-Referer': '<YOUR_SITE_URL>', // Optional: Your site URL
+    'X-OpenRouter-Title': '<YOUR_SITE_NAME>', // Optional: Your site name
+  },
+});
+
+// Make an untraced Responses API request
+const response = await client.responses.create({
+  model: 'openai/gpt-4o-mini',
+  input: 'Write a haiku about observability.',
+});
+
+// Print the assistant's reply
+console.log(response.output_text);
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+// Note: OpenInference auto-instrumentation is not available for Go.
+// Export spans to Arize with the OpenTelemetry Go SDK if you need tracing.
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o-mini",
+		"input": "Write a haiku about observability.",
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("HTTP-Referer", "<YOUR_SITE_URL>")         // Optional: Your site URL
+	req.Header.Set("X-OpenRouter-Title", "<YOUR_SITE_NAME>") // Optional: Your site name
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		log.Fatalf("request failed: %s: %s", resp.Status, b)
+	}
+
+	var result struct {
+		Output []struct {
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	// Print the assistant's reply
+	for _, item := range result.Output {
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				fmt.Print(c.Text)
+			}
+		}
+	}
+	fmt.Println()
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "HTTP-Referer: <YOUR_SITE_URL>" \
+  -H "X-OpenRouter-Title: <YOUR_SITE_NAME>" \
+  -d '{
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "input": "Write a haiku about observability."
+  }' | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text'
 ```
 
 </CodeGroup>

@@ -69,6 +69,20 @@ export LANGFUSE_HOST="https://cloud.langfuse.com"
 export OPENAI_API_KEY="$OPENROUTER_API_KEY"
 ```
 
+```bash title="cURL" lines
+# Set your Langfuse API keys
+export LANGFUSE_SECRET_KEY="sk-lf-..."
+export LANGFUSE_PUBLIC_KEY="pk-lf-..."
+# EU region
+export LANGFUSE_HOST="https://cloud.langfuse.com"
+# US region
+# export LANGFUSE_HOST="https://us.cloud.langfuse.com"
+
+# Set your OpenRouter API key
+export OPENAI_API_KEY="$OPENROUTER_API_KEY"
+
+```
+
 </CodeGroup>
 
 ### Simple LLM Call
@@ -102,6 +116,101 @@ response = client.responses.create(
 print(response.output_text)
 ```
 
+```typescript title="TypeScript" lines
+import OpenAI from 'openai';
+
+// Create an OpenAI client with OpenRouter's base URL
+const client = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
+  defaultHeaders: {
+    'HTTP-Referer': '<YOUR_SITE_URL>', // Optional: Your site URL
+    'X-OpenRouter-Title': '<YOUR_SITE_NAME>', // Optional: Your site name
+  },
+});
+
+// Make a Responses API request
+const response = await client.responses.create({
+  model: 'anthropic/claude-sonnet-4.6',
+  instructions: 'You are a helpful assistant.',
+  input: 'Tell me a fun fact about space.',
+});
+
+// Print the assistant's reply
+console.log(response.output_text);
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model":        "anthropic/claude-sonnet-4.6",
+		"instructions": "You are a helpful assistant.",
+		"input":        "Tell me a fun fact about space.",
+	})
+
+	// Make a Responses API request to OpenRouter
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("HTTP-Referer", "<YOUR_SITE_URL>")         // Optional: Your site URL
+	req.Header.Set("X-OpenRouter-Title", "<YOUR_SITE_NAME>") // Optional: Your site name
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	var out struct {
+		Output []struct {
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		log.Fatal(err)
+	}
+
+	// Print the assistant's reply
+	for _, item := range out.Output {
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				fmt.Println(c.Text)
+			}
+		}
+	}
+}
+
+```
+
+```bash title="cURL" lines
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "HTTP-Referer: <YOUR_SITE_URL>" \
+  -H "X-OpenRouter-Title: <YOUR_SITE_NAME>" \
+  -d '{
+    "model": "anthropic/claude-sonnet-4.6",
+    "instructions": "You are a helpful assistant.",
+    "input": "Tell me a fun fact about space."
+  }' | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text'
+
+```
+
 </CodeGroup>
 
 ```text title="Output"
@@ -116,7 +225,7 @@ As a bonus, Venus also rotates *backwards* compared to most planets, so if you c
 
 ### Advanced Tracing with Nested Calls
 
-Use the `@observe()` decorator to capture execution details of functions with nested LLM calls:
+The Python example uses `@observe()` to capture a parent trace and its LLM calls. The TypeScript, Go, and cURL tabs show the same two requests without Langfuse instrumentation.
 
 <CodeGroup>
 
@@ -166,6 +275,151 @@ def analyze_sentiment(summary: str):
 text_to_analyze = "OpenRouter's unified API has significantly advanced the field of AI development, setting new standards for model accessibility."
 result = analyze_text(text_to_analyze)
 print(result)
+```
+
+```typescript title="TypeScript" lines
+import OpenAI from 'openai';
+
+// Create an OpenAI client with OpenRouter's base URL
+const client = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+async function analyzeText(text: string) {
+  // First LLM call: Summarize the text
+  const summary = (await summarizeText(text)).output_text;
+
+  // Second LLM call: Analyze the sentiment of the summary
+  const sentiment = (await analyzeSentiment(summary)).output_text;
+
+  return { summary, sentiment };
+}
+
+function summarizeText(text: string) {
+  return client.responses.create({
+    model: 'openai/gpt-4o-mini',
+    instructions: 'You summarize texts in a concise manner.',
+    input: `Summarize the following text:\n${text}`,
+  });
+}
+
+function analyzeSentiment(summary: string) {
+  return client.responses.create({
+    model: 'openai/gpt-4o-mini',
+    instructions: 'You analyze the sentiment of texts.',
+    input: `Analyze the sentiment of the following summary:\n${summary}`,
+  });
+}
+
+// Example usage
+const textToAnalyze =
+  "OpenRouter's unified API has significantly advanced the field of AI development, setting new standards for model accessibility.";
+const result = await analyzeText(textToAnalyze);
+console.log(result);
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+// respond makes a Responses API request to OpenRouter and returns the output text
+func respond(instructions, input string) string {
+	body, _ := json.Marshal(map[string]any{
+		"model":        "openai/gpt-4o-mini",
+		"instructions": instructions,
+		"input":        input,
+	})
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	var out struct {
+		Output []struct {
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		log.Fatal(err)
+	}
+	text := ""
+	for _, item := range out.Output {
+		for _, c := range item.Content {
+			if c.Type == "output_text" {
+				text += c.Text
+			}
+		}
+	}
+	return text
+}
+
+// Nested function: summarize the text
+func summarizeText(text string) string {
+	return respond("You summarize texts in a concise manner.", "Summarize the following text:\n"+text)
+}
+
+// Nested function: analyze the sentiment of the summary
+func analyzeSentiment(summary string) string {
+	return respond("You analyze the sentiment of texts.", "Analyze the sentiment of the following summary:\n"+summary)
+}
+
+func analyzeText(text string) map[string]string {
+	// First LLM call: Summarize the text
+	summary := summarizeText(text)
+	// Second LLM call: Analyze the sentiment of the summary
+	sentiment := analyzeSentiment(summary)
+	return map[string]string{"summary": summary, "sentiment": sentiment}
+}
+
+func main() {
+	textToAnalyze := "OpenRouter's unified API has significantly advanced the field of AI development, setting new standards for model accessibility."
+	result := analyzeText(textToAnalyze)
+	fmt.Println(result)
+}
+
+```
+
+```bash title="cURL" lines
+# Nested calls: summarize the text, then analyze the summary's sentiment
+respond() {
+  curl -s https://openrouter.ai/api/v1/responses \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n --arg instructions "$1" --arg input "$2" \
+      '{model: "openai/gpt-4o-mini", instructions: $instructions, input: $input}')" \
+  | jq -r '[.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text] | join("")'
+}
+
+TEXT="OpenRouter's unified API has significantly advanced the field of AI development, setting new standards for model accessibility."
+
+# First LLM call: Summarize the text
+SUMMARY=$(respond "You summarize texts in a concise manner." "Summarize the following text:
+$TEXT")
+
+# Second LLM call: Analyze the sentiment of the summary
+SENTIMENT=$(respond "You analyze the sentiment of texts." "Analyze the sentiment of the following summary:
+$SUMMARY")
+
+jq -n --arg summary "$SUMMARY" --arg sentiment "$SENTIMENT" '{summary: $summary, sentiment: $sentiment}'
+
 ```
 
 </CodeGroup>

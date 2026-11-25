@@ -158,12 +158,25 @@ callModel returns a `ModelResult` object that provides multiple ways to consume 
 <CodeGroup>
 
 ```typescript lines
+import { OpenRouter } from '@openrouter/agent';
+
+const openrouter = new OpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+const result = openrouter.callModel({
+  model: 'openai/gpt-5-nano',
+  input: 'What is the capital of France?',
+});
+
 // Get just the text content
 const text = await result.getText();
+console.log(text);
 
 // Get the full response with usage data
 const response = await result.getResponse();
 console.log(response.usage); // { inputTokens, outputTokens, cachedTokens }
+
 ```
 
 ```python title="Python" lines
@@ -197,37 +210,68 @@ asyncio.run(main())
 ```
 
 ```go title="Go" lines
-// Decode the quick start response into a type that also keeps usage.
-// resp is the response from the quick start, after its status check.
-var result struct {
-	Output []struct {
-		Type    string `json:"type"`
-		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
-		} `json:"content"`
-	} `json:"output"`
-	Usage json.RawMessage `json:"usage"`
-}
-if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-	log.Fatal(err)
-}
+package main
 
-// Get just the text content
-text := ""
-for _, item := range result.Output {
-	if item.Type == "message" {
-		for _, c := range item.Content {
-			if c.Type == "output_text" {
-				text += c.Text
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-5-nano",
+		"input": "What is the capital of France?",
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("unexpected status: %s", resp.Status)
+	}
+
+	// Decode the response into a type that also keeps usage.
+	var result struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+		Usage json.RawMessage `json:"usage"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+
+	// Get just the text content
+	text := ""
+	for _, item := range result.Output {
+		if item.Type == "message" {
+			for _, c := range item.Content {
+				if c.Type == "output_text" {
+					text += c.Text
+				}
 			}
 		}
 	}
-}
-fmt.Println(text)
+	fmt.Println(text)
 
-// Get the full response with usage data
-fmt.Println(string(result.Usage)) // { input_tokens, output_tokens, input_tokens_details: { cached_tokens } }
+	// Get the full response with usage data
+	fmt.Println(string(result.Usage)) // { input_tokens, output_tokens, input_tokens_details: { cached_tokens } }
+}
+
 ```
 
 ```bash title="cURL" lines
@@ -245,6 +289,23 @@ jq '.usage' <<<"$response" # { input_tokens, output_tokens, ... }
 
 ```
 
+```bash title="cURL" lines
+response=$(curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-nano",
+    "input": "What is the capital of France?"
+  }')
+
+# Get just the text content
+echo "$response" | jq -r '[.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text] | join("")'
+
+# Get the full response with usage data
+echo "$response" | jq '.usage'
+
+```
+
 </CodeGroup>
 
 ```text title="Output"
@@ -257,10 +318,22 @@ input_tokens=13 input_tokens_details=InputTokensDetails(cached_tokens=0, cache_w
 <CodeGroup>
 
 ```typescript lines
+import { OpenRouter, callModel } from '@openrouter/agent';
+
+const openrouter = new OpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+const result = callModel(openrouter, {
+  model: 'openai/gpt-5-nano',
+  input: 'What is the capital of France?',
+});
+
 // Stream text deltas
 for await (const delta of result.getTextStream()) {
   process.stdout.write(delta);
 }
+console.log();
 
 // Stream reasoning (for reasoning models)
 for await (const delta of result.getReasoningStream()) {
@@ -269,13 +342,14 @@ for await (const delta of result.getReasoningStream()) {
 
 // Stream complete items by ID (recommended)
 for await (const item of result.getItemsStream()) {
-  console.log('Item update:', item.type, item.id);
+  if ('id' in item) console.log('Item update:', item.type, item.id);
 }
 
 // Stream all events (including tool preliminary results)
 for await (const event of result.getFullResponsesStream()) {
   console.log('Event:', event.type);
 }
+
 ```
 
 ```python title="Python" lines
@@ -396,7 +470,29 @@ func main() {
 }
 ```
 
+```bash title="cURL" lines
+set -o pipefail
+curl -fsSN https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-nano",
+    "input": "What is the capital of France?",
+    "stream": true
+  }' | jq --unbuffered -Rrj '
+    select(startswith("data: ")) | ltrimstr("data: ") | fromjson?
+    | select(.type == "response.output_text.delta") | .delta
+  ' || exit 1
+echo
+```
+
 </CodeGroup>
+
+To inspect other events in the cURL example, replace the final filter with `select(.type == "response.reasoning_text.delta") | .delta` for reasoning text, `select(.type == "response.output_item.added" or .type == "response.output_item.done") | .item` for item updates, or `.type` for every event type. Use `-Rr` instead of `-Rrj` to print a newline after each result.
+
+<Card title="Learn: Stream it" icon="graduation-cap" href="https://learn.openrouter.ai/courses/first-request/stream-it">
+  Learn how to handle an error after streaming begins and how to cancel a stream when the reader leaves.
+</Card>
 
 ```text title="Output"
 Paris
@@ -422,8 +518,28 @@ Event: turn.end
 <CodeGroup>
 
 ```typescript lines
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel, tool } from '@openrouter/agent';
+import { z } from 'zod';
+
+const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const weatherTool = tool({
+  name: 'get_weather',
+  description: 'Get the current weather for a location',
+  inputSchema: z.object({ location: z.string() }),
+  execute: async ({ location }) => ({ temperature: 72, condition: 'sunny', location }),
+});
+
+const result = callModel(client, {
+  model: 'openai/gpt-5-nano',
+  input: 'What is the weather in San Francisco?',
+  tools: [weatherTool] as const,
+});
+
 // Get all tool calls from the response
 const toolCalls = await result.getToolCalls();
+console.log('Tool calls:', JSON.stringify(toolCalls, null, 2));
 
 // Stream tool calls as they complete
 for await (const toolCall of result.getToolCallsStream()) {
@@ -438,6 +554,10 @@ for await (const event of result.getToolStream()) {
     console.log('Progress:', event.result);
   }
 }
+console.log();
+
+console.log('Final text:', await result.getText());
+
 ```
 
 ```python title="Python" lines
@@ -514,12 +634,57 @@ asyncio.run(main())
 ```
 
 ```go title="Go" lines
-// Describe the tool in the request body, then send it as in the quick start.
-// Over raw HTTP the API returns the function call; running the tool is up to your code.
-body, _ := json.Marshal(map[string]any{
-	"model": "openai/gpt-5-nano",
-	"input": "What is the weather in San Francisco?",
-	"tools": []map[string]any{{
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+// Decode the response into a type that keeps the function call fields
+type OutputItem struct {
+	Type      string `json:"type"`
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+	CallID    string `json:"call_id"`
+	Content   []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content"`
+}
+
+func send(payload map[string]any) []OutputItem {
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/responses", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("unexpected status: %s", resp.Status)
+	}
+
+	var result struct {
+		Output []OutputItem `json:"output"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+	return result.Output
+}
+
+func main() {
+	// Describe the tool in the request body.
+	// Over raw HTTP the API returns the function call; running the tool is up to your code.
+	tools := []map[string]any{{
 		"type":        "function",
 		"name":        "get_weather",
 		"description": "Get the current weather for a location",
@@ -528,28 +693,46 @@ body, _ := json.Marshal(map[string]any{
 			"properties": map[string]any{"location": map[string]any{"type": "string"}},
 			"required":   []string{"location"},
 		},
-	}},
-})
+	}}
+	input := []any{map[string]any{"role": "user", "content": "What is the weather in San Francisco?"}}
 
-// Decode the response into a type that keeps the function call fields
-type OutputItem struct {
-	Type      string `json:"type"`
-	Name      string `json:"name"`
-	Arguments string `json:"arguments"`
-}
-var result struct {
-	Output []OutputItem `json:"output"`
-}
-if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-	log.Fatal(err)
-}
+	output := send(map[string]any{"model": "openai/gpt-5-nano", "input": input, "tools": tools})
 
-// Get all tool calls from the response
-for _, item := range result.Output {
-	if item.Type == "function_call" {
+	// Get all tool calls from the response, run them, and collect the results
+	for _, item := range output {
+		if item.Type != "function_call" {
+			continue
+		}
 		fmt.Println("Tool:", item.Name, item.Arguments)
+
+		var args struct {
+			Location string `json:"location"`
+		}
+		json.Unmarshal([]byte(item.Arguments), &args)
+		result, _ := json.Marshal(map[string]any{"temperature": 72, "condition": "sunny", "location": args.Location})
+
+		input = append(input,
+			map[string]any{"type": "function_call", "call_id": item.CallID, "name": item.Name, "arguments": item.Arguments},
+			map[string]any{"type": "function_call_output", "call_id": item.CallID, "output": string(result)},
+		)
+	}
+
+	// Send the tool results back to get the final answer
+	if len(input) > 1 {
+		output = send(map[string]any{"model": "openai/gpt-5-nano", "input": input, "tools": tools})
+	}
+
+	for _, item := range output {
+		if item.Type == "message" {
+			for _, c := range item.Content {
+				if c.Type == "output_text" {
+					fmt.Println("Final text:", c.Text)
+				}
+			}
+		}
 	}
 }
+
 ```
 
 </CodeGroup>
@@ -668,6 +851,27 @@ result3=$(curl -s https://openrouter.ai/api/v1/responses \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model": "openai/gpt-5-nano", "instructions": "You are a helpful assistant.", "input": "Hello!"}')
+```
+
+```bash title="cURL" lines
+# Simple string
+result1=$(curl -sS https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "openai/gpt-5-nano", "input": "Hello!"}')
+
+# Message array (OpenResponses format)
+result2=$(curl -sS https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "openai/gpt-5-nano", "input": [{"role": "user", "content": "Hello!"}]}')
+
+# With system instructions
+result3=$(curl -sS https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "openai/gpt-5-nano", "instructions": "You are a helpful assistant.", "input": "Hello!"}')
+
 ```
 
 </CodeGroup>

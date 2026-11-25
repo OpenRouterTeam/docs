@@ -364,6 +364,122 @@ curl -s https://openrouter.ai/api/v1/chat/completions \
 
 ```
 
+```go title="Go" lines
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+// Evaluate a piece of state against typed questions using structured outputs.
+func main() {
+	body, _ := json.Marshal(map[string]any{
+		"model": "openai/gpt-4o-mini",
+		"messages": []map[string]string{
+			{
+				"role": "system",
+				"content": "Evaluate the customer message. refund: probability (0 to 1) that the customer is asking for money back. " +
+					"department: which team should handle this (billing = charges and refunds, technical = bugs and outages).",
+			},
+			{"role": "user", "content": "I was charged twice for my subscription."},
+		},
+		"response_format": map[string]any{
+			"type": "json_schema",
+			"json_schema": map[string]any{
+				"name":   "answers",
+				"strict": true,
+				"schema": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"refund":     map[string]any{"type": "number"},
+						"department": map[string]any{"type": "string", "enum": []string{"billing", "technical"}},
+					},
+					"required":             []string{"refund", "department"},
+					"additionalProperties": false,
+				},
+			},
+		},
+	})
+
+	req, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENROUTER_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		log.Fatalf("HTTP %d: %s", resp.StatusCode, b)
+	}
+
+	var data struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Fatal(err)
+	}
+	if len(data.Choices) == 0 {
+		log.Fatal("no choices returned")
+	}
+
+	var answers struct {
+		Refund     float64 `json:"refund"`
+		Department string  `json:"department"`
+	}
+	if err := json.Unmarshal([]byte(data.Choices[0].Message.Content), &answers); err != nil {
+		log.Fatal(err)
+	}
+
+	out, _ := json.MarshalIndent(answers, "", "  ")
+	fmt.Println(string(out)) // e.g. {"refund": 0.95, "department": "billing"}
+}
+
+```
+
+```bash title="cURL" lines
+# Evaluate a piece of state against typed questions using structured outputs.
+curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o-mini",
+    "messages": [
+      {"role": "system", "content": "Evaluate the customer message. refund: probability (0 to 1) that the customer is asking for money back. department: which team should handle this (billing = charges and refunds, technical = bugs and outages)."},
+      {"role": "user", "content": "I was charged twice for my subscription."}
+    ],
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "answers",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "refund": {"type": "number"},
+            "department": {"type": "string", "enum": ["billing", "technical"]}
+          },
+          "required": ["refund", "department"],
+          "additionalProperties": false
+        }
+      }
+    }
+  }' | jq '.choices[0].message.content | fromjson'  # e.g. {"refund": 0.95, "department": "billing"}
+
+```
+
 </CodeGroup>
 
 ```text title="Output"

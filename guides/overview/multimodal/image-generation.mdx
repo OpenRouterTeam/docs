@@ -232,9 +232,50 @@ Visit the [Models page](https://openrouter.ai/models?output_modalities=image) an
 
 `GET /api/v1/images/models` lists a model's free variant as its own entry, with an ID ending in `:free` (for example, `recraft/recraft-v4.1-flash-v2:free`), alongside the paid entry when both exist. To list only the free image models:
 
+<CodeGroup>
+
 ```bash lines
 curl -s "https://openrouter.ai/api/v1/images/models" | jq '[.data[] | select(.id | endswith(":free")) | .id]'
 ```
+
+```typescript title="TypeScript" lines
+const freeModels = models.data
+  .filter((m: { id: string }) => m.id.endsWith(':free'))
+  .map((m: { id: string }) => m.id);
+```
+
+```python title="Python" lines
+response = requests.get("https://openrouter.ai/api/v1/images/models")
+free_models = [m["id"] for m in response.json()["data"] if m["id"].endswith(":free")]
+```
+
+```go title="Go" lines
+res, err := http.Get("https://openrouter.ai/api/v1/images/models")
+if err != nil {
+	log.Fatal(err)
+}
+defer res.Body.Close()
+
+var models struct {
+	Data []struct {
+		ID string `json:"id"`
+	} `json:"data"`
+}
+if err := json.NewDecoder(res.Body).Decode(&models); err != nil {
+	log.Fatal(err)
+}
+
+free := []string{}
+for _, m := range models.Data {
+	if strings.HasSuffix(m.ID, ":free") {
+		free = append(free, m.ID)
+	}
+}
+out, _ := json.MarshalIndent(free, "", "  ")
+fmt.Println(string(out))
+```
+
+</CodeGroup>
 
 Pass a `:free` ID as `model` to `POST /api/v1/images`, or to `GET /api/v1/images/models/{author}/{slug}:free/endpoints` to see the free endpoints and their parameters. See [Free Variants](/guides/routing/model-variants/free) for routing behavior and [Rate limits](/api_reference/limits#rate-limits) for free-tier per-minute and daily quotas.
 
@@ -530,6 +571,27 @@ curl -s "https://openrouter.ai/api/v1/images/models" | jq '[.data[] | select(.su
 <Note>
 **No `bbox` placement parameter on `input_references`:** Reference-image entries do not accept bounding-box (`bbox`) coordinates to control where an input image is placed. `ImageGenerationLayerBoundingBox` (`bounding_box`) is a response-only metadata field returned on decomposed output layers, not a request parameter. Describe placement in `prompt`, or pass a transparent PNG overlay via `markup` on models that support it.
 </Note>
+
+To place text rather than images, Recraft V3 (`recraft/recraft-v3`) accepts `text_layout` under `provider.options.recraft`. Each entry pairs a `text` string with a `bbox` of four `[x, y]` corner points, given as fractions (`0` to `1`) of the image width and height:
+
+```json lines
+{
+  "model": "recraft/recraft-v3",
+  "prompt": "a red panda holding a sign",
+  "provider": {
+    "options": {
+      "recraft": {
+        "text_layout": [
+          {
+            "text": "HELLO",
+            "bbox": [[0.3, 0.45], [0.7, 0.45], [0.7, 0.55], [0.3, 0.55]]
+          }
+        ]
+      }
+    }
+  }
+}
+```
 
 ### Provider Routing
 

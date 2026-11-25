@@ -53,27 +53,124 @@ Items are emitted multiple times with the same ID but progressively updated cont
 
 Each iteration yields a **complete item** with the same ID but updated content:
 
+<CodeGroup>
+
 ```typescript lines
 // Iteration 1
-{
+const iteration1 = {
   id: "msg_123",
   type: "message",
-  content: [{ type: "output_text", text: "Hello" }]
-}
+  content: [{ type: "output_text", text: "Hello" }],
+};
 
 // Iteration 2
-{
+const iteration2 = {
   id: "msg_123",
   type: "message",
-  content: [{ type: "output_text", text: "Hello world" }]
-}
+  content: [{ type: "output_text", text: "Hello world" }],
+};
 
 // Iteration 3
-{
+const iteration3 = {
   id: "msg_123",
   type: "message",
-  content: [{ type: "output_text", text: "Hello world!" }]
+  content: [{ type: "output_text", text: "Hello world!" }],
+};
+
+for (const item of [iteration1, iteration2, iteration3]) {
+  console.log(JSON.stringify(item));
 }
+
+```
+
+```python title="Python" lines
+import json
+
+# Iteration 1
+iteration1 = {
+    "id": "msg_123",
+    "type": "message",
+    "content": [{"type": "output_text", "text": "Hello"}],
+}
+
+# Iteration 2
+iteration2 = {
+    "id": "msg_123",
+    "type": "message",
+    "content": [{"type": "output_text", "text": "Hello world"}],
+}
+
+# Iteration 3
+iteration3 = {
+    "id": "msg_123",
+    "type": "message",
+    "content": [{"type": "output_text", "text": "Hello world!"}],
+}
+
+for item in [iteration1, iteration2, iteration3]:
+    print(json.dumps(item, separators=(",", ":")))
+
+```
+
+```go title="Go" lines
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+)
+
+type Content struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+type Item struct {
+	ID      string    `json:"id"`
+	Type    string    `json:"type"`
+	Content []Content `json:"content"`
+}
+
+func main() {
+	// Iteration 1
+	iteration1 := Item{ID: "msg_123", Type: "message", Content: []Content{{Type: "output_text", Text: "Hello"}}}
+
+	// Iteration 2
+	iteration2 := Item{ID: "msg_123", Type: "message", Content: []Content{{Type: "output_text", Text: "Hello world"}}}
+
+	// Iteration 3
+	iteration3 := Item{ID: "msg_123", Type: "message", Content: []Content{{Type: "output_text", Text: "Hello world!"}}}
+
+	for _, item := range []Item{iteration1, iteration2, iteration3} {
+		b, _ := json.Marshal(item)
+		fmt.Println(string(b))
+	}
+}
+
+```
+
+```bash title="cURL" lines
+# Iteration 1
+iteration1='{"id":"msg_123","type":"message","content":[{"type":"output_text","text":"Hello"}]}'
+
+# Iteration 2
+iteration2='{"id":"msg_123","type":"message","content":[{"type":"output_text","text":"Hello world"}]}'
+
+# Iteration 3
+iteration3='{"id":"msg_123","type":"message","content":[{"type":"output_text","text":"Hello world!"}]}'
+
+for item in "$iteration1" "$iteration2" "$iteration3"; do
+  echo "$item"
+done
+
+```
+
+</CodeGroup>
+
+```text title="Output"
+{"id":"msg_123","type":"message","content":[{"type":"output_text","text":"Hello"}]}
+{"id":"msg_123","type":"message","content":[{"type":"output_text","text":"Hello world"}]}
+{"id":"msg_123","type":"message","content":[{"type":"output_text","text":"Hello world!"}]}
 ```
 
 The same pattern applies to function calls:
@@ -670,12 +767,24 @@ Traditional streaming requires manual accumulation:
 <CodeGroup>
 
 ```tsx lines
+import { OpenRouter } from '@openrouter/sdk';
+import { callModel } from '@openrouter/agent';
+
+const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const result = callModel(client, {
+  model: '~anthropic/claude-sonnet-latest',
+  input: 'Write a haiku about streaming data.',
+});
+
 // Traditional approach - manual accumulation
 let text = '';
 
 for await (const chunk of result.getTextStream()) {
   text += chunk; // Must accumulate manually
 }
+
+console.log(text);
 
 ```
 
@@ -746,6 +855,22 @@ printf '%s\n' "$text"
 
 ```
 
+```bash title="cURL" lines
+#!/bin/bash
+set -o pipefail
+# Stream the Responses API and keep only the JSON events
+curl -sN --fail https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"~anthropic/claude-sonnet-latest","input":"Write a haiku about streaming data.","stream":true}' \
+  | sed -n 's/^data: \({.*\)/\1/p' \
+  | jq -nr '
+    # Traditional approach - manual accumulation of text deltas
+    reduce inputs as $e ("";
+      if $e.type == "response.output_text.delta" then . + $e.delta else . end)'
+
+```
+
 </CodeGroup>
 
 ```text title="Output"
@@ -761,6 +886,8 @@ With items, each emission replaces the previous:
 ```tsx lines
 // Items approach - replace by ID
 for await (const item of result.getItemsStream()) {
+  // Items the SDK does not recognize carry no ID to key on
+  if (!('id' in item) || !item.id) continue;
   setItems((prev) => new Map(prev).set(item.id, item)); // Complete replacement
 }
 ```
@@ -815,6 +942,15 @@ done < <(curl -sN https://openrouter.ai/api/v1/responses \
   -d '{"model":"~anthropic/claude-sonnet-latest","input":"Write a haiku about streaming data.","stream":true}' \
   | sed -n 's/^data: \({.*\)/\1/p' \
   | jq -r 'select(.type | startswith("response.output_item.")) | "\(.item.id)\t\(.item | tojson)"')
+```
+
+```bash title="cURL" lines
+# Items approach - replace by ID
+jq -nr '
+  reduce inputs as $e ({};
+    if ($e.type | startswith("response.output_item.")) then .[$e.item.id] = $e.item else . end) # Complete replacement
+  | .[] | select(.type == "message")
+  | "[message \(.id)] " + ((.content // []) | map(.text // "") | join(""))'
 ```
 
 </CodeGroup>

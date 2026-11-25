@@ -87,6 +87,7 @@ const response = await fetch('https://openrouter.ai/api/v1/batches', {
   }),
 });
 const batch = await response.json();
+console.log(JSON.stringify(batch, null, 2));
 ```
 
 ```python title="Python" lines
