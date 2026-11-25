@@ -17,7 +17,9 @@ icon: terminal
 ---
 
 <Warning>
-Claude Code with OpenRouter is only guaranteed to work with the Anthropic first-party provider. For maximum compatibility, we recommend setting [Anthropic 1P as top priority provider](/guides/routing/provider-selection) when using Claude Code.
+Claude Code with OpenRouter is only guaranteed to work with the Anthropic first-party provider. Because Claude Code sends standard Anthropic Messages API payloads without OpenRouter's `provider` object, you have two ways to route it — see [Provider Selection](/guides/routing/provider-selection):
+- **Prioritize Anthropic while keeping fallbacks:** Create an [OpenRouter Preset](/guides/features/presets) with `provider.order: ["anthropic"]` and reference it in your Claude Code model override (for example, `ANTHROPIC_DEFAULT_SONNET_MODEL="@preset/claude-code"`).
+- **Restrict to Anthropic only:** Use your [OpenRouter privacy / provider settings](https://openrouter.ai/settings/privacy) to allow only Anthropic. Note that this removes non-Anthropic backups for all requests in that account or workspace scope.
 </Warning>
 
 ## Why Use OpenRouter with Claude Code?
@@ -70,7 +72,7 @@ Instead of logging in with Anthropic directly, connect Claude Code to OpenRouter
 
 Requirements:
 
-1. Use the full OpenRouter API URL, including the scheme: `https://openrouter.ai/api`
+1. Use the full OpenRouter Anthropic-compatible base URL, including the scheme: `https://openrouter.ai/api` (**not** `https://openrouter.ai/api/v1` — Claude Code appends `/v1/messages`, so `/api/v1` doubles the path to `/api/v1/v1/messages` and returns 404)
 2. Provide your [OpenRouter API key](https://openrouter.ai/settings/keys) as `ANTHROPIC_AUTH_TOKEN`
 3. **Important:** Explicitly blank out `ANTHROPIC_API_KEY` to prevent conflicts
 
@@ -116,6 +118,50 @@ Requirements:
   <Tab title="Project Settings File">
     Alternatively, you can configure Claude Code using a project-level settings file at `.claude/settings.local.json` in your project root:
 
+    Claude Code's `settings.json` / `settings.local.json` `env` values are literal strings (shell variables like `$OPENROUTER_API_KEY` are **not** expanded). To avoid writing your plaintext API key into a settings file, export `OPENROUTER_API_KEY` in the shell that launches `claude` (without setting `ANTHROPIC_AUTH_TOKEN`, which takes precedence over `apiKeyHelper`):
+
+    ```bash lines
+    # macOS / Linux / WSL
+    export OPENROUTER_API_KEY="<your-openrouter-api-key>"
+    ```
+
+    ```powershell lines
+    # Windows (PowerShell)
+    $env:OPENROUTER_API_KEY = "<your-openrouter-api-key>"
+    ```
+
+    Then configure `apiKeyHelper` in `.claude/settings.local.json` (macOS / Linux / WSL):
+
+    ```json lines
+    {
+      "env": {
+        "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
+        "ANTHROPIC_API_KEY": "",
+        "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1"
+      },
+      "apiKeyHelper": "printf '%s' \"$OPENROUTER_API_KEY\""
+    }
+    ```
+
+    On native Windows, Claude Code runs `apiKeyHelper` through `cmd`, so invoke PowerShell explicitly to print the key:
+
+    ```json lines
+    {
+      "env": {
+        "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
+        "ANTHROPIC_API_KEY": "",
+        "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1"
+      },
+      "apiKeyHelper": "powershell -NoProfile -Command \"[Console]::Write($env:OPENROUTER_API_KEY)\""
+    }
+    ```
+
+    <Note>
+    **Cost statusline:** If you also set up the optional [cost statusline](#monitor-your-usage-and-costs) below, its script reads `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY`. When authenticating via `apiKeyHelper`, update that script to read `OPENROUTER_API_KEY` instead.
+    </Note>
+
+    Or, if you keep `.claude/settings.local.json` untracked in `.gitignore` and prefer a static token:
+
     ```json lines
     {
       "env": {
@@ -130,7 +176,7 @@ Requirements:
     Replace `<your-openrouter-api-key>` with your actual OpenRouter API key.
 
     <Note>
-    **Note:** This method keeps your configuration scoped to the project, making it easy to share OpenRouter settings with your team via version control (just be careful not to commit your API key).
+    **Note:** `.claude/settings.local.json` is ignored by Git by default in Claude Code projects, while `.claude/settings.json` is intended for shared repo config. With `apiKeyHelper`, you can safely commit `.claude/settings.json` without putting any secret on disk.
     </Note>
   </Tab>
 </Tabs>
@@ -219,6 +265,10 @@ export CLAUDE_CODE_SUBAGENT_MODEL="~anthropic/claude-opus-latest[1m]"
 <Warning>
 Claude Code 2.1.x added Fable as a fourth model class. When Claude Code points at OpenRouter, Fable is **not** offered in `/model` by default — setting `ANTHROPIC_DEFAULT_FABLE_MODEL` is the only way to make it selectable.
 </Warning>
+
+<Note>
+**`unrecognized_model` warning on `~anthropic/*-latest` aliases:** Claude Code may log a `[claude-code:unrecognized_model]` warning when a role variable is set to an OpenRouter `~latest` alias because its local model table only knows versioned Anthropic IDs. OpenRouter still resolves the alias and serves the request normally. To silence the warning, pin the role variable to a versioned model ID (such as `anthropic/claude-sonnet-5[1m]` or `anthropic/claude-opus-5.5[1m]`). For `/fast` mode, pin a model that supports a fast tier — such as `anthropic/claude-opus-5.5[1m]` or `anthropic/claude-fable-5.2[1m]` (Sonnet has no fast tier; see [Fast Mode](#fast-mode) below).
+</Note>
 
 After setting the overrides, open `/model` inside Claude Code to confirm every model class you expect is listed, and check the model column in your [Activity Dashboard](https://openrouter.ai/activity) to confirm requests route to the models you configured.
 

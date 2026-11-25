@@ -273,7 +273,7 @@ These settings work only in macOS managed preferences and the machine policy fil
 
 | Setting | Accepts | What it does |
 | --- | --- | --- |
-| `ORI_CLAUDE_MODELS` | comma-separated model IDs | The only models OpenRouter serves to Claude Code and Claude Desktop, in this order, for example `anthropic/claude-sonnet-4.5,openai/*`. Use exact OpenRouter model IDs, or `<provider>/*` for every model from one provider. OpenRouter hides every other model from the pickers and refuses it, also when it's named with `--model` or `/model`. Empty serves every model the key can use. |
+| `ORI_CLAUDE_MODELS` | comma-separated model IDs | The only models OpenRouter serves to Claude Code and Claude Desktop, in this order, for example `anthropic/claude-sonnet-4.5,openai/*`. Use exact OpenRouter model IDs, or `<provider>/*` for every model from one provider. OpenRouter hides every other model from the pickers and refuses it, also when it's named with `--model` or `/model`. Empty serves every model the key can use. On the Managed Machines page, a saved list can't be emptied: turn the setting off instead. |
 | `ORI_CLAUDE_DEFAULT_MODEL` | model ID | The model Claude Code starts on, with or without a model list. Ori writes it as `model` in the Claude Code settings when they hold no model or the one Ori wrote, and `ori claude` starts on it. A model picked with `/model` stays. |
 | `ORI_CODEX_MODELS` | comma-separated model IDs | The only models OpenRouter serves to the Codex CLI and Codex Desktop, in this order, with the same rules as `ORI_CLAUDE_MODELS`. |
 | `ORI_CODEX_TOOL_SEARCH` | switch | Turns on Codex tool search for every model, which loads MCP tools and `spawn_agent` on demand. On by default. |

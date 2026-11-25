@@ -206,7 +206,7 @@ This applies to [`:free` models](/guides/routing/model-variants/free) too. If a 
 
 ## Using with the Anthropic Messages API
 
-The Anthropic Messages API endpoint (`/api/v1/messages`) accepts the `fallbacks` parameter, matching the shape used by Anthropic's SDKs. Each entry names a fallback model to try in order, and the list maps to OpenRouter's `models` routing, so fallbacks trigger on the same errors listed above (rate limits, downtime, moderation refusals), not only on refusals.
+The Anthropic Messages API endpoint (`/api/v1/messages`, base URL `https://openrouter.ai/api` — no `/v1` suffix) accepts the `fallbacks` parameter, matching the shape used by Anthropic's SDKs. Each entry names a fallback model to try in order, and the list maps to OpenRouter's `models` routing, so fallbacks trigger on the same errors listed above (rate limits, downtime, moderation refusals), not only on refusals. If you are routing **Claude Code** through OpenRouter for Anthropic failover, see the [Claude Code integration guide](/cookbook/coding-agents/claude-code-integration) — no third-party proxy is needed.
 
 <Note>
 OpenRouter handles this fallback routing itself. The `fallbacks` parameter does not use Anthropic's server-side fallback feature.
