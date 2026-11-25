@@ -278,6 +278,13 @@ A job becomes pollable once the provider accepts it, so most polls start at `que
 
 `progress` is the percent complete, from 0 to 100, while `status_detail` is `generating`. Only providers that report a percent send it.
 
+### Polling and retrieval
+
+- Call `GET /api/v1/videos/{jobId}/content` only after a poll returns `status: "completed"`. Before then the content endpoint returns `404` with `Job <id> is not completed (status: <status>)`, and the request does not move the job forward.
+- Poll every 10–30 seconds and back off on `429`. For long jobs or many concurrent jobs, set `callback_url` and wait for the [webhook](#webhooks-and-signature-verification) instead of polling. Keep a timeout and a fallback poll anyway: if webhook delivery exhausts its retries, the job can complete and be billed without your application hearing about it.
+- A `completed` job can briefly report `in_progress` while its result is still being stored. Keep polling until `status` is terminal.
+- Generated videos are not kept forever. `expires_at` is when OpenRouter's stored copy and signed `urls` expire. After that, the content endpoint may still serve the video from the provider until the provider deletes it, which returns `410` or, for some providers, a `5xx`. Download or copy the video to your own storage soon after the job completes.
+
 ## Downloading outputs: `urls` vs `unsigned_urls`
 
 When a job reaches `status: "completed"`, the response payload provides two distinct ways to access the generated video:
@@ -453,6 +460,82 @@ Each model entry includes capability matrices and pricing units:
   ]
 }
 ```
+
+
+### Parameter support by model
+
+Use the model's entry in `GET /api/v1/videos/models` to choose parameter values before you submit. Each entry describes one endpoint for the model, so treat the lists as discovery hints rather than a guarantee for every provider: if you pin a different provider with `provider`, it can reject a listed value or accept an unlisted one. Unsupported values are usually rejected with `400`, either by OpenRouter before the job is sent or by the provider. Some providers instead ignore a setting they can't apply, for example an `aspect_ratio` on image-to-video that follows the first frame's geometry, so a successful job doesn't guarantee every parameter was used.
+
+| Request parameter | Model field | Rule |
+| --- | --- | --- |
+| `duration` | `supported_durations` | Must be one of the listed values. |
+| `resolution` | `supported_resolutions` | Must be one of the listed values. |
+| `aspect_ratio` | `supported_aspect_ratios` | Must be one of the listed values. |
+| `size` | `supported_sizes` | Must be one of the listed `WIDTHxHEIGHT` values. |
+| `frame_images[].frame_type` | `supported_frame_images` | Each frame type must be listed. Omit `frame_images` when the field is `null`. |
+| `generate_audio` | `generate_audio` | Set to `true` only when the field is `true`. |
+| `seed` | `seed` | Send only when the field is `true`. |
+| `provider.options.<provider>` | `allowed_passthrough_parameters` | Only listed keys are forwarded. See [provider-specific video options](/cookbook/video-generation/provider-specific-video-options). |
+
+A `null` field means the model does not advertise a list, so OpenRouter does not restrict that parameter, and the provider can still reject unsupported values. `upscale_factor` and `creativity` are stricter: sending either returns `400` unless an eligible endpoint advertises support. Another exception is `duration: -1` (automatic duration): it needs explicit endpoint support and can return `400` even when `supported_durations` is `null`. `previous_job_id` works only on models whose provider supports continuing a job, and the referenced job must be a completed job from your account.
+
+To list what every model supports:
+
+```bash
+curl -fsS "https://openrouter.ai/api/v1/videos/models" \
+  | jq '.data[] | {id, supported_durations, supported_resolutions, supported_aspect_ratios, supported_sizes, supported_frame_images, generate_audio, seed}'
+```
+
+To filter models by the job you want to run, follow [Choose a video model](/cookbook/video-generation/choose-video-model).
+
+## Errors
+
+Errors returned by an endpoint use the standard OpenRouter error body, `{"error": {"code": <HTTP status>, "message": "...", "metadata": {...}}}`. The `message` text describes the specific cause; the tables below list the causes by status. See [Errors and debugging](/api_reference/errors-and-debugging) for the shared format.
+
+### Errors from `POST /api/v1/videos`
+
+These errors are returned before the job is created, so no job ID is issued and you are not charged.
+
+| Status | Cause | How to fix |
+| --- | --- | --- |
+| `400` | A parameter value isn't supported by the model, for example a `duration` outside `supported_durations`. The message names the parameter and lists the supported values. | Use a value from the model's entry in `GET /api/v1/videos/models`. See [Parameter support by model](#parameter-support-by-model). |
+| `400` | The request is malformed: a missing `prompt` on a model that needs one, an invalid reference URL, or an input type (image, audio, video) the model doesn't accept. | Fix the field named in the message. |
+| `400` | `previous_job_id` isn't supported by the model, or the referenced job can't be continued. | Continue only completed jobs on a model that supports continuation. |
+| `400` | The model slug doesn't exist. | Check the slug against `GET /api/v1/videos/models`. |
+| `400` | Your account or key enforces [ZDR](#zero-data-retention-zdr-policy). Account-level enforcement can instead return `404` when it filters out every endpoint. | Turn off ZDR enforcement for video requests. |
+| `401` | The API key is missing or invalid. | Send `Authorization: Bearer <OPENROUTER_API_KEY>`. |
+| `402` | Your balance or key limit doesn't cover the estimated cost of the job. Holds for your other running jobs count toward this. | If the response has `Retry-After`, pending jobs are using the budget: wait and retry. Otherwise add credits or raise the key's limit. |
+| `403` | Your workspace is HIPAA-enabled. The Videos API isn't available to HIPAA workspaces. | Use a workspace without HIPAA enabled. Changing the prompt or provider doesn't help. |
+| `403` | A key or guardrail spending limit is reached, counting billed usage and holds for running jobs, even when the account has enough credits. | Raise the limit or wait for running jobs to settle. |
+| `403` | The model requires moderation on the selected provider and your prompt was flagged. The message lists the flagged categories and says no credits were charged. | Rewrite the prompt, or choose a model or provider that doesn't require moderation. |
+| `404` | The model exists but no endpoint is available for it (including when your data policies, such as ZDR, filter out every endpoint), or the `previous_job_id` job wasn't found. For a continuation, the original job's endpoint or BYOK credential may no longer be available. | Check your data policy and provider settings. For a continuation, restore access to the original endpoint and credential, or start a new job. |
+| `409` | The `previous_job_id` job hasn't finished yet, or it failed, was cancelled, or expired. | If the previous job is still running, wait for it to complete and retry. If it failed, was cancelled, or expired, it can never be continued: start a new job or continue a different completed job. |
+| `413` | The text in the request exceeds the moderation budget for the endpoint. | Shorten the prompt. |
+| `429` | You hit a rate limit. | Honor `Retry-After` when present. Otherwise wait until `X-RateLimit-Reset` or retry with exponential backoff. |
+| `503` | Moderation is temporarily unavailable, or a spending hold was lost before dispatch. A provider `503` after dispatch can also leave the outcome unknown. | Retry when the message says moderation or the spending hold failed. For other `503`s, the job may have started: don't blindly resubmit, because a retry can create a second paid job. |
+
+### Errors from `GET /api/v1/videos/{jobId}` and `/content`
+
+| Status | Cause | How to fix |
+| --- | --- | --- |
+| `403` | The request hostname isn't allowed by your workspace's data-region policy. This is checked before the job is looked up. | Use the URL returned for the job, or a hostname your workspace allows. |
+| `404` | The job ID doesn't exist, belongs to another account, or was submitted from a workspace your API key isn't authorized for. | Check the ID returned by `POST /api/v1/videos`, and use a key for the workspace that submitted the job. |
+| `404` | `/content` was called before the job reached `completed`, or the job is `failed`, `cancelled`, or `expired`. | Poll `GET /api/v1/videos/{jobId}` until `status` is `completed`. Stop polling on `failed`, `cancelled`, or `expired`, which never reach `completed`, and read `error`. |
+| `400` | The `index` query parameter on `/content` is out of range for the job's outputs. | Use an index below the number of entries in `unsigned_urls`. `urls` can be omitted even when the video is downloadable. |
+| `409` | `/content` is served from the provider and the provider reports the video isn't ready yet, even though the job is `completed`. | Wait a few seconds and retry. |
+| `410` | The provider has deleted the generated video after its retention window. | Download videos soon after completion. Submit a new job to regenerate. |
+| `5xx` | OpenRouter or the provider failed to serve the result. After `expires_at`, this can also mean the original provider endpoint is no longer available. | Retry with backoff. A `5xx` doesn't prove the video is gone, because an outage can block retrieval while the provider still holds it. Only a `410` confirms the provider deleted it. |
+
+### Failed jobs
+
+A job that the provider accepted but couldn't finish ends with `status: "failed"`, `"cancelled"`, or `"expired"`, and the poll response and webhook carry an `error` string. For example, a video that the provider's output moderation blocked fails with `Generated video rejected by content moderation.` Change the prompt or inputs before you retry; resubmitting the same request usually fails the same way.
+
+## Billing
+
+- Requests rejected by `POST /api/v1/videos` with a `4xx` are not billed. A `5xx` from submit can leave the outcome unknown: the job may still have started and can complete and bill. Don't blindly resubmit after a `5xx`, because a retry can create a second paid job.
+- When a job is accepted, OpenRouter places a hold for its estimated cost against your balance and key limit. The hold counts toward your spend while the job runs.
+- A job is billed when it completes with a usable video. The final cost is in `usage.cost` on the poll response.
+- If the job fails, is cancelled, expires, or completes without a retrievable video, the hold is usually released and you are not charged. Two exceptions: a job can fail and still be charged when the provider reports billable usage for output it blocked in moderation, and a completed job can be billed when OpenRouter can't confirm whether its output is available. The poll response includes `usage` only for completed jobs, so a `failed` job without `usage.cost` may still have been charged. Check your [activity](https://openrouter.ai/activity) before you assume a retry won't add a charge.
 
 ## Webhooks and signature verification
 

@@ -16,6 +16,23 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
+<Update label="November 25, 2026" tags={["Video Generation"]} rss="1 modified endpoint, 3 modified schemas.">
+
+## Modified endpoints
+
+- [`GET /videos/models`](/api/api-reference/video-generation/list-all-video-generation-models): response schema updated
+
+## Modified schemas
+
+- `VideoGenerationRequest`: description updated; property `order` updated
+  - Used by [`POST /videos`](/api/api-reference/video-generation/submit-a-video-generation-request)
+- `VideoModel`: example modified
+  - Used by [`GET /videos/models`](/api/api-reference/video-generation/list-all-video-generation-models)
+- `VideoModelsListResponse`: example modified
+  - Used by [`GET /videos/models`](/api/api-reference/video-generation/list-all-video-generation-models)
+
+</Update>
+
 <Update label="November 24, 2026" tags={["BYOK","Batch","Schemas","TTS"]} rss="1 new endpoint, 5 modified endpoints, 3 new schemas, 14 modified schemas.">
 
 ## New endpoints
