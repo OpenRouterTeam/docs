@@ -1,0 +1,108 @@
+---
+publish: true
+title: Bring your own subscription
+description: Use your Claude Code or Codex CLI subscription through OpenRouter
+seoTitle: 'Bring your own subscription | OpenRouter'
+og:site_name: OpenRouter Documentation
+og:title: 'Bring your own subscription - OpenRouter'
+og:description: 'Configure Claude Code CLI and Codex CLI to route your own provider subscription through OpenRouter.'
+og:image: https://openrouter.ai/dynamic-og?title=Bring%20your%20own%20subscription&description=Use%20your%20provider%20subscription%20through%20OpenRouter
+og:image:width: 1200
+og:image:height: 630
+twitter:card: summary_large_image
+twitter:site: '@OpenRouter'
+noindex: false
+nofollow: false
+icon: key
+---
+
+Use your existing Claude or ChatGPT subscription with Claude Code or Codex CLI while routing requests through OpenRouter. Requests to your subscription's provider use your plan with no OpenRouter credits or fees, and you can still use OpenRouter credits for other models.
+
+OpenRouter uses your subscription login for that request only and never stores or logs it.
+
+## Set up
+
+### Claude Code
+
+Sign in to Claude Code with your `claude.ai` account using `/login`. Clear any existing `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_API_KEY`, or `apiKeyHelper` values (such as from a previous OpenRouter API-key setup) so they do not override your `claude.ai` login, then point Claude Code at OpenRouter with your OpenRouter API key:
+
+```bash
+unset ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY
+export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
+export ANTHROPIC_CUSTOM_HEADERS="x-api-key: sk-or-v1-..."
+```
+
+To keep this setup across terminals and background agents, add the same values to `~/.claude/settings.json`. Settings in that file override shell exports, so the empty `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_API_KEY` entries prevent leftover shell exports from overriding your subscription. Never put your OpenRouter API key in a repository's `.claude/settings.json`.
+
+```json
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "",
+    "ANTHROPIC_API_KEY": "",
+    "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
+    "ANTHROPIC_CUSTOM_HEADERS": "x-api-key: sk-or-v1-..."
+  }
+}
+```
+
+Run `/status` in Claude Code to confirm `Anthropic base URL` is `https://openrouter.ai/api` and your `claude.ai` login is active.
+
+### Codex CLI
+
+Sign in to Codex with your ChatGPT account using `codex login`. Export your OpenRouter API key in your shell profile (`~/.zshrc`, `~/.bashrc`, or PowerShell `$PROFILE`):
+
+```bash
+export OPENROUTER_API_KEY="sk-or-v1-..."
+```
+
+Add an OpenRouter provider block to your user-level `~/.codex/config.toml` (`%USERPROFILE%\.codex\config.toml` on Windows). Leave out `env_key` and `[model_providers.openrouter.auth]` so Codex sends your ChatGPT login instead of replacing it. Codex ignores `model_provider` and `model_providers` in project-local `.codex/config.toml` files.
+
+```toml
+model_provider = "openrouter"
+
+[model_providers.openrouter]
+name = "openrouter"
+base_url = "https://openrouter.ai/api/v1"
+wire_api = "responses"
+requires_openai_auth = true
+supports_websockets = false
+env_http_headers = { "x-api-key" = "OPENROUTER_API_KEY" }
+```
+
+Start `codex` from a shell with `OPENROUTER_API_KEY` set. If you use the Codex desktop app, make `OPENROUTER_API_KEY` visible to GUI apps as described in the [Codex Desktop App guide](/cookbook/coding-agents/codex-desktop#step-4-make-your-api-key-visible-to-the-app).
+
+## What works and what does not
+
+| Feature | Status | Details |
+| --- | --- | --- |
+| Subscription provider models | Works | Anthropic models in Claude Code and OpenAI models in Codex use your subscription with no OpenRouter credits or fees. |
+| Other providers' models | Uses credits | Billed to your OpenRouter credits as usual. |
+| Plan usage limits | Stops at your limit | When you hit your subscription limit, the CLI shows the limit error instead of charging OpenRouter credits. |
+| HIPAA, zero data retention, or regional routing | Uses credits | Requests that require HIPAA, zero data retention, or a specific data region cannot use your subscription and are billed to OpenRouter credits instead. |
+| Claude Code gateway model discovery | Does not work | Claude Code skips model discovery when `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_API_KEY` are unset. Select models by name instead. |
+| Claude Code Remote Control (`/remote-control`) | Does not work | Claude Code disables Remote Control whenever `ANTHROPIC_BASE_URL` points outside Anthropic's API. |
+| Codex WebSocket transport | Does not work | Keep `supports_websockets = false` in `~/.codex/config.toml`; OpenRouter uses streaming HTTP. |
+
+## Not available at all
+
+- **Claude Desktop app:** Does not read `ANTHROPIC_BASE_URL` or `~/.claude/settings.json`, and its third-party gateway mode disables `claude.ai` subscriptions.
+- **Cloud sessions (Claude Code on the web, Claude Tag, Codex cloud tasks):** Provider-hosted cloud sessions bypass your local configuration.
+- **Compliance and data residency on subscription traffic:** Subscription requests always go to your provider's standard endpoint under your plan's terms, not HIPAA, zero data retention, or regional endpoints.
+
+## Roll back
+
+### Claude Code
+
+Unset the variables in your current shell:
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_CUSTOM_HEADERS
+```
+
+Remove `ANTHROPIC_BASE_URL`, `ANTHROPIC_CUSTOM_HEADERS`, and any empty `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY` entries from your shell profile (`~/.zshrc`, `~/.bashrc`, or PowerShell `$PROFILE`), from `~/.claude/settings.json`, and from any project `.claude/settings.local.json`. Then open a new shell and restart `claude`.
+
+Run `/status` to confirm `Anthropic base URL` is no longer set. If Claude Code prompts you to sign in, run `/login`.
+
+### Codex CLI
+
+Remove `model_provider = "openrouter"` and the `[model_providers.openrouter]` block from `~/.codex/config.toml`, then restart `codex`. If Codex prompts you to sign in, run `codex login`.
