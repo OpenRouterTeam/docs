@@ -504,7 +504,7 @@ Not all providers support `n > 1`. Check the model's `supported_parameters` for 
 
 ### Image-to-Image (Reference Images)
 
-Pass reference images to guide generation via `input_references`:
+Pass one or more reference images via `input_references` to edit an existing image or guide a new generation. Each entry uses the `{ "type": "image_url", "image_url": { "url": "..." } }` shape, where `url` is an HTTP(S) URL or a base64 `data:image/...;base64,...` URL (up to 16 entries globally, narrowed per model):
 
 ```json lines
 {
@@ -521,7 +521,15 @@ Pass reference images to guide generation via `input_references`:
 }
 ```
 
-Reference images can be HTTP(S) URLs or base64 data URLs. The number of references accepted varies by provider.
+To list all models that accept `input_references` along with each model's allowed `min` and `max` reference count (`min: 1` indicates an edit model that requires at least one source image), filter `GET /api/v1/images/models` by `supported_parameters.input_references`:
+
+```bash lines
+curl -s "https://openrouter.ai/api/v1/images/models" | jq '[.data[] | select(.supported_parameters.input_references != null) | {id, input_references: .supported_parameters.input_references}]'
+```
+
+<Note>
+**No `bbox` placement parameter on `input_references`:** Reference-image entries do not accept bounding-box (`bbox`) coordinates to control where an input image is placed. `ImageGenerationLayerBoundingBox` (`bounding_box`) is a response-only metadata field returned on decomposed output layers, not a request parameter. Describe placement in `prompt`, or pass a transparent PNG overlay via `markup` on models that support it.
+</Note>
 
 ### Provider Routing
 
