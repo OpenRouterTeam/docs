@@ -553,6 +553,8 @@ When polling the job status, the response includes additional fields as the job 
 
 `completed`, `failed`, `cancelled` and `expired` are terminal: stop polling once the job reaches any of them.
 
+Request the video only after the job is `completed`. Calling the content endpoint earlier returns `404`. After `expires_at`, OpenRouter's stored copy is gone but the content endpoint may still serve the video from the provider; once the provider deletes it, the endpoint returns `410` or, for some providers, a `5xx`. For every error status, its cause, and what is billed, see the [Video API error reference](/api_reference/videos#errors) and [billing](/api_reference/videos#billing).
+
 ### Downloading the Video
 
 Once the job status is `completed`, the `unsigned_urls` array contains URLs to download the generated video content. These URLs are not presigned, so send your API key in the `Authorization` header just as you do when polling. Each entry points at the content endpoint, which you can also call directly:
