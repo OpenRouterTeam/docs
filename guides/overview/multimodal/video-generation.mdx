@@ -93,19 +93,33 @@ The response returns a `data` array where each model includes:
   "data": [
     {
       "id": "google/veo-3.1",
-      "canonical_slug": "google/veo-3.1",
+      "canonical_slug": "google/veo-3.1-20260320",
+      "hugging_face_id": null,
       "name": "Google: Veo 3.1",
       "description": "...",
-      "created": 1719792000,
+      "created": 1774277148,
       "supported_durations": [4, 6, 8],
-      "supported_resolutions": ["720p", "1080p"],
-      "supported_aspect_ratios": ["16:9", "9:16", "1:1"],
-      "supported_sizes": ["1280x720", "1920x1080"],
+      "supported_resolutions": ["720p", "1080p", "4K"],
+      "supported_aspect_ratios": ["16:9", "9:16"],
+      "supported_sizes": ["1280x720", "1080x1920", "1920x1080", "720x1280", "3840x2160", "2160x3840"],
+      "supported_frame_images": ["first_frame", "last_frame"],
+      "upscale_factor": null,
+      "creativity": null,
+      "generate_audio": true,
+      "seed": true,
       "pricing_skus": {
-        "per-video-second": "0.50",
-        "per-video-second-1080p": "0.75"
+        "duration_seconds_with_audio": "0.40",
+        "duration_seconds_with_audio_4k": "0.60",
+        "duration_seconds_without_audio": "0.20",
+        "duration_seconds_without_audio_4k": "0.40"
       },
-      "allowed_passthrough_parameters": ["output_config"]
+      "allowed_passthrough_parameters": [
+        "personGeneration",
+        "aspectRatio",
+        "negativePrompt",
+        "conditioningScale",
+        "enhancePrompt"
+      ]
     }
   ]
 }
@@ -115,6 +129,10 @@ The response returns a `data` array where each model includes:
 |---|---|
 | `id` | Model slug to use in generation requests |
 | `canonical_slug` | Permanent model identifier |
+| `hugging_face_id` | Hugging Face repository ID, or `null` if none is listed |
+| `name` | Display name |
+| `description` | Model description |
+| `created` | Model creation timestamp in Unix seconds |
 | `supported_durations` | List of supported output durations in seconds |
 | `supported_resolutions` | List of supported output resolutions (e.g., `720p`, `1080p`) |
 | `supported_aspect_ratios` | List of supported aspect ratios (e.g., `16:9`, `9:16`) |
@@ -127,7 +145,9 @@ The response returns a `data` array where each model includes:
 | `pricing_skus` | Pricing information per SKU |
 | `allowed_passthrough_parameters` | Provider-specific parameters that can be passed through via the `provider` option |
 
-Use this endpoint to check which resolutions, aspect ratios, and passthrough parameters are supported by each model before submitting a generation request.
+The catalog reports current capabilities and prices from one selected provider endpoint per model variant. If you explicitly route to a different provider, its capabilities and prices may differ. The example above shows the response format, not a fixed price or capability guarantee.
+
+Veo's `duration_seconds_*` rates are per second of output. If there is no matching 720p-specific SKU, 720p uses the rate from the matching unsuffixed SKU. At the example rate of \$0.40 per second, an 8-second 720p clip with audio costs \$3.20.
 
 <Tip>
   Validate `duration`, `resolution`, and `aspect_ratio` against the selected model's `supported_durations`, `supported_resolutions`, and `supported_aspect_ratios` from [the video models API](/api/api-reference/video-generation/list-all-video-generation-models). Requests with unsupported values return a 400 that lists the supported values.
@@ -322,18 +342,34 @@ curl "https://openrouter.ai/api/v1/videos/<job_id>" \
 
 </CodeGroup>
 
+### Submitting a Video Upscale Request
+
+Send this JSON body to `POST /api/v1/videos`, replacing the example URL with your source video URL. This example uses FLUX Video Upscale. If you have access to Runway video upscale, use its model ID with the same `input_references` shape and omit `prompt`.
+
+```json
+{
+  "model": "black-forest-labs/flux-video-upscale",
+  "input_references": [
+    {
+      "type": "video_url",
+      "video_url": { "url": "https://example.com/source.mp4" }
+    }
+  ]
+}
+```
+
 ### Request Parameters
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `model` | string | Yes | The model to use for video generation (e.g., `google/veo-3.1`) |
-| `prompt` | string | Yes | Text description of the video to generate |
+| `prompt` | string | Yes, except for video upscale models and models that can generate from image input alone | Text description of the video to generate. Runway video upscale rejects this field |
 | `duration` | integer | No | Duration of the generated video in seconds |
 | `resolution` | string | No | Resolution of the output video (e.g., `720p`, `1080p`) |
 | `aspect_ratio` | string | No | Aspect ratio of the output video (e.g., `16:9`, `9:16`, `3:2`) |
 | `size` | string | No | Exact pixel dimensions in `WIDTHxHEIGHT` format (e.g., `1280x720`). Interchangeable with `resolution` + `aspect_ratio` |
 | `frame_images` | array | No | Images for first/last frames (image-to-video) |
-| `input_references` | array | No | Reference images for style guidance (reference-to-video) |
+| `input_references` | array | For video upscaling | Reference assets for generation, such as images for style guidance. For upscaling, provide the source video as a `video_url` entry |
 | `generate_audio` | boolean | No | Whether to generate audio alongside the video. When omitted, the serving endpoint's default applies (see `generate_audio` in the models endpoint), which can be `false` |
 | `seed` | integer | No | Seed for deterministic generation (not guaranteed by all providers) |
 | `callback_url` | string | No | URL to receive a webhook notification when the job completes. Overrides the workspace-level default callback URL if set. Must be HTTPS |
@@ -343,7 +379,7 @@ curl "https://openrouter.ai/api/v1/videos/<job_id>" \
 | `user` | string | No | Stable identifier for your end-user, forwarded to Broadcast and private logging as the end-user ID; never sent to the provider |
 | `session_id` | string | No | Unique identifier (max 256 characters) for grouping related requests in Broadcast and private logging; never sent to the provider. Overrides the `x-session-id` header if both are set. |
 | `trace` | object | No | Observability and tracing metadata forwarded to configured Broadcast destinations. Named fields (`trace_id`, `trace_name`, `span_name`, `generation_name`, `parent_span_id`) are optional strings; custom keys may hold other JSON value types |
-| `provider` | object | No | Routing preferences (`order`, `only`, `ignore`), data policy preferences (`zdr`, `data_collection`), and provider-specific passthrough configuration under `options`. `data_collection` takes `allow` (default) or `deny`; `deny` excludes endpoints that train on your data, but not endpoints that retain prompts. No video endpoint currently offers Zero Data Retention, so `zdr: true` fails routing. |
+| `provider` | object | No | [Video provider routing](#provider-routing) preferences and provider-specific passthrough configuration under `options`. `data_collection` takes `allow` (default) or `deny`; `deny` excludes endpoints that train on your data, but not endpoints that retain prompts. No video endpoint currently offers Zero Data Retention, so `zdr: true` fails routing. |
 
 ### Supported Resolutions
 
@@ -412,6 +448,22 @@ If both fields are provided, `frame_images` takes precedence and the request is 
   "resolution": "1080p"
 }
 ```
+
+### Provider routing
+
+For `POST /api/v1/videos`, set `provider.order` to prefer providers in the listed order, `provider.only` to allow only the listed provider slugs, or `provider.ignore` to skip specific providers. For example, to submit a Hailuo 3 Max job only to MiniMax:
+
+```json
+{
+  "model": "minimax/hailuo-3-max",
+  "prompt": "A slow camera pan across a lake at sunset",
+  "provider": { "only": ["minimax"] }
+}
+```
+
+Video generation does not support `provider.sort` for price, latency, or throughput. OpenRouter selects one eligible endpoint for the job and does not retry it on another provider if submission fails, so `provider.allow_fallbacks` does not apply. Use `only`, not `order`, if the job must use a specific provider.
+
+Don't use `"only": []` to prevent a submission. If your account's allowed-providers list includes an eligible provider, OpenRouter can still submit the job to that provider. If an empty provider selection should prevent a job, don't send the request.
 
 ### Provider-Specific Options
 
@@ -849,3 +901,5 @@ If you have ZDR enforcement enabled (either via [account settings](https://openr
 **Model not found?**
 - Use the [Video Models API](#via-the-video-models-api) or the [Models page](/guides/overview/models) to find available video generation models
 - Verify the model slug is correct (e.g., `google/veo-3.1`)
+
+**Chat Completions rejects your video model?** Submit a new request to `POST /api/v1/videos` without a `messages` array. To generate a video from text, send a top-level `prompt` as shown in the [video generation request example](#submitting-a-video-generation-request). To upscale a video, send the source video in `input_references` as shown in the [video upscale request example](#submitting-a-video-upscale-request). Runway video upscale requires one `video_url` entry and rejects `prompt`.

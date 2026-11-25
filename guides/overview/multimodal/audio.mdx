@@ -18,11 +18,17 @@ icon: volume-high
 
 import { API_KEY_REF } from "/snippets/exports/constants.mdx";
 
-OpenRouter supports both sending audio files to compatible models and receiving audio responses via the API. This guide covers how to work with audio inputs and outputs.
+OpenRouter supports audio through dedicated speech endpoints and through multimodal chat models. Choose the API that matches your use case:
+
+- **Dedicated Speech-to-Text (`POST /api/v1/audio/transcriptions`)**: Transcribe audio files with Whisper, GPT-4o Transcribe, Deepgram, ElevenLabs Scribe, and other STT models. See the [Speech-to-Text guide](/guides/overview/multimodal/stt) and discover STT models with `GET /api/v1/models?output_modalities=transcription`.
+- **Dedicated Text-to-Speech (`POST /api/v1/audio/speech`)**: Generate speech audio (`mp3` or `pcm`) from text with OpenAI, Gemini, ElevenLabs, Fish Audio, Voxtral, and other TTS models. See the [Text-to-Speech guide](/guides/overview/multimodal/tts) and discover TTS models and voices with `GET /api/v1/audio/speech/models`.
+- **Multimodal chat models (this page)**: Send audio alongside text prompts for analysis, Q&A, or reasoning, or receive conversational audio responses from audio-capable chat models.
 
 ## Audio Inputs
 
-Send audio files to compatible models for transcription, analysis, and processing. Audio input requests use the [Responses API](/api_reference/responses/overview) (`/api/v1/responses`) with the `input_audio` content type. Audio files must be base64-encoded and include the format specification.
+Send audio files to multimodal chat models for analysis, Q&A, and processing alongside text prompts. For dedicated speech-to-text transcription (including multipart file uploads, inline audio, direct URLs on models that support them, and silence handling without LLM hallucination), use the [Speech-to-Text endpoint](/guides/overview/multimodal/stt) (`POST /api/v1/audio/transcriptions`) instead.
+
+Multimodal audio input requests use the [Responses API](/api_reference/responses/overview) (`/api/v1/responses`) with the `input_audio` content type. Audio files must be base64-encoded and include the format specification.
 
 **Note**: Audio files must be **base64-encoded** - direct URLs are not supported for audio content.
 
@@ -319,7 +325,7 @@ Chat Completions (`/api/v1/chat/completions`) accepts any format string the prov
 
 ## Audio Output
 
-OpenRouter supports receiving audio responses from models that have audio output capabilities. To request audio output, include the `modalities` and `audio` parameters in your request. Audio output uses the Chat Completions API (`/api/v1/chat/completions`), because the Responses API does not accept the `audio` parameter.
+OpenRouter supports receiving conversational audio responses from chat models that have audio output capabilities. For dedicated text-to-speech synthesis from text with `mp3` or `pcm` output, use the [Text-to-Speech endpoint](/guides/overview/multimodal/tts) (`POST /api/v1/audio/speech`) instead. To request audio output from a chat model, include the `modalities` and `audio` parameters in your request. Audio output uses the Chat Completions API (`/api/v1/chat/completions`), because the Responses API does not accept the `audio` parameter.
 
 You can search for models that support audio output by filtering to audio output modality on our [Models page](/guides/overview/models).
 
@@ -610,4 +616,4 @@ The `audio` parameter accepts the following options:
 | Option | Description |
 |---|---|
 | `voice` | The voice to use for audio generation (e.g., `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`). Available voices vary by model. |
-| `format` | The audio format for the output (e.g., `wav`, `mp3`, `flac`, `opus`, `pcm16`). Available formats vary by model. |
+| `format` | Must be `pcm16` when streaming (`stream: true` is required for chat-completions audio output). Requesting `mp3`, `wav`, `flac`, or `opus` on a streaming chat-completions request is rejected by upstream providers; use the dedicated [Text-to-Speech endpoint](/guides/overview/multimodal/tts) (`POST /api/v1/audio/speech`) for `mp3` output (it supports `mp3` and `pcm`). |

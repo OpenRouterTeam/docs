@@ -335,7 +335,7 @@ When a job reaches `status: "completed"`, the response payload provides two dist
 | `previous_job_id` | string | No | Job ID of a completed video generation to continue or extend using the same model and provider endpoint. Your API key can continue every job your app created, so verify that the referenced job belongs to the requesting end user before forwarding a client-supplied ID; otherwise one user can extend another user's video and receive the combined clip. |
 | `seed` | integer | No | Integer seed for deterministic generation (supported by select providers). |
 | `callback_url` | string | No | HTTPS URL to receive a webhook notification when generation completes. Overrides the workspace-level default webhook. |
-| `provider` | object | No | Provider routing preferences (`order`, `only`, `ignore`) and provider-specific passthrough options. |
+| `provider` | object | No | [Video provider routing](/guides/overview/multimodal/video-generation#provider-routing) preferences (`order`, `only`, `ignore`), data policy (`data_collection`, `zdr`), and provider-specific options. Sorting and automatic provider fallbacks are not supported. |
 | `session_id` | string | No | Identifier for grouping related requests in observability tools and Broadcast. |
 | `user` | string | No | End-user identifier for rate limiting and audit logging. |
 

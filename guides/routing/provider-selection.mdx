@@ -19,11 +19,13 @@ sidebarTitle: Provider Selection
 import QuantizationLevels from "/snippets/quantization-levels.mdx";
 import { TermsOfServiceDescriptions } from '/snippets/exports/TermsOfServiceDescriptions.jsx';
 
-OpenRouter routes requests to the best available providers for your model. By default, [OpenRouter routes each request](#default-routing) based on each provider's measured price, throughput, latency, and reliability.
+For Responses, Chat Completions, and Messages, [default routing](#default-routing) uses each provider's measured price, throughput, latency, and reliability. For the Video API, see [Video provider routing](/guides/overview/multimodal/video-generation#provider-routing).
 
-You can customize how your requests are routed using the `provider` object in the request body for the [Responses API](/api_reference/responses/overview) and [Chat Completions](/api/api-reference/chat/create-a-chat-completion).
+You can customize how your requests are routed using the `provider` object in the request body for the [Responses API](/api_reference/responses/overview), [Chat Completions](/api/api-reference/chat/create-a-chat-completion), and the [Messages API](/api/api-reference/anthropic-messages/create-a-message).
 
-The `provider` object can contain the following fields:
+The Video API also accepts a `provider` object, but it doesn't support `provider.max_price` or sorting by price, latency, or throughput. See [Video provider routing](/guides/overview/multimodal/video-generation#provider-routing) for the supported options.
+
+For Responses, Chat Completions, and Messages, the `provider` object can contain the following fields:
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -48,6 +50,8 @@ The `provider` object can contain the following fields:
 </Note>
 
 ## Default Routing
+
+This section applies to Responses, Chat Completions, and Messages. The Video API selects one eligible endpoint and does not retry on another provider if submission fails. See [Video provider routing](/guides/overview/multimodal/video-generation#provider-routing).
 
 For each model in your request, OpenRouter picks a provider by comparing what a good response would actually cost you at each one, not by list price alone. Each input is measured from recent production traffic, so routing reacts within minutes when a provider gets faster, slower, or less reliable:
 

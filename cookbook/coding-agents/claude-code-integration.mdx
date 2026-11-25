@@ -226,6 +226,8 @@ Add these to the same shell profile or project settings file where you set `ANTH
 
 Claude Code is optimized for Anthropic models and may not work correctly with other providers.
 
+Use chat-capable models for Claude Code's model overrides. Video-only models cannot be used as Claude Code models. From your app, [submit a separate video request](/guides/overview/multimodal/video-generation#submitting-a-video-generation-request). Use a top-level `prompt` to generate a video from text, or send the source video in `input_references` to upscale it. Runway video upscale requires one `video_url` entry and rejects `prompt`.
+
 ### Gateway model picker
 
 Gateway model discovery is opt-in. Set `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1` to show the model picker. The picker shows a curated set of the highest-ranked models, not the full OpenRouter catalog. Some picker entries route to non-Anthropic providers and may be subject to the compatibility limitations noted above. Pinning a model with one of the settings above selects it directly and bypasses the picker. Claude Code stores the discovered list locally and refreshes it during startup, so restart Claude Code after enabling discovery or when you want it to fetch the list again.

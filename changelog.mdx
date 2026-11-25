@@ -16,7 +16,7 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
 
 {/* api-changelog:entries */}
 
-<Update label="November 24, 2026" tags={["BYOK","Batch","Schemas","TTS"]} rss="1 new endpoint, 5 modified endpoints, 3 new schemas, 9 modified schemas.">
+<Update label="November 24, 2026" tags={["BYOK","Batch","Schemas","TTS"]} rss="1 new endpoint, 5 modified endpoints, 3 new schemas, 14 modified schemas.">
 
 ## New endpoints
 
@@ -65,6 +65,37 @@ Entries on this page are generated automatically from [OpenAPI specification](/a
   - Used by [`POST /audio/speech`](/api/api-reference/tts/create-speech)
 - `ResponsesRequest`: new property `context_management`
   - Used by [`POST /presets/{slug}/responses`](/api/api-reference/presets/create-a-preset-from-a-responses-request-body), [`POST /responses`](/api/api-reference/responses/create-a-response)
+- `CreateGuardrailRequest`: new property `allow_safety_retention_openai`
+  - Used by [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail)
+- `Guardrail`: new property `allow_safety_retention_openai`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`GET /guardrails`](/api/api-reference/guardrails/list-guardrails)
+    - [`GET /guardrails/{id}`](/api/api-reference/guardrails/get-a-guardrail)
+    - [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail)
+    - [`POST /guardrails`](/api/api-reference/guardrails/create-a-guardrail)
+  </Expandable>
+- `GuardrailModelAvailabilityPolicyAuthoringConfig`: new property `allow_safety_retention_openai`
+
+  <Expandable title="4 endpoints using this schema">
+    - [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy)
+    - [`POST /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/create-a-model-availability-policy)
+    - [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+    - [`PUT /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/update-a-model-availability-policy)
+  </Expandable>
+- `GuardrailModelAvailabilityPolicyConfig`: new property `allow_safety_retention_openai`
+
+  <Expandable title="7 endpoints using this schema">
+    - [`GET /guardrails/policies/account`](/api/api-reference/guardrail-policies/list-workspace-wide-policies)
+    - [`GET /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/list-model-availability-policies)
+    - [`GET /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/get-a-model-availability-policy)
+    - [`POST /guardrails/policies/account`](/api/api-reference/guardrail-policies/create-a-workspace-wide-policy)
+    - [`POST /guardrails/policies/model-availability`](/api/api-reference/guardrail-policies/create-a-model-availability-policy)
+    - [`PUT /guardrails/policies/account/{id}`](/api/api-reference/guardrail-policies/update-a-workspace-wide-policy)
+    - [`PUT /guardrails/policies/model-availability/{id}`](/api/api-reference/guardrail-policies/update-a-model-availability-policy)
+  </Expandable>
+- `UpdateGuardrailRequest`: new property `allow_safety_retention_openai`
+  - Used by [`PATCH /guardrails/{id}`](/api/api-reference/guardrails/update-a-guardrail)
 
 </Update>
 
