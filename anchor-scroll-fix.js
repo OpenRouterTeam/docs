@@ -45,7 +45,13 @@ function initAnchorScrollFix() {
   if (document.readyState === 'complete') {
     void settleAnchorScroll();
   } else {
-    window.addEventListener('load', settleAnchorScroll, { once: true });
+    window.addEventListener(
+      'load',
+      () => {
+        void settleAnchorScroll();
+      },
+      { once: true },
+    );
   }
 }
 
