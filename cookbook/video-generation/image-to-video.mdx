@@ -49,7 +49,7 @@ Use the API reference pages as the source of truth for exact fields:
 Submitting `POST /api/v1/videos` starts a real video generation job and may spend OpenRouter credits.
 </Warning>
 
-`frame_images` is for exact frame control. If you provide both `frame_images` and `input_references`, OpenRouter treats the request as image-to-video.
+`frame_images` is for exact frame control. Combining `frame_images` with `input_references` in one request is provider-specific, and `GET /api/v1/videos/models` does not advertise the combination policy: `supported_frame_images` and the input modalities describe each field on its own. Representative policies today: Alibaba, xAI, and HeyGen Video 1 reject the combination (the request fails with a `400`, returned either by `POST /api/v1/videos` or as the job's terminal `failed` status); BytePlus Seedance uses the frame images and ignores the references; Atlas Cloud does the same, except that a request with only a `last_frame` image takes its first frame from the first image reference; Runway uses both, applying image references as style guidance alongside the frame anchors. Other models accept each field on its own, and their combination behavior is not listed here. Send one or the other unless you have confirmed the model's policy with a test request.
 
 Use a stable, directly downloadable image URL. Some providers cannot fetch image URLs that require cookies, redirects through HTML pages, bot checks, or unusual headers.
 
